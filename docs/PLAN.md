@@ -143,7 +143,7 @@ Files: `frontend/package.json`, new `frontend/vite.config.ts`, `frontend/index.h
 
 `react-textfit` peer-pins React 15/16, so it goes before the upgrade.
 
-- [ ] Replace `react-textfit` in `src/player/Player.jsx` with CSS `clamp()` font sizing; uninstall it
+- [x] Replace `react-textfit` in `src/player/Player.jsx` with CSS `clamp()` font sizing; uninstall it
 - [ ] Replace `react-helmet` (`src/util/HelmetMetaData.jsx`, used at `App.tsx:1735`) with static `<meta>` tags in `index.html`; delete the component; uninstall it
 - [ ] Upgrade `react`, `react-dom` to 18 and `@types/react`, `@types/react-dom` to match; switch the entry to `createRoot`
 - [ ] Check timing under React 18 automatic batching: the animation queue in `App.tsx` (`addAnimationToQueue`, `onAnimationFinish`) must still play events in order, and the reads of `this.state` right after `setState` in socket and promise callbacks are made explicit (lobby packet icon dialog at `App.tsx:410-418`, login cookies at `:576` and `:606`)

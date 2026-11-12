@@ -425,7 +425,9 @@ With `npm run dev` and the backend running, create a lobby as `WWWWWWWWWWWW` (12
 [...document.querySelectorAll("#player-name")].map(e => [e.textContent, e.scrollWidth <= e.clientWidth && e.scrollHeight <= e.clientHeight])
 ```
 
-Expected: `true` for both names at both sizes. If the 12-character name overflows, lower the `0.1` factor until it fits, and record the value here.
+Expected: `true` for both names at both sizes. If the 12-character name overflows, lower the `0.1` factor until it fits, and record the value here. (Measured with `0.1`: 17.28px in a 138x40 box at 1920x1080, where the name wraps to two lines, and 11.52px in a 92x26 box at 1280x720. Both fit.)
+
+The "Cannot update during an existing state transition" warning stays after this step: it comes from `Player.render()` calling `setState`, not from Textfit (#8).
 
 - [ ] **Step 3: Commit**
 

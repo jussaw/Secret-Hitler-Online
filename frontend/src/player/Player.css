@@ -53,6 +53,14 @@
     left: 10%;
     width: 80%;
     height: 16%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    line-height: 1.1;
+    overflow-wrap: anywhere;
+    /* The tile is as wide as #player-image: min(20vmin, 16vh). */
+    font-size: clamp(8px, calc(min(20vmin, 16vh) * 0.1), 20px);
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
