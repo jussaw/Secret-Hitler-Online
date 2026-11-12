@@ -542,8 +542,8 @@ Files: new `frontend/src/player/usePlayerRows.ts` and `usePlayerRows.test.tsx`, 
 
 Files: new `frontend/src/game/PlayerRoster.tsx`, `PlayerRoster.css`, `PlayerRoster.test.tsx`
 
-- [ ] Tests first: order, the user's row, offices, own and teammates' roles beside offices, executed, busy, votes, the reserved detail line
-- [ ] Implement the roster rows (portrait in the card's frame, name, detail line, vote or busy)
+- [x] Tests first: order, the user's row, offices, own and teammates' roles beside offices, executed, busy, votes, the reserved detail line
+- [x] Implement the roster rows (portrait in the card's frame, name, detail line, vote or busy)
 
 ### Task 8.5: RoundTracker
 
