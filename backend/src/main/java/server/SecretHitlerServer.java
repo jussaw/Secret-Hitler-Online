@@ -3,6 +3,7 @@ package server;
 import game.datastructures.Identity;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
+import io.javalin.http.staticfiles.Location;
 import io.javalin.websocket.WsCloseContext;
 import io.javalin.websocket.WsConnectContext;
 import io.javalin.websocket.WsContext;
@@ -123,17 +124,22 @@ public class SecretHitlerServer {
 
         // Only initialize Javalin communication after the database has been queried.
         Javalin serverApp = Javalin.create(config -> {
-            config.plugins.enableCors(cors -> {
-                if (ApplicationConfig.DEBUG) {
+            // Serve the built frontend when it was bundled into the jar (see build.gradle).
+            // Javalin refuses to start if a classpath static directory is missing.
+            if (SecretHitlerServer.class.getResource("/public/index.html") != null) {
+                config.staticFiles.add("/public", Location.CLASSPATH);
+            }
+            // The frontend is served from this same origin, so CORS is only needed when a
+            // separately hosted dev frontend calls the server directly (debug mode). Outside
+            // debug mode the CORS plugin would reject same-origin module scripts, which
+            // browsers fetch with an Origin header.
+            if (ApplicationConfig.DEBUG) {
+                config.plugins.enableCors(cors -> {
                     cors.add(it -> {
                         it.anyHost();
                     });
-                } else {
-                    cors.add(it -> {
-                        it.allowHost("https://secret-hitler.online");
-                    });
-                }
-            });
+                });
+            }
         }).start(getHerokuAssignedPort());
 
         serverApp.get("/check-login", SecretHitlerServer::checkLogin); // Checks if a login is valid.

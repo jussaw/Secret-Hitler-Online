@@ -29,6 +29,7 @@ Parent plan: [`docs/PLAN.md`](../../PLAN.md), Phase 3. Spec: [`docs/superpowers/
 6. **TLS ends at a proxy in front of the host.** A public hostname on it terminates TLS and passes WebSockets. The host runs an uptime monitor and an image updater; the updater is how "the host picks up" new `:latest` images.
 7. **Public GHCR packages allow anonymous pulls**, so the host needs no registry credentials as long as this package is public.
 8. **The image job only runs on pushes to `development`, so the first image needs a merge.** Proposed sequence (confirm with the user at the gate before Task 6): PR 1 carries Tasks 1-5 and is merged, which publishes the first image. Tasks 6-7 and the acceptance checks follow on a fresh `phase-3-deploy` branch with PR 2.
+10. **The production CORS rule blocks the same-origin page.** Outside debug mode, the CORS plugin allowed only upstream's `https://secret-hitler.online`, and Javalin answers any other `Origin` with 400. Vite's `<script type="module" crossorigin>` and stylesheet tags make the browser send `Origin` even for same-origin assets, so the served page stayed blank (curl without `Origin` got 200, which hid it). Same-origin serving needs no CORS, so the plugin is now enabled only in debug mode.
 9. **The service gets a free published port on the host.**
 
 ## File map
@@ -493,6 +494,22 @@ In `SecretHitlerServer.java`, add `import io.javalin.http.staticfiles.Location;`
             }
 ```
 
+Replace the `config.plugins.enableCors(...)` block (which allowed only `https://secret-hitler.online` outside debug mode) with:
+
+```java
+            // The frontend is served from this same origin, so CORS is only needed when a
+            // separately hosted dev frontend calls the server directly (debug mode). Outside
+            // debug mode the CORS plugin would reject same-origin module scripts, which
+            // browsers fetch with an Origin header.
+            if (ApplicationConfig.DEBUG) {
+                config.plugins.enableCors(cors -> {
+                    cors.add(it -> {
+                        it.anyHost();
+                    });
+                });
+            }
+```
+
 At the end of `backend/build.gradle`, add:
 
 ```groovy
@@ -517,7 +534,7 @@ curl -s localhost:4041/ | grep -c 'id="root"'
 curl -s localhost:4041/ping
 ```
 
-Expected: `1` and `OK`. Then open `http://localhost:4041`: create a lobby, play a CPU game to the end, and check the WebSocket goes to `ws://localhost:4041/game`. Stop the jar afterwards.
+Expected: `1` and `OK`. Also `curl -s -o /dev/null -w '%{http_code}' -H 'Origin: http://localhost:4041' localhost:4041/assets/<index js>` → `200` (this was `400` under the old CORS rule). Then open `http://localhost:4041`: create a lobby, play a CPU game to the end, and check the WebSocket goes to `ws://localhost:4041/game`. The production build shows no console errors at all. Stop the jar afterwards.
 
 - [ ] **Step 6: Commit**
 

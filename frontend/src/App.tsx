@@ -855,7 +855,7 @@ class App extends Component<{}, AppState> {
             <textarea
               id="linkText"
               readOnly={true}
-              value={"https://secret-hitler.online/?lobby=" + this.state.lobby}
+              value={window.location.origin + "/?lobby=" + this.state.lobby}
             />
             <button onClick={this.onClickCopy}>COPY</button>
           </div>

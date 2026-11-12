@@ -76,3 +76,10 @@ task runLocal(type: JavaExec) {
 
 task stage(dependsOn: ['build', 'clean', 'jar'])
 build.mustRunAfter clean
+
+// Bundle the built frontend (frontend/dist, from `npm run build`) into the jar's public/.
+processResources {
+    from('../frontend/dist') {
+        into 'public'
+    }
+}
