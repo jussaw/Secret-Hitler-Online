@@ -26,6 +26,9 @@ import java.util.stream.Collectors;
  * A user is defined as an active websocket connection.
  */
 public class Lobby implements Serializable {
+    // The value Java computed for this class before spectators, so backups written by earlier
+    // releases still load (DatabaseBackupTest.aBackupFromBeforeSpectatorsStillLoads).
+    private static final long serialVersionUID = 7519753883184174211L;
 
     private SecretHitlerGame game;
 
