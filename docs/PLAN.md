@@ -31,7 +31,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 
 | Phase | Branch | Status |
 |---|---|---|
-| 1. Housekeeping | `phase-1-housekeeping` | not started |
+| 1. Housekeeping | `phase-1-housekeeping` | in progress |
 | 2. Frontend modernization | `phase-2-vite` | not started |
 | 3. Persistence, packaging, first deploy | `phase-3-deploy` | not started |
 | 4. Round-table game screen | `phase-4-round-table` | not started |
@@ -47,9 +47,9 @@ Outcome: a clean fork that runs locally, with upstream's hosted-service extras g
 
 ### Task 1.1: Baseline
 
-- [ ] Run `cd backend && ./gradlew test`; record pass/fail counts in the PR description
-- [ ] Run `./gradlew runLocal` and `cd frontend && npm install && npm run devLocal`; play one 5-player game with CPU players to the end
-- [ ] Note any pre-existing failures as issues on the fork; do not fix them in this phase
+- [x] Run `cd backend && ./gradlew test`; record pass/fail counts in the PR description
+- [x] Run `./gradlew runLocal` and `cd frontend && npm install && npm run devLocal`; play one 5-player game with CPU players to the end
+- [x] Note any pre-existing failures as issues on the fork; do not fix them in this phase (#2, #3, #4, #5: dev-mode console warnings)
 
 ### Task 1.2: Remove analytics
 
@@ -102,7 +102,7 @@ Files: new `CLAUDE.md` at the repo root
 
 - [ ] `./gradlew test` matches the baseline
 - [ ] `npm run build` succeeds in `frontend/`
-- [ ] A full CPU game plays locally with no console errors
+- [ ] A full CPU game plays locally with no console errors beyond the baseline tracked in #2 to #5
 - [ ] PR merged into `development`
 
 **Start Phase 2: Frontend modernization**
