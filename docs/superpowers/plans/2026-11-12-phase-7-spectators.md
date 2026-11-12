@@ -17,7 +17,7 @@ Parent plan: [`docs/PLAN.md`](../../PLAN.md), Phase 7. Spec: [`docs/superpowers/
 - State packets include a spectator count. A lobby with only spectators is inactive for the inactivity cleanup.
 - A spectator who joins an unknown lobby gets the same error as a player. A dropped spectator reconnects the same way a player does, keeping the flag.
 - The WebSocket protocol stays backward compatible for players: spectators only add fields (`spectatorCount`) and a query parameter (`spectator`). The player packets are otherwise unchanged.
-- The desktop table, the phone layout and the narrow-window layout look the same for players, apart from the spectator count. No new art (D9 asks the user about one Lucide icon).
+- The desktop table, the phone layout and the narrow-window layout look the same for players, apart from the spectator count. No new art; the count's eye icon comes from the Lucide pack, as the speaker icons do (the user's call, D11).
 - Do not fix the baseline issues in `CLAUDE.md` (#4, #5, #8, #9, #10, #13) or the 30 s WebSocket idle timeout. Ask the user first if this phase has to touch their code. Anything that drives a game keeps every socket pinging (about every 10 s).
 - Java 17 for Gradle and `npm run e2e` (`JAVA_HOME=$HOME/.sdkman/candidates/java/17.0.8-zulu` locally). Lockfile changes use `npx npm@11.21.1`. `npm run e2e` needs `npx playwright install chromium firefox`.
 - Commits follow Conventional Commits with a scope (`backend`, `frontend`, `ci`, `plan`, `docs`, `claude`). Tick each `docs/PLAN.md` box in the same commit as its work. Nothing about the host's infrastructure goes into the repo, commit messages or PR text.
@@ -72,7 +72,7 @@ Measured against `./gradlew runLocal` and `npm run dev`. Scripts, probes and scr
 - `sendWSCommand` sends only `ping` and `get-state` for a spectator.
 - Lobby page: the spectator sees the code, the invite link, the player list and LEAVE LOBBY. CHANGE ICON, START GAME and the VIP line are replaced by one line: "You are watching. The game starts when the VIP starts it." The portrait picker never opens.
 
-**D7. The cookie and a refresh** (asks the user, see the end). A spectator cookie, `spectator=true`, is a session cookie like `lobby`. WATCH sets `lobby` and `spectator` and leaves `name` alone. JOIN and CREATE LOBBY remove `spectator`, and so does LEAVE LOBBY when watching. On load (`componentDidMount`), if `spectator` and `lobby` are set and the URL names no other lobby, App runs WATCH's steps for that lobby. A refresh therefore goes straight back to watching. On a 404 it stays on the login page with the lobby filled in and the error shown, and drops the cookie. Cost: the page loads with no gesture, so sound stays off until the first click, tap or key (Phase 6's unlock rule).
+**D7. The cookie and a refresh** (the user chose auto-resume over a prefilled WATCH). A spectator cookie, `spectator=true`, is a session cookie like `lobby`. WATCH sets `lobby` and `spectator` and leaves `name` alone. JOIN and CREATE LOBBY remove `spectator`, and so does LEAVE LOBBY when watching. On load (`componentDidMount`), if `spectator` and `lobby` are set and the URL names no other lobby, App runs WATCH's steps for that lobby. A refresh therefore goes straight back to watching. On a 404 it stays on the login page with the lobby filled in and the error shown, and drops the cookie. Cost: the page loads with no gesture, so sound stays off until the first click, tap or key (Phase 6's unlock rule).
 
 **D8. No prompts; a status line that describes the table.** For a spectator, `onGameStateChanged` queues no `queueAlert` before the game ends: no role reveal, no action prompt and no informational alert (Finding 12). Each alert a player would see becomes a status line held for `SPECTATOR_RESULT_MS = 3000`, and each waiting line names the players. The texts come from `frontend/src/spectator/spectatorStatus.ts`:
 
@@ -106,11 +106,11 @@ export function resultText(game: GameState): string;  // replaces the POST_LEGIS
 
 With twelve-character names every line is at most 81 characters, the length of the longest status a player sees, which the no-scroll test wraps. The vote reveal is unchanged: it is the table, not a prompt.
 
-**D9. The game end** (asks the user). At a victory state a spectator gets the same victory screen as a player, with every role and RETURN TO LOBBY, which reopens the socket as a spectator. It is the end-of-game reveal that the spec gives everyone. Before that, `#alert` never opens for a spectator.
+**D9. The game end** (the user chose the victory screen over no prompt at all). At a victory state a spectator gets the same victory screen as a player, with every role and RETURN TO LOBBY, which reopens the socket as a spectator. It is the end-of-game reveal that the spec gives everyone. Before that, `#alert` never opens for a spectator.
 
 **D10. `GameScreen` for spectators.** `GameScreenProps` gains `spectator?: boolean` and `spectatorCount: number`. END TERM keeps its box but gets `visibility: hidden` for a spectator, so the centre lays out exactly as a player's does and the hidden button is not a touch target. `PlayerDisplay.shouldShowRole` reads `players[props.user]?.id`. A spectator's seats come from `seatPositions(count, -1)`, with `playerOrder[0]` at bottom centre and no highlighted tile, and roles show only in a victory state.
 
-**D11. The spectator count** (asks the user about the icon). New `frontend/src/spectator/SpectatorCount.tsx`: `export default function SpectatorCount(props: { count: number }): JSX.Element | null`. It renders nothing at 0, otherwise:
+**D11. The spectator count** (the user chose Lucide's `Eye` and the number over text only). New `frontend/src/spectator/SpectatorCount.tsx`: `export default function SpectatorCount(props: { count: number }): JSX.Element | null`. It renders nothing at 0, otherwise:
 
 ```html
 <div class="spectator-count" role="status" aria-label="2 spectators watching" title="2 watching">
@@ -322,13 +322,13 @@ git commit -m "feat(frontend): watch a lobby as a spectator"
 
 - [ ] **Step 2: Run them to verify they fail.** `cd frontend && npm test -- --run src/spectator && JAVA_HOME=<Java 17> npm run e2e`. Expected: `./SpectatorCount` unresolved, and the header-fit tests fail on a missing `.spectator-count`.
 
-- [ ] **Step 3: Implement D11.** If the user approves the icon, `Eye` comes from `lucide-react` (already pinned at 1.63.0; check the export). Otherwise the count is text, "2 watching". Render `<SpectatorCount count={…} />` in the lobby header and in `GameScreen`'s header, before `<SoundControl />`.
+- [ ] **Step 3: Implement D11.** `Eye` comes from `lucide-react` (already pinned at 1.63.0; check the export). Render `<SpectatorCount count={…} />` in the lobby header and in `GameScreen`'s header, before `<SoundControl />`.
 
 - [ ] **Step 4: Run everything.** `cd frontend && npm test -- --run && npm run build && JAVA_HOME=<Java 17> npm run e2e`, and `cd backend && JAVA_HOME=<Java 17> ./gradlew test`. Expected: all green in all four projects.
 
 - [ ] **Step 5: After-screenshots and diffs.** Retake the D13a shots (`SHOTS=after`, `VIEW=player|player-watched|spectator`) and look at every one. Diff `after-player-*` against `before-player-*` with `compare -metric AE`; expected 0 at all ten. Diff `after-player-watched-*` with the count's box masked; expected 0.
 
-- [ ] **Step 6: `CLAUDE.md`.** Under Layout, add the handshake (`/game?lobby=CODE&spectator=true`, no `name`; `/check-login?…&spectator=true`). Add the rule that secrets are filtered server-side by `GameToJSONConverter.convertForSpectator`, a spectator's commands other than `ping` and `get-state` are dropped and logged, and `spectatorCount` is in every packet. Add `src/spectator/` (`spectatorStatus`, `SpectatorCount`), the spectator cookie, and `spectator.spec.ts` with `driveGame.ts`. Under Constraints, extend the Lucide line if D11's icon is approved.
+- [ ] **Step 6: `CLAUDE.md`.** Under Layout, add the handshake (`/game?lobby=CODE&spectator=true`, no `name`; `/check-login?…&spectator=true`). Add the rule that secrets are filtered server-side by `GameToJSONConverter.convertForSpectator`, a spectator's commands other than `ping` and `get-state` are dropped and logged, and `spectatorCount` is in every packet. Add `src/spectator/` (`spectatorStatus`, `SpectatorCount`), the spectator cookie, and `spectator.spec.ts` with `driveGame.ts`. Under Constraints, extend the Lucide line to the count's eye icon.
 
 - [ ] **Step 7: Acceptance drive** (D13), in the scratchpad. Show the user the frame scan, the screenshots, the sounds by event, the alert log, and the reload result.
 
