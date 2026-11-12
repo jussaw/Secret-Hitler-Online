@@ -473,7 +473,13 @@ public class Lobby implements Serializable {
         message.put("icon", icons);
         message.put(SecretHitlerServer.PARAM_SPECTATOR_COUNT, spectators.size());
 
-        ctx.send(message.toString());
+        try {
+            ctx.send(message.toString());
+        } catch (Exception e) {
+            // Jetty throws for a connection that closed before its onClose removed it from this
+            // lobby. That must not stop the broadcast for everyone else, or the CPU step after it.
+            logger.debug("Could not send to a closed connection: " + e);
+        }
     }
 
     /**

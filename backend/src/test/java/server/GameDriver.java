@@ -35,7 +35,17 @@ public final class GameDriver {
         for (int i = 0; i < players; i++) {
             names.add("P" + i);
         }
-        GameDriver driver = new GameDriver(new SecretHitlerGame(names));
+        return playOut(new SecretHitlerGame(names), onStep);
+    }
+
+    /**
+     * Plays an existing game to its end with the same moves.
+     *
+     * @param onStep called with the game now and after every action (see {@code play}).
+     * @return the finished game.
+     */
+    public static SecretHitlerGame playOut(SecretHitlerGame game, Consumer<SecretHitlerGame> onStep) {
+        GameDriver driver = new GameDriver(game);
         onStep.accept(driver.game);
         for (int actions = 0; !finished(driver.game); actions++) {
             if (actions == MAX_ACTIONS) {

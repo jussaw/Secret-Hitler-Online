@@ -2,6 +2,7 @@ package server.util;
 
 import io.javalin.websocket.WsConnectContext;
 import io.javalin.websocket.WsContext;
+import java.io.IOException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
@@ -19,9 +20,13 @@ final class FakeSocket {
     final List<String> sent = new ArrayList<>();
     final WsContext ctx;
 
-    private FakeSocket() {
+    private FakeSocket(boolean closed) {
         RemoteEndpoint remote = stub(RemoteEndpoint.class, (method, args) -> {
             if (method.getName().equals("sendString")) {
+                if (closed) {
+                    // What Jetty's blocking send does once the session has closed.
+                    throw new IOException("Connection closed");
+                }
                 sent.add((String) args[0]);
             }
             return null;
@@ -39,7 +44,12 @@ final class FakeSocket {
     }
 
     static FakeSocket open() {
-        return new FakeSocket();
+        return new FakeSocket(false);
+    }
+
+    /** A connection that has closed, but whose onClose has not removed it from the lobby yet. */
+    static FakeSocket closing() {
+        return new FakeSocket(true);
     }
 
     /** The last packet sent to this connection. */
@@ -48,7 +58,7 @@ final class FakeSocket {
     }
 
     private interface Handler {
-        Object handle(Method method, Object[] args);
+        Object handle(Method method, Object[] args) throws IOException;
     }
 
     /** A proxy that is equal only to itself and answers every other call with {@code handler}. */

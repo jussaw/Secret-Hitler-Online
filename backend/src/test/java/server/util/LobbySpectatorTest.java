@@ -16,6 +16,7 @@ import java.util.Set;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
+import server.GameDriver;
 import server.Secrets;
 
 public class LobbySpectatorTest {
@@ -170,6 +171,30 @@ public class LobbySpectatorTest {
         expectIllegalArgument(() -> lobby.addSpectator(player.ctx));
         expectIllegalArgument(() -> lobby.addSpectator(spectator.ctx));
         expectIllegalArgument(() -> lobby.removeSpectator(player.ctx));
+    }
+
+    @Test
+    public void aClosingSocketDoesNotStopABroadcast() {
+        Lobby lobby = new Lobby();
+        List<FakeSocket> players = addPlayers(lobby, 5);
+        lobby.startNewGame();
+        FakeSocket closing = FakeSocket.closing();
+        FakeSocket watcher = FakeSocket.open();
+        lobby.addSpectator(closing.ctx);
+        lobby.addSpectator(watcher.ctx);
+
+        lobby.updateAllUsers();
+        assertEquals("game", watcher.last().getString("type"));
+        for (FakeSocket player : players) {
+            assertEquals("game", player.last().getString("type"));
+        }
+
+        // The packet that ends the game still reaches everyone, and the game is still cleared.
+        GameDriver.playOut(lobby.game(), game -> {
+        });
+        lobby.updateAllUsers();
+        assertFalse("the finished game is cleared", lobby.isInGame());
+        assertTrue("the watcher saw the end", watcher.last().getJSONObject("players").getJSONObject("P1").has("id"));
     }
 
     @Test
