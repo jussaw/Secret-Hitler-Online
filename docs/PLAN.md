@@ -198,13 +198,14 @@ Files: `backend/build.gradle`, `backend/src/main/java/server/ApplicationConfig.j
 
 Files: `backend/src/main/java/server/SecretHitlerServer.java` (Javalin config), `backend/build.gradle`, `frontend/src/constants/index.ts` (server address constants), `frontend/src/App.tsx:858` (invite link), `frontend/vite.config.ts`, `frontend/.env.*`
 
-- [ ] Javalin serves static files from the classpath directory `/public` with `index.html` at `/` (only when it exists; Javalin refuses to start on a missing classpath directory)
-- [ ] Frontend builds API and WebSocket URLs from `window.location` (`wss:` when the page is `https:`) unless `VITE_SERVER_ADDRESS` is set
-- [ ] The lobby invite link uses the page's own origin instead of `https://secret-hitler.online`
-- [ ] `.env.local` becomes `.env.development` with only `VITE_DEBUG`, so `vite build` no longer bakes in a backend address or debug logging
-- [ ] Vite dev server proxies `/check-login`, `/new-lobby`, `/ping` and `/game` (with `ws: true`) to `BACKEND_URL` (default `localhost:4040`)
-- [ ] Gradle task copies `frontend/dist` into the jar's `public/` when present
-- [ ] `java -jar` with a built frontend serves the whole app on one port
+- [x] Javalin serves static files from the classpath directory `/public` with `index.html` at `/` (only when it exists; Javalin refuses to start on a missing classpath directory)
+- [x] CORS only in debug mode: the old production rule allowed only upstream's domain and answered the page's own `crossorigin` asset requests with 400
+- [x] Frontend builds API and WebSocket URLs from `window.location` (`wss:` when the page is `https:`) unless `VITE_SERVER_ADDRESS` is set
+- [x] The lobby invite link uses the page's own origin instead of `https://secret-hitler.online`
+- [x] `.env.local` becomes `.env.development` with only `VITE_DEBUG`, so `vite build` no longer bakes in a backend address or debug logging
+- [x] Vite dev server proxies `/check-login`, `/new-lobby`, `/ping` and `/game` (with `ws: true`) to `BACKEND_URL` (default `localhost:4040`)
+- [x] Gradle task copies `frontend/dist` into the jar's `public/` when present
+- [x] `java -jar` with a built frontend serves the whole app on one port
 
 ### Task 3.3: Image
 

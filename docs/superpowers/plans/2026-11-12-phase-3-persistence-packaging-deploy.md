@@ -29,6 +29,7 @@ Parent plan: [`docs/PLAN.md`](../../PLAN.md), Phase 3. Spec: [`docs/superpowers/
 6. **The Pi has no classic reverse proxy any more.** `cloudflared` (in `pi4/homelab`, token-based, so hostnames are managed in the Cloudflare dashboard) fronts `jussaw.com` → `:23412` and `fullhex.jussaw.com` → `:23414`. A tunnel public hostname creates the DNS record, terminates TLS and passes WebSockets. Uptime monitoring is Uptime Kuma in `pi4/homelab`. Watchtower on the Pi updates `:latest` images, which is how "the Pi picks up" new images.
 7. **The sibling `ghcr.io/jussaw/*` images are public** (anonymous pulls work), so the Pi needs no registry credentials as long as this package is public too.
 8. **The image job only runs on pushes to `development`, so the first image needs a merge.** Proposed sequence (confirm with the user at the gate before Task 6): PR 1 carries Tasks 1-5 and is merged, which publishes the first image. Tasks 6-7 and the acceptance checks follow on a fresh `phase-3-deploy` branch with PR 2.
+10. **The production CORS rule blocks the same-origin page.** Outside debug mode, the CORS plugin allowed only upstream's `https://secret-hitler.online`, and Javalin answers any other `Origin` with 400. Vite's `<script type="module" crossorigin>` and stylesheet tags make the browser send `Origin` even for same-origin assets, so the served page stayed blank (curl without `Origin` got 200, which hid it). Same-origin serving needs no CORS, so the plugin is now enabled only in debug mode.
 9. **Free published port on the Pi:** `23416` (pi4 stacks use 53, 443, 853, 2222, 3000, 3001, 3300, 8787, 9119, 22908, 23412, 23414, 30034, 46720, 46721; jussaw-server is on 3900).
 
 ## File map
@@ -493,6 +494,22 @@ In `SecretHitlerServer.java`, add `import io.javalin.http.staticfiles.Location;`
             }
 ```
 
+Replace the `config.plugins.enableCors(...)` block (which allowed only `https://secret-hitler.online` outside debug mode) with:
+
+```java
+            // The frontend is served from this same origin, so CORS is only needed when a
+            // separately hosted dev frontend calls the server directly (debug mode). Outside
+            // debug mode the CORS plugin would reject same-origin module scripts, which
+            // browsers fetch with an Origin header.
+            if (ApplicationConfig.DEBUG) {
+                config.plugins.enableCors(cors -> {
+                    cors.add(it -> {
+                        it.anyHost();
+                    });
+                });
+            }
+```
+
 At the end of `backend/build.gradle`, add:
 
 ```groovy
@@ -517,7 +534,7 @@ curl -s localhost:4041/ | grep -c 'id="root"'
 curl -s localhost:4041/ping
 ```
 
-Expected: `1` and `OK`. Then open `http://localhost:4041`: create a lobby, play a CPU game to the end, and check the WebSocket goes to `ws://localhost:4041/game`. Stop the jar afterwards.
+Expected: `1` and `OK`. Also `curl -s -o /dev/null -w '%{http_code}' -H 'Origin: http://localhost:4041' localhost:4041/assets/<index js>` → `200` (this was `400` under the old CORS rule). Then open `http://localhost:4041`: create a lobby, play a CPU game to the end, and check the WebSocket goes to `ws://localhost:4041/game`. The production build shows no console errors at all. Stop the jar afterwards.
 
 - [ ] **Step 6: Commit**
 
