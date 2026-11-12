@@ -1,5 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
-import { DESKTOP_SIZES, labelShift, overflowX, overlaps } from "./layout";
+import {
+  DESKTOP_SIZES,
+  NARROW_WINDOWS,
+  labelShift,
+  overflowX,
+  overlaps,
+  smallTargets,
+} from "./layout";
 import { settle, startGame } from "./lobby";
 
 // The longest status message the game shows; it wraps to two lines at every desktop size.
@@ -22,6 +29,8 @@ function measureTable(page: Page) {
       centre: box(centre),
       centreRows: Array.from(centre.children, box),
       boards: box(document.querySelector("#board-container")!),
+      status: box(document.querySelector(".game-status")!),
+      decks: box(document.querySelector(".game-decks")!),
       endTerm: box(document.querySelector(".game-status button")!),
       deckCards: deckCards.map(box),
     };
@@ -161,3 +170,68 @@ test("windows narrower than 5:4 stack the table; 5:4 keeps the round table", asy
     guests.forEach((ws) => ws.close());
   }
 });
+
+for (const players of [5, 7, 10]) {
+  test(`${players} players fit narrow windows and upright tablets without scrolling`, async ({
+    page,
+    baseURL,
+  }) => {
+    const guests = await startGame(page, baseURL!, players);
+    try {
+      await settle(page);
+      for (const size of NARROW_WINDOWS) {
+        await page.setViewportSize(size);
+        const at = `${size.width}x${size.height}`;
+        const scrollHeight = await page.evaluate(() => document.documentElement.scrollHeight);
+        expect(scrollHeight, `scrollHeight at ${at}`).toBeLessThanOrEqual(size.height);
+        const overflow = await overflowX(page);
+        expect(overflow.scrollWidth, `scrollWidth at ${at}`).toBeLessThanOrEqual(size.width);
+        expect(overflow.offscreen, `past the edge at ${at}`).toEqual([]);
+
+        const positions = await page.$$eval(".table-seat", (seats) =>
+          seats.map((s) => getComputedStyle(s).position)
+        );
+        expect(new Set(positions), `the seat grid at ${at}`).toEqual(new Set(["static"]));
+
+        const table = await measureTable(page);
+        expect(table.seats, `seats at ${at}`).toHaveLength(players);
+        table.seats.forEach((seat, i) => {
+          expect(seat.top, `seat ${i} top at ${at}`).toBeGreaterThanOrEqual(0);
+          expect(seat.bottom, `seat ${i} bottom at ${at}`).toBeLessThanOrEqual(size.height);
+          table.seats.slice(i + 1).forEach((other, j) => {
+            expect(overlaps(seat, other), `seats ${i} and ${i + 1 + j} overlap at ${at}`).toBe(
+              false
+            );
+          });
+        });
+        // Players, then status and END TERM, then the boards with the decks beside them.
+        const lastSeat = Math.max(...table.seats.map((s) => s.bottom));
+        expect(lastSeat, `seats above the status at ${at}`).toBeLessThanOrEqual(
+          table.status.top + 1
+        );
+        expect(table.status.bottom, `status above the boards at ${at}`).toBeLessThanOrEqual(
+          table.boards.top + 1
+        );
+        expect(table.status.bottom, `status above the decks at ${at}`).toBeLessThanOrEqual(
+          table.decks.top + 1
+        );
+        expect(table.decks.left, `decks beside the boards at ${at}`).toBeGreaterThanOrEqual(
+          table.boards.right - 1
+        );
+        for (const card of table.deckCards) {
+          expect(overlaps(card, table.boards), `deck card over the boards at ${at}`).toBe(false);
+          expect(overlaps(card, table.status), `deck card over the status at ${at}`).toBe(false);
+        }
+
+        // Tablets are touch screens.
+        const targets = await smallTargets(page, ".game-screen");
+        expect(targets, `small touch targets at ${at}`).toEqual([]);
+        expect(await labelShift(page), `a filled label moves a seat at ${at}`).toBeLessThanOrEqual(
+          0.5
+        );
+      }
+    } finally {
+      guests.forEach((ws) => ws.close());
+    }
+  });
+}

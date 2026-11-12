@@ -1,11 +1,12 @@
+/* Seats are the default tile (16vh wide at desktop sizes) scaled to 9vh; seatPositions'
+   SEAT_HALF_SIZE assumes this. */
 .table-seats {
+    --seat-scale: 0.5625;
     position: absolute;
     inset: 0;
 }
 
-/* The default tile (16vh wide at desktop sizes) scaled to 9vh; seatPositions' SEAT_HALF_SIZE assumes this. */
 .table-seat {
-    --seat-scale: 0.5625;
     position: absolute;
     transform: translate(-50%, -50%) scale(var(--seat-scale));
 }
@@ -49,5 +50,19 @@
 
     .table-seat #player-display-label {
         width: auto;
+    }
+}
+
+/* Windows at least 700px wide and narrower than 5:4 (half-screen desktop windows, upright
+   monitors, tablets held upright): round-table-size seats, seatColumns(count, 5) to a row, so the
+   game fits one screen. GameScreen.css lays out the rest at the same breakpoint. */
+@media (min-width: 700px) and (aspect-ratio < 5/4) {
+    .table-seats {
+        width: calc(var(--seat-columns-wide) * var(--seat-width) * var(--seat-scale));
+    }
+
+    /* Unlike the round table's transform, zoom shrinks the seat's layout box too. */
+    .table-seat {
+        zoom: var(--seat-scale);
     }
 }

@@ -40,3 +40,17 @@ test("tells the phone grid how many seats fit a row", () => {
   const grid = container.querySelector<HTMLElement>(".table-seats")!;
   expect(grid.style.getPropertyValue("--seat-columns")).toBe("4");
 });
+
+test("tells a narrow window's grid how many seats fit a row", () => {
+  const { container } = render(
+    <TableSeats
+      gameState={makeGameState(SEVEN.slice(0, 5))}
+      user="Dan"
+      showVotes={false}
+      showBusy
+    />
+  );
+  const grid = container.querySelector<HTMLElement>(".table-seats")!;
+  expect(grid.style.getPropertyValue("--seat-columns")).toBe("3");
+  expect(grid.style.getPropertyValue("--seat-columns-wide")).toBe("5");
+});

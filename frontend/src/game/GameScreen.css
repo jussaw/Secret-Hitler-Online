@@ -164,3 +164,49 @@
         font-size: 12px;
     }
 }
+
+/* Windows at least 700px wide and narrower than 5:4: the stacked layout fits one screen, as the
+   round table does. Under the players come status and END TERM, then the boards, sized to the
+   height that is left, with the decks in a column beside them. TableSeats.css shrinks the seats
+   at the same breakpoint. */
+@media (min-width: 700px) and (aspect-ratio < 5/4) {
+    .game-screen {
+        display: grid;
+        height: 100dvh;
+    }
+
+    .game-table {
+        min-height: 0;
+        padding-bottom: 8px;
+    }
+
+    .game-centre {
+        flex: 1 1 0;
+        min-height: 0;
+        max-width: none;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-rows: auto minmax(0, 1fr);
+        align-items: center;
+    }
+
+    .game-status {
+        grid-column: 1 / -1;
+    }
+
+    .game-boards {
+        align-self: stretch;
+        container-type: size;
+    }
+
+    .game-boards #board {
+        width: min(100cqw - 20px, (100cqh - 16px) * 1.2946);
+    }
+
+    /* A full pile's cards stand above each deck, so the gaps leave room for them. */
+    .game-decks {
+        --deck-width: clamp(40px, 7vh, 80px);
+        flex-direction: column;
+        gap: calc(var(--deck-width) * 0.34 + 1vh);
+    }
+}

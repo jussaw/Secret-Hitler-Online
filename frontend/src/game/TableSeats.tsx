@@ -1,7 +1,7 @@
 import { CSSProperties } from "react";
 import { DISABLE_EXECUTED_PLAYERS, usePlayerTiles } from "../player/PlayerDisplay";
 import { GameState } from "../types";
-import { seatColumns, seatPositions } from "./seatPositions";
+import { MAX_WIDE_GRID_COLUMNS, seatColumns, seatPositions } from "./seatPositions";
 import "./TableSeats.css";
 
 type TableSeatsProps = {
@@ -14,7 +14,8 @@ type TableSeatsProps = {
 /**
  * Seats every player around the table, the user at bottom centre and the rest clockwise in
  * playerOrder. Each seat is the same tile PlayerDisplay shows, with its labels, votes and icons.
- * On phones TableSeats.css turns the seats into a grid, seatColumns() to a row.
+ * On phones and in narrow windows TableSeats.css turns the seats into a grid, seatColumns() to
+ * a row.
  */
 export default function TableSeats(props: TableSeatsProps) {
   const { gameState, user } = props;
@@ -30,7 +31,11 @@ export default function TableSeats(props: TableSeatsProps) {
     gameState.playerOrder.indexOf(user)
   );
 
-  const grid = { "--seat-columns": seatColumns(gameState.playerOrder.length) } as CSSProperties;
+  const count = gameState.playerOrder.length;
+  const grid = {
+    "--seat-columns": seatColumns(count),
+    "--seat-columns-wide": seatColumns(count, MAX_WIDE_GRID_COLUMNS),
+  } as CSSProperties;
 
   return (
     <div className="table-seats" style={grid}>

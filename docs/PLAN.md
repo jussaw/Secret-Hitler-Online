@@ -364,7 +364,7 @@ Files: `frontend/src/game/GameScreen.css`, `frontend/src/game/TableSeats.css`, `
 
 Tasks 5.1-5.3 give every window narrower than 5:4 the phone layout, with full-size tiles. With ten players, half a 1080p screen (960x1080) shows only tiles on its first screen, and the boards start at y 1037; held upright, an iPad Air (820x1180) starts them at y 991.
 
-- [ ] Windows at least 700px wide and narrower than 5:4 (half-screen desktop windows, upright monitors, tablets held upright) fit the game screen without scrolling: round-table-size tiles up to 5 to a row, then status and END TERM, then the boards with the decks in a column beside them
+- [x] Windows at least 700px wide and narrower than 5:4 (half-screen desktop windows, upright monitors, tablets held upright) fit the game screen without scrolling: round-table-size tiles up to 5 to a row, then status and END TERM, then the boards with the decks in a column beside them
 
 **Phase 5 acceptance**
 

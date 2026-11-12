@@ -69,12 +69,17 @@ export function centreBox(count: number): Box {
 /** The most seats in one row of the phone grid: four default tiles fit a 360px-wide screen. */
 export const MAX_GRID_COLUMNS = 4;
 
+/** The most seats in one row of a narrow window's grid, where seats are round-table size. */
+export const MAX_WIDE_GRID_COLUMNS = 5;
+
 /**
- * How many seats share a row of the phone grid, so the rows come out as even as possible.
+ * How many seats share a row of a grid, so the rows come out as even as possible.
  * @param count the number of players.
- * @return 3 for 5, 6 and 9 players, 4 for 7, 8 and 10 (never more than MAX_GRID_COLUMNS).
+ * @param max the most seats a row holds.
+ * @return with the phone's 4: 3 for 5, 6 and 9 players, 4 for 7, 8 and 10. With 5: 5 for 5, 9
+ *   and 10 players, 3 for 6, 4 for 7 and 8.
  */
-export function seatColumns(count: number): number {
-  const rows = Math.ceil(count / MAX_GRID_COLUMNS);
+export function seatColumns(count: number, max: number = MAX_GRID_COLUMNS): number {
+  const rows = Math.ceil(count / max);
   return Math.ceil(count / rows);
 }

@@ -8,6 +8,22 @@ export const DESKTOP_SIZES = [
   { width: 1280, height: 720 },
 ];
 
+/**
+ * Windows narrower than 5:4 but wider than a phone, where the stacked game screen fits one
+ * screen with round-table-size tiles.
+ */
+export const NARROW_WINDOWS = [
+  { width: 960, height: 1080 }, // half a 1080p screen
+  { width: 1280, height: 1440 }, // half a 1440p screen
+  { width: 1080, height: 1920 }, // a 1080p monitor turned upright
+  { width: 1279, height: 1024 }, // just narrower than 5:4
+  { width: 1024, height: 1366 }, // iPad Pro, upright
+  { width: 820, height: 1180 }, // iPad Air, upright
+  { width: 744, height: 1133 }, // iPad mini, upright
+  { width: 700, height: 900 }, // the narrowest
+  { width: 800, height: 700 }, // a short window
+];
+
 /** Touch targets on phones are at least this many CSS px wide and tall. */
 export const MIN_TARGET = 44;
 

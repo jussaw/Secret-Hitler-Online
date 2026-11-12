@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
   MAX_GRID_COLUMNS,
+  MAX_WIDE_GRID_COLUMNS,
   MIN_SEAT_DISTANCE,
   SEAT_HALF_SIZE,
   Seat,
@@ -111,4 +112,15 @@ test.each([
 ])("%i players sit %i to a row on a phone", (count, columns) => {
   expect(seatColumns(count)).toBe(columns);
   expect(seatColumns(count)).toBeLessThanOrEqual(MAX_GRID_COLUMNS);
+});
+
+test.each([
+  [5, 5],
+  [6, 3],
+  [7, 4],
+  [8, 4],
+  [9, 5],
+  [10, 5],
+])("%i players sit %i to a row in a narrow window", (count, columns) => {
+  expect(seatColumns(count, MAX_WIDE_GRID_COLUMNS)).toBe(columns);
 });
