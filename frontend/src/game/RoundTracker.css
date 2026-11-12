@@ -1,0 +1,90 @@
+@import "../variables.css";
+
+/* The layouts size the card: set --round-font-size on .round-tracker (or its container). */
+.round-tracker {
+  --round-font-size: 1.1rem;
+  box-sizing: border-box;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0.6em 0.9em 0.7em;
+  font-size: var(--round-font-size);
+  background-color: var(--backgroundDark);
+  border-radius: 0.6em;
+  box-shadow: 0 0.4vh 0 rgba(0, 0, 0, 0.25);
+  text-align: center;
+}
+
+.round-steps {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.2em 0;
+  margin: 0 0 0.5em;
+  padding: 0;
+  list-style: none;
+  font-family: var(--headerFont);
+  font-size: 1em;
+  line-height: 1.2;
+}
+
+.round-step {
+  padding: 0.15em 0.6em;
+  border-radius: 0.4em;
+  white-space: nowrap;
+}
+
+.round-step + .round-step {
+  position: relative;
+  margin-left: 1.2em;
+}
+
+/* The arrow hangs in the gap, outside the step's own fill. */
+.round-step + .round-step::before {
+  content: "\203A";
+  position: absolute;
+  left: -0.85em;
+  color: #6a5d53;
+}
+
+.round-step.done {
+  color: #b9ab9f;
+}
+
+.round-step.later {
+  color: #7a6d63;
+}
+
+.round-step.current {
+  color: #ffffff;
+  background-color: var(--headerFill);
+}
+
+.round-line {
+  margin: 0;
+  font-family: var(--textFont);
+  font-weight: bold;
+  font-size: 0.9em;
+  line-height: 1.2;
+  min-height: 2.4em;
+  color: #ffffff;
+  animation: round-show 0.25s;
+}
+
+.round-line.hide {
+  animation: round-hide 0.25s ease-in-out;
+}
+
+.round-highlight {
+  color: #f08a5d;
+}
+
+@keyframes round-show {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes round-hide {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}

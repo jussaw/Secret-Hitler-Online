@@ -549,8 +549,8 @@ Files: new `frontend/src/game/PlayerRoster.tsx`, `PlayerRoster.css`, `PlayerRost
 
 Files: new `frontend/src/game/RoundTracker.tsx`, `RoundTracker.css`, `RoundTracker.test.tsx`
 
-- [ ] Tests first: the lit step, no step, the orange words, `#status-bar-text`, the fade
-- [ ] Implement the tracker
+- [x] Tests first: the lit step, no step, the orange words, `#status-bar-text`, the fade
+- [x] Implement the tracker
 
 ### Task 8.6: Queue the step with each status line
 
