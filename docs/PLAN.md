@@ -249,10 +249,10 @@ TLS ends at a proxy in front of the host.
 
 **Phase 3 acceptance**
 
-- [ ] `https://<subdomain>/ping` answers
-- [ ] A game with two real browsers plus CPU players completes over `wss`
-- [ ] `docker restart` of the container mid-game; players rejoin and continue
-- [ ] Pushing to `development` produces a new image that the host picks up
+- [x] `https://<subdomain>/ping` answers (`OK`)
+- [x] A game with two real browsers plus CPU players completes over `wss` (`wss://<subdomain>/game`, liberal win, mid-game reload and rejoin)
+- [x] `docker restart` of the container mid-game; players rejoin and continue (backup stored on shutdown, loaded on start; both rejoined via JOIN; #13 explains a transient 404 right after start)
+- [ ] Pushing to `development` produces a new image that the host picks up (checked after this PR merges; the host checks for new images daily)
 - [ ] PR merged into `development`
 
 **Start Phase 4: Round-table game screen**
