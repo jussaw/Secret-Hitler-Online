@@ -70,9 +70,9 @@ Files: `frontend/src/custom-alert/IconSelection.tsx` (two `TwitterShareButton` b
 
 ### Task 1.4: Remove upstream deploy config
 
-- [ ] Delete `.github/workflows/firebase-deploy.yml`, `firebase-deploy-dev.yml`, `firebase-preview.yml`, `fly-deploy.yml`, `fly-deploy-dev.yml`
-- [ ] Delete `backend/fly.toml`, `backend/DEPLOYMENT.md`, and any `firebase.json` / `.firebaserc` under `frontend/`
-- [ ] Keep `codeql-analysis.yml`
+- [x] Delete `.github/workflows/firebase-deploy.yml`, `firebase-deploy-dev.yml`, `firebase-preview.yml`, `fly-deploy.yml`, `fly-deploy-dev.yml`
+- [x] Delete `backend/fly.toml`, `backend/DEPLOYMENT.md`, and any `firebase.json` / `.firebaserc` under `frontend/`
+- [x] Keep `codeql-analysis.yml`
 
 ### Task 1.5: Prune fork branches
 
