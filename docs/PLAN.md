@@ -55,9 +55,9 @@ Outcome: a clean fork that runs locally, with upstream's hosted-service extras g
 
 Files: `frontend/src/App.tsx` (import at line 2, `ReactGA.initialize` at 223, about 20 `ReactGA.event` calls), `frontend/src/LoginPageContent.js`, `frontend/package.json`
 
-- [ ] Delete every `ReactGA` import and call
-- [ ] `npm uninstall react-ga`
-- [ ] `grep -rn "ReactGA\|react-ga" frontend/src frontend/package.json` returns nothing
+- [x] Delete every `ReactGA` import and call
+- [x] `npm uninstall react-ga`
+- [x] `grep -rn "ReactGA\|react-ga" frontend/src frontend/package.json` returns nothing
 
 ### Task 1.3: Remove Twitter embed
 
