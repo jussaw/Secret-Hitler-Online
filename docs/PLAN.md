@@ -96,7 +96,7 @@ Files: new `CLAUDE.md` at the repo root
 - [x] Commit convention: Conventional Commits with a scope; list the scopes in use (`frontend`, `backend`, `docker`, `ci`, `docs`, `plan`)
 - [x] Pointers: `docs/PLAN.md` is the source of truth for progress and boxes are ticked in the same commit as the work; the spec path
 - [x] Constraints: no new art, CC0 sounds only, WebSocket protocol stays backward compatible for players, Pi deploys go through jussaw-server
-- [ ] Add a line for this repo to `~/CLAUDE.md` (in `~/dotfiles`) under the `~/repos/` list
+- [x] Add a line for this repo to `~/CLAUDE.md` (in `~/dotfiles`) under the `~/repos/` list (dotfiles `b2dc383`)
 
 **Phase 1 acceptance**
 
