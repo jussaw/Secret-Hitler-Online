@@ -52,6 +52,8 @@ type Options = {
   storage?: Pick<Storage, "getItem" | "setItem">;
   ogg?: boolean;
   unfetchable?: string[];
+  /** URLs whose first fetch fails, as on a flaky network. */
+  flaky?: string[];
   undecodable?: string[];
   activated?: boolean;
 };
@@ -82,6 +84,9 @@ function setup(options: Options = {}) {
       fetchClip: async (url) => {
         fetched.push(url);
         if (options.unfetchable?.includes(url)) throw new Error("404");
+        if (options.flaky?.includes(url) && fetched.filter((u) => u === url).length === 1) {
+          throw new Error("network");
+        }
         return bytesOf(url);
       },
       canPlayOgg: () => options.ogg ?? true,
@@ -282,6 +287,13 @@ describe("playing", () => {
     await manager.preload();
     expect(fetched).toHaveLength(18);
     expect(fetched.every((url) => url.endsWith(".mp3"))).toBe(true);
+  });
+
+  test("fetches a clip once more at unlock when its preload failed", async () => {
+    const { manager, contexts, fetched } = await unlocked({ ogg: false, flaky: ["/s/veto.mp3"] });
+    manager.play("veto");
+    expect(fetched.filter((url) => url === "/s/veto.mp3")).toHaveLength(2);
+    expect(contexts[0].started).toEqual(["/s/veto.mp3"]);
   });
 
   test("falls back to MP3 when an OGG does not decode", async () => {

@@ -96,7 +96,12 @@
     pointer-events: none;
 }
 
-.sound-control.open .sound-volume,
+/* Separate rules: a browser without :has() drops a whole selector list that uses it. */
+.sound-control.open .sound-volume {
+    opacity: 1;
+    pointer-events: auto;
+}
+
 .sound-control:has(:focus-visible) .sound-volume {
     opacity: 1;
     pointer-events: auto;

@@ -135,7 +135,10 @@ export class SoundManager {
     this.update({ muted });
   }
 
-  /** Fetches every clip in the preferred format. Never rejects; a failed clip is retried at unlock. */
+  /**
+   * Fetches every clip in the preferred format. Never rejects: a clip that fails is fetched once
+   * more, as MP3, at unlock.
+   */
   preload(): Promise<void> {
     if (!this.fetches) {
       this.fetches = new Map(
@@ -210,8 +213,8 @@ export class SoundManager {
     try {
       this.buffers.set(name, await attempt(this.fetches!.get(name)!));
     } catch {
-      if (this.format === "mp3") return;
-      // Some browsers claim Ogg Opus but cannot decode it; MP3 plays everywhere.
+      // One more try, as MP3: some browsers claim Ogg Opus but cannot decode it, MP3 plays
+      // everywhere, and a fetch that failed at startup may succeed now.
       try {
         this.buffers.set(name, await attempt(this.fetchClip(this.clips[name].mp3)));
       } catch {

@@ -397,3 +397,56 @@ test("the control stays usable over a prompt", async ({ page, browserName, isMob
   await button.click();
   await expect(button).toHaveAttribute("aria-pressed", "true");
 });
+
+test("a tap shows the slider in a browser without :has()", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "tapping is phone input");
+  // Firefox before 121 has no :has(). An unknown pseudo-class drops a rule the same way, along
+  // with every selector listed beside it.
+  await page.route(/\.css(\?|$)/, async (route) => {
+    const response = await route.fetch();
+    const css = (await response.text()).replaceAll(":has(", ":-unknown-has(");
+    await route.fulfill({ response, body: css });
+  });
+  await page.goto("/");
+  const opacity = () => page.locator(".sound-volume").evaluate((el) => getComputedStyle(el).opacity);
+  await page.getByRole("button", { name: "Mute sounds" }).tap();
+  await expect.poll(opacity).toBe("1");
+});
+
+test("a disconnect during the vote reveal cancels its sound", async ({ page, browserName, isMobile }) => {
+  test.skip(browserName !== "chromium" || isMobile, "the desktop project covers the wiring");
+  await recordSounds(page);
+  await page.route("**/new-lobby", (route) => route.fulfill({ body: "FAKE" }));
+  let refuse = false;
+  let connect!: (ws: WebSocketRoute) => void;
+  const connected = new Promise<WebSocketRoute>((resolve) => (connect = resolve));
+  await page.routeWebSocket(/\/game\?/, (ws) => {
+    if (refuse) return void ws.close(); // the server is gone: every reconnect fails
+    ws.onMessage(() => {});
+    connect(ws);
+  });
+  await page.goto("/");
+  await page.getByRole("textbox", { name: "Your Name" }).last().fill(USER);
+  await page.getByRole("button", { name: "CREATE LOBBY" }).click();
+  const ws = await connected;
+  const send = (packet: object) => ws.send(JSON.stringify(packet));
+  send({ type: "lobby", usernames: TEN, icon });
+  await page.getByText(`Players (${TEN.length}/10)`).waitFor();
+  send(gamePacket({ president: TEN[1] }));
+  await page.locator("#alert-box.appear-custom-alert").getByRole("button", { name: "OKAY" }).click();
+  send(gamePacket({ state: LobbyState.CHANCELLOR_VOTING, president: TEN[1], chancellor: TEN[2] }));
+  await page.locator("#alert-box.appear-custom-alert").getByRole("button", { name: "CONFIRM" }).waitFor();
+  send({ type: "ok" });
+  const passed = Object.fromEntries(TEN.map((name) => [name, true]));
+  send(gamePacket({ state: LobbyState.LEGISLATIVE_PRESIDENT, president: TEN[1], chancellor: TEN[2], userVotes: passed }));
+  await expect(page.locator("#status-bar-text")).toHaveText("Tallying votes...");
+  // The reveal is running and its result sound is 2 s away. The server goes away now: after five
+  // failed reconnects the client returns to the login page and clears its animation queue.
+  refuse = true;
+  ws.close();
+  await expect(page.getByText("Disconnected from the lobby.")).toBeVisible();
+  await page.waitForTimeout(3000);
+  const names = (await soundLog(page)).map((sound) => sound.name);
+  expect(names, "sounds after the disconnect").not.toContain("votePassed");
+  expect(names, "sounds after the disconnect").not.toContain("cardDraw");
+});

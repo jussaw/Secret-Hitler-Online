@@ -131,7 +131,14 @@ export function soundEvents(prev: GameState | undefined, next: GameState, user: 
     sounds.push("execution");
   }
 
-  if (changed && mustAct(next, user)) sounds.push("yourTurn");
+  if (changed && mustAct(next, user)) {
+    // The discard and the veto motion are status lines followed at once by this player's prompt,
+    // so they would start together; the prompt tells this player what happened.
+    for (const same of ["cardDiscard", "veto"] as const) {
+      if (sounds.includes(same)) sounds.splice(sounds.indexOf(same), 1);
+    }
+    sounds.push("yourTurn");
+  }
 
   if (changed && VICTORY_STATES.includes(to)) {
     const role = next.players[user]?.id;

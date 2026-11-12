@@ -98,11 +98,11 @@ const ROWS: Row[] = [
     ["cardDiscard"],
   ],
   [
-    "the president discards and hands you the rest",
+    "the president discards and hands you the rest (your prompt says so; one sound at a time)",
     { state: S.LEGISLATIVE_PRESIDENT, president: "Bob", chancellor: "Ann" },
     { state: S.LEGISLATIVE_CHANCELLOR, president: "Bob", chancellor: "Ann", discardSize: 1 },
     "Ann",
-    ["cardDiscard", "yourTurn"],
+    ["yourTurn"],
   ],
   [
     "you discard as president (the chancellor acts next)",
@@ -193,7 +193,7 @@ const ROWS: Row[] = [
     ["veto"],
   ],
   [
-    "the chancellor asks you to veto",
+    "the chancellor asks you to veto (your prompt says so; one sound at a time)",
     { state: S.LEGISLATIVE_CHANCELLOR, president: "Ann", chancellor: "Cat", fascistPolicies: 5 },
     {
       state: S.LEGISLATIVE_PRESIDENT_VETO,
@@ -203,7 +203,7 @@ const ROWS: Row[] = [
       vetoOccurred: true,
     },
     "Ann",
-    ["veto", "yourTurn"],
+    ["yourTurn"],
   ],
   [
     "the president agrees to the veto",
