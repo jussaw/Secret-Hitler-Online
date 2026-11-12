@@ -40,7 +40,8 @@ Known baseline failures (do not "fix" them while doing unrelated work):
 
 - `CI=true npm test` fails 1 of 1: `src/App.test.js` is unmodified CRA boilerplate (#6).
 - The dev-build console shows pre-existing React warnings: #2 (react-textfit), #3 (react-helmet),
-  #4 (missing `key` on login page gifs), #5 (`PresidentLegislativePrompt` setState after unmount).
+  #4 (missing `key` on login page gifs), #5 (prompts setting state from uncleared timers after
+  unmount).
 
 `npm run devServer` points at upstream's hosted dev backend, not anything this fork runs.
 
