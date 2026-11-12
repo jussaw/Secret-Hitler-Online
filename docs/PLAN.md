@@ -150,8 +150,8 @@ Files: `frontend/package.json`, new `frontend/vite.config.ts`, `frontend/index.h
 
 ### Task 2.4: Vitest
 
-- [ ] Install `vitest`, `jsdom`, `@testing-library/react` (v14+), `@testing-library/jest-dom` (v6+); add `test` config to `vite.config.ts` and the `test` script
-- [ ] Port `src/App.test.js` and `src/setupTests.js`; `npm test -- --run` passes
+- [x] Install `vitest`, `jsdom`, `@testing-library/react` (v14+), `@testing-library/jest-dom` (v6+); add `test` config to `vite.config.ts` and the `test` script
+- [x] Port `src/App.test.js` and `src/setupTests.js`; `npm test -- --run` passes
 
 ### Task 2.5: Update dev Docker and docs
 
