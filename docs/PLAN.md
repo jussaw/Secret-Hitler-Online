@@ -344,7 +344,7 @@ Seat and centre-box positions are inline styles: `TableSeats.tsx` sets each seat
 
 Files: `frontend/src/custom-alert/CustomAlert.css` (prompts become a fixed overlay whose box scrolls), `frontend/src/App.css` (44px minimum for buttons and text fields on phones); browser tests `frontend/e2e/prompts.spec.ts` and `frontend/e2e/fakeGame.ts` (new; every prompt opened from a scripted game socket), `frontend/e2e/phone.spec.ts` (login and lobby). The login page (`App.tsx` `renderLoginPage`, lines 629-712), the lobby (`renderLobbyPage`, lines 816-921) and the prompt CSS files needed no change.
 
-`frontend/index.html` already has `width=device-width, initial-scale=1`. `#alert-box` is `position: absolute` at `top: 10vh` with `min-width: 80vmin` and `max-width: 40vw`; below a 2:1 window the `min-width` wins, so it is 80vmin wide plus padding. With ten players the nomination, investigation, special election, execution and victory prompts are taller than a 1920x1080 screen (RETURN TO LOBBY ends at y 1398), and at 1280x720 the vote prompt is too.
+`frontend/index.html` already has `width=device-width, initial-scale=1`. Before this phase `#alert-box` was `position: absolute` at `top: 10vh` with `min-width: 80vmin` and `max-width: 40vw`; below a 2:1 window the `min-width` wins, so it is 80vmin wide plus padding. With ten players the nomination, investigation, special election, execution and victory prompts are taller than a 1920x1080 screen (RETURN TO LOBBY ends at y 1398), and at 1280x720 the vote prompt is too.
 
 - [x] Login and lobby fit 360px width
 - [x] On phones every button, text field, player tile, vote card and policy card is at least 44x44px
@@ -352,15 +352,17 @@ Files: `frontend/src/custom-alert/CustomAlert.css` (prompts become a fixed overl
 
 ### Task 5.3: Phone browser test
 
-Files: new `frontend/e2e/phone.spec.ts`
+Files: new `frontend/e2e/phone.spec.ts` and `frontend/e2e/prompts.spec.ts` (built in Tasks 5.1 and 5.2), `frontend/playwright.config.ts` (trace and HTML report on failure), `.github/workflows/ci.yml` (keeps them as an artifact)
 
 `App.css` sets `overflow-x: hidden` on both `html` and `body`, so `body` clips anything too wide and `document.documentElement.scrollWidth` stays at the viewport width whatever overflows; only `document.body.scrollWidth` shows it. The same holds for Phase 4's desktop `scrollWidth` check in `no-scroll.spec.ts`.
 
-- [ ] At 360x740 and 412x915, assert `scrollWidth <= innerWidth` on login, lobby, game, and with a vote prompt open
+- [x] Galaxy S8 (360x740) and Pixel 7 (412x915) projects assert no horizontal overflow (`body.scrollWidth`, and no element past the edge) on login, lobby, the game at 5 and 10 players, and every prompt opened from a scripted game socket
 
 **Phase 5 acceptance**
 
-- [ ] Phone e2e passes; Phase 4 e2e still passes
+Deferred: a desktop prompt taller than the window (ten-player pickers and the victory prompt at 1080p and below) now scrolls inside its box instead of growing the page, but it does not yet fit the window without scrolling. That needs smaller prompt contents, not layout.
+
+- [x] Phone e2e passes; Phase 4 e2e still passes
 - [ ] One full game played on a real phone against the deployed instance
 - [ ] PR merged into `development`
 

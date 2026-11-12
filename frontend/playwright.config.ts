@@ -8,8 +8,9 @@ export default defineConfig({
   timeout: 60_000,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  reporter: "list",
-  use: { baseURL: `http://localhost:${PORT}` },
+  // CI also writes an HTML report, which ci.yml keeps (with the traces) when a run fails.
+  reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
+  use: { baseURL: `http://localhost:${PORT}`, trace: "retain-on-failure" },
   projects: [
     // The round table at the five desktop sizes.
     { name: "desktop", use: devices["Desktop Chrome"], testIgnore: /phone\.spec/ },
