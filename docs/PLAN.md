@@ -155,7 +155,7 @@ Files: `frontend/package.json`, new `frontend/vite.config.ts`, `frontend/index.h
 
 ### Task 2.5: Update dev Docker and docs
 
-- [ ] `docker-compose.yml` frontend service: `node:24` (Vitest 5 and jsdom 30 need Node 22+), command `npm install && npm run dev -- --host`
+- [x] `docker-compose.yml` frontend service: `node:24` (Vitest 5 and jsdom 30 need Node 22+), command `npm install && npm run dev -- --host`
 - [ ] `DEVELOPMENT.md`, `README.md` and `frontend/README.md` reflect the new script names
 - [ ] `CLAUDE.md` commands and layout updated for Vite and Vitest
 
