@@ -36,8 +36,8 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 3. Persistence, packaging, first deploy | `phase-3-deploy` | done |
 | 4. Round-table game screen | `phase-4-round-table` | done |
 | 5. Phone layout | `phase-5-phone` | done |
-| 6. Sounds | `phase-6-sounds` | in progress |
-| 7. Spectators | `phase-7-spectators` | not started |
+| 6. Sounds | `phase-6-sounds` | done |
+| 7. Spectators | `phase-7-spectators` | in progress |
 
 ---
 
@@ -437,12 +437,12 @@ Files: new `frontend/src/sound/SoundControl.tsx` and `.css`; the headers at `fro
 - [x] In a full game every listed event is heard (the user, in a real game)
 - [x] Mute and volume survive a page refresh
 - [x] No sound plays before the first click, and no autoplay error appears in the console
-- [ ] PR merged into `development`
+- [x] PR merged into `development`
 
 **Start Phase 7: Spectators**
 
-- [ ] Progress table: Phase 6 set to "done", Phase 7 set to "in progress"
-- [ ] `git checkout development && git pull`, then `git checkout -b phase-7-spectators`
+- [x] Progress table: Phase 6 set to "done", Phase 7 set to "in progress"
+- [x] `git checkout development && git pull`, then `git checkout -b phase-7-spectators`
 - [ ] Re-read Phase 7 below against the code as it now stands; fix any file paths or line numbers that moved
 - [ ] Write the Phase 7 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 7 heading
 - [ ] Begin Task 7.1
