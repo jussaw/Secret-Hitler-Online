@@ -81,8 +81,20 @@ Files: `frontend/src/custom-alert/IconSelection.tsx` (two `TwitterShareButton` b
 ### Task 1.6: Docs
 
 - [ ] README: fork notice linking upstream, licence and attribution section, local run instructions
-- [ ] Add repo `CLAUDE.md`: layout, run and test commands, commit convention, pointer to this plan
 - [ ] Update `DEVELOPMENT.md` clone URLs to the fork
+
+### Task 1.7: Repo `CLAUDE.md`
+
+Files: new `CLAUDE.md` at the repo root
+
+- [ ] What this is: a personal fork of `ShrimpCryptid/Secret-Hitler-Online`, remotes `origin` (fork) and `upstream`, default working branch `development`, licence CC BY-NC-SA 4.0
+- [ ] Layout: `backend/` (Java, Gradle, Javalin; rules in `src/main/java/game/`, server in `src/main/java/server/`), `frontend/` (React, TypeScript), `docs/`
+- [ ] Commands: run backend, run frontend, run each test suite, build (verified by running each one)
+- [ ] Workflow: one branch per phase off `development`, PRs target the fork (`--repo jussaw/Secret-Hitler-Online`, since `gh` defaults to upstream), never push to `upstream`
+- [ ] Commit convention: Conventional Commits with a scope; list the scopes in use (`frontend`, `backend`, `docker`, `ci`, `docs`, `plan`)
+- [ ] Pointers: `docs/PLAN.md` is the source of truth for progress and boxes are ticked in the same commit as the work; the spec path
+- [ ] Constraints: no new art, CC0 sounds only, WebSocket protocol stays backward compatible for players, Pi deploys go through jussaw-server
+- [ ] Add a line for this repo to `~/CLAUDE.md` (in `~/dotfiles`) under the `~/repos/` list
 
 **Phase 1 acceptance**
 
@@ -131,6 +143,7 @@ Files: `frontend/package.json`, new `frontend/vite.config.ts`, `frontend/index.h
 
 - [ ] `docker-compose.yml` frontend service: `node:20`, command `npm install && npm run dev -- --host`
 - [ ] `DEVELOPMENT.md` reflects the new script names
+- [ ] `CLAUDE.md` commands and layout updated for Vite and Vitest
 
 **Phase 2 acceptance**
 
@@ -181,6 +194,7 @@ Files: new `Dockerfile` and `.dockerignore` at repo root, delete `backend/Docker
 
 - [ ] `docker-compose.yml`: remove the `db` service and `DATABASE_URL`; backend gets `DATABASE_PATH` on a named volume
 - [ ] `DEVELOPMENT.md` updated
+- [ ] `CLAUDE.md` updated: SQLite `DATABASE_PATH`, same-origin serving, image build and deploy path
 
 ### Task 3.5: CI
 
@@ -250,6 +264,7 @@ Files: new `frontend/e2e/no-scroll.spec.ts`, `frontend/playwright.config.ts`; `p
 - [ ] Test starts a lobby against a local backend, adds CPU players to reach 5, 7 and 10, starts the game
 - [ ] At each desktop acceptance size asserts `document.documentElement.scrollHeight <= window.innerHeight` and `scrollWidth <= innerWidth`, and that every seat's bounding box is inside the viewport
 - [ ] Add the e2e run to `ci.yml`
+- [ ] `CLAUDE.md` updated: `frontend/src/game/` layout and the `npm run e2e` command
 
 **Phase 4 acceptance**
 
@@ -332,6 +347,7 @@ Files: new `frontend/src/sound/SoundControl.tsx` and `.css`; `frontend/src/App.t
 
 - [ ] Speaker button toggles mute; hovering or tapping shows a volume slider
 - [ ] Control fits in the slim header from Phase 4 and does not break the no-scroll tests
+- [ ] `CLAUDE.md` updated: `frontend/src/sound/` modules and the CC0 credits rule
 
 **Phase 6 acceptance**
 
@@ -380,6 +396,7 @@ Files: `frontend/src/App.tsx` (login form, `tryOpenWebSocket`, cookies), `fronte
 - [ ] Spectators see the lobby page read-only before the game starts, then `GameScreen`; no prompts are queued for them; status text describes what the table is doing
 - [ ] Spectator count shown in the lobby and on the game screen when above zero
 - [ ] Sounds play for spectators
+- [ ] `CLAUDE.md` updated: spectator handshake parameter and the server-side filtering rule
 
 **Phase 7 acceptance**
 
