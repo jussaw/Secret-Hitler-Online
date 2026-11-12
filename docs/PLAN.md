@@ -235,17 +235,17 @@ Files: new `.github/workflows/ci.yml`
 
 ### Task 3.6: Host stack
 
-- [ ] Add a compose service on the host: `container_name`, the GHCR image, `TZ`, a free published port mapped to `8080`, `restart: unless-stopped`, and a bind mount to `/data`
-- [ ] `docker compose config` validates for the host's stack
-- [ ] Commit the stack change, then deploy it on the host
-- [ ] The GHCR package is public, so the host pulls it without credentials; if it is private, make it public
+- [x] Add a compose service on the host: `container_name`, the GHCR image, `TZ`, a free published port mapped to `8080`, `restart: unless-stopped`, and a bind mount to `/data`
+- [x] `docker compose config` validates for the host's stack
+- [x] Commit the stack change, then deploy it on the host
+- [x] The GHCR package is public, so the host pulls it without credentials; if it is private, make it public
 
 ### Task 3.7: Proxy
 
 TLS ends at a proxy in front of the host.
 
-- [ ] Add a public hostname for the subdomain on the host's proxy, pointing at the published port; the proxy terminates TLS and passes WebSockets
-- [ ] Add the URL to an uptime monitor using `/ping`
+- [x] Add a public hostname for the subdomain on the host's proxy, pointing at the published port; the proxy terminates TLS and passes WebSockets
+- [ ] Add the URL to an uptime monitor using `/ping` (deferred by the user)
 
 **Phase 3 acceptance**
 
