@@ -14,6 +14,8 @@ export default defineConfig({
   projects: [
     // The round table at the five desktop sizes.
     { name: "desktop", use: devices["Desktop Chrome"], testIgnore: /phone\.spec/ },
+    // Firefox lays out the zoomed seats of narrow windows with its own rounding.
+    { name: "firefox", use: devices["Desktop Firefox"], testMatch: /no-scroll\.spec/ },
     // Phones in portrait, emulated with touch and their own pixel ratio.
     { name: "phone-360", use: devices["Galaxy S8"], testIgnore: /no-scroll\.spec/ },
     {
