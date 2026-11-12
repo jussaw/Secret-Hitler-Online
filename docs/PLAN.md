@@ -434,7 +434,7 @@ Files: new `frontend/src/sound/SoundControl.tsx` and `.css`; the headers at `fro
 
 - [x] Unit tests pass; Phase 4 and 5 e2e still pass, and so does the sounds e2e
 - [x] A recorded 7-player game shows every listed event playing once, in sync with its animation
-- [ ] In a full game every listed event is heard (the user, in a real game)
+- [x] In a full game every listed event is heard (the user, in a real game)
 - [x] Mute and volume survive a page refresh
 - [x] No sound plays before the first click, and no autoplay error appears in the console
 - [ ] PR merged into `development`
