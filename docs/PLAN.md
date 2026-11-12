@@ -535,8 +535,8 @@ Files: new `frontend/src/game/roundStep.ts` and `roundStep.test.ts`
 
 Files: new `frontend/src/player/usePlayerRows.ts` and `usePlayerRows.test.tsx`, `frontend/src/player/PlayerDisplay.tsx`
 
-- [ ] Tests first: office, busy, role by viewer, executed, staged votes, the user's row
-- [ ] Move the per-player logic out of `usePlayerTiles` into `usePlayerRows`; the prompts' tiles are unchanged (`PlayerDisplay.test.tsx` passes as is)
+- [x] Tests first: office, busy, role by viewer, executed, staged votes, the user's row
+- [x] Move the per-player logic out of `usePlayerTiles` into `usePlayerRows`; the prompts' tiles are unchanged (`PlayerDisplay.test.tsx` passes as is)
 
 ### Task 8.4: PlayerRoster
 
