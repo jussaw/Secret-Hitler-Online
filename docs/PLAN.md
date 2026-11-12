@@ -227,8 +227,8 @@ Files: new `Dockerfile` and `.dockerignore` at repo root, delete `backend/Docker
 
 Files: new `.github/workflows/ci.yml`
 
-- [ ] Job `test`: `./gradlew test` and `npm ci && npm test -- --run && npm run build`, on pull requests and pushes to `development`
-- [ ] Job `image` (push to `development` only, after `test`): buildx with QEMU, platforms `linux/arm64,linux/amd64`, push `ghcr.io/jussaw/secret-hitler-online:latest` and `:sha-<short>`
+- [x] Job `test`: `./gradlew test` and `npm ci && npm test -- --run && npm run build`, on pull requests and pushes to `development`
+- [x] Job `image` (push to `development` only, after `test`): buildx with QEMU, platforms `linux/arm64,linux/amd64`, push `ghcr.io/jussaw/secret-hitler-online:latest` and `:sha-<short>`
 - [ ] First run is green and the package is visible on GHCR
 
 ### Task 3.6: Host stack
