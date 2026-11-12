@@ -554,7 +554,9 @@ Run: `npm run build` (passes). Then, with `npm run dev`:
 
 1. Create a lobby. In the PLAYER LOOK dialog, click a portrait: it is highlighted at once (`#icon.selected` appears on the clicked portrait). Then click a second portrait: the highlight moves.
 2. Leave the lobby and join it again by code. `document.cookie` contains the name and the lobby code.
-3. Play one 5-player CPU game to the end. Alerts appear one at a time in game order (role, nomination, voting, legislative, policy enacted, …). The console has no errors from #2 or #3. React 18 no longer prints the #5 warning, so only #4 (missing `key`) should remain.
+3. Play one 5-player CPU game to the end. Alerts appear one at a time in game order (role, nomination, voting, legislative, policy enacted, …). The console has no errors from #2 or #3. React 18 no longer prints #5's "after unmount" warning. What remains is #4 (missing `key`), #8 (`Player.render` calls `setState`) and, after a failed election, #5's `ElectionTrackerAlert` variant ("not yet mounted": its timer starts in the constructor, and StrictMode discards one instance in development).
+
+To check that the lobby fix is what makes (1) pass, revert only the `PACKET_LOBBY` hunk and rerun (1). The highlight then never appears within 2 seconds.
 
 - [ ] **Step 9: Commit**
 
@@ -767,7 +769,7 @@ git commit -m "docs(development): document the vite scripts"
 
 - Layout: `frontend/` is React 18 and TypeScript 5 on Vite, with Vitest. The entry is `src/main.tsx` and `index.html` is at the `frontend/` root. `VITE_*` variables live in `.env.local` / `.env.dev`, typed in `src/vite-env.d.ts`.
 - Commands table: frontend dev server `cd frontend && npm install && npm run dev`, frontend tests `cd frontend && npm test -- --run`, frontend production build `npm run build` into `frontend/dist/`. Add that Node 22.12 or newer is needed.
-- Known baseline failures: remove the `App.test.js` line (#6, fixed), and drop #2 and #3 (their libraries are gone). Keep #4. Rewrite #5 as: "prompts set state from uncleared timers after unmount; React 18 no longer warns, but the timers still fire".
+- Known baseline failures: remove the `App.test.js` line (#6, fixed), and drop #2 and #3 (their libraries are gone). Keep #4, add #8 (`Player.render` calls `setState`) and #9 (`[Host]` label inverted). Rewrite #5 as: "prompts set state from uncleared timers; on React 18 only `ElectionTrackerAlert`'s constructor timer still warns in development".
 - Replace the `npm run devServer` note with `npm run dev:server`.
 
 Run every command in the table once; each must succeed.
