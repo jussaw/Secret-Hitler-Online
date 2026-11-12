@@ -402,9 +402,9 @@ Files: new `frontend/src/assets/sounds/*` (an `.ogg` and an `.mp3` per sound), n
 
 Files: new `frontend/src/sound/SoundManager.ts`, `frontend/src/sound/SoundManager.test.ts`; `frontend/src/main.tsx` (preload, first-gesture listener)
 
-- [ ] Tests first: volume and mute persist to and restore from `localStorage`; `play` before unlock does nothing; `play` when muted does nothing; a clip that fails to load does not throw
-- [ ] Implement `play(name: SoundName)`, `setVolume(0..1)`, `setMuted(boolean)`, `unlock()`; `unlock` is called on the first pointer or key event
-- [ ] `SoundName` is a string-literal union of the names in Task 6.1
+- [x] Tests first: volume and mute persist to and restore from `localStorage`; `play` before unlock does nothing; `play` when muted does nothing; a clip that fails to load does not throw
+- [x] Implement `play(name: SoundName)`, `setVolume(0..1)`, `setMuted(boolean)`, `unlock()`; `unlock` is called on the first pointer or key event
+- [x] `SoundName` is a string-literal union of the names in Task 6.1
 
 ### Task 6.3: `soundEvents`
 
