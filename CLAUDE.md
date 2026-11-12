@@ -26,9 +26,12 @@ keeps credit to upstream and to the board game's creators.
   page is `src/game/`: `GameScreen` (markup and the table grid), `TableSeats` and `seatPositions`
   (seat geometry, unit tested). Phones and windows narrower than 5:4 get a stacked, scrolling
   layout from `@media (max-width: 768px), (aspect-ratio < 5/4)` in `GameScreen.css` and
-  `TableSeats.css`; prompts are a fixed overlay whose box scrolls (`CustomAlert.css`). Playwright
-  tests live in `frontend/e2e/`, in three projects: `desktop` (`no-scroll.spec.ts` at the five
-  desktop sizes) and `phone-360`/`phone-412` (Galaxy S8 and Pixel 7 emulation, `phone.spec.ts`),
+  `TableSeats.css`. Among those, windows at least 700px wide (half-screen desktop windows, tablets
+  held upright) fit one screen instead, with round-table-size seats, from a second block,
+  `(min-width: 700px) and (aspect-ratio < 5/4)`, in the same two files. Prompts are a fixed
+  overlay whose box scrolls (`CustomAlert.css`). Playwright tests live in `frontend/e2e/`, in
+  three projects: `desktop` (`no-scroll.spec.ts` at the five desktop sizes and the narrow windows
+  in `NARROW_WINDOWS`) and `phone-360`/`phone-412` (Galaxy S8 and Pixel 7 emulation, `phone.spec.ts`),
   with `prompts.spec.ts` in all three; it opens every prompt from a scripted game socket
   (`e2e/fakeGame.ts`). Shared helpers are `e2e/lobby.ts` and `e2e/layout.ts`. `App.css` hides
   `overflow-x` on `html` and `body`, so horizontal overflow shows only in `body.scrollWidth`.
