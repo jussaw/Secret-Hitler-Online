@@ -22,7 +22,9 @@ keeps credit to upstream and to the board game's creators.
   CORS is enabled only in debug mode.
 - `frontend/`: React 18 and TypeScript 5, built with Vite and tested with Vitest. The entry is
   `src/main.tsx`, with `index.html` at the `frontend/` root. `src/App.tsx` owns the WebSocket, all
-  state, and the login, lobby and game pages; prompts live in `src/custom-alert/`. The client talks
+  state, the overlays, and the login and lobby pages; prompts live in `src/custom-alert/`. The game
+  page is `src/game/`: `GameScreen` (markup and the table grid), `TableSeats` and `seatPositions`
+  (seat geometry, unit tested). Playwright tests live in `frontend/e2e/`. The client talks
   to its own origin (`src/constants/serverUrls.ts`; `wss:` on `https:` pages) unless
   `VITE_SERVER_ADDRESS` is set, and the dev server proxies the backend paths to `BACKEND_URL`
   (default `http://localhost:4040`). `VITE_*` variables live in `.env.development` (dev server only:
@@ -41,6 +43,7 @@ The Gradle 7.4.2 wrapper does not run on JDKs newer than 17. Java 17 comes from 
 | Run frontend dev server (`localhost:3000`, against the local backend) | `cd frontend && npm install && npm run dev` |
 | Backend tests | `cd backend && ./gradlew test` |
 | Frontend tests (single run) | `cd frontend && npm test -- --run` |
+| Browser tests (build the frontend and the jar, serve them on `localhost:4545`; Java 17 active) | `cd frontend && npx playwright install chromium && npm run e2e` |
 | Backend build (tests + fat jar at `backend/build/libs/secret-hitler-online.jar`) | `cd backend && ./gradlew build` |
 | Frontend production build (type-check, then `frontend/dist/`) | `cd frontend && npm run build` |
 | Whole app on one port (after the frontend build) | `cd backend && ./gradlew jar && java -jar build/libs/secret-hitler-online.jar` |
@@ -59,9 +62,10 @@ Known baseline failures (do not "fix" them while doing unrelated work):
 
 ## Deploy
 
-CI (`.github/workflows/ci.yml`) runs the backend and frontend tests and the frontend build on every
-pull request into `development`. On every push to `development` it also publishes
-`ghcr.io/jussaw/secret-hitler-online:latest` and `:sha-<short>` for `linux/arm64` and `linux/amd64`.
+CI (`.github/workflows/ci.yml`) runs the backend and frontend tests, the frontend build and the
+browser tests on every pull request into `development`. On every push to `development` it also
+publishes `ghcr.io/jussaw/secret-hitler-online:latest` and `:sha-<short>` for `linux/arm64` and
+`linux/amd64`, once those checks pass.
 A home server runs that image and pulls new `:latest` images once a day. TLS ends at a proxy in
 front of it, so the container serves plain HTTP on `8080`. Lobby backups go to `/data/backup.db`,
 so mount a volume at `/data`.

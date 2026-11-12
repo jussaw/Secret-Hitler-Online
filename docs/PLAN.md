@@ -305,10 +305,10 @@ Files: new `frontend/e2e/no-scroll.spec.ts`, `frontend/playwright.config.ts`; `p
 
 Playwright is not installed yet: `@playwright/test` and a browser are new dev dependencies. CPU players only fill a lobby up to 5 (`backend/src/main/java/server/util/Lobby.java:497-511`), so 7 and 10 players need extra connections.
 
-- [ ] Test starts a lobby against a local backend, adds CPU players to reach 5, 7 and 10, starts the game
-- [ ] At each desktop acceptance size asserts `document.documentElement.scrollHeight <= window.innerHeight` and `scrollWidth <= innerWidth`, and that every seat's bounding box is inside the viewport
-- [ ] Add the e2e run to `ci.yml`
-- [ ] `CLAUDE.md` updated: `frontend/src/game/` layout and the `npm run e2e` command
+- [x] Test starts a lobby against a local backend, reaches 5 players with CPU players and 7 and 10 with WebSocket guests, starts the game
+- [x] At each desktop acceptance size asserts `document.documentElement.scrollHeight <= window.innerHeight` and `scrollWidth <= innerWidth`, and that every seat's bounding box is inside the viewport
+- [x] Add the e2e run to `ci.yml`
+- [x] `CLAUDE.md` updated: `frontend/src/game/` layout and the `npm run e2e` command
 
 **Phase 4 acceptance**
 

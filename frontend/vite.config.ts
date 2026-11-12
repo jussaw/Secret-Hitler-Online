@@ -18,6 +18,8 @@ export default defineConfig({
   },
   preview: { port: 3000, strictPort: true },
   test: {
+    // Playwright owns e2e/*.spec.ts.
+    include: ["src/**/*.test.{ts,tsx}"],
     environment: "jsdom",
     setupFiles: ["./src/setupTests.ts"],
   },
