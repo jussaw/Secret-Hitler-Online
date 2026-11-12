@@ -7,7 +7,8 @@ import { GameState, LobbyState } from "../types";
  * two lines.
  */
 
-const VICTORY_TEXT: Partial<Record<LobbyState, string>> = {
+/** The message of each victory, under the victory screen's header (App) and as its status line. */
+export const VICTORY_TEXT: Partial<Record<LobbyState, string>> = {
   [LobbyState.FASCIST_VICTORY_POLICY]: "Fascists successfully passed six policies!",
   [LobbyState.FASCIST_VICTORY_ELECTION]: "Fascists successfully elected Hitler as chancellor!",
   [LobbyState.LIBERAL_VICTORY_POLICY]: "Liberals successfully passed five policies!",

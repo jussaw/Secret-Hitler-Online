@@ -94,7 +94,13 @@ import { sounds, type SoundName } from "./sound/SoundManager";
 import SoundControl from "./sound/SoundControl";
 import SpectatorCount from "./spectator/SpectatorCount";
 import { lobbySounds, SOUND_CUES, soundEvents, type Cue } from "./sound/soundEvents";
-import { policyText, resultText, trackerText, waitingText } from "./spectator/spectatorStatus";
+import {
+  VICTORY_TEXT,
+  policyText,
+  resultText,
+  trackerText,
+  waitingText,
+} from "./spectator/spectatorStatus";
 
 const EVENT_BAR_FADE_OUT_DURATION = 500;
 const CUSTOM_ALERT_FADE_DURATION = 1000;
@@ -1514,38 +1520,20 @@ class App extends Component<{}, AppState> {
             }
           });
 
-          let victoryMessage: string,
-            messageClass: string,
-            headerImage: string,
-            headerAlt: string;
+          const victoryMessage = VICTORY_TEXT[newState.state];
+          let messageClass: string, headerImage: string, headerAlt: string;
           let players: string[] = [];
           let state = newState.state;
-          let fascistVictoryPolicy = state === STATE_FASCIST_VICTORY_POLICY;
-          let fascistVictoryElection = state === STATE_FASCIST_VICTORY_ELECTION;
-          let liberalVictoryPolicy = state === STATE_LIBERAL_VICTORY_POLICY;
-          let liberalVictoryExecution =
-            state === STATE_LIBERAL_VICTORY_EXECUTION;
-          if (fascistVictoryElection || fascistVictoryPolicy) {
+          if (state === STATE_FASCIST_VICTORY_ELECTION || state === STATE_FASCIST_VICTORY_POLICY) {
             players = fascistPlayers.concat(liberalPlayers);
             headerImage = VictoryFascistHeader;
             headerAlt = "Fascist Victory, written in red with a skull icon.";
             messageClass = "highlight";
-            if (fascistVictoryPolicy) {
-              victoryMessage = "Fascists successfully passed six policies!";
-            } else if (fascistVictoryElection) {
-              victoryMessage =
-                "Fascists successfully elected Hitler as chancellor!";
-            }
           } else {
             players = liberalPlayers.concat(fascistPlayers);
             headerImage = VictoryLiberalHeader;
             headerAlt = "Liberal Victory, written in blue with a dove icon.";
             messageClass = "highlight-blue";
-            if (liberalVictoryPolicy) {
-              victoryMessage = "Liberals successfully passed five policies!";
-            } else if (liberalVictoryExecution) {
-              victoryMessage = "Liberals successfully executed Hitler!";
-            }
           }
           if (DEBUG) {
             console.log("Player ordering: " + players);
