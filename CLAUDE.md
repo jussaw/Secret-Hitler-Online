@@ -30,11 +30,13 @@ keeps credit to upstream and to the board game's creators.
   held upright) fit one screen instead, with round-table-size seats, from a second block,
   `(min-width: 700px) and (aspect-ratio < 5/4)`, in the same two files. Prompts are a fixed
   overlay whose box scrolls (`CustomAlert.css`). Playwright tests live in `frontend/e2e/`, in
-  three projects: `desktop` (`no-scroll.spec.ts` at the five desktop sizes and the narrow windows
-  in `NARROW_WINDOWS`) and `phone-360`/`phone-412` (Galaxy S8 and Pixel 7 emulation, `phone.spec.ts`),
-  with `prompts.spec.ts` in all three; it opens every prompt from a scripted game socket
-  (`e2e/fakeGame.ts`). Shared helpers are `e2e/lobby.ts` and `e2e/layout.ts`. `App.css` hides
-  `overflow-x` on `html` and `body`, so horizontal overflow shows only in `body.scrollWidth`.
+  four projects: `desktop` (`no-scroll.spec.ts` at the five desktop sizes and the narrow windows
+  in `NARROW_WINDOWS`), `firefox` (the same no-scroll tests, since Firefox rounds zoomed seats
+  differently), and `phone-360`/`phone-412` (Galaxy S8 and Pixel 7 emulation, `phone.spec.ts`).
+  `prompts.spec.ts` runs in `desktop` and both phone projects; it opens every prompt from a
+  scripted game socket (`e2e/fakeGame.ts`). Shared helpers are `e2e/lobby.ts` and
+  `e2e/layout.ts`. `App.css` hides `overflow-x` on `html` and `body`, so horizontal overflow shows
+  only in `body.scrollWidth`, and `body` scrolls vertically by itself (`pageHeight` measures both).
   The client talks to its own origin (`src/constants/serverUrls.ts`; `wss:` on `https:` pages) unless
   `VITE_SERVER_ADDRESS` is set, and the dev server proxies the backend paths to `BACKEND_URL`
   (default `http://localhost:4040`). `VITE_*` variables live in `.env.development` (dev server only:
@@ -53,7 +55,7 @@ The Gradle 7.4.2 wrapper does not run on JDKs newer than 17. Java 17 comes from 
 | Run frontend dev server (`localhost:3000`, against the local backend) | `cd frontend && npm install && npm run dev` |
 | Backend tests | `cd backend && ./gradlew test` |
 | Frontend tests (single run) | `cd frontend && npm test -- --run` |
-| Browser tests (build the frontend and the jar, serve them on `localhost:4545`; Java 17 active) | `cd frontend && npx playwright install chromium && npm run e2e` (one project: `-- --project=phone-360`) |
+| Browser tests (build the frontend and the jar, serve them on `localhost:4545`; Java 17 active) | `cd frontend && npx playwright install chromium firefox && npm run e2e` (one project: `-- --project=phone-360`) |
 | Backend build (tests + fat jar at `backend/build/libs/secret-hitler-online.jar`) | `cd backend && ./gradlew build` |
 | Frontend production build (type-check, then `frontend/dist/`) | `cd frontend && npm run build` |
 | Whole app on one port (after the frontend build) | `cd backend && ./gradlew jar && java -jar build/libs/secret-hitler-online.jar` |
