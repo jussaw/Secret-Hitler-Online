@@ -26,6 +26,9 @@ import java.util.stream.Collectors;
  * A user is defined as an active websocket connection.
  */
 public class Lobby implements Serializable {
+    // The value Java computed for this class before spectators, so backups written by earlier
+    // releases still load (DatabaseBackupTest.aBackupFromBeforeSpectatorsStillLoads).
+    private static final long serialVersionUID = 7519753883184174211L;
 
     private SecretHitlerGame game;
 
@@ -33,6 +36,9 @@ public class Lobby implements Serializable {
     // users.
     transient private ConcurrentHashMap<WsContext, String> userToUsername;
     transient private Queue<String> activeUsernames;
+    // Connections watching the lobby without a seat. They have no name, icon or vote, are never
+    // counted as users, and are not backed up.
+    transient private Set<WsContext> spectators;
 
     final private Set<String> usersInGame;
     final private ConcurrentHashMap<String, String> usernameToIcon;
@@ -61,6 +67,7 @@ public class Lobby implements Serializable {
     public Lobby() {
         userToUsername = new ConcurrentHashMap<WsContext, String>();
         activeUsernames = new ConcurrentLinkedQueue<>();
+        spectators = ConcurrentHashMap.newKeySet();
         usersInGame = new ConcurrentSkipListSet<>();
         usernameToIcon = new ConcurrentHashMap<>();
         usernameToPreferredIcon = new ConcurrentHashMap<>();
@@ -89,13 +96,26 @@ public class Lobby implements Serializable {
     }
 
     /**
-     * Returns the set of websocket connections connected to this Lobby.
+     * Records a message from a connection. Only players keep the lobby active, so a lobby
+     * watched only by spectators times out like an empty one.
+     *
+     * @param context the websocket connection that sent a message.
+     */
+    synchronized public void recordActivity(WsContext context) {
+        if (hasUser(context)) {
+            resetTimeout();
+        }
+    }
+
+    /**
+     * Returns the websocket connections connected to this Lobby.
      * 
-     * @return a set of WsContexts, where each context is a user connected to the
-     *         Lobby.
+     * @return a new set of WsContexts: every player's and every spectator's connection.
      */
     synchronized public Set<WsContext> getConnections() {
-        return userToUsername.keySet();
+        Set<WsContext> connections = new HashSet<>(userToUsername.keySet());
+        connections.addAll(spectators);
+        return connections;
     }
 
     /**
@@ -291,6 +311,41 @@ public class Lobby implements Serializable {
     }
 
     /**
+     * Adds a spectator: a connection that watches the lobby and its game without a seat.
+     *
+     * @param context the websocket connection of the spectator.
+     * @throws IllegalArgumentException if the connection is already a player or a spectator.
+     */
+    synchronized public void addSpectator(WsContext context) {
+        if (hasUser(context) || spectators.contains(context)) {
+            throw new IllegalArgumentException("This websocket is already in the Lobby.");
+        }
+        spectators.add(context);
+    }
+
+    /**
+     * Removes a spectator.
+     *
+     * @param context the websocket connection of the spectator.
+     * @throws IllegalArgumentException if the connection is not a spectator of this Lobby.
+     */
+    synchronized public void removeSpectator(WsContext context) {
+        if (!spectators.remove(context)) {
+            throw new IllegalArgumentException("Cannot remove a websocket that is not a spectator.");
+        }
+    }
+
+    /** Returns whether the connection is a spectator of this Lobby. */
+    synchronized public boolean isSpectator(WsContext context) {
+        return spectators.contains(context);
+    }
+
+    /** Returns the number of spectators watching the Lobby. */
+    synchronized public int getSpectatorCount() {
+        return spectators.size();
+    }
+
+    /**
      * Returns the number of active users connected to the Lobby.
      * 
      * @return the number of active websocket connections currently in the lobby.
@@ -309,9 +364,8 @@ public class Lobby implements Serializable {
      *          updates all connected CpuPlayers after a set amount of time.
      */
     synchronized public void updateAllUsers() {
-        for (Entry<WsContext, String> entry : userToUsername.entrySet()) {
-            updateUser(entry.getKey(), entry.getValue());
-        }
+        // Spectators are sent the state here too, so they get a finished game before it is cleared.
+        sendStateToAll();
 
         // Check if the game ended.
         if (game != null && game.hasGameFinished()) {
@@ -376,6 +430,59 @@ public class Lobby implements Serializable {
     }
 
     /**
+     * Sends the current state to every player and spectator, without letting CPU players act.
+     */
+    synchronized public void sendStateToAll() {
+        for (Entry<WsContext, String> entry : userToUsername.entrySet()) {
+            updateUser(entry.getKey(), entry.getValue());
+        }
+        for (WsContext spectator : spectators) {
+            updateSpectator(spectator);
+        }
+    }
+
+    /**
+     * Sends a spectator the current state: the lobby packet, or during a game the state with no
+     * secrets ({@code GameToJSONConverter.convertForSpectator()}).
+     *
+     * @param ctx the spectator's websocket context.
+     */
+    synchronized public void updateSpectator(WsContext ctx) {
+        JSONObject message;
+        if (isInGame()) {
+            message = GameToJSONConverter.convertForSpectator(game);
+            message.put(SecretHitlerServer.PARAM_PACKET_TYPE, SecretHitlerServer.PACKET_GAME_STATE);
+        } else {
+            message = lobbyPacket();
+        }
+        send(ctx, message);
+    }
+
+    /** The packet sent outside a game: the players' names. */
+    private JSONObject lobbyPacket() {
+        JSONObject message = new JSONObject();
+        message.put(SecretHitlerServer.PARAM_PACKET_TYPE, SecretHitlerServer.PACKET_LOBBY);
+        message.put("usernames", activeUsernames.toArray());
+        return message;
+    }
+
+    /** Adds the icons and the spectator count, which every packet has, and sends the packet. */
+    private void send(WsContext ctx, JSONObject message) {
+        // Add user icons to the update message
+        JSONObject icons = new JSONObject(usernameToIcon);
+        message.put("icon", icons);
+        message.put(SecretHitlerServer.PARAM_SPECTATOR_COUNT, spectators.size());
+
+        try {
+            ctx.send(message.toString());
+        } catch (Exception e) {
+            // Jetty throws for a connection that closed before its onClose removed it from this
+            // lobby. That must not stop the broadcast for everyone else, or the CPU step after it.
+            logger.debug("Could not send to a closed connection: " + e);
+        }
+    }
+
+    /**
      * Sends a message to the specified user with the current game state.
      * 
      * @param ctx the WsContext websocket context.
@@ -389,15 +496,9 @@ public class Lobby implements Serializable {
             message = GameToJSONConverter.convert(game, userName); // sends the game state
             message.put(SecretHitlerServer.PARAM_PACKET_TYPE, SecretHitlerServer.PACKET_GAME_STATE);
         } else {
-            message = new JSONObject();
-            message.put(SecretHitlerServer.PARAM_PACKET_TYPE, SecretHitlerServer.PACKET_LOBBY);
-            message.put("usernames", activeUsernames.toArray());
+            message = lobbyPacket();
         }
-        // Add user icons to the update message
-        JSONObject icons = new JSONObject(usernameToIcon);
-        message.put("icon", icons);
-
-        ctx.send(message.toString());
+        send(ctx, message);
     }
 
     /**
@@ -414,6 +515,7 @@ public class Lobby implements Serializable {
         in.defaultReadObject();
         userToUsername = new ConcurrentHashMap<>();
         activeUsernames = new ConcurrentLinkedQueue<>();
+        spectators = ConcurrentHashMap.newKeySet();
         userTimeoutTimer = new Timer();
         cpuTickTimer = new Timer();
     }

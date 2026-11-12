@@ -251,3 +251,66 @@ export const PROMPTS: { name: string; packets: object[]; button: string }[] = [
     button: "RETURN TO LOBBY",
   },
 ];
+
+/** The lobby packet a spectator of the scripted lobby gets: TEN with portraits, one spectator. */
+export const WATCHED_LOBBY = {
+  type: "lobby",
+  usernames: TEN,
+  icon: Object.fromEntries(TEN.map((name, i) => [name, `p${i + 1}`])),
+  spectatorCount: 1,
+};
+
+export type FakeWatch = FakeGame & {
+  /** Every socket the page opened, oldest first, so a test can check each was a spectator's. */
+  urls: string[];
+  /** While down, the server closes the open socket and every new one at once. */
+  down(on: boolean): void;
+};
+
+/**
+ * Watches the scripted lobby "FAKE" through the login form's WATCH button. The socket's first
+ * packet is `first`: by default WATCHED_LOBBY; a game packet joins a game already running.
+ * `send` goes to the newest socket.
+ */
+export async function openFakeWatch(page: Page, first: object = WATCHED_LOBBY): Promise<FakeWatch> {
+  await page.route(/\/check-login\?/, (route) => route.fulfill({ body: "Spectator login valid." }));
+  const urls: string[] = [];
+  let latest: WebSocketRoute | undefined;
+  let down = false;
+  let connect!: () => void;
+  const connected = new Promise<void>((resolve) => (connect = resolve));
+  await page.routeWebSocket(/\/game\?/, (ws) => {
+    urls.push(ws.url());
+    if (down) return void ws.close();
+    ws.onMessage(() => {});
+    latest = ws;
+    connect();
+  });
+
+  await page.goto("/");
+  await page.getByRole("textbox", { name: "Lobby" }).fill("FAKE");
+  await page.getByRole("button", { name: "WATCH" }).click();
+  await connected;
+  latest!.send(JSON.stringify(first));
+  if ((first as { type?: string }).type === "lobby") {
+    await page.getByText(`Players (${TEN.length}/10)`).waitFor();
+  } else {
+    await page.locator(".game-screen").waitFor();
+  }
+  return {
+    send: (packet) => latest!.send(JSON.stringify(packet)),
+    urls,
+    down: (on) => {
+      down = on;
+      if (on) latest?.close();
+    },
+  };
+}
+
+/** A game-state packet as a spectator receives it: no roles, one spectator watching. */
+export function spectatorPacket(overrides: Partial<GameState> = {}, dead: string[] = []): object {
+  return { ...gamePacket(overrides, {}, dead), spectatorCount: 1 };
+}
+
+/** Every role, as everyone sees them at the end of a game. */
+export const EVERY_ROLE = ALL_ROLES;

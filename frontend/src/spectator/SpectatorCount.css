@@ -1,0 +1,27 @@
+@import '../variables.css';
+
+/*
+ * The spectator count, at the left of the lobby and game headers (App.css makes the header
+ * position: relative), mirroring the speaker on the right. Positioned absolutely, so the title
+ * stays centred and the header keeps its height. Sized from the header's font: the title leaves
+ * at least 66px on each side at 360px, and an eye with two digits ends by about 52px. It takes the
+ * pointer, so its title shows as a tooltip; nothing clickable sits under it.
+ */
+.spectator-count {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: max(8px, 1vw);
+    display: flex;
+    align-items: center;
+    gap: 0.15em;
+    color: var(--headerTextColor);
+    font-size: 0.7em;
+    line-height: 1;
+    opacity: 0.9;
+}
+
+.spectator-count .spectator-icon {
+    width: 1.15em;
+    height: 1.15em;
+}

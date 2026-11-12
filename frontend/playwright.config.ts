@@ -8,6 +8,8 @@ export default defineConfig({
   timeout: 60_000,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
+  // On CI a test that fails once is run again, and a pass on the retry is reported as flaky.
+  retries: process.env.CI ? 1 : 0,
   // CI also writes an HTML report, which ci.yml keeps (with the traces) when a run fails.
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   use: { baseURL: `http://localhost:${PORT}`, trace: "retain-on-failure" },
@@ -15,7 +17,7 @@ export default defineConfig({
     // The round table at the five desktop sizes.
     { name: "desktop", use: devices["Desktop Chrome"], testIgnore: /phone\.spec/ },
     // Firefox lays out the zoomed seats of narrow windows, and the header control, with its own rounding.
-    { name: "firefox", use: devices["Desktop Firefox"], testMatch: /(no-scroll|sounds)\.spec/ },
+    { name: "firefox", use: devices["Desktop Firefox"], testMatch: /(no-scroll|sounds|spectator)\.spec/ },
     // Phones in portrait, emulated with touch and their own pixel ratio.
     { name: "phone-360", use: devices["Galaxy S8"], testIgnore: /no-scroll\.spec/ },
     {

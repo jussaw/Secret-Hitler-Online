@@ -55,4 +55,6 @@ export type GameState = {
   usernames?: string[];
   /** Maps from usernames to icon keys */
   icon: Record<string, string>;
+  /** How many spectators are watching (every packet, lobby or game). */
+  spectatorCount?: number;
 };

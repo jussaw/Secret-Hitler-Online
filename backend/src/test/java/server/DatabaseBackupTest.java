@@ -7,8 +7,11 @@ import static org.junit.Assert.assertTrue;
 
 import game.datastructures.Player;
 import java.io.File;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.sql.Connection;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import org.junit.Rule;
@@ -81,5 +84,24 @@ public class DatabaseBackupTest {
         assertNull(SecretHitlerServer.getDatabaseConnection(" "));
         assertNull(SecretHitlerServer.getDatabaseConnection(
                 new File(tmp.getRoot(), "missing/dir/backup.db").getAbsolutePath()));
+    }
+
+    /**
+     * backup-before-spectators.db was written by the release before spectators (d35fade): a lobby
+     * in a game of five CPU players under "ABCD" and an empty one under "WXYZ". The host keeps its
+     * backup across an update, so games in progress must survive the update that adds spectators.
+     */
+    @Test
+    public void aBackupFromBeforeSpectatorsStillLoads() throws Exception {
+        try (InputStream fixture = getClass().getResourceAsStream("/backup-before-spectators.db")) {
+            Files.copy(fixture, new File(dbPath()).toPath());
+        }
+        ConcurrentHashMap<String, Lobby> loaded = load();
+
+        assertEquals(Set.of("ABCD", "WXYZ"), loaded.keySet());
+        assertTrue(loaded.get("ABCD").isInGame());
+        assertEquals(5, playerNames(loaded.get("ABCD")).size());
+        assertFalse(loaded.get("WXYZ").isInGame());
+        assertEquals(0, loaded.get("ABCD").getSpectatorCount());
     }
 }

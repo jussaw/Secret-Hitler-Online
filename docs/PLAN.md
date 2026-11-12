@@ -36,8 +36,8 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 3. Persistence, packaging, first deploy | `phase-3-deploy` | done |
 | 4. Round-table game screen | `phase-4-round-table` | done |
 | 5. Phone layout | `phase-5-phone` | done |
-| 6. Sounds | `phase-6-sounds` | in progress |
-| 7. Spectators | `phase-7-spectators` | not started |
+| 6. Sounds | `phase-6-sounds` | done |
+| 7. Spectators | `phase-7-spectators` | in progress |
 
 ---
 
@@ -437,62 +437,68 @@ Files: new `frontend/src/sound/SoundControl.tsx` and `.css`; the headers at `fro
 - [x] In a full game every listed event is heard (the user, in a real game)
 - [x] Mute and volume survive a page refresh
 - [x] No sound plays before the first click, and no autoplay error appears in the console
-- [ ] PR merged into `development`
+- [x] PR merged into `development`
 
 **Start Phase 7: Spectators**
 
-- [ ] Progress table: Phase 6 set to "done", Phase 7 set to "in progress"
-- [ ] `git checkout development && git pull`, then `git checkout -b phase-7-spectators`
-- [ ] Re-read Phase 7 below against the code as it now stands; fix any file paths or line numbers that moved
-- [ ] Write the Phase 7 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 7 heading
-- [ ] Begin Task 7.1
+- [x] Progress table: Phase 6 set to "done", Phase 7 set to "in progress"
+- [x] `git checkout development && git pull`, then `git checkout -b phase-7-spectators`
+- [x] Re-read Phase 7 below against the code as it now stands; fix any file paths or line numbers that moved
+- [x] Write the Phase 7 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 7 heading
+- [x] Begin Task 7.1
 
 ---
 
 ## Phase 7: Spectators
 
+Breakdown: [`docs/superpowers/plans/2026-11-12-phase-7-spectators.md`](superpowers/plans/2026-11-12-phase-7-spectators.md)
+
 Outcome: anyone with the lobby code can watch without a seat and without seeing secrets.
 
 ### Task 7.1: Spectator state filtering
 
-Files: `backend/src/main/java/server/util/GameToJSONConverter.java`, new `backend/src/test/java/server/SpectatorStateTest.java`
+Files: `backend/src/main/java/server/util/GameToJSONConverter.java` (`convert`, line 61), new `backend/src/test/java/server/SpectatorStateTest.java` with the test helpers `GameDriver.java` and `Secrets.java`
 
-- [ ] Tests first: the spectator conversion of an in-progress game contains no player `id` (role), no `presidentChoices`, `chancellorChoices` or `peek`, and no investigation result; after the game ends roles are present, matching what players receive
-- [ ] Implement a spectator conversion path (the converter already tailors output per user; the spectator is a viewer who is no player)
-- [ ] Add `spectatorCount` to every state packet
+`convert` calls `game.getPlayer(userName).getIdentity()` (line 72), which throws for anyone who is not a player, so the spectator conversion is its own entry point, `convertForSpectator`. Players' packets keep their exact shape.
+
+- [x] Tests first: the spectator conversion of an in-progress game contains no player `id` (role), no `presidentChoices`, `chancellorChoices` or `peek`, and no investigation result, at any depth and in every state; after the game ends roles are present, matching what players receive
+- [x] Implement a spectator conversion path (`convertForSpectator`, built from the same public fields as `convert`)
 
 ### Task 7.2: Lobby spectators
 
-Files: `backend/src/main/java/server/util/Lobby.java`, new tests in `backend/src/test/java/server/`
+Files: `backend/src/main/java/server/util/Lobby.java` (players live in `userToUsername` and `activeUsernames`; `hasTimedOut` 87, `getConnections` 97, `isFull` 168, `getUserCount` 298, `updateAllUsers` 311, which sends to `userToUsername` only, `updateUser` 386, `readObject` 413), new `backend/src/test/java/server/util/LobbySpectatorTest.java` and `FakeSocket.java`
 
-- [ ] Tests first: adding a spectator does not change `getUserCount()` or `isFull()`; spectators receive updates from `updateAllUsers()`; removing the last player leaves a spectator-only lobby that `hasTimedOut()` treats as inactive
-- [ ] Add a transient spectator connection set with `addSpectator`, `removeSpectator`, `isSpectator`; include spectators in `updateAllUsers()` using the spectator conversion
+- [x] Tests first: adding a spectator does not change `getUserCount()` or `isFull()`; spectators receive updates from `updateAllUsers()`; removing the last player leaves a spectator-only lobby that `hasTimedOut()` treats as inactive
+- [x] Add a transient spectator connection set with `addSpectator`, `removeSpectator`, `isSpectator`; include spectators in `updateAllUsers()` using the spectator conversion
+- [x] Add `spectatorCount` to every state packet, lobby and game (packets are assembled in `Lobby`, where `type` and `icon` are added)
 
 ### Task 7.3: Server handshake and command rejection
 
-Files: `backend/src/main/java/server/SecretHitlerServer.java` (`onWebsocketConnect` line 505, `onWebSocketMessage`, `onWebSocketClose`, `checkLogin`)
+Files: `backend/src/main/java/server/SecretHitlerServer.java` (`onWebsocketConnect` line 474, `onWebSocketMessage` 539, `onWebSocketClose` 730, `checkLogin` 370, registered at 145, `removeInactiveLobbies` 194), new `backend/src/test/java/server/SpectatorServerTest.java` and `TestSocket.java`
 
-- [ ] `/game?lobby=CODE&spectator=true` connects without a `name`; unknown lobby closes with the same error as a player join
-- [ ] `/check-login` accepts a spectator check so the client can validate the code first
-- [ ] Any command other than `ping` and `get-state` from a spectator connection is rejected and logged
-- [ ] Test: a spectator sending `register-vote` does not change the game's votes
+Today the socket requires a `name` query parameter, and the server closes it without one (lines 475-480).
+
+- [x] `/game?lobby=CODE&spectator=true` connects without a `name`; unknown lobby closes with the same error as a player join
+- [x] `/check-login` accepts a spectator check so the client can validate the code first
+- [x] Any command other than `ping` and `get-state` from a spectator connection is rejected and logged
+- [x] Test: a spectator sending `register-vote` does not change the game's votes
 
 ### Task 7.4: Client
 
-Files: `frontend/src/App.tsx` (login form, `tryOpenWebSocket`, cookies), `frontend/src/types/`, `frontend/src/game/GameScreen.tsx`
+Files: `frontend/src/App.tsx` (login form `renderLoginPage` 646, `tryOpenWebSocket` 285, cookies at 595-596 and 627-628, `renderLobbyPage` 836, `onGameStateChanged` 991, whose role reveal (1096) and vote prompt (1129) index `players[name]` and throw for a spectator), `frontend/src/player/PlayerDisplay.tsx` (`shouldShowRole` throws for a spectator too), `frontend/src/types/`, `frontend/src/game/GameScreen.tsx`, new `frontend/src/spectator/`; browser tests in new `frontend/e2e/spectator.spec.ts`, with spectator views added to `no-scroll.spec.ts` and `phone.spec.ts`
 
-- [ ] "Watch" button beside Join on the login form; needs only a lobby code
-- [ ] Spectator flag stored in a cookie so refresh and reconnect keep spectating
-- [ ] Spectators see the lobby page read-only before the game starts, then `GameScreen`; no prompts are queued for them; status text describes what the table is doing
-- [ ] Spectator count shown in the lobby and on the game screen when above zero
-- [ ] Sounds play for spectators
-- [ ] `CLAUDE.md` updated: spectator handshake parameter and the server-side filtering rule
+- [x] "Watch" button beside Join on the login form; needs only a lobby code
+- [x] Spectator flag stored in a cookie so refresh and reconnect keep spectating
+- [x] Spectators see the lobby page read-only before the game starts, then `GameScreen`; no prompts are queued for them; status text describes what the table is doing
+- [x] Spectator count shown in the lobby and on the game screen when above zero
+- [x] Sounds play for spectators
+- [x] `CLAUDE.md` updated: spectator handshake parameter and the server-side filtering rule
 
 **Phase 7 acceptance**
 
-- [ ] Backend tests pass
-- [ ] e2e: a spectator joins a running game, the WebSocket frames it receives contain no role or hand fields before game end, and layout tests still pass with a spectator viewport
-- [ ] A spectator joining mid-game and refreshing stays a spectator
+- [x] Backend tests pass
+- [x] e2e: a spectator joins a running game, the WebSocket frames it receives contain no role or hand fields before game end, and layout tests still pass with a spectator viewport
+- [x] A spectator joining mid-game and refreshing stays a spectator
 - [ ] PR merged into `development` and deployed
 
 ---

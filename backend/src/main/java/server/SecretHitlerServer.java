@@ -10,6 +10,7 @@ import io.javalin.websocket.WsContext;
 import io.javalin.websocket.WsMessageContext;
 
 import org.eclipse.jetty.websocket.api.StatusCode;
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +40,7 @@ public class SecretHitlerServer {
     public static final String PARAM_VETO = "veto";
     public static final String PARAM_CHOICE = "choice"; // the index of the chosen policy.
     public static final String PARAM_ICON = "icon";
+    public static final String PARAM_SPECTATOR = "spectator"; // "true" in the /game and /check-login query
 
     // Passed to client
     // The type of the packet tells the client how to parse the contents.
@@ -50,6 +52,7 @@ public class SecretHitlerServer {
     public static final String PACKET_PONG = "pong"; // response to pings.
 
     public static final String PARAM_INVESTIGATION = "investigation";
+    public static final String PARAM_SPECTATOR_COUNT = "spectatorCount"; // in every lobby and game packet
     public static final String FASCIST = "FASCIST";
     public static final String LIBERAL = "LIBERAL";
 
@@ -83,7 +86,8 @@ public class SecretHitlerServer {
     // <editor-fold desc="Private Fields">
 
     transient private static ConcurrentHashMap<WsContext, Lobby> userToLobby = new ConcurrentHashMap<>();
-    private static ConcurrentHashMap<String, Lobby> codeToLobby = new ConcurrentHashMap<>();
+    // Package-private for SpectatorServerTest, which registers its own lobbies.
+    static ConcurrentHashMap<String, Lobby> codeToLobby = new ConcurrentHashMap<>();
 
     private static final Logger logger = LoggerFactory.getLogger(SecretHitlerServer.class);
 
@@ -191,7 +195,7 @@ public class SecretHitlerServer {
      *          {@code userToLobby} map, then removes the lobby from the
      *          {@code codeToLobby} map.
      */
-    private static void removeInactiveLobbies() {
+    static void removeInactiveLobbies() {
         Set<String> removedLobbyCodes = new HashSet<>();
         int removedCount = 0;
         Iterator<Map.Entry<String, Lobby>> itr = codeToLobby.entrySet().iterator();
@@ -369,6 +373,10 @@ public class SecretHitlerServer {
      */
     public static void checkLogin(Context ctx) {
         String lobbyCode = ctx.queryParam(PARAM_LOBBY);
+        if ("true".equals(ctx.queryParam(PARAM_SPECTATOR))) {
+            checkSpectatorLogin(ctx, lobbyCode);
+            return;
+        }
         String name = ctx.queryParam(PARAM_NAME);
         if (lobbyCode == null || name == null || name.isEmpty() || name.isBlank()) {
             ctx.status(400);
@@ -400,6 +408,24 @@ public class SecretHitlerServer {
                 ctx.status(200);
                 ctx.result("Login request valid.");
             }
+        }
+    }
+
+    /**
+     * Checks a spectator's login ({@code spectator=true}), which needs only a lobby code.
+     * 400 without a code, 404 for an unknown lobby (as for a player), otherwise 200: a
+     * spectator may watch a full lobby or a game in progress.
+     */
+    private static void checkSpectatorLogin(Context ctx, String lobbyCode) {
+        if (lobbyCode == null || lobbyCode.isBlank()) {
+            ctx.status(400);
+            ctx.result("Lobby must be specified.");
+        } else if (!codeToLobby.containsKey(lobbyCode)) {
+            ctx.status(404);
+            ctx.result("No such lobby found.");
+        } else {
+            ctx.status(200);
+            ctx.result("Spectator login valid.");
         }
     }
 
@@ -471,7 +497,11 @@ public class SecretHitlerServer {
      *          <p>
      *          Otherwise, connects the user to the lobby.
      */
-    private static void onWebsocketConnect(WsConnectContext ctx) {
+    static void onWebsocketConnect(WsConnectContext ctx) {
+        if ("true".equals(ctx.queryParam(PARAM_SPECTATOR))) {
+            connectSpectator(ctx);
+            return;
+        }
         if (ctx.queryParam(PARAM_LOBBY) == null || ctx.queryParam(PARAM_NAME) == null) {
             logger.debug("A websocket request was missing a parameter and was disconnected.");
             ctx.session.close(StatusCode.PROTOCOL,
@@ -517,6 +547,62 @@ public class SecretHitlerServer {
     }
 
     /**
+     * Connects a spectator ({@code spectator=true}): a connection that watches a lobby and its
+     * game without a seat, with no name. Closes the session with the same error as a player's
+     * join if the lobby does not exist.
+     */
+    private static void connectSpectator(WsConnectContext ctx) {
+        String code = ctx.queryParam(PARAM_LOBBY);
+        if (code == null) {
+            logger.debug("A spectator's websocket request had no lobby and was disconnected.");
+            ctx.session.close(StatusCode.PROTOCOL, "Must have the '" + PARAM_LOBBY + "' parameter.");
+            return;
+        }
+        Lobby lobby = codeToLobby.get(code);
+        if (lobby == null) {
+            logger.debug("Spectator " + ctx.getSessionId() + " FAILED to watch '" + code + "' (no such lobby)");
+            ctx.session.close(StatusCode.PROTOCOL, "The lobby '" + code + "' does not exist.");
+            return;
+        }
+        synchronized (lobby) {
+            lobby.addSpectator(ctx);
+            userToLobby.put(ctx, lobby);
+            lobby.sendStateToAll();
+            logger.info("Spectator " + ctx.getSessionId() + " is watching lobby '" + code + "' ("
+                    + lobby.getSpectatorCount() + " watching).");
+        }
+    }
+
+    /**
+     * Handles a spectator's message. A spectator may only ping and ask for the state; anything
+     * else is logged and dropped, with no reply, so the connection stays open and the game and
+     * the lobby's timeout are untouched.
+     */
+    private static void onSpectatorMessage(WsMessageContext ctx, Lobby lobby) {
+        String command;
+        try {
+            command = new JSONObject(ctx.message()).optString(PARAM_COMMAND);
+        } catch (JSONException e) {
+            command = "(not JSON)";
+        }
+        synchronized (lobby) {
+            switch (command) {
+                case COMMAND_PING:
+                    JSONObject pong = new JSONObject();
+                    pong.put(PARAM_PACKET_TYPE, PACKET_PONG);
+                    ctx.send(pong.toString());
+                    break;
+                case COMMAND_GET_STATE:
+                    lobby.updateSpectator(ctx);
+                    break;
+                default:
+                    logger.warn("Rejected '" + command + "' from spectator " + ctx.getSessionId() + " in lobby '"
+                            + ctx.queryParam(PARAM_LOBBY) + "'.");
+            }
+        }
+    }
+
+    /**
      * Parses a websocket message sent from the user.
      * 
      * @param ctx the WsMessageContext of the websocket.
@@ -536,7 +622,14 @@ public class SecretHitlerServer {
      *          updates every other connected user
      *          with the new state.
      */
-    private static void onWebSocketMessage(WsMessageContext ctx) {
+    static void onWebSocketMessage(WsMessageContext ctx) {
+        // A spectator is known by its connection, whatever its message says.
+        Lobby watched = userToLobby.get(ctx);
+        if (watched != null && watched.isSpectator(ctx)) {
+            onSpectatorMessage(ctx, watched);
+            return;
+        }
+
         // Parse message to JSON object.
         JSONObject message = new JSONObject(ctx.message());
 
@@ -569,7 +662,7 @@ public class SecretHitlerServer {
                 return;
             }
 
-            lobby.resetTimeout();
+            lobby.recordActivity(ctx);
 
             boolean updateUsers = true; // this flag can be disabled by certain commands.
             boolean sendOKMessage = true;
@@ -727,11 +820,16 @@ public class SecretHitlerServer {
      * @modifies this
      * @effects Removes the user from any connected lobbies.
      */
-    private static void onWebSocketClose(WsCloseContext ctx) {
+    static void onWebSocketClose(WsCloseContext ctx) {
         if (userToLobby.containsKey(ctx)) {
             Lobby lobby = userToLobby.get(ctx);
             synchronized (lobby) {
-                if (lobby.hasUser(ctx)) {
+                if (lobby.isSpectator(ctx)) {
+                    lobby.removeSpectator(ctx);
+                    lobby.sendStateToAll();
+                    logger.info("Spectator " + ctx.getSessionId() + " stopped watching ("
+                            + lobby.getSpectatorCount() + " watching).");
+                } else if (lobby.hasUser(ctx)) {
                     lobby.removeUser(ctx);
                     lobby.updateAllUsers();
                 }

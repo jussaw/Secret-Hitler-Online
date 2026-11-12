@@ -303,7 +303,8 @@ test.each(ROWS)("%s", (_title, prev, next, user, expected) => {
   expect(soundEvents(state(prev), state(next), user)).toEqual(expected);
 });
 
-describe("a user who is not in playerOrder", () => {
+// "Zed" is anyone not seated; "" is the name a spectator's client uses (App.tsx).
+describe.each(["Zed", ""])("a user who is not in playerOrder (%j)", (onlooker) => {
   test.each<[string, Partial<GameState>, Partial<GameState>, SoundName[]]>([
     ["hears the game start", { state: S.SETUP }, { president: "Bob" }, ["gameStart"]],
     [
@@ -325,12 +326,12 @@ describe("a user who is not in playerOrder", () => {
       ["policyFascist", "victory"],
     ],
   ])("%s", (_title, prev, next, expected) => {
-    expect(soundEvents(state(prev), state(next), "Zed")).toEqual(expected);
+    expect(soundEvents(state(prev), state(next), onlooker)).toEqual(expected);
   });
 
   test("never hears yourTurn, and nothing throws", () => {
     for (const [, prev, next] of ROWS) {
-      expect(soundEvents(state(prev), state(next), "Zed")).not.toContain("yourTurn");
+      expect(soundEvents(state(prev), state(next), onlooker)).not.toContain("yourTurn");
     }
   });
 });

@@ -18,6 +18,7 @@ function renderScreen(overrides: Partial<GameScreenProps> = {}) {
     liberalPolicies: 0,
     fascistPolicies: 0,
     electionTracker: 0,
+    spectatorCount: 0,
     onEndTerm: vi.fn(),
     ...overrides,
   };
@@ -56,4 +57,39 @@ test("the president ends the term with END TERM", () => {
   expect(button).toBeEnabled();
   fireEvent.click(button);
   expect(props.onEndTerm).toHaveBeenCalledTimes(1);
+});
+
+test("a spectator sees every seat, none their own, and no END TERM", () => {
+  const { container } = render(
+    <GameScreen
+      gameState={makeGameState(NAMES, { state: LobbyState.POST_LEGISLATIVE, president: "Bob" })}
+      user=""
+      spectator={true}
+      spectatorCount={1}
+      showVotes={false}
+      showBusy={true}
+      statusBarText="Waiting for Bob to end their term."
+      drawDeckSize={17}
+      discardDeckSize={0}
+      liberalPolicies={0}
+      fascistPolicies={0}
+      electionTracker={0}
+      onEndTerm={vi.fn()}
+    />
+  );
+  expect(container.querySelectorAll(".table-seat")).toHaveLength(5);
+  expect(container.querySelectorAll("#player-container.highlight")).toHaveLength(0);
+  // The button keeps its box, so the centre lays out as a player's does.
+  // A hidden button has no accessible name, so find it by its text.
+  expect(screen.getByText("END TERM")).toHaveStyle({ visibility: "hidden" });
+});
+
+test("the header shows how many spectators watch, once anyone does", () => {
+  renderScreen({ spectatorCount: 2 });
+  expect(screen.getByRole("status", { name: "2 spectators watching" })).toBeInTheDocument();
+});
+
+test("the header shows no count when nobody watches", () => {
+  renderScreen({ spectatorCount: 0 });
+  expect(screen.queryByRole("status", { name: /watching/ })).toBeNull();
 });

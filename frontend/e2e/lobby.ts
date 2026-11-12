@@ -50,21 +50,40 @@ export async function joinGuests(
 
 /**
  * Starts a game for `players` players as "Host Player": the server adds CPU players up to five,
- * and larger tables get guests. Returns the guests, which the caller closes.
+ * and larger tables get guests. `spectators` raw spectator sockets watch from the lobby on (one by
+ * default, so the players' headers show the spectator count). Returns the guests' and spectators'
+ * sockets, which the caller closes.
  */
-export async function startGame(page: Page, baseURL: string, players: number): Promise<WebSocket[]> {
+export async function startGame(
+  page: Page,
+  baseURL: string,
+  players: number,
+  { spectators = 1 }: { spectators?: number } = {}
+): Promise<WebSocket[]> {
   const lobby = await createLobby(page, "Host Player");
   // CPU players only fill a lobby up to five, so larger tables need guests.
   const guests = players > 5 ? await joinGuests(baseURL, lobby, players - 1) : [];
+  const watchers: WebSocket[] = [];
   try {
+    for (let i = 0; i < spectators; i++) watchers.push(await joinSpectator(baseURL, lobby));
     await expect(page.getByText(`Players (${guests.length + 1}/10)`)).toBeVisible();
     await page.getByRole("button", { name: "START GAME" }).click();
     await expect(page.locator(".game-screen")).toBeVisible();
+    if (spectators > 0) {
+      await expect(page.locator(".game-screen .spectator-count")).toHaveText(String(spectators));
+    }
   } catch (error) {
-    guests.forEach((ws) => ws.close());
+    [...guests, ...watchers].forEach((ws) => ws.close());
     throw error;
   }
-  return guests;
+  return [...guests, ...watchers];
+}
+
+/** The lobby code a page last joined, watched or created (the client keeps it in a cookie). */
+export async function lobbyCode(page: Page): Promise<string> {
+  const cookie = (await page.context().cookies()).find((c) => c.name === "lobby");
+  if (!cookie) throw new Error("the page has joined no lobby");
+  return cookie.value;
 }
 
 /**
@@ -80,4 +99,28 @@ export async function settle(page: Page): Promise<void> {
   });
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
   await page.waitForFunction(() => Array.from(document.images).every((img) => img.complete));
+}
+
+/** Opens a raw spectator socket on `lobby` that pings until closed; the caller closes it. */
+export async function joinSpectator(baseURL: string, lobby: string): Promise<WebSocket> {
+  const url = new URL("/game", baseURL);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  url.searchParams.set("lobby", lobby);
+  url.searchParams.set("spectator", "true");
+  const ws = new WebSocket(url);
+  await new Promise<void>((resolve, reject) => {
+    ws.addEventListener("open", () => resolve(), { once: true });
+    ws.addEventListener("error", () => reject(new Error("the spectator could not connect")), { once: true });
+  });
+  const ping = setInterval(() => ws.send(JSON.stringify({ name: "", lobby, command: "ping" })), PING_MS);
+  ws.addEventListener("close", () => clearInterval(ping), { once: true });
+  return ws;
+}
+
+/** Watches `lobby` from the login form, and waits for its lobby or game page. */
+export async function watchLobby(page: Page, lobby: string): Promise<void> {
+  await page.goto("/");
+  await page.getByRole("textbox", { name: "Lobby" }).fill(lobby);
+  await page.getByRole("button", { name: "WATCH" }).click();
+  await page.locator("#linkText, .game-screen").first().waitFor();
 }

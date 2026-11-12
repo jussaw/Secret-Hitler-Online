@@ -206,7 +206,8 @@ export function usePlayerTiles(inputProps: PlayerDisplayProps): JSX.Element[] {
     gameState: GameState,
     playerName: string
   ): boolean => {
-    const myRole = gameState.players[props.user].id;
+    // A spectator is not among the players, and knows no role until the game is over.
+    const myRole = gameState.players[props.user]?.id;
     const otherRole = gameState.players[playerName].id;
 
     if (otherRole === undefined) {
@@ -214,6 +215,9 @@ export function usePlayerTiles(inputProps: PlayerDisplayProps): JSX.Element[] {
     }
     if (isVictoryState(gameState.state)) {
       return true;
+    }
+    if (myRole === undefined) {
+      return false; // a spectator sees roles only when the game is over
     }
     if (
       myRole === Role.FASCIST ||

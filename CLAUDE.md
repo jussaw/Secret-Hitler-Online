@@ -19,37 +19,52 @@ keeps credit to upstream and to the board game's creators.
   `src/test/java/game/` and `src/test/java/server/`. Lobbies are backed up to a SQLite file at
   `DATABASE_PATH` (unset = no persistence). The server also serves the built frontend from the
   classpath directory `/public`, which `processResources` fills from `frontend/dist` when it exists;
-  CORS is enabled only in debug mode.
+  CORS is enabled only in debug mode. Spectators connect with `/game?lobby=CODE&spectator=true` and
+  no `name` (checked first with `/check-login?lobby=CODE&spectator=true`). In `Lobby` they are a set
+  of connections with no seat, name or icon: never counted as users, never backed up, and they do
+  not keep a lobby from timing out. Secrets are filtered on the server only:
+  `GameToJSONConverter.convertForSpectator` sends no role, hand or peek until the game is over.
+  Every command from a spectator except `ping` and `get-state` is logged and dropped, and every
+  packet, lobby or game, carries `spectatorCount`. `Lobby` pins its `serialVersionUID`, so backups
+  written by earlier releases still load (`DatabaseBackupTest`).
 - `frontend/`: React 18 and TypeScript 5, built with Vite and tested with Vitest. The entry is
   `src/main.tsx`, with `index.html` at the `frontend/` root. `src/App.tsx` owns the WebSocket, all
   state, the overlays, and the login and lobby pages; prompts live in `src/custom-alert/`. The game
   page is `src/game/`: `GameScreen` (markup and the table grid), `TableSeats` and `seatPositions`
-  (seat geometry, unit tested). Phones and windows narrower than 5:4 get a stacked, scrolling
-  layout from `@media (max-width: 768px), (aspect-ratio < 5/4)` in `GameScreen.css` and
-  `TableSeats.css`. Among those, windows at least 700px wide (half-screen desktop windows, tablets
-  held upright) fit one screen instead, with round-table-size seats, from a second block,
-  `(min-width: 700px) and (aspect-ratio < 5/4)`, in the same two files. Prompts are a fixed
-  overlay whose box scrolls (`CustomAlert.css`). Sounds are in `src/sound/`: `SoundManager`
-  (Web Audio; the `AudioContext` is created in the first trusted gesture, so `play()` before it
-  is a silent no-op; volume and mute in `localStorage` under `sounds`; every `play()` dispatches a
-  `sound-play` event, which tests record), `soundEvents` (a pure function from the previous and
-  next game state to sound names, and `SOUND_CUES`, the queued animation each sound waits for;
-  `App` puts each sound into its animation queue just before that animation) and `SoundControl`
-  (the speaker button and volume slider in all three headers, above the prompt overlay, with
-  Lucide icons from `lucide-react`). The clips are in `src/assets/sounds/`, an Ogg Opus and an
-  MP3 per sound, each credited in `docs/SOUND-CREDITS.md`. Playwright tests live in
+  (seat geometry, unit tested). Phones and windows narrower than 5:4 get a stacked, scrolling layout
+  from `@media (max-width: 768px), (aspect-ratio < 5/4)` in `GameScreen.css` and `TableSeats.css`.
+  Among those, windows at least 700px wide (half-screen desktop windows, tablets held upright) fit
+  one screen instead, with round-table-size seats, from a second block,
+  `(min-width: 700px) and (aspect-ratio < 5/4)`, in the same two files. Prompts are a fixed overlay
+  whose box scrolls (`CustomAlert.css`). Sounds are in `src/sound/`: `SoundManager` (Web Audio; the
+  `AudioContext` is created in the first trusted gesture, so `play()` before it is a silent no-op;
+  volume and mute in `localStorage` under `sounds`; every `play()` dispatches a `sound-play` event,
+  which tests record), `soundEvents` (a pure function from the previous and next game state to sound
+  names, and `SOUND_CUES`, the queued animation each sound waits for; `App` puts each sound into its
+  animation queue just before that animation) and `SoundControl` (the speaker button and volume
+  slider in all three headers, above the prompt overlay, with Lucide icons from `lucide-react`). The
+  clips are in `src/assets/sounds/`, an Ogg Opus and an MP3 per sound, each credited in
+  `docs/SOUND-CREDITS.md`. Spectators are in `src/spectator/`: `spectatorStatus` (the status lines a
+  spectator gets in place of prompts, naming the players) and `SpectatorCount` (Lucide's eye and the
+  number, at the left of the lobby and game headers). A spectator's name is `""`, and the
+  `spectator` cookie takes a reload straight back to watching. Playwright tests live in
   `frontend/e2e/`, in four projects: `desktop` (`no-scroll.spec.ts` at the five desktop sizes and
-  the narrow windows in `NARROW_WINDOWS`), `firefox` (the same no-scroll tests, since Firefox
-  rounds zoomed seats differently, and the header-fit test of `sounds.spec.ts`), and
-  `phone-360`/`phone-412` (Galaxy S8 and Pixel 7 emulation, `phone.spec.ts`).
-  `prompts.spec.ts` runs in `desktop` and both phone projects; it opens every prompt from a
-  scripted game socket (`e2e/fakeGame.ts`). `sounds.spec.ts` runs in every project: no sound and
-  no `AudioContext` before the first trusted gesture, each sound in step with its animation, and
-  the header control's fit, touch targets, keyboard use and saved settings. Shared helpers are `e2e/lobby.ts` and
-  `e2e/layout.ts`. `App.css` hides `overflow-x` on `html` and `body`, so horizontal overflow shows
+  the narrow windows in `NARROW_WINDOWS`), `firefox` (the same no-scroll tests, since Firefox rounds
+  zoomed seats differently, and the header-fit tests of `sounds.spec.ts` and `spectator.spec.ts`),
+  and `phone-360`/`phone-412` (Galaxy S8 and Pixel 7 emulation, `phone.spec.ts`). `prompts.spec.ts`
+  runs in `desktop` and both phone projects; it opens every prompt from a scripted game socket
+  (`e2e/fakeGame.ts`). `sounds.spec.ts` runs in every project: no sound and no `AudioContext` before
+  the first trusted gesture, each sound in step with its animation, and the header control's fit,
+  touch targets, keyboard use and saved settings. `spectator.spec.ts` plays a scripted game to a
+  spectator (no prompt before the victory screen, the status lines, the sounds), plays a real game
+  whose spectator frames it scans for secrets (`e2e/driveGame.ts` seats raw-socket players;
+  `e2e/secrets.ts` mirrors the backend's list), and checks the count fits every header. `startGame`
+  (`e2e/lobby.ts`) joins one raw spectator by default, and the no-scroll and phone tests also
+  measure a spectator's view. Shared helpers are `e2e/lobby.ts`, `e2e/layout.ts` and
+  `e2e/soundLog.ts`. `App.css` hides `overflow-x` on `html` and `body`, so horizontal overflow shows
   only in `body.scrollWidth`, and `body` scrolls vertically by itself (`pageHeight` measures both).
-  The client talks to its own origin (`src/constants/serverUrls.ts`; `wss:` on `https:` pages) unless
-  `VITE_SERVER_ADDRESS` is set, and the dev server proxies the backend paths to `BACKEND_URL`
+  The client talks to its own origin (`src/constants/serverUrls.ts`; `wss:` on `https:` pages)
+  unless `VITE_SERVER_ADDRESS` is set, and the dev server proxies the backend paths to `BACKEND_URL`
   (default `http://localhost:4040`). `VITE_*` variables live in `.env.development` (dev server only:
   `VITE_DEBUG`) and `.env.dev` (`--mode dev`), typed in `src/vite-env.d.ts`.
 - `docs/`: `PLAN.md` (phased plan and progress), `superpowers/specs/` (design),
@@ -116,8 +131,8 @@ documents the file's name (`readme`, `development`, `claude`).
 
 ## Constraints
 
-- No new art (the header's speaker icons come from the Lucide icon pack). Sound clips are CC0 only
-  and listed in `docs/SOUND-CREDITS.md`.
+- No new art (the header's speaker icons and the spectator count's eye come from the Lucide icon
+  pack). Sound clips are CC0 only and listed in `docs/SOUND-CREDITS.md`.
 - The WebSocket protocol stays backward compatible for players; spectator support only adds
   fields and a query parameter.
 - Deploys go through the host's deploy tooling, never `docker compose up` from a checkout.

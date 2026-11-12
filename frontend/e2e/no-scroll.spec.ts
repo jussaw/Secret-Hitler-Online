@@ -9,7 +9,7 @@ import {
   pageHeight,
   smallTargets,
 } from "./layout";
-import { settle, startGame } from "./lobby";
+import { lobbyCode, settle, startGame, watchLobby } from "./lobby";
 
 // The longest status message the game shows; it wraps to two lines at every desktop size.
 const LONG_STATUS =
@@ -242,3 +242,69 @@ for (const players of [5, 7, 10]) {
     }
   });
 }
+
+test("a spectator's view of 10 players fits every desktop size and narrow window", async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  test.setTimeout(240_000);
+  // The host plays in a page of its own; this page watches, with the project's browser settings.
+  const host = await browser.newPage();
+  const sockets = await startGame(host, baseURL!, 10, { spectators: 0 });
+  try {
+    await watchLobby(page, await lobbyCode(host));
+    await expect(page.locator(".game-screen .spectator-count")).toHaveText("1");
+    await settle(page);
+    expect(await page.locator(".table-seat #player-container.highlight").count(), "no seat is the viewer's").toBe(0);
+
+    for (const size of DESKTOP_SIZES) {
+      await page.setViewportSize(size);
+      const at = `${size.width}x${size.height}`;
+      expect(await pageHeight(page), `scrollHeight at ${at}`).toBeLessThanOrEqual(size.height);
+      expect((await overflowX(page)).scrollWidth, `scrollWidth at ${at}`).toBeLessThanOrEqual(size.width);
+      const positions = await page.$$eval(".table-seat", (seats) => seats.map((s) => getComputedStyle(s).position));
+      expect(new Set(positions), `the round table at ${at}`).toEqual(new Set(["absolute"]));
+      const table = await measureTable(page);
+      expect(table.seats, `seats at ${at}`).toHaveLength(10);
+      table.seats.forEach((seat, i) => {
+        expect(seat.left, `seat ${i} left at ${at}`).toBeGreaterThanOrEqual(0);
+        expect(seat.top, `seat ${i} top at ${at}`).toBeGreaterThanOrEqual(0);
+        expect(seat.right, `seat ${i} right at ${at}`).toBeLessThanOrEqual(size.width);
+        expect(seat.bottom, `seat ${i} bottom at ${at}`).toBeLessThanOrEqual(size.height);
+        expect(overlaps(seat, table.centre), `seat ${i} overlaps the centre at ${at}`).toBe(false);
+        table.seats.slice(i + 1).forEach((other, j) => {
+          expect(overlaps(seat, other), `seats ${i} and ${i + 1 + j} overlap at ${at}`).toBe(false);
+        });
+      });
+      for (const row of table.centreRows) {
+        expect(row.top, `centre row top at ${at}`).toBeGreaterThanOrEqual(table.centre.top - 1);
+        expect(row.bottom, `centre row bottom at ${at}`).toBeLessThanOrEqual(table.centre.bottom + 1);
+      }
+    }
+
+    for (const size of NARROW_WINDOWS) {
+      await page.setViewportSize(size);
+      const at = `${size.width}x${size.height}`;
+      expect(await pageHeight(page), `scrollHeight at ${at}`).toBeLessThanOrEqual(size.height);
+      const overflow = await overflowX(page);
+      expect(overflow.scrollWidth, `scrollWidth at ${at}`).toBeLessThanOrEqual(size.width);
+      expect(overflow.offscreen, `past the edge at ${at}`).toEqual([]);
+      const table = await measureTable(page);
+      table.seats.forEach((seat, i) =>
+        table.seats.slice(i + 1).forEach((other, j) => {
+          expect(overlaps(seat, other), `seats ${i} and ${i + 1 + j} overlap at ${at}`).toBe(false);
+        })
+      );
+      const lastSeat = Math.max(...table.seats.map((s) => s.bottom));
+      expect(lastSeat, `seats above the status at ${at}`).toBeLessThanOrEqual(table.status.top + 1);
+      expect(table.status.bottom, `status above the boards at ${at}`).toBeLessThanOrEqual(table.boards.top + 1);
+      expect(table.boards.bottom, `boards bottom at ${at}`).toBeLessThanOrEqual(size.height);
+      // The hidden END TERM is no touch target.
+      expect(await smallTargets(page, ".game-screen"), `small touch targets at ${at}`).toEqual([]);
+    }
+  } finally {
+    sockets.forEach((ws) => ws.close());
+    await host.close();
+  }
+});
