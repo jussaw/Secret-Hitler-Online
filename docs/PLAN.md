@@ -33,8 +33,8 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 |---|---|---|
 | 1. Housekeeping | `phase-1-housekeeping` | done |
 | 2. Frontend modernization | `phase-2-vite` | done |
-| 3. Persistence, packaging, first deploy | `phase-3-deploy` | in progress |
-| 4. Round-table game screen | `phase-4-round-table` | not started |
+| 3. Persistence, packaging, first deploy | `phase-3-deploy` | done |
+| 4. Round-table game screen | `phase-4-round-table` | in progress |
 | 5. Phone layout | `phase-5-phone` | not started |
 | 6. Sounds | `phase-6-sounds` | not started |
 | 7. Spectators | `phase-7-spectators` | not started |
@@ -252,13 +252,13 @@ TLS ends at a proxy in front of the host.
 - [x] `https://<subdomain>/ping` answers (`OK`)
 - [x] A game with two real browsers plus CPU players completes over `wss` (`wss://<subdomain>/game`, liberal win, mid-game reload and rejoin)
 - [x] `docker restart` of the container mid-game; players rejoin and continue (backup stored on shutdown, loaded on start; both rejoined via JOIN; #13 explains a transient 404 right after start)
-- [ ] Pushing to `development` produces a new image that the host picks up (checked after this PR merges; the host checks for new images daily)
-- [ ] PR merged into `development`
+- [ ] Pushing to `development` produces a new image that the host picks up (checked after this PR merges; the host checks for new images daily. 2026-11-12: CI run 43175719551 published `:latest` for `bb968e1`, but the host still runs the previous image because its daily pull has not happened yet)
+- [x] PR merged into `development` (#14)
 
 **Start Phase 4: Round-table game screen**
 
-- [ ] Progress table: Phase 3 set to "done", Phase 4 set to "in progress"
-- [ ] `git checkout development && git pull`, then `git checkout -b phase-4-round-table`
+- [x] Progress table: Phase 3 set to "done", Phase 4 set to "in progress"
+- [x] `git checkout development && git pull`, then `git checkout -b phase-4-round-table`
 - [ ] Re-read Phase 4 below against the code as it now stands; fix any file paths or line numbers that moved
 - [ ] Write the Phase 4 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 4 heading
 - [ ] Begin Task 4.1
