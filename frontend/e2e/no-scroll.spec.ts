@@ -1,10 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
+import { MAX_WIDE_GRID_COLUMNS, seatColumns } from "../src/game/seatPositions";
 import {
   DESKTOP_SIZES,
   NARROW_WINDOWS,
   labelShift,
   overflowX,
   overlaps,
+  pageHeight,
   smallTargets,
 } from "./layout";
 import { settle, startGame } from "./lobby";
@@ -73,8 +75,7 @@ for (const players of [5, 7, 10]) {
       for (const size of DESKTOP_SIZES) {
         await page.setViewportSize(size);
         const at = `${size.width}x${size.height}`;
-        const scrollHeight = await page.evaluate(() => document.documentElement.scrollHeight);
-        expect(scrollHeight, `scrollHeight at ${at}`).toBeLessThanOrEqual(size.height);
+        expect(await pageHeight(page), `scrollHeight at ${at}`).toBeLessThanOrEqual(size.height);
         const { scrollWidth } = await overflowX(page);
         expect(scrollWidth, `scrollWidth at ${at}`).toBeLessThanOrEqual(size.width);
 
@@ -182,8 +183,7 @@ for (const players of [5, 7, 10]) {
       for (const size of NARROW_WINDOWS) {
         await page.setViewportSize(size);
         const at = `${size.width}x${size.height}`;
-        const scrollHeight = await page.evaluate(() => document.documentElement.scrollHeight);
-        expect(scrollHeight, `scrollHeight at ${at}`).toBeLessThanOrEqual(size.height);
+        expect(await pageHeight(page), `scrollHeight at ${at}`).toBeLessThanOrEqual(size.height);
         const overflow = await overflowX(page);
         expect(overflow.scrollWidth, `scrollWidth at ${at}`).toBeLessThanOrEqual(size.width);
         expect(overflow.offscreen, `past the edge at ${at}`).toEqual([]);
@@ -204,6 +204,11 @@ for (const players of [5, 7, 10]) {
             );
           });
         });
+        const rows = new Set(table.seats.map((s) => Math.round(s.top))).size;
+        expect(rows, `rows of seats at ${at}`).toBe(
+          Math.ceil(players / seatColumns(players, MAX_WIDE_GRID_COLUMNS))
+        );
+
         // Players, then status and END TERM, then the boards with the decks beside them.
         const lastSeat = Math.max(...table.seats.map((s) => s.bottom));
         expect(lastSeat, `seats above the status at ${at}`).toBeLessThanOrEqual(
@@ -218,6 +223,8 @@ for (const players of [5, 7, 10]) {
         expect(table.decks.left, `decks beside the boards at ${at}`).toBeGreaterThanOrEqual(
           table.boards.right - 1
         );
+        expect(table.boards.bottom, `boards bottom at ${at}`).toBeLessThanOrEqual(size.height);
+        expect(table.decks.bottom, `decks bottom at ${at}`).toBeLessThanOrEqual(size.height);
         for (const card of table.deckCards) {
           expect(overlaps(card, table.boards), `deck card over the boards at ${at}`).toBe(false);
           expect(overlaps(card, table.status), `deck card over the status at ${at}`).toBe(false);

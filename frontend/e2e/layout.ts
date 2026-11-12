@@ -22,6 +22,9 @@ export const NARROW_WINDOWS = [
   { width: 744, height: 1133 }, // iPad mini, upright
   { width: 700, height: 900 }, // the narrowest
   { width: 800, height: 700 }, // a short window
+  // Dragged windows, at sizes where Firefox rounds each zoomed seat's width up.
+  { width: 903, height: 903 },
+  { width: 990, height: 793 },
 ];
 
 /** Touch targets on phones are at least this many CSS px wide and tall. */
@@ -29,8 +32,24 @@ export const MIN_TARGET = 44;
 
 export type Box = { left: number; right: number; top: number; bottom: number };
 
+/** Firefox lays boxes out unrounded, so boxes that touch can share a few millionths of a px. */
+const TOUCHING = 0.01;
+
 export const overlaps = (a: Box, b: Box) =>
-  a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+  a.left < b.right - TOUCHING &&
+  b.left < a.right - TOUCHING &&
+  a.top < b.bottom - TOUCHING &&
+  b.top < a.bottom - TOUCHING;
+
+/**
+ * How far the page scrolls vertically. `body` scrolls by itself (App.css hides its overflow-x, so
+ * its overflow-y is auto), so a page that fits the window can still grow `body`.
+ */
+export function pageHeight(page: Page): Promise<number> {
+  return page.evaluate(() =>
+    Math.max(document.documentElement.scrollHeight, document.body.scrollHeight)
+  );
+}
 
 /**
  * Horizontal overflow. App.css hides overflow-x on html and body, so body clips anything too

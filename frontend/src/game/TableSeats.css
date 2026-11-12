@@ -57,8 +57,9 @@
    monitors, tablets held upright): round-table-size seats, seatColumns(count, 5) to a row, so the
    game fits one screen. GameScreen.css lays out the rest at the same breakpoint. */
 @media (min-width: 700px) and (aspect-ratio < 5/4) {
+    /* 1px spare: Firefox rounds each zoomed seat's width up, and the row would wrap a seat early. */
     .table-seats {
-        width: calc(var(--seat-columns-wide) * var(--seat-width) * var(--seat-scale));
+        width: calc(var(--seat-columns-wide) * var(--seat-width) * var(--seat-scale) + 1px);
     }
 
     /* Unlike the round table's transform, zoom shrinks the seat's layout box too. */
