@@ -67,10 +67,10 @@ describe("PlayerRoster", () => {
     expect(row("Cat").querySelector(".roster-name img")!.getAttribute("alt")).toBe("Hitler");
   });
 
-  test("an executed player is darkened and shows no vote or busy", () => {
+  test("an executed player is darkened and shows no vote", () => {
     const game = makeGameState(NAMES, {
       state: LobbyState.CHANCELLOR_VOTING,
-      userVotes: { Ann: true, Ben: false, Dan: true, Eve: true },
+      userVotes: { Ann: true, Ben: false, Cat: true, Dan: true, Eve: true },
     });
     game.players.Cat.alive = false;
     const { row } = renderRoster(game, "Ann", true, true);
@@ -79,7 +79,15 @@ describe("PlayerRoster", () => {
     act(() => {
       vi.advanceTimersByTime(1000);
     });
+    expect(row("Dan").querySelector(".roster-vote")).not.toBeNull();
     expect(row("Cat").querySelector(".roster-vote")).toBeNull();
+  });
+
+  test("an executed player is never busy while others are", () => {
+    const game = makeGameState(NAMES, { state: LobbyState.CHANCELLOR_VOTING, userVotes: { Ann: true } });
+    game.players.Cat.alive = false;
+    const { row } = renderRoster(game, "Ann", false, true);
+    expect(row("Ben").querySelector(".roster-busy")).not.toBeNull();
     expect(row("Cat").querySelector(".roster-busy")).toBeNull();
   });
 
