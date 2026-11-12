@@ -13,6 +13,7 @@ function renderScreen(overrides: Partial<GameScreenProps> = {}) {
     showVotes: false,
     showBusy: true,
     statusBarText: "Waiting for president to nominate a chancellor.",
+    statusStep: null,
     drawDeckSize: 17,
     discardDeckSize: 0,
     liberalPolicies: 0,
@@ -31,9 +32,10 @@ test("shows every player and the status text", () => {
   for (const name of NAMES) {
     expect(screen.getByText(name)).toBeInTheDocument();
   }
-  expect(
-    screen.getByText("Waiting for president to nominate a chancellor.")
-  ).toBeInTheDocument();
+  // The tracker wraps "president" and "chancellor" in spans, so read the line's whole text.
+  expect(document.getElementById("status-bar-text")).toHaveTextContent(
+    "Waiting for president to nominate a chancellor."
+  );
 });
 
 test("END TERM is disabled outside the post-legislative phase", () => {
@@ -69,6 +71,7 @@ test("a spectator sees every seat, none their own, and no END TERM", () => {
       showVotes={false}
       showBusy={true}
       statusBarText="Waiting for Bob to end their term."
+      statusStep={null}
       drawDeckSize={17}
       discardDeckSize={0}
       liberalPolicies={0}

@@ -556,8 +556,8 @@ Files: new `frontend/src/game/RoundTracker.tsx`, `RoundTracker.css`, `RoundTrack
 
 Files: `frontend/src/App.tsx` (state 179 and 210, `queueStatusMessage` 1817 and its callers, `showVotes` 1693), `frontend/src/game/GameScreen.tsx`, new `frontend/e2e/tracker.spec.ts`
 
-- [ ] Browser tests first: the vote result keeps ELECTION lit; end of term after a failed vote lights ELECTION
-- [ ] `App` queues a step with every status line; `GameScreen` shows `RoundTracker` in place of `StatusBar`
+- [x] Browser tests first: the vote result keeps ELECTION lit; end of term after a failed vote lights ELECTION
+- [x] `App` queues a step with every status line; `GameScreen` shows `RoundTracker` in place of `StatusBar`
 
 ### Task 8.7: Desktop and tall-window layout
 

@@ -1,9 +1,10 @@
 import Board from "../board/Board";
 import Deck from "../board/Deck";
-import StatusBar from "../status-bar/StatusBar";
 import { GameState, LobbyState } from "../types";
 import PlayerPolicyStatus from "../util/PlayerPolicyStatus";
 import "./GameScreen.css";
+import RoundTracker from "./RoundTracker";
+import { RoundStep } from "./roundStep";
 import { centreBox } from "./seatPositions";
 import TableSeats from "./TableSeats";
 import SoundControl from "../sound/SoundControl";
@@ -15,6 +16,8 @@ export type GameScreenProps = {
   showVotes: boolean;
   showBusy: boolean;
   statusBarText: string;
+  /** The round step lit with the status line. */
+  statusStep: RoundStep | null;
   drawDeckSize: number;
   discardDeckSize: number;
   /** Policy counts and the election tracker are animated by App, so they lag gameState. */
@@ -86,7 +89,7 @@ export default function GameScreen(props: GameScreenProps) {
           </div>
 
           <div className="game-status">
-            <StatusBar>{props.statusBarText}</StatusBar>
+            <RoundTracker step={props.statusStep} text={props.statusBarText} />
             <button
               disabled={!canEndTerm}
               onClick={props.onEndTerm}
