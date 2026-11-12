@@ -60,7 +60,9 @@ keeps credit to upstream and to the board game's creators.
   whose spectator frames it scans for secrets (`e2e/driveGame.ts` seats raw-socket players;
   `e2e/secrets.ts` mirrors the backend's list), and checks the count fits every header. `startGame`
   (`e2e/lobby.ts`) joins one raw spectator by default, and the no-scroll and phone tests also
-  measure a spectator's view. Shared helpers are `e2e/lobby.ts`, `e2e/layout.ts` and
+  measure a spectator's view. The server closes a `/game` socket after 30 s with no traffic either
+  way, so the client pings every 20 s (`PING_INTERVAL`); `connection.spec.ts` (`desktop`) holds a
+  quiet lobby's socket open for 35 s. Shared helpers are `e2e/lobby.ts`, `e2e/layout.ts` and
   `e2e/soundLog.ts`. `App.css` hides `overflow-x` on `html` and `body`, so horizontal overflow shows
   only in `body.scrollWidth`, and `body` scrolls vertically by itself (`pageHeight` measures both).
   The client talks to its own origin (`src/constants/serverUrls.ts`; `wss:` on `https:` pages)
