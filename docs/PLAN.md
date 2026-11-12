@@ -360,7 +360,7 @@ Files: new `frontend/e2e/phone.spec.ts` and `frontend/e2e/prompts.spec.ts` (buil
 
 ### Task 5.4: Narrow windows and upright tablets
 
-Files: `frontend/src/game/GameScreen.css`, `frontend/src/game/TableSeats.css`, `frontend/src/game/TableSeats.tsx`, `frontend/src/game/seatPositions.ts` (`seatColumns`); browser test `frontend/e2e/no-scroll.spec.ts`, with the window sizes in `frontend/e2e/layout.ts`
+Files: `frontend/src/game/GameScreen.css`, `frontend/src/game/TableSeats.css`, `frontend/src/game/TableSeats.tsx`, `frontend/src/game/seatPositions.ts` (`seatColumns`); browser test `frontend/e2e/no-scroll.spec.ts`, with the window sizes in `frontend/e2e/layout.ts`, also run in Firefox by a `firefox` project (`frontend/playwright.config.ts`, `.github/workflows/ci.yml`)
 
 Tasks 5.1-5.3 give every window narrower than 5:4 the phone layout, with full-size tiles. With ten players, half a 1080p screen (960x1080) shows only tiles on its first screen, and the boards start at y 1037; held upright, an iPad Air (820x1180) starts them at y 991.
 
