@@ -20,6 +20,10 @@ export type GameScreenProps = {
   liberalPolicies: number;
   fascistPolicies: number;
   electionTracker: number;
+  /** A spectator watches: END TERM keeps its place but is hidden. */
+  spectator?: boolean;
+  /** How many spectators are watching, shown in the header when above zero. */
+  spectatorCount: number;
   onEndTerm: () => void;
 };
 
@@ -81,7 +85,11 @@ export default function GameScreen(props: GameScreenProps) {
 
           <div className="game-status">
             <StatusBar>{props.statusBarText}</StatusBar>
-            <button disabled={!canEndTerm} onClick={props.onEndTerm}>
+            <button
+              disabled={!canEndTerm}
+              onClick={props.onEndTerm}
+              style={props.spectator ? { visibility: "hidden" } : undefined}
+            >
               END TERM
             </button>
           </div>

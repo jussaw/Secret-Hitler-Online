@@ -81,3 +81,27 @@ export async function settle(page: Page): Promise<void> {
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
   await page.waitForFunction(() => Array.from(document.images).every((img) => img.complete));
 }
+
+/** Opens a raw spectator socket on `lobby` that pings until closed; the caller closes it. */
+export async function joinSpectator(baseURL: string, lobby: string): Promise<WebSocket> {
+  const url = new URL("/game", baseURL);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  url.searchParams.set("lobby", lobby);
+  url.searchParams.set("spectator", "true");
+  const ws = new WebSocket(url);
+  await new Promise<void>((resolve, reject) => {
+    ws.addEventListener("open", () => resolve(), { once: true });
+    ws.addEventListener("error", () => reject(new Error("the spectator could not connect")), { once: true });
+  });
+  const ping = setInterval(() => ws.send(JSON.stringify({ name: "", lobby, command: "ping" })), PING_MS);
+  ws.addEventListener("close", () => clearInterval(ping), { once: true });
+  return ws;
+}
+
+/** Watches `lobby` from the login form, and waits for its lobby or game page. */
+export async function watchLobby(page: Page, lobby: string): Promise<void> {
+  await page.goto("/");
+  await page.getByRole("textbox", { name: "Lobby" }).fill(lobby);
+  await page.getByRole("button", { name: "WATCH" }).click();
+  await page.locator("#linkText, .game-screen").first().waitFor();
+}

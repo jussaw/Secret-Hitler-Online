@@ -487,18 +487,18 @@ Today the socket requires a `name` query parameter, and the server closes it wit
 
 Files: `frontend/src/App.tsx` (login form `renderLoginPage` 646, `tryOpenWebSocket` 285, cookies at 595-596 and 627-628, `renderLobbyPage` 836, `onGameStateChanged` 991, whose role reveal (1096) and vote prompt (1129) index `players[name]` and throw for a spectator), `frontend/src/player/PlayerDisplay.tsx` (`shouldShowRole` throws for a spectator too), `frontend/src/types/`, `frontend/src/game/GameScreen.tsx`, new `frontend/src/spectator/`; browser tests in new `frontend/e2e/spectator.spec.ts`, with spectator views added to `no-scroll.spec.ts` and `phone.spec.ts`
 
-- [ ] "Watch" button beside Join on the login form; needs only a lobby code
-- [ ] Spectator flag stored in a cookie so refresh and reconnect keep spectating
-- [ ] Spectators see the lobby page read-only before the game starts, then `GameScreen`; no prompts are queued for them; status text describes what the table is doing
+- [x] "Watch" button beside Join on the login form; needs only a lobby code
+- [x] Spectator flag stored in a cookie so refresh and reconnect keep spectating
+- [x] Spectators see the lobby page read-only before the game starts, then `GameScreen`; no prompts are queued for them; status text describes what the table is doing
 - [ ] Spectator count shown in the lobby and on the game screen when above zero
-- [ ] Sounds play for spectators
+- [x] Sounds play for spectators
 - [ ] `CLAUDE.md` updated: spectator handshake parameter and the server-side filtering rule
 
 **Phase 7 acceptance**
 
 - [x] Backend tests pass
 - [ ] e2e: a spectator joins a running game, the WebSocket frames it receives contain no role or hand fields before game end, and layout tests still pass with a spectator viewport
-- [ ] A spectator joining mid-game and refreshing stays a spectator
+- [x] A spectator joining mid-game and refreshing stays a spectator
 - [ ] PR merged into `development` and deployed
 
 ---

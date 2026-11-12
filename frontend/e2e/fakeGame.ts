@@ -251,3 +251,39 @@ export const PROMPTS: { name: string; packets: object[]; button: string }[] = [
     button: "RETURN TO LOBBY",
   },
 ];
+
+/**
+ * Watches the scripted lobby "FAKE" through the login form's WATCH button, and sends the lobby
+ * packet of TEN with one spectator. `send` goes to the newest socket; `urls` lists every socket
+ * the page opened, so a test can check each was a spectator's.
+ */
+export async function openFakeWatch(page: Page): Promise<FakeGame & { urls: string[] }> {
+  await page.route(/\/check-login\?/, (route) => route.fulfill({ body: "Spectator login valid." }));
+  const urls: string[] = [];
+  let latest: WebSocketRoute | undefined;
+  let connect!: () => void;
+  const connected = new Promise<void>((resolve) => (connect = resolve));
+  await page.routeWebSocket(/\/game\?/, (ws) => {
+    ws.onMessage(() => {});
+    urls.push(ws.url());
+    latest = ws;
+    connect();
+  });
+
+  await page.goto("/");
+  await page.getByRole("textbox", { name: "Lobby" }).fill("FAKE");
+  await page.getByRole("button", { name: "WATCH" }).click();
+  await connected;
+  const icon = Object.fromEntries(TEN.map((name, i) => [name, `p${i + 1}`]));
+  latest!.send(JSON.stringify({ type: "lobby", usernames: TEN, icon, spectatorCount: 1 }));
+  await page.getByText(`Players (${TEN.length}/10)`).waitFor();
+  return { send: (packet) => latest!.send(JSON.stringify(packet)), urls };
+}
+
+/** A game-state packet as a spectator receives it: no roles, one spectator watching. */
+export function spectatorPacket(overrides: Partial<GameState> = {}, dead: string[] = []): object {
+  return { ...gamePacket(overrides, {}, dead), spectatorCount: 1 };
+}
+
+/** Every role, as everyone sees them at the end of a game. */
+export const EVERY_ROLE = ALL_ROLES;

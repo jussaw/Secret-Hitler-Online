@@ -50,6 +50,8 @@ import {
   SERVER_PING,
   PARAM_ICON,
   PARAM_INVESTIGATION,
+  PARAM_SPECTATOR,
+  PARAM_SPECTATOR_COUNT,
 } from "./constants";
 
 import PlayerDisplay, {
@@ -91,6 +93,7 @@ import {
 import { sounds, type SoundName } from "./sound/SoundManager";
 import SoundControl from "./sound/SoundControl";
 import { lobbySounds, SOUND_CUES, soundEvents, type Cue } from "./sound/soundEvents";
+import { policyText, resultText, trackerText, waitingText } from "./spectator/spectatorStatus";
 
 const EVENT_BAR_FADE_OUT_DURATION = 500;
 const CUSTOM_ALERT_FADE_DURATION = 1000;
@@ -122,6 +125,10 @@ const DEFAULT_GAME_STATE: GameState = {
 
 const COOKIE_NAME = "name";
 const COOKIE_LOBBY = "lobby";
+/** "true" while this browser watches COOKIE_LOBBY as a spectator, so a refresh goes back to it. */
+const COOKIE_SPECTATOR = "spectator";
+/** How long a spectator's status line shows what happened, in place of a player's alert. */
+const SPECTATOR_RESULT_MS = 3000;
 
 if (DEBUG) {
   console.warn("Running in debug mode.");
@@ -141,6 +148,9 @@ type AppState = {
   createLobbyError: string;
   name: string;
   lobby: string;
+  /** Watching without a seat: name is "", and no prompt is ever queued. */
+  spectator: boolean;
+  spectatorCount: number;
   lobbyFromURL: boolean;
   usernames: string[];
   icons: { [key: string]: string };
@@ -172,6 +182,8 @@ const defaultAppState: AppState = {
   createLobbyError: "",
   name: "P1",
   lobby: "AAAAAA",
+  spectator: false,
+  spectatorCount: 0,
   lobbyFromURL: false,
   usernames: [],
   icons: {},
@@ -275,14 +287,36 @@ class App extends Component<{}, AppState> {
   }
 
   /**
+   * Checks that a spectator can watch the lobby (it exists).
+   * @param lobby the lobby code.
+   * @return {Promise<Response>} The response from the server: 200, or 404 for an unknown lobby.
+   */
+  async tryWatchLogin(lobby: string) {
+    return await fetch(
+      SERVER_ADDRESS_HTTP + CHECK_LOGIN + "?lobby=" + encodeURI(lobby) + "&" + PARAM_SPECTATOR + "=true"
+    );
+  }
+
+  /** A spectator who reloads goes straight back to watching their lobby (COOKIE_SPECTATOR). */
+  componentDidMount() {
+    const lobby = Cookies.get(COOKIE_LOBBY);
+    const linked = new URLSearchParams(window.location.search).get("lobby");
+    const otherLobby = linked !== null && linked.toUpperCase().substring(0, 4) !== lobby;
+    if (Cookies.get(COOKIE_SPECTATOR) === "true" && lobby && !otherLobby) {
+      this.watch(lobby);
+    }
+  }
+
+  /**
    * Attempts to open a WebSocket with the server.
-   * @param name the name of the user to connect with.
+   * @param name the name of the user to connect with ("" for a spectator).
    * @param lobby the lobby to connect with.
+   * @param spectator whether to watch without a seat (no name is sent).
    * @effects If a connection was successfully established, sets the state with the {@code name}, {@code lobby},
    *          and {@code ws} parameters. The WebSocket has a message callback to this.onWebSocketMessage().
    * @return {boolean} true if the connection was opened successfully. Otherwise, returns false.
    */
-  tryOpenWebSocket(name: string, lobby: string) {
+  tryOpenWebSocket(name: string, lobby: string, spectator = false) {
     if (DEBUG) {
       console.log("Opening connection with lobby: " + lobby);
       console.log("Failed connections: " + this.failedConnections);
@@ -291,8 +325,7 @@ class App extends Component<{}, AppState> {
       WEBSOCKET_HEADER +
       SERVER_ADDRESS +
       WEBSOCKET +
-      "?name=" +
-      encodeURIComponent(name) +
+      (spectator ? "?" + PARAM_SPECTATOR + "=true" : "?name=" + encodeURIComponent(name)) +
       "&lobby=" +
       encodeURIComponent(lobby);
     if (DEBUG) {
@@ -324,6 +357,7 @@ class App extends Component<{}, AppState> {
       this.setState({
         name: name,
         lobby: lobby,
+        spectator: spectator,
         usernames: [],
         joinName: "",
         joinLobby: "",
@@ -378,7 +412,7 @@ class App extends Component<{}, AppState> {
         this.showSnackBar("Lost connection to the server: retrying...");
       }
       this.failedConnections += 1;
-      this.tryOpenWebSocket(this.state.name, this.state.lobby);
+      this.tryOpenWebSocket(this.state.name, this.state.lobby, this.state.spectator);
     } else if (this.reconnectOnConnectionClosed) {
       if (DEBUG) {
         console.log("Disconnecting from lobby.");
@@ -423,9 +457,13 @@ class App extends Component<{}, AppState> {
           {
             usernames: message[PARAM_USERNAMES],
             icons: message[PARAM_ICON],
+            spectatorCount: message[PARAM_SPECTATOR_COUNT] ?? 0,
             page: PAGE.LOBBY,
           },
           () => {
+            if (this.state.spectator) {
+              return; // a spectator has no portrait to pick
+            }
             if (message[PARAM_ICON][this.state.name] === defaultPortrait) {
               this.showChangeIconAlert();
             }
@@ -438,7 +476,11 @@ class App extends Component<{}, AppState> {
         if (message !== this.state.gameState) {
           this.onGameStateChanged(message);
         }
-        this.setState({ gameState: message, page: PAGE.GAME });
+        this.setState({
+          gameState: message,
+          spectatorCount: message[PARAM_SPECTATOR_COUNT] ?? 0,
+          page: PAGE.GAME,
+        });
         break;
 
       case PACKET_OK: // Traverse all listeners and call the functions.
@@ -485,6 +527,14 @@ class App extends Component<{}, AppState> {
    *          and each (key, value) pair in {@code params}.
    */
   sendWSCommand(request: ServerRequestPayload) {
+    // A spectator only pings and asks for the state; the server drops anything else.
+    if (
+      this.state.spectator &&
+      request.command !== WSCommandType.PING &&
+      request.command !== WSCommandType.GET_STATE
+    ) {
+      return;
+    }
     // Do not need to encode name + lobby because this is sent through websocket
     const data: WSCommand = {
       ...request,
@@ -594,6 +644,7 @@ class App extends Component<{}, AppState> {
             // Save the username and lobby login
             Cookies.set(COOKIE_NAME, name, { expires: 7 });
             Cookies.set(COOKIE_LOBBY, lobby);
+            Cookies.remove(COOKIE_SPECTATOR);
           }
         }
       })
@@ -604,6 +655,44 @@ class App extends Component<{}, AppState> {
         });
       });
   };
+
+  /** Watches the lobby in the Lobby field as a spectator: no name needed. */
+  onClickWatch = () => {
+    this.watch(this.state.joinLobby);
+  };
+
+  /**
+   * Checks the lobby, then opens a spectator's socket and remembers it (COOKIE_SPECTATOR), with
+   * the same messages as JOIN. On failure the lobby code stays in the form.
+   */
+  watch(lobby: string) {
+    this.setState({ joinError: "Connecting...", joinLobby: lobby });
+    this.tryWatchLogin(lobby)
+      .then((response) => {
+        if (!response.ok) {
+          Cookies.remove(COOKIE_SPECTATOR);
+          this.setState({
+            joinError:
+              response.status === 404
+                ? "The lobby could not be found."
+                : "There was an error connecting to the server. Please try again.",
+          });
+        } else if (!this.tryOpenWebSocket("", lobby, true)) {
+          this.setState({
+            joinError: "There was an error connecting to the server. Please try again.",
+          });
+        } else {
+          Cookies.set(COOKIE_LOBBY, lobby);
+          Cookies.set(COOKIE_SPECTATOR, "true");
+        }
+      })
+      .catch(() => {
+        this.setState({
+          joinError:
+            "There was an error contacting the server. Please wait and try again.",
+        });
+      });
+  }
 
   /**
    * Attempts to connect to the server and create a new lobby, and then opens a connection to the lobby.
@@ -626,6 +715,7 @@ class App extends Component<{}, AppState> {
               // Save the username and lobby login
               Cookies.set(COOKIE_NAME, name, { expires: 7 });
               Cookies.set(COOKIE_LOBBY, lobbyCode);
+              Cookies.remove(COOKIE_SPECTATOR);
             }
           });
         } else {
@@ -684,6 +774,12 @@ class App extends Component<{}, AppState> {
             disabled={!this.shouldJoinButtonBeEnabled()}
           >
             JOIN
+          </button>
+          <button
+            onClick={this.onClickWatch}
+            disabled={this.state.joinLobby.length !== LOBBY_CODE_LENGTH}
+          >
+            WATCH
           </button>
         </div>
         <br />
@@ -802,6 +898,9 @@ class App extends Component<{}, AppState> {
   }
 
   onClickLeaveLobby() {
+    if (this.state.spectator) {
+      Cookies.remove(COOKIE_SPECTATOR);
+    }
     this.websocket?.close();
     this.reconnectOnConnectionClosed = false;
   }
@@ -886,26 +985,36 @@ class App extends Component<{}, AppState> {
                 <p id={"lobby-player-count-text"}>
                   Players ({this.state.usernames.length}/10)
                 </p>
-                <button
-                  id={"lobby-change-icon-button"}
-                  onClick={this.onClickChangeIcon}
-                >
-                  CHANGE ICON
-                </button>
+                {!this.state.spectator && (
+                  <button
+                    id={"lobby-change-icon-button"}
+                    onClick={this.onClickChangeIcon}
+                  >
+                    CHANGE ICON
+                  </button>
+                )}
               </div>
               <div id={"lobby-player-container"}>{this.renderPlayerList()}</div>
             </div>
 
             <div id={"lobby-button-container"}>
-              {!isVIP && (
-                <p id={"lobby-vip-text"}>Only the VIP can start the game.</p>
+              {this.state.spectator ? (
+                <p id={"lobby-vip-text"}>
+                  You are watching. The game starts when the VIP starts it.
+                </p>
+              ) : (
+                <>
+                  {!isVIP && (
+                    <p id={"lobby-vip-text"}>Only the VIP can start the game.</p>
+                  )}
+                  <button
+                    onClick={this.onClickStartGame}
+                    disabled={!isVIP || !this.shouldStartGameBeEnabled()}
+                  >
+                    START GAME
+                  </button>
+                </>
               )}
-              <button
-                onClick={this.onClickStartGame}
-                disabled={!isVIP || !this.shouldStartGameBeEnabled()}
-              >
-                START GAME
-              </button>
               <button onClick={this.onClickLeaveLobby}>LEAVE LOBBY</button>
             </div>
             <div id={"lobby-text-container"}>
@@ -991,9 +1100,14 @@ class App extends Component<{}, AppState> {
   onGameStateChanged(newState: GameState) {
     let oldState = this.state.gameState;
     let name = this.state.name;
-    let isPresident = this.state.name === newState.president;
-    let isChancellor = this.state.name === newState.chancellor;
+    // A spectator acts on nothing and gets no prompt; status lines describe the table instead.
+    const spectator = this.state.spectator;
+    let isPresident = !spectator && this.state.name === newState.president;
+    let isChancellor = !spectator && this.state.name === newState.chancellor;
     let state = newState.state;
+    /** Queues the status line: a player's text, or what the table waits for, named, for a spectator. */
+    const queueStatus = (playerText: string) =>
+      this.queueStatusMessage(spectator ? waitingText(newState) : playerText);
     // Each sound is queued just before the animation it belongs to (SOUND_CUES).
     const soundNames = soundEvents(this.soundState, newState, name);
     this.soundState = newState;
@@ -1043,12 +1157,16 @@ class App extends Component<{}, AppState> {
             trackerPosition = 3;
           }
           this.queueSounds(soundNames, "tracker");
-          this.queueAlert(
-            <ElectionTrackerAlert
-              trackerPosition={trackerPosition}
-              closeAlert={this.hideAlertAndFinish}
-            />
-          );
+          if (spectator) {
+            this.queueStatusMessage(trackerText(newState), SPECTATOR_RESULT_MS);
+          } else {
+            this.queueAlert(
+              <ElectionTrackerAlert
+                trackerPosition={trackerPosition}
+                closeAlert={this.hideAlertAndFinish}
+              />
+            );
+          }
         }
       }
 
@@ -1060,12 +1178,16 @@ class App extends Component<{}, AppState> {
       if (liberalChanged || fascistChanged) {
         // Show an alert with the new policy
         this.queueSounds(soundNames, "policy");
-        this.queueAlert(
-          <PolicyEnactedAlert
-            hideAlert={this.hideAlertAndFinish}
-            policyType={newState.lastPolicy}
-          />
-        );
+        if (spectator) {
+          this.queueStatusMessage(policyText(newState), SPECTATOR_RESULT_MS);
+        } else {
+          this.queueAlert(
+            <PolicyEnactedAlert
+              hideAlert={this.hideAlertAndFinish}
+              policyType={newState.lastPolicy}
+            />
+          );
+        }
       }
 
       // Update the decks, board with the new policies / election tracker.
@@ -1086,6 +1208,7 @@ class App extends Component<{}, AppState> {
         case STATE_CHANCELLOR_NOMINATION:
           this.queueSounds(soundNames, "start");
           if (
+            !spectator &&
             newState.electionTracker === 0 &&
             newState.liberalPolicies === 0 &&
             newState.fascistPolicies === 0
@@ -1105,9 +1228,7 @@ class App extends Component<{}, AppState> {
           }
 
           this.queueEventUpdate("CHANCELLOR NOMINATION");
-          this.queueStatusMessage(
-            "Waiting for president to nominate a chancellor."
-          );
+          queueStatus("Waiting for president to nominate a chancellor.");
 
           if (isPresident) {
             //Show the chancellor nomination window.
@@ -1123,9 +1244,10 @@ class App extends Component<{}, AppState> {
           this.setState({ statusBarText: "" });
           this.queueSounds(soundNames, "phase");
           this.queueEventUpdate("VOTING");
-          this.queueStatusMessage("Waiting for all players to vote.");
+          queueStatus("Waiting for all players to vote.");
           // Check if the player is dead or has already voted-- if so, do not show the voting prompt.
           if (
+            !spectator &&
             newState.players[name][PLAYER_IS_ALIVE] &&
             !Object.keys(newState.userVotes).includes(name)
           ) {
@@ -1149,9 +1271,7 @@ class App extends Component<{}, AppState> {
 
           // TODO: Animate cards being pulled from the draw deck for all users.
 
-          this.queueStatusMessage(
-            "Waiting for the president to choose a policy to discard."
-          );
+          queueStatus("Waiting for the president to choose a policy to discard.");
 
           if (isPresident) {
             if (!newState.presidentChoices) {
@@ -1170,9 +1290,7 @@ class App extends Component<{}, AppState> {
 
         case STATE_LEGISLATIVE_CHANCELLOR:
           this.queueSounds(soundNames, "phase");
-          this.queueStatusMessage(
-            "Waiting for the chancellor to choose a policy to enact."
-          );
+          queueStatus("Waiting for the chancellor to choose a policy to enact.");
           if (isChancellor) {
             if (!newState.chancellorChoices) {
               throw new Error("Chancellor choices not found.");
@@ -1197,7 +1315,7 @@ class App extends Component<{}, AppState> {
 
         case STATE_LEGISLATIVE_PRESIDENT_VETO:
           this.queueSounds(soundNames, "phase");
-          this.queueStatusMessage(
+          queueStatus(
             "Chancellor has motioned to veto the agenda. Waiting for the president to decide."
           );
           if (isPresident) {
@@ -1228,9 +1346,7 @@ class App extends Component<{}, AppState> {
               true
             );
           } else {
-            this.queueStatusMessage(
-              "Peek: President is previewing the next 3 policies."
-            );
+            queueStatus("Peek: President is previewing the next 3 policies.");
           }
           break;
 
@@ -1243,9 +1359,7 @@ class App extends Component<{}, AppState> {
               SelectSpecialElectionPrompt(name, newState, this.sendWSCommand)
             );
           } else {
-            this.queueStatusMessage(
-              "Special Election: President is choosing the next president."
-            );
+            queueStatus("Special Election: President is choosing the next president.");
           }
           break;
 
@@ -1259,9 +1373,7 @@ class App extends Component<{}, AppState> {
               true
             );
           } else {
-            this.queueStatusMessage(
-              "Execution: President is choosing a player to execute."
-            );
+            queueStatus("Execution: President is choosing a player to execute.");
           }
           break;
 
@@ -1274,16 +1386,18 @@ class App extends Component<{}, AppState> {
               SelectInvestigationPrompt(name, newState, this.sendWSCommand)
             );
           } else {
-            this.queueStatusMessage(
-              "Investigation: President is choosing a player to investigate."
-            );
+            queueStatus("Investigation: President is choosing a player to investigate.");
           }
           break;
 
         case STATE_POST_LEGISLATIVE:
           // Show results of any special elections, executions, or investigations.
           this.queueSounds(soundNames, "result");
-          switch (newState.lastState) {
+          const result = spectator ? resultText(newState) : "";
+          if (result) {
+            this.queueStatusMessage(result, SPECTATOR_RESULT_MS);
+          }
+          switch (spectator ? undefined : newState.lastState) {
             case STATE_PP_ELECTION:
               if (!isPresident) {
                 console.log("Special Election Alert: " + newState.targetUser);
@@ -1352,9 +1466,7 @@ class App extends Component<{}, AppState> {
 
           // END TERM is the president's turn too.
           this.queueSounds(soundNames, "prompt");
-          this.queueStatusMessage(
-            "Waiting for the president to end their term."
-          );
+          queueStatus("Waiting for the president to end their term.");
           break;
 
         case STATE_LIBERAL_VICTORY_EXECUTION:
@@ -1364,7 +1476,11 @@ class App extends Component<{}, AppState> {
           // Show normal enactments when victory events happen.
           if (newState.state === STATE_LIBERAL_VICTORY_EXECUTION) {
             this.queueSounds(soundNames, "result");
-            this.showExecutionResults(name, newState);
+            if (spectator) {
+              this.queueStatusMessage(resultText(newState), SPECTATOR_RESULT_MS);
+            } else {
+              this.showExecutionResults(name, newState);
+            }
           }
           if (newState.state === STATE_FASCIST_VICTORY_ELECTION) {
             this.addAnimationToQueue(() => this.showVotes(newState, soundNames));
@@ -1420,6 +1536,9 @@ class App extends Component<{}, AppState> {
           if (DEBUG) {
             console.log("Player ordering: " + players);
           }
+          if (spectator) {
+            this.queueStatusMessage(waitingText(newState)); // the winners, under the victory screen
+          }
           this.queueSounds(soundNames, "end");
           this.addAnimationToQueue(() => {
             this.setState({
@@ -1446,7 +1565,7 @@ class App extends Component<{}, AppState> {
                   buttonOnClick={() => {
                     this.gameOver = false;
                     this.reconnectOnConnectionClosed = true;
-                    this.tryOpenWebSocket(this.state.name, this.state.lobby);
+                    this.tryOpenWebSocket(this.state.name, this.state.lobby, this.state.spectator);
                     this.hideAlertAndFinish();
                     this.setState({
                       page: PAGE.LOBBY,
@@ -1686,13 +1805,18 @@ class App extends Component<{}, AppState> {
   /**
    * Adds an update to the status message to the animation queue.
    * @param message {String} the text for the status bar to display.
+   * @param holdMs how long the message shows before the queue moves on (default 0).
    * @effects Adds a new function to the animation queue that, when called, updates {@code this.state.statusBarText} to
-   *          the message provided then instantly advances the animation queue.
+   *          the message provided then advances the animation queue, at once or after {@code holdMs}.
    */
-  queueStatusMessage(message: string) {
+  queueStatusMessage(message: string, holdMs = 0) {
     this.addAnimationToQueue(() => {
       this.setState({ statusBarText: message });
-      this.onAnimationFinish();
+      if (holdMs > 0) {
+        setTimeout(() => this.onAnimationFinish(), holdMs);
+      } else {
+        this.onAnimationFinish();
+      }
     });
   }
 
@@ -1724,6 +1848,8 @@ class App extends Component<{}, AppState> {
           liberalPolicies={this.state.liberalPolicies}
           fascistPolicies={this.state.fascistPolicies}
           electionTracker={this.state.electionTracker}
+          spectator={this.state.spectator}
+          spectatorCount={this.state.spectatorCount}
           onEndTerm={() => {
             this.sendWSCommand({ command: WSCommandType.END_TERM });
           }}

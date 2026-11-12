@@ -17,6 +17,9 @@ export const SERVER_ADDRESS_HTTP = urls.http;
 export const WEBSOCKET_HEADER = urls.websocketHeader;
 
 export const CHECK_LOGIN = "/check-login";
+/** "true" in the /game and /check-login query makes a spectator, who needs no name. */
+export const PARAM_SPECTATOR = "spectator";
+export const PARAM_SPECTATOR_COUNT = "spectatorCount";
 export const NEW_LOBBY = "/new-lobby";
 export const WEBSOCKET = "/game";
 export const SERVER_PING = "/ping";
