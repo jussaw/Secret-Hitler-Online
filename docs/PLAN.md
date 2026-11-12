@@ -322,7 +322,7 @@ Playwright is not installed yet: `@playwright/test` and a browser are new dev de
 - [x] `git checkout development && git pull`, then `git checkout -b phase-5-phone`
 - [x] Re-read Phase 5 below against the code as it now stands; fix any file paths or line numbers that moved
 - [x] Write the Phase 5 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 5 heading
-- [ ] Begin Task 5.1
+- [x] Begin Task 5.1
 
 ---
 
@@ -334,12 +334,11 @@ Outcome: playable on a phone in portrait, with vertical scrolling allowed.
 
 ### Task 5.1: Stacked game layout
 
-Files: `frontend/src/game/GameScreen.css`, `frontend/src/game/TableSeats.css`, `frontend/src/game/TableSeats.tsx`
+Files: `frontend/src/game/GameScreen.css`, `frontend/src/game/TableSeats.css`, `frontend/src/game/TableSeats.tsx`, `frontend/src/game/seatPositions.ts` (`seatColumns`); browser tests `frontend/e2e/phone.spec.ts` (new), `frontend/e2e/no-scroll.spec.ts`, shared helpers `frontend/e2e/lobby.ts` (was `guests.ts`) and `frontend/e2e/layout.ts`, and the `desktop`, `phone-360` and `phone-412` projects in `frontend/playwright.config.ts`
 
 Seat and centre-box positions are inline styles: `TableSeats.tsx` sets each seat's `left`/`top` from `seatPositions()`, and `GameScreen.tsx` sets `.game-centre`'s `left`/`right`/`top`/`bottom` from `centreBox()`. Seats are the default player tile scaled with a transform in `TableSeats.css`, and the table's board, deck and status sizes are overrides scoped in `GameScreen.css`; `Player.css` was not changed in Phase 4. Phase 4 deferred two desktop problems here: windows narrower than about 5:4 (for example 960x1080) put the diagonal seats over the boards, and tall prompts (below) run past the bottom of a desktop screen.
 
-- [ ] At `max-width: 768px`, seats render as a wrapping grid instead of ellipse positions; then status, boards at full width, decks
-- [ ] Touch targets (player selection, vote buttons, policy cards) are at least 44px
+- [x] Under `(max-width: 768px), (aspect-ratio < 5/4)`, seats render as a wrapping grid instead of ellipse positions; then status and END TERM, boards at full width, decks
 
 ### Task 5.2: Other pages and prompts
 
@@ -348,6 +347,7 @@ Files: `frontend/src/App.tsx` (`renderLoginPage`, lines 629-712, and `renderLobb
 `frontend/index.html` already has `width=device-width, initial-scale=1`. `#alert-box` is `position: absolute` at `top: 10vh` with `min-width: 80vmin` and `max-width: 40vw`; below a 2:1 window the `min-width` wins, so it is 80vmin wide plus padding. With ten players the nomination, investigation, special election, execution and victory prompts are taller than a 1920x1080 screen (RETURN TO LOBBY ends at y 1398), and at 1280x720 the vote prompt is too.
 
 - [ ] Login and lobby fit 360px width
+- [ ] On phones every button, text field, player tile, vote card and policy card is at least 44x44px
 - [ ] Alerts use near-full width on phones; policy and vote prompts fit without horizontal scroll
 
 ### Task 5.3: Phone browser test

@@ -16,3 +16,38 @@
     min-height: 1.2em;
     line-height: 1.2;
 }
+
+/* An inline-block's baseline moves once its label has text; aligning to the top keeps the seat still. */
+.table-seat #player-display-text-container {
+    vertical-align: top;
+}
+
+/* Phones, and windows too narrow for the round table: seats form a grid of default-size tiles,
+   seatColumns() to a row (TableSeats.tsx). GameScreen.css stacks the rest at the same breakpoint. */
+@media (max-width: 768px), (aspect-ratio < 5/4) {
+    .table-seats {
+        --seat-width: calc(min(20vmin, 16vh) + 8px); /* the default tile and its 4px margins */
+        position: static;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        width: calc(var(--seat-columns) * var(--seat-width));
+        max-width: 100%;
+        margin: 0 auto;
+    }
+
+    /* Static seats ignore the inline left/top that place them on the round table. */
+    .table-seat {
+        position: static;
+        transform: none;
+        width: var(--seat-width);
+    }
+
+    .table-seat #player-container {
+        margin: 4px;
+    }
+
+    .table-seat #player-display-label {
+        width: auto;
+    }
+}

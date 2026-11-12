@@ -9,7 +9,18 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   reporter: "list",
-  use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${PORT}` },
+  use: { baseURL: `http://localhost:${PORT}` },
+  projects: [
+    // The round table at the five desktop sizes.
+    { name: "desktop", use: devices["Desktop Chrome"], testIgnore: /phone\.spec/ },
+    // Phones in portrait, emulated with touch and their own pixel ratio.
+    { name: "phone-360", use: devices["Galaxy S8"], testIgnore: /no-scroll\.spec/ },
+    {
+      name: "phone-412",
+      use: { ...devices["Pixel 7"], viewport: { width: 412, height: 915 } },
+      testIgnore: /no-scroll\.spec/,
+    },
+  ],
   webServer: {
     // Needs Java 17 for the Gradle wrapper.
     command:

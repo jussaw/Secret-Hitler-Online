@@ -111,3 +111,56 @@
     padding: 0.8vh 2.2vh;
     font-size: clamp(14px, 2.6vh, 30px);
 }
+
+/* Phones, and windows too narrow for the round table (below 5:4 the diagonal seats would cover the
+   boards): the page scrolls, with the players first, then status and END TERM, the boards and the
+   decks. TableSeats.css turns the seats into a grid at the same breakpoint. */
+@media (max-width: 768px), (aspect-ratio < 5/4) {
+    .game-screen {
+        display: block;
+        height: auto;
+    }
+
+    .game-table {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 8px 8px 24px;
+    }
+
+    /* A static box ignores the inline left/right/top/bottom that place it on the round table. */
+    .game-centre {
+        position: static;
+        gap: 12px;
+        width: 100%;
+        max-width: 720px;
+        margin: 0 auto;
+    }
+
+    .game-status {
+        order: -1;
+    }
+
+    .game-status button {
+        min-height: 44px;
+        padding: 8px 16px;
+        font-size: 20px;
+    }
+
+    .game-boards {
+        flex: none;
+        container-type: inline-size;
+    }
+
+    .game-boards #board {
+        width: calc(100cqw - 20px);
+    }
+
+    .game-decks {
+        --deck-width: clamp(56px, 16vw, 96px);
+    }
+
+    .game-decks #pps-text {
+        font-size: 12px;
+    }
+}

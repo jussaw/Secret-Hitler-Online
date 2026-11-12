@@ -1,32 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
-import { joinGuests } from "./guests";
-
-const DESKTOP_SIZES = [
-  { width: 1920, height: 1080 },
-  { width: 1920, height: 937 },
-  { width: 1600, height: 900 },
-  { width: 1366, height: 768 },
-  { width: 1280, height: 720 },
-];
-
-type Box = { left: number; right: number; top: number; bottom: number };
+import { DESKTOP_SIZES, labelShift, overflowX, overlaps } from "./layout";
+import { settle, startGame } from "./lobby";
 
 // The longest status message the game shows; it wraps to two lines at every desktop size.
 const LONG_STATUS =
   "Chancellor has motioned to veto the agenda. Waiting for the president to decide.";
-
-const overlaps = (a: Box, b: Box) =>
-  a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
-
-async function createLobby(page: Page, host: string): Promise<string> {
-  await page.goto("/");
-  await page.getByRole("textbox", { name: "Your Name" }).last().fill(host);
-  await page.getByRole("button", { name: "CREATE LOBBY" }).click();
-  await page.locator("#icon.selectable:not(.disabled)").first().click();
-  await page.getByRole("button", { name: "CONFIRM" }).click();
-  const link = await page.locator("#linkText").inputValue();
-  return new URL(link).searchParams.get("lobby")!;
-}
 
 function measureTable(page: Page) {
   return page.evaluate(() => {
@@ -77,34 +55,27 @@ for (const players of [5, 7, 10]) {
     page,
     baseURL,
   }) => {
-    const lobby = await createLobby(page, "Host Player");
-    // CPU players only fill a lobby up to five, so larger tables need guests.
-    const guests = players > 5 ? await joinGuests(baseURL!, lobby, players - 1) : [];
+    const guests = await startGame(page, baseURL!, players);
     try {
-      await expect(page.getByText(`Players (${guests.length + 1}/10)`)).toBeVisible();
-      await page.getByRole("button", { name: "START GAME" }).click();
-      await expect(page.locator(".game-screen")).toBeVisible();
       // Prompts are overlays above the table; this test measures the table under them, as laid
       // out for each size rather than mid-transition from the previous one.
-      await page.addStyleTag({
-        content: `
-          #alert { display: none !important; }
-          *, *::before, *::after { transition: none !important; animation: none !important; }
-        `,
-      });
-      await page.waitForFunction(() =>
-        Array.from(document.images).every((img) => img.complete)
-      );
+      await settle(page);
 
       for (const size of DESKTOP_SIZES) {
         await page.setViewportSize(size);
         const at = `${size.width}x${size.height}`;
-        const scroll = await page.evaluate(() => ({
-          width: document.documentElement.scrollWidth,
-          height: document.documentElement.scrollHeight,
-        }));
-        expect(scroll.height, `scrollHeight at ${at}`).toBeLessThanOrEqual(size.height);
-        expect(scroll.width, `scrollWidth at ${at}`).toBeLessThanOrEqual(size.width);
+        const scrollHeight = await page.evaluate(() => document.documentElement.scrollHeight);
+        expect(scrollHeight, `scrollHeight at ${at}`).toBeLessThanOrEqual(size.height);
+        const { scrollWidth } = await overflowX(page);
+        expect(scrollWidth, `scrollWidth at ${at}`).toBeLessThanOrEqual(size.width);
+
+        const positions = await page.$$eval(".table-seat", (seats) =>
+          seats.map((s) => getComputedStyle(s).position)
+        );
+        expect(new Set(positions), `the round table at ${at}`).toEqual(new Set(["absolute"]));
+        expect(await labelShift(page), `a filled label moves a seat at ${at}`).toBeLessThanOrEqual(
+          0.5
+        );
 
         const table = await measureTable(page);
         expect(table.seats, `seats at ${at}`).toHaveLength(players);
@@ -161,3 +132,32 @@ for (const players of [5, 7, 10]) {
     }
   });
 }
+
+test("windows narrower than 5:4 stack the table; 5:4 keeps the round table", async ({
+  page,
+  baseURL,
+}) => {
+  const guests = await startGame(page, baseURL!, 10);
+  try {
+    await settle(page);
+    for (const [size, layout] of [
+      [{ width: 960, height: 1080 }, "static"],
+      [{ width: 1279, height: 1024 }, "static"],
+      [{ width: 1280, height: 1024 }, "absolute"],
+    ] as const) {
+      await page.setViewportSize(size);
+      const at = `${size.width}x${size.height}`;
+      const positions = await page.$$eval(".table-seat", (seats) =>
+        seats.map((s) => getComputedStyle(s).position)
+      );
+      expect(new Set(positions), `layout at ${at}`).toEqual(new Set([layout]));
+      expect((await overflowX(page)).offscreen, `overflow at ${at}`).toEqual([]);
+      const table = await measureTable(page);
+      table.seats.forEach((seat, i) => {
+        expect(overlaps(seat, table.boards), `seat ${i} over the boards at ${at}`).toBe(false);
+      });
+    }
+  } finally {
+    guests.forEach((ws) => ws.close());
+  }
+});

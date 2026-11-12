@@ -32,3 +32,11 @@ test("marks the president and shows executed players as executed", () => {
   expect(seats[2]).toHaveTextContent("PRESIDENT");
   expect(seats[4]).toHaveTextContent("EXECUTED");
 });
+
+test("tells the phone grid how many seats fit a row", () => {
+  const { container } = render(
+    <TableSeats gameState={makeGameState(SEVEN)} user="Dan" showVotes={false} showBusy />
+  );
+  const grid = container.querySelector<HTMLElement>(".table-seats")!;
+  expect(grid.style.getPropertyValue("--seat-columns")).toBe("4");
+});

@@ -65,3 +65,16 @@ export function centreBox(count: number): Box {
   }
   return { left: CENTRE_LEFT, right: CENTRE_RIGHT, top, bottom };
 }
+
+/** The most seats in one row of the phone grid: four default tiles fit a 360px-wide screen. */
+export const MAX_GRID_COLUMNS = 4;
+
+/**
+ * How many seats share a row of the phone grid, so the rows come out as even as possible.
+ * @param count the number of players.
+ * @return 3 for 5, 6 and 9 players, 4 for 7, 8 and 10 (never more than MAX_GRID_COLUMNS).
+ */
+export function seatColumns(count: number): number {
+  const rows = Math.ceil(count / MAX_GRID_COLUMNS);
+  return Math.ceil(count / rows);
+}
