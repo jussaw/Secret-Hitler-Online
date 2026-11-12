@@ -78,7 +78,6 @@ import PlayerPolicyStatus from "./util/PlayerPolicyStatus";
 import VictoryFascistHeader from "./assets/victory-fascist-header.png";
 import VictoryLiberalHeader from "./assets/victory-liberal-header.png";
 import IconSelection from "./custom-alert/IconSelection";
-import HelmetMetaData from "./util/HelmetMetaData";
 import { defaultPortrait } from "./assets";
 import Player from "./player/Player";
 import LoginPageContent from "./LoginPageContent";
@@ -1732,7 +1731,6 @@ class App extends Component<{}, AppState> {
     }
     return (
       <>
-        <HelmetMetaData />
         {page_render}
       </>
     );
