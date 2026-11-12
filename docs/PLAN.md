@@ -123,8 +123,8 @@ Outcome: same app, same behaviour, on Vite + React 18 + TypeScript 5 + Vitest.
 
 ### Task 2.1: Dependency audit
 
-- [ ] Remove packages with no imports: `react-router`, `react-router-dom`, `react-router-config`, `react-alice-carousel` (and `src/util/CustomAliceCarousel.css` with its dead import in `LoginPageContent.js`; it only styles the commented-out carousel), `query-string`, `@testing-library/user-event`. `prop-types` stays (nine files import it)
-- [ ] `npm run build` still succeeds on CRA before the migration starts
+- [x] Remove packages with no imports: `react-router`, `react-router-dom`, `react-router-config`, `react-alice-carousel` (and `src/util/CustomAliceCarousel.css` with its dead import in `LoginPageContent.js`; it only styles the commented-out carousel), `query-string`, `@testing-library/user-event`. `prop-types` stays (nine files import it)
+- [x] `npm run build` still succeeds on CRA before the migration starts
 
 ### Task 2.2: CRA to Vite
 
