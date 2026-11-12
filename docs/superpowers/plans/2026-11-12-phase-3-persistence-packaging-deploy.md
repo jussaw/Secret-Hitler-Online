@@ -812,7 +812,7 @@ The directory `/home/jussaw/appdata/secret-hitler-online` must exist on the Pi, 
 
 ### Task 7 (PLAN 3.7): Tunnel hostname and monitoring (gated)
 
-- [ ] Add a public hostname `<subdomain>` → `http://localhost:23416` on the tunnel run by `cloudflared` in `pi4/homelab`, in the Cloudflare dashboard. Use the same service form as `fullhex.jussaw.com` → `:23414`. Cloudflare creates the DNS record and terminates TLS, and WebSockets pass through by default.
+- [ ] Add a public hostname `secret-hitler.jussaw.com` → `http://10.0.1.6:23416` on the tunnel run by `cloudflared` in `pi4/homelab`, in the Cloudflare dashboard. `cloudflared` sits on the `homelab` bridge network, not host networking, so the origin is the Pi's LAN address; `localhost` would point inside the cloudflared container. Mirror the form of the `fullhex.jussaw.com` → `:23414` route. Cloudflare creates the DNS record and terminates TLS, and WebSockets pass through by default.
 - [ ] Add an Uptime Kuma HTTP monitor for `https://<subdomain>/ping`.
 
 ---

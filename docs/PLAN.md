@@ -235,17 +235,17 @@ Files: new `.github/workflows/ci.yml`
 
 ### Task 3.6: Pi stack (in `~/repos/portainer-compose`)
 
-- [ ] Add a service to `pi4/sites/docker-compose.yml` following its neighbours: `container_name`, the GHCR image, `sites` network, `TZ`, published port `23416` mapped to `8080`, `restart: unless-stopped`, and a bind mount `/home/jussaw/appdata/secret-hitler-online:/data` (that repo's pi4 appdata convention)
-- [ ] `docker compose config` validates in `pi4/sites`
-- [ ] Commit there, then deploy via jussaw-server
-- [ ] The sibling `ghcr.io/jussaw/*` images are public and the Pi pulls them without credentials; if this package is private, make it public to match
+- [x] Add a service to `pi4/sites/docker-compose.yml` following its neighbours: `container_name`, the GHCR image, `sites` network, `TZ`, published port `23416` mapped to `8080`, `restart: unless-stopped`, and a bind mount `/home/jussaw/appdata/secret-hitler-online:/data` (that repo's pi4 appdata convention)
+- [x] `docker compose config` validates in `pi4/sites`
+- [x] Commit there, then deploy via jussaw-server (portainer-compose `571506d`; `sites` redeployed from the Pi's jussaw-server)
+- [x] The sibling `ghcr.io/jussaw/*` images are public and the Pi pulls them without credentials; if this package is private, make it public to match
 
 ### Task 3.7: Proxy
 
 The Pi's edge is the Cloudflare tunnel run by `cloudflared` in `pi4/homelab` (hostnames managed in the Cloudflare dashboard); nginx-proxy-manager is gone.
 
-- [ ] Add a public hostname for the subdomain on the tunnel, pointing at the published port; Cloudflare creates the DNS record, terminates TLS and passes WebSockets
-- [ ] Add the URL to Uptime Kuma (`pi4/homelab`) using `/ping`
+- [x] Add a public hostname for the subdomain on the tunnel, pointing at the published port; Cloudflare creates the DNS record, terminates TLS and passes WebSockets (`secret-hitler.jussaw.com` → `http://10.0.1.6:23416`; `cloudflared` is on the `homelab` bridge network, so the origin is the Pi's LAN IP)
+- [ ] Add the URL to Uptime Kuma (`pi4/homelab`) using `/ping` (deferred by the user: Uptime Kuma is stopped on the Pi)
 
 **Phase 3 acceptance**
 
