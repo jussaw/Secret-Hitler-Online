@@ -25,6 +25,8 @@
 
 Each phase lists its tasks, the files they touch, and acceptance checks. Phases 2 to 7 depend on the code shape left by the phase before, so the step-by-step breakdown (exact code and test bodies) for a phase is written to `docs/superpowers/plans/` when that phase starts, and linked from its heading here. This file is the source of truth for what is done.
 
+Every phase ends with a **Start Phase N** block. A phase is not finished until that block is done, so work flows straight from one phase into the next. Its boxes are ticked in the first commit on the new phase's branch, because the previous phase's PR is already merged by then. Phase 7 ends with **Done when** instead.
+
 ## Progress
 
 | Phase | Branch | Status |
@@ -103,6 +105,14 @@ Files: new `CLAUDE.md` at the repo root
 - [ ] A full CPU game plays locally with no console errors
 - [ ] PR merged into `development`
 
+**Start Phase 2: Frontend modernization**
+
+- [ ] Progress table: Phase 1 set to "done", Phase 2 set to "in progress"
+- [ ] `git checkout development && git pull`, then `git checkout -b phase-2-vite`
+- [ ] Re-read Phase 2 below against the code as it now stands; fix any file paths or line numbers that moved
+- [ ] Write the Phase 2 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 2 heading
+- [ ] Begin Task 2.1
+
 ---
 
 ## Phase 2: Frontend modernization
@@ -151,6 +161,14 @@ Files: `frontend/package.json`, new `frontend/vite.config.ts`, `frontend/index.h
 - [ ] `grep -rn "REACT_APP_\|react-scripts" frontend --include='*' --exclude-dir=node_modules` returns nothing
 - [ ] Manual regression: create lobby, join with a second browser, add CPU players, play to both a liberal and a fascist win, refresh mid-game and rejoin
 - [ ] PR merged into `development`
+
+**Start Phase 3: Persistence, packaging, first deploy**
+
+- [ ] Progress table: Phase 2 set to "done", Phase 3 set to "in progress"
+- [ ] `git checkout development && git pull`, then `git checkout -b phase-3-deploy`
+- [ ] Re-read Phase 3 below against the code as it now stands; fix any file paths or line numbers that moved
+- [ ] Write the Phase 3 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 3 heading
+- [ ] Begin Task 3.1
 
 ---
 
@@ -225,6 +243,14 @@ Files: new `.github/workflows/ci.yml`
 - [ ] Pushing to `development` produces a new image that the Pi picks up
 - [ ] PR merged into `development`
 
+**Start Phase 4: Round-table game screen**
+
+- [ ] Progress table: Phase 3 set to "done", Phase 4 set to "in progress"
+- [ ] `git checkout development && git pull`, then `git checkout -b phase-4-round-table`
+- [ ] Re-read Phase 4 below against the code as it now stands; fix any file paths or line numbers that moved
+- [ ] Write the Phase 4 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 4 heading
+- [ ] Begin Task 4.1
+
 ---
 
 ## Phase 4: Round-table game screen
@@ -272,6 +298,14 @@ Files: new `frontend/e2e/no-scroll.spec.ts`, `frontend/playwright.config.ts`; `p
 - [ ] Vote reveal, policy enactment, investigation, special election, execution and victory animations all display correctly over the table
 - [ ] PR merged into `development`; deployed image checked on a real 1080p monitor
 
+**Start Phase 5: Phone layout**
+
+- [ ] Progress table: Phase 4 set to "done", Phase 5 set to "in progress"
+- [ ] `git checkout development && git pull`, then `git checkout -b phase-5-phone`
+- [ ] Re-read Phase 5 below against the code as it now stands; fix any file paths or line numbers that moved
+- [ ] Write the Phase 5 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 5 heading
+- [ ] Begin Task 5.1
+
 ---
 
 ## Phase 5: Phone layout
@@ -303,6 +337,14 @@ Files: new `frontend/e2e/phone.spec.ts`
 - [ ] Phone e2e passes; Phase 4 e2e still passes
 - [ ] One full game played on a real phone against the deployed instance
 - [ ] PR merged into `development`
+
+**Start Phase 6: Sounds**
+
+- [ ] Progress table: Phase 5 set to "done", Phase 6 set to "in progress"
+- [ ] `git checkout development && git pull`, then `git checkout -b phase-6-sounds`
+- [ ] Re-read Phase 6 below against the code as it now stands; fix any file paths or line numbers that moved
+- [ ] Write the Phase 6 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 6 heading
+- [ ] Begin Task 6.1
 
 ---
 
@@ -356,6 +398,14 @@ Files: new `frontend/src/sound/SoundControl.tsx` and `.css`; `frontend/src/App.t
 - [ ] Mute and volume survive a page refresh
 - [ ] No sound plays before the first click, and no autoplay error appears in the console
 - [ ] PR merged into `development`
+
+**Start Phase 7: Spectators**
+
+- [ ] Progress table: Phase 6 set to "done", Phase 7 set to "in progress"
+- [ ] `git checkout development && git pull`, then `git checkout -b phase-7-spectators`
+- [ ] Re-read Phase 7 below against the code as it now stands; fix any file paths or line numbers that moved
+- [ ] Write the Phase 7 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 7 heading
+- [ ] Begin Task 7.1
 
 ---
 
