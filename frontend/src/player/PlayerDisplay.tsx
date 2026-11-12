@@ -137,7 +137,7 @@ export default function PlayerDisplay(
   // whether their vote should be shown. This allows the sequence to be animated.
   const [playerVotesVisible, setPlayerVotesVisible] = useState<number>(0);
   /** Timeouts for each player animation. Will be destroyed on reset. */
-  const playerVoteAnimations = useRef<NodeJS.Timeout[]>([]);
+  const playerVoteAnimations = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   /**
    * Returns an array representing the player order.

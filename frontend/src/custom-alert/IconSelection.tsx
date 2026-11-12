@@ -16,7 +16,7 @@ type IconSelectionProps = {
 };
 
 class IconSelection extends Component<IconSelectionProps> {
-  timeoutID: NodeJS.Timeout | undefined;
+  timeoutID: ReturnType<typeof setTimeout> | undefined;
 
   constructor(props: IconSelectionProps) {
     super(props);

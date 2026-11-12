@@ -15,7 +15,7 @@ type PeekPromptState = {
 };
 
 class PeekPrompt extends Component<PeekPromptProps, PeekPromptState> {
-  timeoutID: NodeJS.Timeout | undefined;
+  timeoutID: ReturnType<typeof setTimeout> | undefined;
 
   constructor(props: PeekPromptProps) {
     super(props);

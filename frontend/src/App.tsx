@@ -196,7 +196,7 @@ const defaultAppState: AppState = {
 class App extends Component<{}, AppState> {
   websocket?: WebSocket = undefined;
   failedConnections: number = 0;
-  pingInterval?: NodeJS.Timeout = undefined;
+  pingInterval?: ReturnType<typeof setInterval> = undefined;
   reconnectOnConnectionClosed: boolean = true;
   snackbarMessages: number = 0;
   animationQueue: (() => void)[] = [];
