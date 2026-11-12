@@ -83,7 +83,7 @@ Files: `frontend/src/custom-alert/IconSelection.tsx` (two `TwitterShareButton` b
 ### Task 1.6: Docs
 
 - [x] README: fork notice linking upstream, licence and attribution section, local run instructions
-- [ ] Update `DEVELOPMENT.md` clone URLs to the fork
+- [x] Update `DEVELOPMENT.md` clone URLs to the fork
 
 ### Task 1.7: Repo `CLAUDE.md`
 
