@@ -8,6 +8,7 @@ import game.datastructures.Policy;
 import org.json.JSONObject;
 
 import java.util.List;
+import java.util.function.Predicate;
 
 /**
  * Converts a SecretHitlerGame to a JSONObject that represents the game state.
@@ -63,11 +64,6 @@ public class GameToJSONConverter {
             throw new NullPointerException();
         }
 
-        JSONObject out = new JSONObject();
-        JSONObject playerData = new JSONObject();
-        String[] playerOrder = new String[game.getPlayerList().size()];
-        List<Player> playerList = game.getPlayerList();
-
         // Players should only be shown all roles under specific circumstances.
         Identity role = game.getPlayer(userName).getIdentity();
         boolean showAllRoles = game.hasGameFinished() || role == Identity.FASCIST
@@ -75,16 +71,57 @@ public class GameToJSONConverter {
 
         System.out.println("Show all roles: " + showAllRoles);
 
+        // Only include player role for self or under specific rules
+        JSONObject out = publicState(game, player -> player.getUsername().equals(userName) || showAllRoles);
+
+        if (game.getState() == GameState.LEGISLATIVE_PRESIDENT) {
+            out.put("presidentChoices", convertPolicyListToStringArray(game.getPresidentLegislativeChoices()));
+        }
+        if (game.getState() == GameState.LEGISLATIVE_CHANCELLOR) {
+            out.put("chancellorChoices", convertPolicyListToStringArray(game.getChancellorLegislativeChoices()));
+        }
+        if (game.getState() == GameState.PRESIDENTIAL_POWER_PEEK) {
+            out.put("peek", convertPolicyListToStringArray(game.getPeek()));
+        }
+
+        return out;
+    }
+
+    /**
+     * Creates the state a spectator receives: the public fields of {@code convert}, with no
+     * player's role until the game has finished, and never a hand or the peek. A finished game's
+     * packet is the same as a player's.
+     *
+     * @param game the SecretHitlerGame to convert.
+     * @throws NullPointerException if {@code game} is null.
+     */
+    public static JSONObject convertForSpectator(SecretHitlerGame game) {
+        if (game == null) {
+            throw new NullPointerException();
+        }
+        // getState() is what notices a policy victory; hasGameFinished() alone can lag behind it.
+        game.getState();
+        boolean finished = game.hasGameFinished();
+        return publicState(game, player -> finished);
+    }
+
+    /**
+     * The fields every viewer of the game may see, with each player's role ({@code id}) only
+     * where {@code showRole} allows it.
+     */
+    private static JSONObject publicState(SecretHitlerGame game, Predicate<Player> showRole) {
+        JSONObject out = new JSONObject();
+        JSONObject playerData = new JSONObject();
+        String[] playerOrder = new String[game.getPlayerList().size()];
+        List<Player> playerList = game.getPlayerList();
+
         for (int i = 0; i < playerList.size(); i++) {
             JSONObject playerObj = new JSONObject();
             Player player = playerList.get(i);
 
             playerObj.put("alive", player.isAlive());
-
-            // Only include player role for self or under specific rules
-            if (player.getUsername().equals(userName) || showAllRoles) {
-                String id = player.getIdentity().toString();
-                playerObj.put("id", id);
+            if (showRole.test(player)) {
+                playerObj.put("id", player.getIdentity().toString());
             }
             playerObj.put("investigated", player.hasBeenInvestigated());
 
@@ -114,17 +151,6 @@ public class GameToJSONConverter {
         out.put("liberalPolicies", game.getNumLiberalPolicies());
         out.put("userVotes", game.getVotes());
         out.put("vetoOccurred", game.didVetoOccurThisTurn());
-
-        if (game.getState() == GameState.LEGISLATIVE_PRESIDENT) {
-            out.put("presidentChoices", convertPolicyListToStringArray(game.getPresidentLegislativeChoices()));
-        }
-        if (game.getState() == GameState.LEGISLATIVE_CHANCELLOR) {
-            out.put("chancellorChoices", convertPolicyListToStringArray(game.getChancellorLegislativeChoices()));
-        }
-        if (game.getState() == GameState.PRESIDENTIAL_POWER_PEEK) {
-            out.put("peek", convertPolicyListToStringArray(game.getPeek()));
-        }
-
         return out;
     }
 

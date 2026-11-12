@@ -445,7 +445,7 @@ Files: new `frontend/src/sound/SoundControl.tsx` and `.css`; the headers at `fro
 - [x] `git checkout development && git pull`, then `git checkout -b phase-7-spectators`
 - [x] Re-read Phase 7 below against the code as it now stands; fix any file paths or line numbers that moved
 - [x] Write the Phase 7 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 7 heading
-- [ ] Begin Task 7.1
+- [x] Begin Task 7.1
 
 ---
 
@@ -461,8 +461,8 @@ Files: `backend/src/main/java/server/util/GameToJSONConverter.java` (`convert`, 
 
 `convert` calls `game.getPlayer(userName).getIdentity()` (line 72), which throws for anyone who is not a player, so the spectator conversion is its own entry point, `convertForSpectator`. Players' packets keep their exact shape.
 
-- [ ] Tests first: the spectator conversion of an in-progress game contains no player `id` (role), no `presidentChoices`, `chancellorChoices` or `peek`, and no investigation result, at any depth and in every state; after the game ends roles are present, matching what players receive
-- [ ] Implement a spectator conversion path (`convertForSpectator`, built from the same public fields as `convert`)
+- [x] Tests first: the spectator conversion of an in-progress game contains no player `id` (role), no `presidentChoices`, `chancellorChoices` or `peek`, and no investigation result, at any depth and in every state; after the game ends roles are present, matching what players receive
+- [x] Implement a spectator conversion path (`convertForSpectator`, built from the same public fields as `convert`)
 
 ### Task 7.2: Lobby spectators
 
