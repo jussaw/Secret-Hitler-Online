@@ -26,7 +26,7 @@ type VotingPromptState = {
 };
 
 class VotingPrompt extends Component<VotingPromptProps, VotingPromptState> {
-  timeoutID: NodeJS.Timeout | undefined;
+  timeoutID: ReturnType<typeof setTimeout> | undefined;
 
   constructor(props: VotingPromptProps) {
     super(props);

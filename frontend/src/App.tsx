@@ -78,7 +78,6 @@ import PlayerPolicyStatus from "./util/PlayerPolicyStatus";
 import VictoryFascistHeader from "./assets/victory-fascist-header.png";
 import VictoryLiberalHeader from "./assets/victory-liberal-header.png";
 import IconSelection from "./custom-alert/IconSelection";
-import HelmetMetaData from "./util/HelmetMetaData";
 import { defaultPortrait } from "./assets";
 import Player from "./player/Player";
 import LoginPageContent from "./LoginPageContent";
@@ -196,7 +195,7 @@ const defaultAppState: AppState = {
 class App extends Component<{}, AppState> {
   websocket?: WebSocket = undefined;
   failedConnections: number = 0;
-  pingInterval?: NodeJS.Timeout = undefined;
+  pingInterval?: ReturnType<typeof setInterval> = undefined;
   reconnectOnConnectionClosed: boolean = true;
   snackbarMessages: number = 0;
   animationQueue: (() => void)[] = [];
@@ -407,15 +406,20 @@ class App extends Component<{}, AppState> {
     }
     switch (message[PARAM_PACKET_TYPE]) {
       case PACKET_LOBBY:
-        this.setState({
-          usernames: message[PARAM_USERNAMES],
-          icons: message[PARAM_ICON],
-          page: PAGE.LOBBY,
-        });
-        if (message[PARAM_ICON][this.state.name] === defaultPortrait) {
-          this.showChangeIconAlert();
-        }
-        this.updateChangeIconAlert();
+        // The icon dialog is rebuilt from this.state, so wait for the update to apply.
+        this.setState(
+          {
+            usernames: message[PARAM_USERNAMES],
+            icons: message[PARAM_ICON],
+            page: PAGE.LOBBY,
+          },
+          () => {
+            if (message[PARAM_ICON][this.state.name] === defaultPortrait) {
+              this.showChangeIconAlert();
+            }
+            this.updateChangeIconAlert();
+          }
+        );
         break;
 
       case PACKET_GAME_STATE:
@@ -536,8 +540,11 @@ class App extends Component<{}, AppState> {
    * Attempts to connect to the lobby via websocket.
    */
   onClickJoin = () => {
+    // Capture the form values: tryOpenWebSocket clears them via setState.
+    const name = this.state.joinName;
+    const lobby = this.state.joinLobby;
     this.setState({ joinError: "Connecting..." });
-    this.tryLogin(this.state.joinName, this.state.joinLobby)
+    this.tryLogin(name, lobby)
       .then((response) => {
         if (!response.ok) {
           if (DEBUG) {
@@ -549,7 +556,7 @@ class App extends Component<{}, AppState> {
             this.setState({
               joinError:
                 "There is already a user with the name '" +
-                this.state.joinName +
+                name +
                 "' in the lobby.",
             });
           } else if (response.status === 488) {
@@ -564,17 +571,15 @@ class App extends Component<{}, AppState> {
           }
         } else {
           // Username and lobby were verified. Try to open websocket.
-          if (
-            !this.tryOpenWebSocket(this.state.joinName, this.state.joinLobby)
-          ) {
+          if (!this.tryOpenWebSocket(name, lobby)) {
             this.setState({
               joinError:
                 "There was an error connecting to the server. Please try again.",
             });
           } else {
             // Save the username and lobby login
-            Cookies.set(COOKIE_NAME, this.state.name, { expires: 7 });
-            Cookies.set(COOKIE_LOBBY, this.state.joinLobby);
+            Cookies.set(COOKIE_NAME, name, { expires: 7 });
+            Cookies.set(COOKIE_LOBBY, lobby);
           }
         }
       })
@@ -590,12 +595,14 @@ class App extends Component<{}, AppState> {
    * Attempts to connect to the server and create a new lobby, and then opens a connection to the lobby.
    */
   onClickCreateLobby = () => {
+    // Capture the form value: tryOpenWebSocket clears it via setState.
+    const name = this.state.createLobbyName;
     this.setState({ createLobbyError: "Connecting..." });
     this.tryCreateLobby()
       .then((response) => {
         if (response.ok) {
           response.text().then((lobbyCode) => {
-            if (!this.tryOpenWebSocket(this.state.createLobbyName, lobbyCode)) {
+            if (!this.tryOpenWebSocket(name, lobbyCode)) {
               // if the connection failed
               this.setState({
                 createLobbyError:
@@ -603,7 +610,7 @@ class App extends Component<{}, AppState> {
               });
             } else {
               // Save the username and lobby login
-              Cookies.set(COOKIE_NAME, this.state.name, { expires: 7 });
+              Cookies.set(COOKIE_NAME, name, { expires: 7 });
               Cookies.set(COOKIE_LOBBY, lobbyCode);
             }
           });
@@ -1732,7 +1739,6 @@ class App extends Component<{}, AppState> {
     }
     return (
       <>
-        <HelmetMetaData />
         {page_render}
       </>
     );

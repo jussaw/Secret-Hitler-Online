@@ -31,8 +31,8 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 
 | Phase | Branch | Status |
 |---|---|---|
-| 1. Housekeeping | `phase-1-housekeeping` | in progress |
-| 2. Frontend modernization | `phase-2-vite` | not started |
+| 1. Housekeeping | `phase-1-housekeeping` | done |
+| 2. Frontend modernization | `phase-2-vite` | in progress |
 | 3. Persistence, packaging, first deploy | `phase-3-deploy` | not started |
 | 4. Round-table game screen | `phase-4-round-table` | not started |
 | 5. Phone layout | `phase-5-phone` | not started |
@@ -103,63 +103,67 @@ Files: new `CLAUDE.md` at the repo root
 - [x] `./gradlew test` matches the baseline
 - [x] `npm run build` succeeds in `frontend/`
 - [x] A full CPU game plays locally with no console errors beyond the baseline tracked in #2 to #5
-- [ ] PR merged into `development`
+- [x] PR merged into `development` (#7)
 
 **Start Phase 2: Frontend modernization**
 
-- [ ] Progress table: Phase 1 set to "done", Phase 2 set to "in progress"
-- [ ] `git checkout development && git pull`, then `git checkout -b phase-2-vite`
-- [ ] Re-read Phase 2 below against the code as it now stands; fix any file paths or line numbers that moved
-- [ ] Write the Phase 2 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 2 heading
-- [ ] Begin Task 2.1
+- [x] Progress table: Phase 1 set to "done", Phase 2 set to "in progress"
+- [x] `git checkout development && git pull`, then `git checkout -b phase-2-vite`
+- [x] Re-read Phase 2 below against the code as it now stands; fix any file paths or line numbers that moved
+- [x] Write the Phase 2 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 2 heading
+- [x] Begin Task 2.1
 
 ---
 
 ## Phase 2: Frontend modernization
 
+Breakdown: [`docs/superpowers/plans/2026-11-11-phase-2-frontend-modernization.md`](superpowers/plans/2026-11-11-phase-2-frontend-modernization.md)
+
 Outcome: same app, same behaviour, on Vite + React 18 + TypeScript 5 + Vitest.
 
 ### Task 2.1: Dependency audit
 
-- [ ] Remove packages with no imports: `react-router`, `react-router-dom`, `react-router-config`, `react-alice-carousel` (and `src/util/CustomAliceCarousel.css` if unreferenced), `query-string` if unreferenced, `prop-types` if unreferenced
-- [ ] `npm run build` still succeeds on CRA before the migration starts
+- [x] Remove packages with no imports: `react-router`, `react-router-dom`, `react-router-config`, `react-alice-carousel` (and `src/util/CustomAliceCarousel.css` with its dead import in `LoginPageContent.js`; it only styles the commented-out carousel), `query-string`, `@testing-library/user-event`. `prop-types` stays (nine files import it)
+- [x] `npm run build` still succeeds on CRA before the migration starts
 
 ### Task 2.2: CRA to Vite
 
 Files: `frontend/package.json`, new `frontend/vite.config.ts`, `frontend/index.html` (moved from `public/`), `frontend/src/index.js` → `src/main.tsx`, `frontend/.env.local`, `frontend/.env.dev`, new `frontend/src/vite-env.d.ts`
 
-- [ ] Install `vite` and `@vitejs/plugin-react`; remove `react-scripts`, `env-cmd`, `@babel/plugin-proposal-private-property-in-object`, the `eslintConfig` and `browserslist` blocks
-- [ ] Move `public/index.html` to `frontend/index.html`, replace `%PUBLIC_URL%` paths, add `<script type="module" src="/src/main.tsx">`
-- [ ] Rename env vars `REACT_APP_*` → `VITE_*` in both `.env` files and every `process.env.REACT_APP_*` → `import.meta.env.VITE_*`
-- [ ] Scripts: `dev` (`vite --mode local`), `dev:server` (`vite --mode dev`), `build` (`tsc --noEmit && vite build`), `preview`, `test`
-- [ ] Rename any `.js` file containing JSX to `.jsx` (Vite does not parse JSX in `.js`)
-- [ ] Delete `src/serviceWorker.js` and its registration call
-- [ ] Dev server on port 3000 loads the login page against a local backend
+- [x] Install `vite` and `@vitejs/plugin-react`; remove `react-scripts`, `env-cmd`, `@babel/plugin-proposal-private-property-in-object`, the Jest-era `@testing-library/react` and `@testing-library/jest-dom`, the `eslintConfig` and `browserslist` blocks
+- [x] Upgrade `typescript` to 5 in the same step (`react-scripts` peer-pins TS 3/4, and Vite's types need TS 5); fix resulting type errors without changing behaviour
+- [x] Move `public/index.html` to `frontend/index.html`, replace `%PUBLIC_URL%` paths, add `<script type="module" src="/src/main.tsx">`
+- [x] Rename env vars `REACT_APP_*` → `VITE_*` in both `.env` files and every `process.env.REACT_APP_*` → `import.meta.env.VITE_*`
+- [x] Scripts: `dev` (`vite`; Vite rejects `local` as a mode name and loads `.env.local` in every mode), `dev:server` (`vite --mode dev`), `build` (`tsc --noEmit && vite build`), `preview` (`test` lands with Vitest in Task 2.4)
+- [x] Rename any `.js` file containing JSX to `.jsx` (Vite does not parse JSX in `.js`)
+- [x] Delete `src/serviceWorker.js` and its registration call
+- [x] Dev server on port 3000 loads the login page against a local backend
 
-### Task 2.3: React 18 and TypeScript 5
+### Task 2.3: React 18
 
-- [ ] Upgrade `react`, `react-dom` to 18 and `@types/react`, `@types/react-dom` to match; switch the entry to `createRoot`
-- [ ] Upgrade `typescript` to 5; fix resulting type errors without changing behaviour
-- [ ] Replace `react-textfit` in `src/player/Player.js` with CSS `clamp()` font sizing; uninstall it
-- [ ] Replace `react-helmet` (`src/util/HelmetMetaData.js`, used at `App.tsx:1822`) with static `<meta>` tags in `index.html`; delete the component; uninstall it
-- [ ] Check animation timing under React 18 automatic batching: the animation queue in `App.tsx` (`addAnimationToQueue`, `onAnimationFinish`) must still play events in order
+`react-textfit` peer-pins React 15/16, so it goes before the upgrade.
+
+- [x] Replace `react-textfit` in `src/player/Player.jsx` with CSS `clamp()` font sizing; uninstall it
+- [x] Replace `react-helmet` (`src/util/HelmetMetaData.jsx`, used at `App.tsx:1735`) with static `<meta>` tags in `index.html`; delete the component; uninstall it
+- [x] Upgrade `react`, `react-dom` to 18 and `@types/react`, `@types/react-dom` to match; switch the entry to `createRoot`
+- [x] Check timing under React 18 automatic batching: the animation queue in `App.tsx` (`addAnimationToQueue`, `onAnimationFinish`) must still play events in order, and the reads of `this.state` right after `setState` in socket and promise callbacks are made explicit (lobby packet icon dialog at `App.tsx:410-418`, login cookies at `:576` and `:606`)
 
 ### Task 2.4: Vitest
 
-- [ ] Install `vitest`, `jsdom`, `@testing-library/react` (v14+), `@testing-library/jest-dom` (v6+); add `test` config to `vite.config.ts`
-- [ ] Port `src/App.test.js` and `src/setupTests.js`; `npm test -- --run` passes
+- [x] Install `vitest`, `jsdom`, `@testing-library/react` (v14+), `@testing-library/jest-dom` (v6+); add `test` config to `vite.config.ts` and the `test` script
+- [x] Port `src/App.test.js` and `src/setupTests.js`; `npm test -- --run` passes
 
 ### Task 2.5: Update dev Docker and docs
 
-- [ ] `docker-compose.yml` frontend service: `node:20`, command `npm install && npm run dev -- --host`
-- [ ] `DEVELOPMENT.md` reflects the new script names
-- [ ] `CLAUDE.md` commands and layout updated for Vite and Vitest
+- [x] `docker-compose.yml` frontend service: `node:24` (Vitest 5 and jsdom 30 need Node 22+), command `npm install && npm run dev -- --host`
+- [x] `DEVELOPMENT.md`, `README.md` and `frontend/README.md` reflect the new script names
+- [x] `CLAUDE.md` commands and layout updated for Vite and Vitest
 
 **Phase 2 acceptance**
 
-- [ ] `npm run build` and `npm test -- --run` pass
-- [ ] `grep -rn "REACT_APP_\|react-scripts" frontend --include='*' --exclude-dir=node_modules` returns nothing
-- [ ] Manual regression: create lobby, join with a second browser, add CPU players, play to both a liberal and a fascist win, refresh mid-game and rejoin
+- [x] `npm run build` and `npm test -- --run` pass
+- [x] `grep -rn "REACT_APP_\|react-scripts" frontend --include='*' --exclude-dir=node_modules` returns nothing
+- [x] Manual regression: create lobby, join with a second browser, add CPU players, play to both a liberal and a fascist win, refresh mid-game and rejoin
 - [ ] PR merged into `development`
 
 **Start Phase 3: Persistence, packaging, first deploy**

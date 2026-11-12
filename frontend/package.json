@@ -2,52 +2,32 @@
 	"name": "secret-hitler-online-interface",
 	"version": "0.1.0",
 	"private": true,
-	"homepage": ".",
+	"type": "module",
 	"scripts": {
-		"start": "react-scripts start",
-		"devLocal": "npx env-cmd -f .env.local react-scripts start",
-		"devServer": "npx env-cmd -f .env.dev react-scripts start",
-		"build": "react-scripts build",
-		"test": "react-scripts test",
-		"eject": "react-scripts eject"
-	},
-	"eslintConfig": {
-		"extends": "react-app"
+		"dev": "vite",
+		"dev:server": "vite --mode dev",
+		"build": "tsc --noEmit && vite build",
+		"preview": "vite preview",
+		"test": "vitest"
 	},
 	"dependencies": {
-		"@testing-library/jest-dom": "^5.16.2",
-		"@testing-library/react": "^12.1.2",
-		"@testing-library/user-event": "^7.2.1",
 		"js-cookie": "^2.2.1",
-		"query-string": "^6.14.1",
-		"react": "^16.14.0",
-		"react-alice-carousel": "^2.5.1",
-		"react-dom": "^16.14.0",
-		"react-helmet": "^6.1.0",
-		"react-router": "^5.2.0",
-		"react-router-config": "^5.1.1",
-		"react-router-dom": "^5.2.0",
-		"react-textfit": "^1.1.1",
-		"typescript": "^3.9.10"
+		"react": "^18.3.1",
+		"react-dom": "^18.3.1"
 	},
 	"devDependencies": {
-		"@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+		"@testing-library/dom": "^10.4.2",
+		"@testing-library/jest-dom": "^7.0.1",
+		"@testing-library/react": "^16.3.3",
 		"@types/js-cookie": "^3.0.6",
-		"@types/node": "^20.11.16",
-		"env-cmd": "^10.1.0",
+		"@types/node": "^24.19.2",
+		"@types/react": "^18.3.31",
+		"@types/react-dom": "^18.3.7",
+		"@vitejs/plugin-react": "^6.1.2",
+		"jsdom": "^30.1.3",
 		"prop-types": "^15.7.2",
-		"react-scripts": "^5.0.0"
-	},
-	"browserslist": {
-		"production": [
-			">0.2%",
-			"not dead",
-			"not op_mini all"
-		],
-		"development": [
-			"last 1 chrome version",
-			"last 1 firefox version",
-			"last 1 safari version"
-		]
+		"typescript": "^5.9.3",
+		"vite": "^8.3.5",
+		"vitest": "^5.0.5"
 	}
 }

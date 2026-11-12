@@ -17,33 +17,36 @@ keeps credit to upstream and to the board game's creators.
   `src/main/java/game/`; HTTP endpoints (`/check-login`, `/new-lobby`, `/ping`), the `/game`
   WebSocket, lobbies and state serialization in `src/main/java/server/`. JUnit 4 tests in
   `src/test/java/game/`.
-- `frontend/`: React 16 and TypeScript 3.9 on Create React App. `src/App.tsx` owns the WebSocket,
-  all state, and the login, lobby and game pages; prompts live in `src/custom-alert/`.
+- `frontend/`: React 18 and TypeScript 5, built with Vite and tested with Vitest. The entry is
+  `src/main.tsx`, with `index.html` at the `frontend/` root. `src/App.tsx` owns the WebSocket, all
+  state, and the login, lobby and game pages; prompts live in `src/custom-alert/`. `VITE_*`
+  variables live in `.env.local` (loaded in every mode) and `.env.dev` (`--mode dev`), typed in
+  `src/vite-env.d.ts`.
 - `docs/`: `PLAN.md` (phased plan and progress), `superpowers/specs/` (design),
   `superpowers/plans/` (per-phase step-by-step breakdowns).
 
 ## Commands
 
 The Gradle 7.4.2 wrapper does not run on JDKs newer than 17. Java 17 comes from SDKMAN
-(`17.0.21.0+9-tem`).
+(`17.0.21.0+9-tem`). The frontend needs Node 22.12 or newer (Vitest 5, jsdom 30); local is 24.
 
 | Task | Command |
 |---|---|
 | Run backend (debug mode, `localhost:4040`) | `cd backend && ./gradlew runLocal` |
-| Run frontend dev server (`localhost:3000`, against the local backend) | `cd frontend && npm install && npm run devLocal` |
+| Run frontend dev server (`localhost:3000`, against the local backend) | `cd frontend && npm install && npm run dev` |
 | Backend tests | `cd backend && ./gradlew test` |
-| Frontend tests (single run) | `cd frontend && CI=true npm test` |
+| Frontend tests (single run) | `cd frontend && npm test -- --run` |
 | Backend build (tests + fat jar at `backend/build/libs/secret-hitler-online.jar`) | `cd backend && ./gradlew build` |
-| Frontend production build (`frontend/build/`) | `cd frontend && npm run build` |
+| Frontend production build (type-check, then `frontend/dist/`) | `cd frontend && npm run build` |
 
 Known baseline failures (do not "fix" them while doing unrelated work):
 
-- `CI=true npm test` fails 1 of 1: `src/App.test.js` is unmodified CRA boilerplate (#6).
-- The dev-build console shows pre-existing React warnings: #2 (react-textfit), #3 (react-helmet),
-  #4 (missing `key` on login page gifs), #5 (prompts setting state from uncleared timers after
-  unmount).
+- The dev-build console shows pre-existing React warnings: #4 (missing `key` on login page gifs),
+  #8 (`Player.render` calls `setState`), and #5 (prompts set state from uncleared timers; on
+  React 18 only `ElectionTrackerAlert`'s constructor timer still warns, after a failed election).
+- #9: the lobby tags every player except the host as `[Host]`.
 
-`npm run devServer` points at upstream's hosted dev backend, not anything this fork runs.
+`npm run dev:server` points at upstream's hosted dev backend, not anything this fork runs.
 
 ## Workflow
 

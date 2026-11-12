@@ -20,7 +20,7 @@ For more information, read the [official rulebook here](https://www.secrethitler
 
 ## Running locally
 
-Requirements: Java 17 and Node.js (tested with Node 24).
+Requirements: Java 17 and Node.js 22.12 or newer (tested with Node 24).
 
 Start the backend, which listens on [localhost:4040](http://localhost:4040):
 
@@ -34,12 +34,12 @@ In a second terminal, start the frontend dev server on [localhost:3000](http://l
 ```bash
 cd frontend
 npm install
-npm run devLocal
+npm run dev
 ```
 
 Open [localhost:3000](http://localhost:3000), create a lobby, choose a look and start the game.
 
-Run the backend tests with `cd backend && ./gradlew test`. See [DEVELOPMENT.md](DEVELOPMENT.md) for more setups, including Docker Compose.
+Run the tests with `cd backend && ./gradlew test` and `cd frontend && npm test -- --run`. See [DEVELOPMENT.md](DEVELOPMENT.md) for more setups, including Docker Compose.
 
 ## About this project
 ### Technical Details

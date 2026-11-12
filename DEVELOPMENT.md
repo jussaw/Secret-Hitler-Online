@@ -1,15 +1,18 @@
 # Development setup for Secret Hitler Online
 
+Requirements: Java 17 for the backend, Node.js 22.12 or newer for the frontend (tested with Node 24).
+
 ## Quick start using Docker:
 - Run everything with Docker Compose (DB + backend + frontend):
   - `docker compose up --build`
   - Open frontend: [http://localhost:3000](http://localhost:3000)
   - Backend health: [http://localhost:4040/ping](http://localhost:4040/ping)
+  - The containers run as root, so `frontend/node_modules`, `backend/build` and `backend/.gradle` in your checkout end up owned by root.
 - Alternative: only DB in Docker, run app locally:
   - `docker compose up -d db`  (or use docker run …)
   - `export DATABASE_URL=postgres://secret:secret@localhost:5432/secrethitler`
   - In backend/: `./gradlew runLocal`
-  - In frontend/: `npm install && npm run devLocal`
+  - In frontend/: `npm install && npm run dev`
   - Open frontend: [http://localhost:3000](http://localhost:3000)
 
 Your setup will vary depending on if you're only making changes to the frontend, or if you're making changes to the frontend and the backend at once.
@@ -27,10 +30,10 @@ git clone git@github.com:jussaw/Secret-Hitler-Online.git
 cd Secret-Hitler-Online/frontend
 
 npm install
-npm run devServer
+npm run dev:server
 ```
 
-The webpage should open automatically in your browser, but is usually hosted at [localhost:3000](http://localhost:3000).
+The dev server runs at [localhost:3000](http://localhost:3000). `dev:server` reads `.env.dev`, which points at a hosted development backend.
 
 ## Changing frontend + backend
 
@@ -61,7 +64,18 @@ Open another terminal at the root of the project, and run the following commands
 cd frontend
 
 npm install
-npm run devLocal
+npm run dev
 ```
 
 Note: You may need to modify `.env.local` based on the address your dev server is mounted to. By default, `.env.local` is configured to use `localhost:4040`.
+
+### Frontend tests and build
+
+From `frontend/`:
+
+```bash
+npm test              # Vitest in watch mode
+npm test -- --run     # single run
+npm run build         # type-check, then build into dist/
+npm run preview       # serve dist/ on port 3000
+```

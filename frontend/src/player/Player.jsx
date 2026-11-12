@@ -3,7 +3,6 @@ import PropTypes from "prop-types";
 
 import './Player.css'
 import '../selectable.css'
-import {Textfit} from 'react-textfit';
 
 import PlayerBase from "../assets/player-base.png"
 
@@ -194,15 +193,11 @@ class Player extends Component {
 
                 {identity_components}
 
-                <Textfit id={"player-name"}
-                         className={this.getClassName() + " force-update"}
-                         mode="multi"
-                         forceSingleModeWidth={false}
-                         alignVertWithFlexbox={true}
-                         throttle={1000}
+                <div id={"player-name"}
+                     className={this.getClassName() + " force-update"}
                 >
                     {this.props.name}
-                </Textfit>
+                </div>
 
                 <p  id="player-disabled-label"
                     hidden={!this.props.disabled}

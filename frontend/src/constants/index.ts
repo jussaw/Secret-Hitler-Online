@@ -8,13 +8,13 @@ export enum PAGE {
   GAME = "game",
 }
 
-export const DEBUG = process.env.REACT_APP_DEBUG !== undefined;
+export const DEBUG = import.meta.env.VITE_DEBUG !== undefined;
 export const SERVER_ADDRESS =
-  process.env.REACT_APP_SERVER_ADDRESS || "secret-hitler-online.fly.dev";
+  import.meta.env.VITE_SERVER_ADDRESS || "secret-hitler-online.fly.dev";
 export const SERVER_ADDRESS_HTTP =
-  process.env.REACT_APP_SERVER_ADDRESS_HTTP || "https://" + SERVER_ADDRESS;
+  import.meta.env.VITE_SERVER_ADDRESS_HTTP || "https://" + SERVER_ADDRESS;
 export const WEBSOCKET_HEADER =
-  process.env.REACT_APP_WEBSOCKET_HEADER || "wss://";
+  import.meta.env.VITE_WEBSOCKET_HEADER || "wss://";
 
 export const CHECK_LOGIN = "/check-login";
 export const NEW_LOBBY = "/new-lobby";
