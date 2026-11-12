@@ -468,9 +468,9 @@ Files: `backend/src/main/java/server/util/GameToJSONConverter.java` (`convert`, 
 
 Files: `backend/src/main/java/server/util/Lobby.java` (players live in `userToUsername` and `activeUsernames`; `hasTimedOut` 87, `getConnections` 97, `isFull` 168, `getUserCount` 298, `updateAllUsers` 311, which sends to `userToUsername` only, `updateUser` 386, `readObject` 413), new `backend/src/test/java/server/util/LobbySpectatorTest.java` and `FakeSocket.java`
 
-- [ ] Tests first: adding a spectator does not change `getUserCount()` or `isFull()`; spectators receive updates from `updateAllUsers()`; removing the last player leaves a spectator-only lobby that `hasTimedOut()` treats as inactive
-- [ ] Add a transient spectator connection set with `addSpectator`, `removeSpectator`, `isSpectator`; include spectators in `updateAllUsers()` using the spectator conversion
-- [ ] Add `spectatorCount` to every state packet, lobby and game (packets are assembled in `Lobby`, where `type` and `icon` are added)
+- [x] Tests first: adding a spectator does not change `getUserCount()` or `isFull()`; spectators receive updates from `updateAllUsers()`; removing the last player leaves a spectator-only lobby that `hasTimedOut()` treats as inactive
+- [x] Add a transient spectator connection set with `addSpectator`, `removeSpectator`, `isSpectator`; include spectators in `updateAllUsers()` using the spectator conversion
+- [x] Add `spectatorCount` to every state packet, lobby and game (packets are assembled in `Lobby`, where `type` and `icon` are added)
 
 ### Task 7.3: Server handshake and command rejection
 

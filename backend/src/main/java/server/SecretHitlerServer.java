@@ -39,6 +39,7 @@ public class SecretHitlerServer {
     public static final String PARAM_VETO = "veto";
     public static final String PARAM_CHOICE = "choice"; // the index of the chosen policy.
     public static final String PARAM_ICON = "icon";
+    public static final String PARAM_SPECTATOR = "spectator"; // "true" in the /game and /check-login query
 
     // Passed to client
     // The type of the packet tells the client how to parse the contents.
@@ -50,6 +51,7 @@ public class SecretHitlerServer {
     public static final String PACKET_PONG = "pong"; // response to pings.
 
     public static final String PARAM_INVESTIGATION = "investigation";
+    public static final String PARAM_SPECTATOR_COUNT = "spectatorCount"; // in every lobby and game packet
     public static final String FASCIST = "FASCIST";
     public static final String LIBERAL = "LIBERAL";
 
