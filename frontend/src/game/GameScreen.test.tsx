@@ -93,3 +93,8 @@ test("the header shows no count when nobody watches", () => {
   renderScreen({ spectatorCount: 0 });
   expect(screen.queryByRole("status", { name: /watching/ })).toBeNull();
 });
+
+test("the game banner reads SECRET-HITLER", () => {
+  renderScreen();
+  expect(document.querySelector("header")).toHaveTextContent(/^SECRET-HITLER$/);
+});

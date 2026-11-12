@@ -24,3 +24,8 @@ test("pings the server once when it starts", () => {
   render(<App />);
   expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/ping$/));
 });
+
+test("the login page's banner reads SECRET-HITLER", () => {
+  const { container } = render(<App />);
+  expect(container.querySelector("header")).toHaveTextContent(/^SECRET-HITLER$/);
+});

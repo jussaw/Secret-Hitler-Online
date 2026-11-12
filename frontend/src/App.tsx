@@ -751,7 +751,7 @@ class App extends Component<{}, AppState> {
     return (
       <div className="App">
         <header className="App-header">
-          SECRET-HITLER.ONLINE
+          SECRET-HITLER
           <SoundControl />
         </header>
         <br />
@@ -954,7 +954,7 @@ class App extends Component<{}, AppState> {
     return (
       <div className="App">
         <header className="App-header">
-          SECRET-HITLER.ONLINE
+          SECRET-HITLER
           <SpectatorCount count={this.state.spectatorCount} />
           <SoundControl />
         </header>

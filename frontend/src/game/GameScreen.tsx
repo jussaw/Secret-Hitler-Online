@@ -44,7 +44,7 @@ export default function GameScreen(props: GameScreenProps) {
   return (
     <div className="game-screen">
       <header className="App-header">
-        SECRET-HITLER.ONLINE
+        SECRET-HITLER
         <SpectatorCount count={props.spectatorCount} />
         <SoundControl />
       </header>

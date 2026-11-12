@@ -508,7 +508,7 @@ Files: `frontend/src/App.tsx` (login form `renderLoginPage` 646, `tryOpenWebSock
 - [x] `git checkout development && git pull`, then `git checkout -b phase-8-game-screen`
 - [x] Design written and committed: [`docs/superpowers/specs/2026-11-12-game-screen-redesign-design.md`](superpowers/specs/2026-11-12-game-screen-redesign-design.md), with reference screenshots
 - [x] Write the Phase 8 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 8 heading
-- [ ] Begin Task 8.1
+- [x] Begin Task 8.1
 
 ---
 
@@ -522,7 +522,7 @@ Outcome: the players sit in a roster at the side and the boards are more than tw
 
 Files: `frontend/src/App.tsx` (754, 957), `frontend/src/game/GameScreen.tsx` (47), `frontend/e2e/spectator.spec.ts` (375), with tests in `App.test.tsx` and `GameScreen.test.tsx`
 
-- [ ] The login, lobby and game headers read `SECRET-HITLER`
+- [x] The login, lobby and game headers read `SECRET-HITLER`
 
 ### Task 8.2: Round step mapping
 
