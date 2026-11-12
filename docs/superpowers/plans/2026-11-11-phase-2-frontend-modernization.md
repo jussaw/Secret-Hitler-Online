@@ -137,7 +137,7 @@ git commit -m "build(frontend): remove unused dependencies"
 - Delete: `frontend/public/index.html`, `frontend/src/index.js`, `frontend/src/serviceWorker.js`, `frontend/src/index.d.ts`
 
 **Interfaces:**
-- Produces: `npm run dev` (Vite on port 3000, mode `local`), `npm run dev:server` (mode `dev`), `npm run build` (`tsc --noEmit && vite build` into `frontend/dist`), `npm run preview`. `import.meta.env.VITE_DEBUG`, `VITE_SERVER_ADDRESS`, `VITE_SERVER_ADDRESS_HTTP`, `VITE_WEBSOCKET_HEADER` (all `string | undefined`).
+- Produces: `npm run dev` (Vite on port 3000, reads `.env.local`), `npm run dev:server` (mode `dev`), `npm run build` (`tsc --noEmit && vite build` into `frontend/dist`), `npm run preview`. `import.meta.env.VITE_DEBUG`, `VITE_SERVER_ADDRESS`, `VITE_SERVER_ADDRESS_HTTP`, `VITE_WEBSOCKET_HEADER` (all `string | undefined`).
 
 - [ ] **Step 1: Swap the toolchain packages**
 
@@ -145,10 +145,10 @@ From `frontend/`:
 
 ```bash
 npm uninstall react-scripts env-cmd @babel/plugin-proposal-private-property-in-object @testing-library/react @testing-library/jest-dom typescript
-npm install -D vite@8.3.5 @vitejs/plugin-react@6.1.2 typescript@5.9.3
+npm install -D vite@8.3.5 @vitejs/plugin-react@6.1.2 typescript@5.9.3 @types/react@17.0.75 @types/react-dom@17.0.25
 ```
 
-Expected: no `ERESOLVE`. The Jest-era Testing Library packages leave with Jest; Task 4 installs the React 18 versions. `typescript` moves from `dependencies` to `devDependencies`.
+Expected: no `ERESOLVE`. The Jest-era Testing Library packages leave with Jest; Task 4 installs the React 18 versions. `typescript` moves from `dependencies` to `devDependencies`. `@types/react` and `@types/react-dom` were only ever transitive dependencies of `react-scripts`, so they must be listed directly now. They stay at the versions that were installed until Task 3 upgrades them.
 
 - [ ] **Step 2: Rewrite the `package.json` fields**
 
@@ -156,7 +156,7 @@ Remove `"homepage"`, `"eslintConfig"` and `"browserslist"`. Add `"type": "module
 
 ```json
 "scripts": {
-	"dev": "vite --mode local",
+	"dev": "vite",
 	"dev:server": "vite --mode dev",
 	"build": "tsc --noEmit && vite build",
 	"preview": "vite preview"
@@ -282,7 +282,7 @@ export const WEBSOCKET_HEADER =
   import.meta.env.VITE_WEBSOCKET_HEADER || "wss://";
 ```
 
-Mode loading matches CRA's: `--mode local` reads `.env.local`, and `--mode dev` reads `.env.dev`, which takes priority over `.env.local`. `vite build` (mode `production`) reads `.env.local`, as `react-scripts build` did.
+Vite rejects `local` as a mode name, because it clashes with the `.local` env-file suffix. So `npm run dev` is plain `vite`. Vite loads `.env.local` in every mode, so the dev server points at the local backend as before. `--mode dev` reads `.env.dev`, which takes priority over `.env.local`. `vite build` (mode `production`) reads `.env.local`, as `react-scripts build` did. Verified by building in both modes and grepping the bundle for the backend address.
 
 - [ ] **Step 8: Replace `frontend/tsconfig.json`**
 
@@ -329,7 +329,7 @@ Expected: the final grep prints nothing (only `src/setupTests.js` is left as `.j
 - [ ] **Step 10: Fix the TypeScript 5 errors**
 
 Run: `npx tsc --noEmit`
-Expected before the fix: six `TS2503 Cannot find namespace 'NodeJS'` errors (the `process` errors are gone after Step 7). In a browser, `setTimeout` and `setInterval` return numbers, so type the fields from the functions themselves:
+Expected: exit 0. Node's types reach the program through `vite.config.ts` (Vite's declarations reference them), so `NodeJS.Timeout` still resolves. The dry run reported six `TS2503 Cannot find namespace 'NodeJS'` errors only because it type-checked before `vite.config.ts` existed. In a browser, `setTimeout` and `setInterval` return numbers, so type the fields from the functions themselves; then browser code does not depend on Node typings leaking in through the build config:
 
 - `src/App.tsx:199`: `pingInterval?: NodeJS.Timeout = undefined;` → `pingInterval?: ReturnType<typeof setInterval> = undefined;`
 - `src/custom-alert/IconSelection.tsx:19`, `src/custom-alert/PeekPrompt.tsx:18`, `src/custom-alert/SelectPlayerPrompt.tsx:45`, `src/custom-alert/VotingPrompt.tsx:29`, `src/player/PlayerDisplay.tsx:140`: replace `NodeJS.Timeout` with `ReturnType<typeof setTimeout>`.

@@ -42,7 +42,7 @@ export default function SelectPlayerPrompt(
 ): ReactElement {
   const props = { ...defaultProps, ...inputProps };
 
-  const timeOutID = useRef<NodeJS.Timeout | undefined>(undefined);
+  const timeOutID = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [isWaitingForServer, setIsWaitingServer] = useState(false);
 
   const onButtonClick = (selectedItem: string) => {

@@ -130,14 +130,14 @@ Outcome: same app, same behaviour, on Vite + React 18 + TypeScript 5 + Vitest.
 
 Files: `frontend/package.json`, new `frontend/vite.config.ts`, `frontend/index.html` (moved from `public/`), `frontend/src/index.js` → `src/main.tsx`, `frontend/.env.local`, `frontend/.env.dev`, new `frontend/src/vite-env.d.ts`
 
-- [ ] Install `vite` and `@vitejs/plugin-react`; remove `react-scripts`, `env-cmd`, `@babel/plugin-proposal-private-property-in-object`, the Jest-era `@testing-library/react` and `@testing-library/jest-dom`, the `eslintConfig` and `browserslist` blocks
-- [ ] Upgrade `typescript` to 5 in the same step (`react-scripts` peer-pins TS 3/4, and Vite's types need TS 5); fix resulting type errors without changing behaviour
-- [ ] Move `public/index.html` to `frontend/index.html`, replace `%PUBLIC_URL%` paths, add `<script type="module" src="/src/main.tsx">`
-- [ ] Rename env vars `REACT_APP_*` → `VITE_*` in both `.env` files and every `process.env.REACT_APP_*` → `import.meta.env.VITE_*`
-- [ ] Scripts: `dev` (`vite --mode local`), `dev:server` (`vite --mode dev`), `build` (`tsc --noEmit && vite build`), `preview` (`test` lands with Vitest in Task 2.4)
-- [ ] Rename any `.js` file containing JSX to `.jsx` (Vite does not parse JSX in `.js`)
-- [ ] Delete `src/serviceWorker.js` and its registration call
-- [ ] Dev server on port 3000 loads the login page against a local backend
+- [x] Install `vite` and `@vitejs/plugin-react`; remove `react-scripts`, `env-cmd`, `@babel/plugin-proposal-private-property-in-object`, the Jest-era `@testing-library/react` and `@testing-library/jest-dom`, the `eslintConfig` and `browserslist` blocks
+- [x] Upgrade `typescript` to 5 in the same step (`react-scripts` peer-pins TS 3/4, and Vite's types need TS 5); fix resulting type errors without changing behaviour
+- [x] Move `public/index.html` to `frontend/index.html`, replace `%PUBLIC_URL%` paths, add `<script type="module" src="/src/main.tsx">`
+- [x] Rename env vars `REACT_APP_*` → `VITE_*` in both `.env` files and every `process.env.REACT_APP_*` → `import.meta.env.VITE_*`
+- [x] Scripts: `dev` (`vite`; Vite rejects `local` as a mode name and loads `.env.local` in every mode), `dev:server` (`vite --mode dev`), `build` (`tsc --noEmit && vite build`), `preview` (`test` lands with Vitest in Task 2.4)
+- [x] Rename any `.js` file containing JSX to `.jsx` (Vite does not parse JSX in `.js`)
+- [x] Delete `src/serviceWorker.js` and its registration call
+- [x] Dev server on port 3000 loads the login page against a local backend
 
 ### Task 2.3: React 18
 
