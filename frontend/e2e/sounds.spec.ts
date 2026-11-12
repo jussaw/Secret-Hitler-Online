@@ -356,12 +356,17 @@ test("a tap shows the slider in a browser without :has()", async ({ page, isMobi
 test("a disconnect during the vote reveal cancels its sound", async ({ page, browserName, isMobile }) => {
   test.skip(browserName !== "chromium" || isMobile, "the desktop project covers the wiring");
   await recordSounds(page);
+  // The page's clock is paused through the reveal below, so the 2 s before its tally sound do not
+  // depend on how fast this machine refuses five reconnects.
+  await page.clock.install();
   await page.route("**/new-lobby", (route) => route.fulfill({ body: "FAKE" }));
   let refuse = false;
   let connect!: (ws: WebSocketRoute) => void;
   const connected = new Promise<WebSocketRoute>((resolve) => (connect = resolve));
   await page.routeWebSocket(/\/game\?/, (ws) => {
-    if (refuse) return void ws.close(); // the server is gone: every reconnect fails
+    // The server is gone: every reconnect fails, each after half a second, as on a busy machine
+    // (five of them outlast the 2 s before the tally).
+    if (refuse) return void setTimeout(() => ws.close(), 500);
     ws.onMessage(() => {});
     connect(ws);
   });
@@ -377,15 +382,18 @@ test("a disconnect during the vote reveal cancels its sound", async ({ page, bro
   send(gamePacket({ state: LobbyState.CHANCELLOR_VOTING, president: TEN[1], chancellor: TEN[2] }));
   await page.locator("#alert-box.appear-custom-alert").getByRole("button", { name: "CONFIRM" }).waitFor();
   send({ type: "ok" });
+  await expect(page.locator("#alert-box.appear-custom-alert")).toHaveCount(0);
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 50));
   const passed = Object.fromEntries(TEN.map((name) => [name, true]));
   send(gamePacket({ state: LobbyState.LEGISLATIVE_PRESIDENT, president: TEN[1], chancellor: TEN[2], userVotes: passed }));
+  await page.clock.runFor(400); // the status line fades to its new text
   await expect(page.locator("#status-bar-text")).toHaveText("Tallying votes...");
   // The reveal is running and its result sound is 2 s away. The server goes away now: after five
   // failed reconnects the client returns to the login page and clears its animation queue.
   refuse = true;
   ws.close();
   await expect(page.getByText("Disconnected from the lobby.")).toBeVisible();
-  await page.waitForTimeout(3000);
+  await page.clock.runFor(3000); // well past the tally, 2 s into the reveal
   const names = (await soundLog(page)).map((sound) => sound.name);
   expect(names, "sounds after the disconnect").not.toContain("votePassed");
   expect(names, "sounds after the disconnect").not.toContain("cardDraw");
