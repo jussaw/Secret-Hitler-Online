@@ -182,6 +182,8 @@ Breakdown: [`docs/superpowers/plans/2026-11-12-phase-3-persistence-packaging-dep
 
 Outcome: the unmodified-looking game runs on the Pi at its public subdomain and survives restarts.
 
+Phase 3 lands in two PRs. CI publishes images only from `development`, so Tasks 3.1-3.5 merged first (#12), which published the first image. Tasks 3.6-3.7 and the acceptance checks follow on a second `phase-3-deploy` branch. Subdomain: `secret-hitler.jussaw.com`.
+
 ### Task 3.1: SQLite backup
 
 Files: `backend/build.gradle`, `backend/src/main/java/server/ApplicationConfig.java`, `backend/src/main/java/server/SecretHitlerServer.java` (database section, lines 211-359), new `backend/src/test/java/server/DatabaseBackupTest.java`
@@ -229,7 +231,7 @@ Files: new `.github/workflows/ci.yml`
 
 - [x] Job `test`: `./gradlew test` and `npm ci && npm test -- --run && npm run build`, on pull requests and pushes to `development`
 - [x] Job `image` (push to `development` only, after `test`): buildx with QEMU, platforms `linux/arm64,linux/amd64`, push `ghcr.io/jussaw/secret-hitler-online:latest` and `:sha-<short>`
-- [ ] First run is green and the package is visible on GHCR
+- [x] First run is green and the package is visible on GHCR (run 43167662489; public, `linux/amd64` + `linux/arm64`)
 
 ### Task 3.6: Pi stack (in `~/repos/portainer-compose`)
 
