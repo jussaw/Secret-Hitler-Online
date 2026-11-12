@@ -97,7 +97,7 @@ export const DISABLE_TERM_LIMITED_PLAYERS = (
 
 // </editor-fold>
 
-type PlayerDisplayProps = {
+export type PlayerDisplayProps = {
   user: string;
   gameState: GameState;
   players?: string[];
@@ -122,11 +122,10 @@ const defaultProps: Partial<PlayerDisplayProps> = {
 };
 
 /**
- * Displays a row of player icons and handles displaying busy status, votes, and roles where applicable.
+ * Builds one tile per displayed player, in display order, and handles busy status, votes, and
+ * roles where applicable. PlayerDisplay lays the tiles out in rows; TableSeats seats them.
  */
-export default function PlayerDisplay(
-  inputProps: PlayerDisplayProps
-): ReactElement {
+export function usePlayerTiles(inputProps: PlayerDisplayProps): JSX.Element[] {
   const props = {
     ...defaultProps,
     ...inputProps,
@@ -340,26 +339,6 @@ export default function PlayerDisplay(
     setPlayerVotesVisible(0);
   };
 
-  /* Note that there are two player-display-containers, so that the player tiles can be split into two rows if there
-   * is insufficient space for them.*/
-  const playerOrder = getPlayerOrder();
-
-  // divides the playerOrder at the given index to allow for even groupings if the page is too narrow to fit
-  // all players.
-  let div1, div2;
-  if (playerOrder.length <= 4) {
-    // all players can be sorted into the first group.
-    div1 = playerOrder.length;
-    div2 = playerOrder.length;
-  } else if (playerOrder.length <= 8) {
-    // divide the players into two groups, with size preference given to the second group.
-    div1 = Math.floor(playerOrder.length / 2);
-    div2 = playerOrder.length;
-  } else {
-    div1 = Math.floor(playerOrder.length / 3);
-    div2 = Math.floor((playerOrder.length * 2) / 3);
-  }
-
   if (props.showVotes && !isPlayingVoteAnimation) {
     setIsPlayingVoteAnimation(true);
     setupVoteAnimation();
@@ -368,13 +347,39 @@ export default function PlayerDisplay(
     resetVoteAnimation();
   }
 
+  return renderPlayer(0, getPlayerOrder().length);
+}
+
+/**
+ * Displays a row of player icons and handles displaying busy status, votes, and roles where applicable.
+ */
+export default function PlayerDisplay(props: PlayerDisplayProps): ReactElement {
+  const tiles = usePlayerTiles(props);
+
+  /* Note that there are three player-display-containers, so that the player tiles can be split into rows if there
+   * is insufficient space for them.*/
+
+  // divides the playerOrder at the given index to allow for even groupings if the page is too narrow to fit
+  // all players.
+  let div1, div2;
+  if (tiles.length <= 4) {
+    // all players can be sorted into the first group.
+    div1 = tiles.length;
+    div2 = tiles.length;
+  } else if (tiles.length <= 8) {
+    // divide the players into two groups, with size preference given to the second group.
+    div1 = Math.floor(tiles.length / 2);
+    div2 = tiles.length;
+  } else {
+    div1 = Math.floor(tiles.length / 3);
+    div2 = Math.floor((tiles.length * 2) / 3);
+  }
+
   return (
     <div id="player-display">
-      <div id="player-display-container">{renderPlayer(0, div1)}</div>
-      <div id="player-display-container">{renderPlayer(div1, div2)}</div>
-      <div id="player-display-container">
-        {renderPlayer(div2, playerOrder.length)}
-      </div>
+      <div id="player-display-container">{tiles.slice(0, div1)}</div>
+      <div id="player-display-container">{tiles.slice(div1, div2)}</div>
+      <div id="player-display-container">{tiles.slice(div2)}</div>
     </div>
   );
 }

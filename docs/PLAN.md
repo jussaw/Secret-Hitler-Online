@@ -33,8 +33,8 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 |---|---|---|
 | 1. Housekeeping | `phase-1-housekeeping` | done |
 | 2. Frontend modernization | `phase-2-vite` | done |
-| 3. Persistence, packaging, first deploy | `phase-3-deploy` | in progress |
-| 4. Round-table game screen | `phase-4-round-table` | not started |
+| 3. Persistence, packaging, first deploy | `phase-3-deploy` | done |
+| 4. Round-table game screen | `phase-4-round-table` | in progress |
 | 5. Phone layout | `phase-5-phone` | not started |
 | 6. Sounds | `phase-6-sounds` | not started |
 | 7. Spectators | `phase-7-spectators` | not started |
@@ -252,61 +252,67 @@ TLS ends at a proxy in front of the host.
 - [x] `https://<subdomain>/ping` answers (`OK`)
 - [x] A game with two real browsers plus CPU players completes over `wss` (`wss://<subdomain>/game`, liberal win, mid-game reload and rejoin)
 - [x] `docker restart` of the container mid-game; players rejoin and continue (backup stored on shutdown, loaded on start; both rejoined via JOIN; #13 explains a transient 404 right after start)
-- [ ] Pushing to `development` produces a new image that the host picks up (checked after this PR merges; the host checks for new images daily)
-- [ ] PR merged into `development`
+- [ ] Pushing to `development` produces a new image that the host picks up (checked after this PR merges; the host checks for new images daily. 2026-11-12: CI run 43175719551 published `:latest` for `bb968e1`, but the host still runs the previous image because its daily pull has not happened yet)
+- [x] PR merged into `development` (#14)
 
 **Start Phase 4: Round-table game screen**
 
-- [ ] Progress table: Phase 3 set to "done", Phase 4 set to "in progress"
-- [ ] `git checkout development && git pull`, then `git checkout -b phase-4-round-table`
-- [ ] Re-read Phase 4 below against the code as it now stands; fix any file paths or line numbers that moved
-- [ ] Write the Phase 4 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 4 heading
-- [ ] Begin Task 4.1
+- [x] Progress table: Phase 3 set to "done", Phase 4 set to "in progress"
+- [x] `git checkout development && git pull`, then `git checkout -b phase-4-round-table`
+- [x] Re-read Phase 4 below against the code as it now stands; fix any file paths or line numbers that moved
+- [x] Write the Phase 4 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 4 heading
+- [x] Begin Task 4.1
 
 ---
 
 ## Phase 4: Round-table game screen
 
+Breakdown: [`docs/superpowers/plans/2026-11-12-phase-4-round-table.md`](superpowers/plans/2026-11-12-phase-4-round-table.md)
+
 Outcome: all players and both boards visible with no scrolling on desktop.
 
 ### Task 4.1: Extract `GameScreen`
 
-Files: new `frontend/src/game/GameScreen.tsx`, `frontend/src/game/GameScreen.css`; modify `frontend/src/App.tsx` (`renderGamePage`, lines 1701-1791)
+Files: new `frontend/src/game/GameScreen.tsx`, `frontend/src/game/GameScreen.css`; modify `frontend/src/App.tsx` (`renderGamePage`, lines 1625-1713)
 
-- [ ] Move the game markup into `GameScreen`, a presentational component: props are `gameState`, `user`, `showVotes`, `showBusy`, `statusBarText`, deck sizes, policy counts, `electionTracker`, `onEndTerm`
-- [ ] `App.tsx` renders `<GameScreen …/>` plus the existing `CustomAlert`, `EventBar` and snackbar; no inline layout styles remain in `renderGamePage`
-- [ ] No visual change in this task (compare screenshots before and after)
+- [x] Move the game markup into `GameScreen`, a presentational component: props are `gameState`, `user`, `showVotes`, `showBusy`, `statusBarText`, deck sizes, policy counts, `electionTracker`, `onEndTerm`
+- [x] `App.tsx` renders `<GameScreen …/>` plus the existing `CustomAlert`, `EventBar` and snackbar; no inline layout styles remain in `renderGamePage`
+- [x] No visual change in this task (compare screenshots before and after)
 
 ### Task 4.2: Seat geometry
 
 Files: new `frontend/src/game/seatPositions.ts`, `frontend/src/game/seatPositions.test.ts`
 
-- [ ] Tests first: for counts 5 to 10, returns `count` positions; the local player's seat is bottom centre (`x` 50, largest `y`); seating order follows `playerOrder` clockwise; all coordinates within 0 to 100; no two seats closer than a minimum distance
-- [ ] Implement `seatPositions(count: number, selfIndex: number): { x: number; y: number }[]` as points on an ellipse in percent units
-- [ ] A spectator (no `selfIndex`) gets `selfIndex = 0`
+- [x] Tests first: for counts 5 to 10, returns `count` positions; the local player's seat is bottom centre (`x` 50, largest `y`); seating order follows `playerOrder` clockwise; all coordinates within 0 to 100; no two seats closer than a minimum distance
+- [x] Implement `seatPositions(count: number, selfIndex: number): { x: number; y: number }[]` as points on an ellipse in percent units
+- [x] A spectator (no `selfIndex`) gets `selfIndex = 0`
 
 ### Task 4.3: Table layout
 
-Files: new `frontend/src/game/TableSeats.tsx`; modify `GameScreen.tsx/.css`, `frontend/src/player/PlayerDisplay.tsx`, `frontend/src/player/Player.css`, `frontend/src/board/Board.css`, `frontend/src/App.css` (header height)
+Files: new `frontend/src/game/TableSeats.tsx`, `TableSeats.css`; modify `GameScreen.tsx/.css`, `seatPositions.ts` (`centreBox`), `frontend/src/player/PlayerDisplay.tsx` (`usePlayerTiles`). `Player.css`, `Board.css` and `App.css` stay as they are: seats scale the existing tile with a transform, and `GameScreen.css` overrides sizes only inside the game screen.
 
-- [ ] `GameScreen` is a grid filling `100dvh` minus a slimmer header; `overflow: hidden` is not used to fake the result
-- [ ] `TableSeats` absolutely positions each existing `Player` at its seat; president/chancellor markers, vote icons, busy icons and the executed state render as before
-- [ ] Centre column: board(s), then draw deck / policy status / discard deck, then status text and END TERM
-- [ ] Sizes use `clamp()` with `vh`/`vw` so the table scales between the smallest and largest acceptance sizes
-- [ ] Selecting a player in prompts (`SelectPlayerPrompt`) still works; prompts stay in the overlay
+`PlayerDisplay` is also rendered inside prompts (execution, special election, investigation and victory results at `App.tsx:954`, `1259`, `1291` and `1414`, and `PlayerDisplayPrompt`, which `SelectPlayerPrompt` uses), and the lobby renders `Player` directly (`App.tsx:729`). Those keep their current layout.
+
+- [x] `GameScreen` is a grid filling `100dvh` minus a slimmer header; `overflow: hidden` is not used to fake the result
+- [x] `TableSeats` absolutely positions each existing `Player` at its seat; president/chancellor markers, vote icons, busy icons and the executed state render as before
+- [x] Centre column: board(s), then draw deck / policy status / discard deck, then status text and END TERM
+- [x] Sizes use `clamp()` with `vh`/`vw` so the table scales between the smallest and largest acceptance sizes
+- [x] Selecting a player in prompts (`SelectPlayerPrompt`) still works; prompts stay in the overlay
 
 ### Task 4.4: No-scroll browser test
 
 Files: new `frontend/e2e/no-scroll.spec.ts`, `frontend/playwright.config.ts`; `package.json` script `e2e`; CI job
 
-- [ ] Test starts a lobby against a local backend, adds CPU players to reach 5, 7 and 10, starts the game
-- [ ] At each desktop acceptance size asserts `document.documentElement.scrollHeight <= window.innerHeight` and `scrollWidth <= innerWidth`, and that every seat's bounding box is inside the viewport
-- [ ] Add the e2e run to `ci.yml`
-- [ ] `CLAUDE.md` updated: `frontend/src/game/` layout and the `npm run e2e` command
+Playwright is not installed yet: `@playwright/test` and a browser are new dev dependencies. CPU players only fill a lobby up to 5 (`backend/src/main/java/server/util/Lobby.java:497-511`), so 7 and 10 players need extra connections.
+
+- [x] Test starts a lobby against a local backend, reaches 5 players with CPU players and 7 and 10 with WebSocket guests, starts the game
+- [x] At each desktop acceptance size asserts `document.documentElement.scrollHeight <= window.innerHeight` and `scrollWidth <= innerWidth`, and that every seat's bounding box is inside the viewport
+- [x] Add the e2e run to `ci.yml`
+- [x] `CLAUDE.md` updated: `frontend/src/game/` layout and the `npm run e2e` command
 
 **Phase 4 acceptance**
 
-- [ ] `npm run e2e` passes at all five desktop sizes for 5, 7 and 10 players
+- [x] `npm run e2e` passes at all five desktop sizes for 5, 7 and 10 players
 - [ ] Vote reveal, policy enactment, investigation, special election, execution and victory animations all display correctly over the table
 - [ ] PR merged into `development`; deployed image checked on a real 1080p monitor
 

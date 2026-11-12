@@ -6,6 +6,7 @@ import MaxLengthTextField from "./util/MaxLengthTextField";
 import CustomAlert from "./custom-alert/CustomAlert";
 import RoleAlert from "./custom-alert/RoleAlert";
 import EventBar from "./event-bar/EventBar";
+import GameScreen from "./game/GameScreen";
 
 // TODO: replace constants with enums from types
 import {
@@ -55,8 +56,6 @@ import PlayerDisplay, {
   DISABLE_EXECUTED_PLAYERS,
   DISABLE_NONE,
 } from "./player/PlayerDisplay";
-import StatusBar from "./status-bar/StatusBar";
-import Board from "./board/Board";
 import VotingPrompt from "./custom-alert/VotingPrompt";
 import PresidentLegislativePrompt from "./custom-alert/PresidentLegislativePrompt";
 import ChancellorLegislativePrompt from "./custom-alert/ChancellorLegislativePrompt";
@@ -72,8 +71,6 @@ import {
 import ButtonPrompt from "./custom-alert/ButtonPrompt";
 import PeekPrompt from "./custom-alert/PeekPrompt";
 import InvestigationAlert from "./custom-alert/InvestigationAlert";
-import Deck from "./board/Deck";
-import PlayerPolicyStatus from "./util/PlayerPolicyStatus";
 
 import VictoryFascistHeader from "./assets/victory-fascist-header.png";
 import VictoryLiberalHeader from "./assets/victory-liberal-header.png";
@@ -1624,9 +1621,7 @@ class App extends Component<{}, AppState> {
    */
   renderGamePage() {
     return (
-      <div className="App" style={{ textAlign: "center" }}>
-        <header className="App-header">SECRET-HITLER.ONLINE</header>
-
+      <div className="App">
         <CustomAlert show={this.state.showAlert}>
           {this.state.alertContent}
         </CustomAlert>
@@ -1636,76 +1631,23 @@ class App extends Component<{}, AppState> {
           message={this.state.eventBarMessage}
         />
 
-        <div style={{ backgroundColor: "var(--backgroundDark)" }}>
-          <PlayerDisplay
-            gameState={this.state.gameState}
-            user={this.state.name}
-            showVotes={this.state.showVotes}
-            showBusy={this.state.allAnimationsFinished} // Only show busy when there isn't an active animation.
-            playerDisabledFilter={DISABLE_EXECUTED_PLAYERS}
-          />
-        </div>
+        <GameScreen
+          gameState={this.state.gameState}
+          user={this.state.name}
+          showVotes={this.state.showVotes}
+          showBusy={this.state.allAnimationsFinished} // Only show busy when there isn't an active animation.
+          statusBarText={this.state.statusBarText}
+          drawDeckSize={this.state.drawDeckSize}
+          discardDeckSize={this.state.discardDeckSize}
+          liberalPolicies={this.state.liberalPolicies}
+          fascistPolicies={this.state.fascistPolicies}
+          electionTracker={this.state.electionTracker}
+          onEndTerm={() => {
+            this.sendWSCommand({ command: WSCommandType.END_TERM });
+          }}
+        />
 
-        <StatusBar>{this.state.statusBarText}</StatusBar>
-
-        <div style={{ display: "inline-block" }}>
-          <div
-            id={"Board Layout"}
-            style={{
-              alignItems: "center",
-              display: "flex",
-              flexDirection: "column",
-              margin: "10px auto",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "row",
-                alignItems: "center",
-                marginTop: "15px",
-              }}
-            >
-              <Deck cardCount={this.state.drawDeckSize} deckType={"DRAW"} />
-
-              <div style={{ margin: "auto auto" }}>
-                <button
-                  disabled={
-                    this.state.gameState[PARAM_STATE] !==
-                      STATE_POST_LEGISLATIVE ||
-                    this.state.name !== this.state.gameState[PARAM_PRESIDENT]
-                  }
-                  onClick={() => {
-                    this.sendWSCommand({ command: WSCommandType.END_TERM });
-                  }}
-                >
-                  {" "}
-                  END TERM
-                </button>
-
-                <PlayerPolicyStatus
-                  numFascistPolicies={this.state.fascistPolicies}
-                  numLiberalPolicies={this.state.liberalPolicies}
-                  playerCount={this.state.gameState.playerOrder.length}
-                />
-              </div>
-
-              <Deck
-                cardCount={this.state.discardDeckSize}
-                deckType={"DISCARD"}
-              />
-            </div>
-
-            <Board
-              numPlayers={this.state.gameState.playerOrder.length}
-              numFascistPolicies={this.state.fascistPolicies}
-              numLiberalPolicies={this.state.liberalPolicies}
-              electionTracker={this.state.electionTracker}
-            />
-          </div>
-        </div>
-
-        <div style={{ textAlign: "center" }}>
+        <div>
           <div id="snackbar">{this.state.snackbarMessage}</div>
         </div>
       </div>
