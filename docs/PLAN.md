@@ -186,13 +186,13 @@ Outcome: the unmodified-looking game runs on the home server at its public subdo
 
 Files: `backend/build.gradle`, `backend/src/main/java/server/ApplicationConfig.java`, `backend/src/main/java/server/SecretHitlerServer.java` (database section, lines 211-359), new `backend/src/test/java/server/DatabaseBackupTest.java`
 
-- [ ] Write a failing test: store a lobby map to a temp-file database, load it back, assert lobby codes and usernames match
-- [ ] Replace `org.postgresql:postgresql` with `org.xerial:sqlite-jdbc` (3.53.4.0)
-- [ ] `ApplicationConfig`: replace `DATABASE_URL` with `DATABASE_PATH`; unset means persistence disabled
-- [ ] `getDatabaseConnection()`: `jdbc:sqlite:<DATABASE_PATH>`; table column `lobby_bytes BLOB`; make the insert an upsert that SQLite accepts
-- [ ] Extract store/load so they take a connection (or path) parameter and are callable from the test
-- [ ] Unset or unwritable path logs one error and the server keeps running
-- [ ] `./gradlew test` passes
+- [x] Write a failing test: store a lobby map to a temp-file database, load it back, assert lobby codes and usernames match
+- [x] Replace `org.postgresql:postgresql` with `org.xerial:sqlite-jdbc` (3.53.4.0)
+- [x] `ApplicationConfig`: replace `DATABASE_URL` with `DATABASE_PATH`; unset means persistence disabled
+- [x] `getDatabaseConnection()`: `jdbc:sqlite:<DATABASE_PATH>`; table column `lobby_bytes BLOB`; make the insert an upsert that SQLite accepts
+- [x] Extract store/load so they take a connection (or path) parameter and are callable from the test
+- [x] Unset or unwritable path logs one error and the server keeps running
+- [x] `./gradlew test` passes
 
 ### Task 3.2: Same-origin serving
 
