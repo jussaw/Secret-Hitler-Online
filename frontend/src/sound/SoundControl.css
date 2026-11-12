@@ -67,11 +67,10 @@
     opacity: 1;
 }
 
-/* The slider hangs from the header's bottom edge (over the lower part of a phone's taller button,
-   which needs no tapping while the slider is out). */
+/* The slider hangs below the header, or below the button where a phone's button is taller. */
 .sound-volume {
     position: absolute;
-    top: 100cqh;
+    top: max(100cqh, var(--top) + var(--target));
     right: 0;
     display: flex;
     align-items: center;
@@ -82,6 +81,19 @@
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.15s ease-in-out;
+}
+
+/* Where the button hangs below the header, this strip joins the panel to the header. Taps pass
+   through it to the button, so the whole button stays a 44px target with the slider out. */
+.sound-volume::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: max(0px, var(--top) + var(--target) - 100cqh);
+    background: inherit;
+    pointer-events: none;
 }
 
 .sound-control.open .sound-volume,

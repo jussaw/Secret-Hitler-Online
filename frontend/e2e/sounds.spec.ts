@@ -294,6 +294,14 @@ test("the control fits every header", async ({ page, isMobile }) => {
       expect((await overflowX(page)).offscreen, `past the edge with the slider, ${at}`).toEqual([]);
       if (touch) {
         expect(await smallTargets(page, ".sound-control"), `small targets in the control, ${at}`).toEqual([]);
+        // The open slider must not cover any of the button, or a tap there sets the volume.
+        const reachable = await page.evaluate(() => {
+          const r = document.querySelector("header .sound-toggle")!.getBoundingClientRect();
+          return [r.top + 2, r.top + r.height / 2, r.bottom - 2].every(
+            (y) => !!document.elementFromPoint(r.left + r.width / 2, y)?.closest(".sound-toggle")
+          );
+        });
+        expect(reachable, `the whole button reachable with the slider open, ${at}`).toBe(true);
       }
       if (isMobile) {
         await page.mouse.click(5, (await page.viewportSize())!.height - 5);

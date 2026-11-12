@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Volume1, Volume2, VolumeX } from "lucide-react";
-import { sounds, type SoundManager } from "./SoundManager";
+import { DEFAULT_SETTINGS, sounds, type SoundManager } from "./SoundManager";
 import "./SoundControl.css";
 
 /**
@@ -23,15 +23,25 @@ export default function SoundControl({ manager = sounds }: { manager?: SoundMana
   }, [open]);
 
   const percent = Math.round(volume * 100);
-  const Icon = muted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
+  // A slider at 0 is as silent as mute, so the button shows it as pressed and undoes it too.
+  const silent = muted || volume === 0;
+  const toggle = () => {
+    if (volume === 0) {
+      manager.setVolume(DEFAULT_SETTINGS.volume);
+      manager.setMuted(false);
+    } else {
+      manager.setMuted(!muted);
+    }
+  };
+  const Icon = silent ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
   return (
     <div ref={root} className={"sound-control" + (open ? " open" : "")} role="group" aria-label="Sound">
       <button
         type="button"
         className="sound-toggle"
         aria-label="Mute sounds"
-        aria-pressed={muted}
-        onClick={() => manager.setMuted(!muted)}
+        aria-pressed={silent}
+        onClick={toggle}
         // Touch has no hover, so a tap also shows the slider.
         onPointerUp={(event) => event.pointerType !== "mouse" && setOpen(true)}
       >

@@ -61,6 +61,16 @@ test("the slider sets the volume and unmutes", () => {
   expect(icon()).toContain("lucide-volume-2");
 });
 
+test("the button brings the sound back after the slider was dragged to 0", () => {
+  const { sounds, button, slider, icon } = renderControl();
+  fireEvent.change(slider, { target: { value: "0" } });
+  expect(button).toHaveAttribute("aria-pressed", "true");
+  fireEvent.click(button);
+  expect(sounds.getSettings()).toEqual({ volume: 0.7, muted: false });
+  expect(button).toHaveAttribute("aria-pressed", "false");
+  expect(icon()).toContain("lucide-volume-2");
+});
+
 test("follows changes made elsewhere", () => {
   const { sounds, button } = renderControl();
   act(() => sounds.setMuted(true));

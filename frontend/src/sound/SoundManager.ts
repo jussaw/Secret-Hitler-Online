@@ -149,13 +149,17 @@ export class SoundManager {
     return Promise.allSettled(this.fetches.values()).then(() => undefined);
   }
 
-  /** Creates and resumes the AudioContext, once, inside a gesture; then decodes the clips. */
+  /**
+   * Creates the AudioContext inside a gesture, once, and decodes the clips. Later calls resume
+   * it if the browser has suspended or interrupted it (iOS does for calls, Siri, a screen lock).
+   */
   unlock(): void {
+    if (!this.isActivated()) return;
     if (this.context) {
-      if (this.context.state === "suspended") this.context.resume().catch(() => {});
+      const state: string = this.context.state;
+      if (state !== "running" && state !== "closed") this.context.resume().catch(() => {});
       return;
     }
-    if (!this.isActivated()) return;
     let context: AudioContext;
     try {
       context = this.createContext();
@@ -171,19 +175,13 @@ export class SoundManager {
     for (const name of SOUND_NAMES) void this.decode(name);
   }
 
-  /** Unlocks on the first trusted gesture, and stops listening once audio is running. */
+  /**
+   * Unlocks on the first trusted gesture. It keeps listening, so a later gesture resumes audio the
+   * browser has suspended; once audio runs, each gesture costs one state check.
+   */
   listenForGesture(target: GestureTarget): void {
     const onGesture = (event: Event) => {
-      if (!event.isTrusted) return;
-      this.unlock();
-      const context = this.context;
-      if (!context) return;
-      const stopIfRunning = () => {
-        if (context.state !== "running") return;
-        for (const type of GESTURES) target.removeEventListener(type, onGesture, LISTENER_OPTIONS);
-      };
-      stopIfRunning();
-      context.resume().then(stopIfRunning, () => {});
+      if (event.isTrusted) this.unlock();
     };
     for (const type of GESTURES) target.addEventListener(type, onGesture, LISTENER_OPTIONS);
   }

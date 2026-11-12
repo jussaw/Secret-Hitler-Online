@@ -42,6 +42,7 @@ class FakeContext {
       : Promise.resolve({ url });
   }
   resume() {
+    if (this.state !== "closed") this.state = "running";
     return Promise.resolve();
   }
 }
@@ -196,8 +197,28 @@ describe("unlocking", () => {
     expect(contexts).toHaveLength(0);
     listeners.get("pointerup")!({ isTrusted: true } as Event);
     expect(contexts).toHaveLength(1);
+  });
+
+  test("a later trusted gesture resumes audio that the browser suspended", async () => {
+    const { manager, contexts, records } = setup();
+    const listeners = new Map<string, EventListener>();
+    manager.listenForGesture({
+      addEventListener: (type: string, listener: EventListenerOrEventListenerObject | null) =>
+        void listeners.set(type, listener as EventListener),
+      removeEventListener: (type: string, listener: EventListenerOrEventListenerObject | null) =>
+        void (listeners.get(type) === listener && listeners.delete(type)),
+    });
+    await manager.preload();
+    listeners.get("pointerup")!({ isTrusted: true } as Event);
     await settle();
-    expect(listeners.size).toBe(0);
+    // iOS interrupts audio for a call or Siri, and some versions suspend it on a screen lock.
+    contexts[0].state = "interrupted" as AudioContextState;
+    manager.play("nominate");
+    listeners.get("touchend")!({ isTrusted: true } as Event);
+    await settle();
+    manager.play("nominate");
+    expect(contexts).toHaveLength(1);
+    expect(records.map((record) => record.reason ?? "played")).toEqual(["locked", "played"]);
   });
 });
 
