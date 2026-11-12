@@ -249,10 +249,10 @@ The Pi's edge is the Cloudflare tunnel run by `cloudflared` in `pi4/homelab` (ho
 
 **Phase 3 acceptance**
 
-- [ ] `https://<subdomain>/ping` answers
-- [ ] A game with two real browsers plus CPU players completes over `wss`
-- [ ] `docker restart` of the container mid-game; players rejoin and continue
-- [ ] Pushing to `development` produces a new image that the Pi picks up
+- [x] `https://<subdomain>/ping` answers (`https://secret-hitler.jussaw.com/ping` → `OK`)
+- [x] A game with two real browsers plus CPU players completes over `wss` (`wss://secret-hitler.jussaw.com/game`, liberal win, mid-game reload and rejoin)
+- [x] `docker restart` of the container mid-game; players rejoin and continue (backup stored on shutdown, loaded on start; both rejoined via JOIN; #13 explains a transient 404 right after start)
+- [ ] Pushing to `development` produces a new image that the Pi picks up (checked after this PR merges; the Pi's watchtower polls daily, at about 20:20 EST)
 - [ ] PR merged into `development`
 
 **Start Phase 4: Round-table game screen**
