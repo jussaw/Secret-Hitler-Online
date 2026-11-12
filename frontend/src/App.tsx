@@ -1,5 +1,4 @@
 import React, { Component } from "react";
-import ReactGA from "react-ga";
 import "./App.css";
 import "./Lobby.css";
 import "./fonts.css";
@@ -219,10 +218,6 @@ class App extends Component<{}, AppState> {
       createLobbyName: name || "",
     };
 
-    // The website uses Google Analytics!
-    ReactGA.initialize("UA-166327773-1");
-    ReactGA.pageview("/");
-
     // These are necessary for handling class fields safely (ex: websocket)
     this.onWebSocketClose = this.onWebSocketClose.bind(this);
     this.tryOpenWebSocket = this.tryOpenWebSocket.bind(this);
@@ -264,10 +259,6 @@ class App extends Component<{}, AppState> {
    * @return {Promise<Response>} The response from the server.
    */
   async tryLogin(name: string, lobby: string) {
-    ReactGA.event({
-      category: "Login Attempt",
-      action: "User attempted to provide login credentials to the server.",
-    });
     return await fetch(
       SERVER_ADDRESS_HTTP +
         CHECK_LOGIN +
@@ -377,10 +368,6 @@ class App extends Component<{}, AppState> {
       if (this.failedConnections >= 1) {
         // Only show the error bar if the first attempt has failed.
         this.showSnackBar("Lost connection to the server: retrying...");
-        ReactGA.event({
-          category: "Lost Server Connection",
-          action: "User lost connection to the server. (>1 attempts)",
-        });
       }
       this.failedConnections += 1;
       this.tryOpenWebSocket(this.state.name, this.state.lobby);
@@ -393,11 +380,6 @@ class App extends Component<{}, AppState> {
         joinLobby: this.state.lobby,
         joinError: "Disconnected from the lobby.",
         page: PAGE.LOGIN,
-      });
-      ReactGA.event({
-        category: "Lost Server Connection (Terminal)",
-        action:
-          "User was unable to reconnect to the server. (max attempts reached)",
       });
       this.clearAnimationQueue();
     } else {
@@ -563,10 +545,6 @@ class App extends Component<{}, AppState> {
           }
           if (response.status === 404) {
             this.setState({ joinError: "The lobby could not be found." });
-            ReactGA.event({
-              category: "Login Failed",
-              action: "Lobby not found - User unable to connect.",
-            });
           } else if (response.status === 403) {
             this.setState({
               joinError:
@@ -574,30 +552,14 @@ class App extends Component<{}, AppState> {
                 this.state.joinName +
                 "' in the lobby.",
             });
-            ReactGA.event({
-              category: "Login Failed",
-              action: "Duplicate name - User unable to connect.",
-            });
           } else if (response.status === 488) {
             this.setState({ joinError: "The lobby is currently in a game." });
-            ReactGA.event({
-              category: "Login Failed",
-              action: "Ongoing game - User unable to connect.",
-            });
           } else if (response.status === 489) {
             this.setState({ joinError: "The lobby is currently full." });
-            ReactGA.event({
-              category: "Login Failed",
-              action: "Lobby full - User unable to connect.",
-            });
           } else {
             this.setState({
               joinError:
                 "There was an error connecting to the server. Please try again.",
-            });
-            ReactGA.event({
-              category: "Login Failed",
-              action: "Misc - User was unable to connect.",
             });
           }
         } else {
@@ -639,15 +601,7 @@ class App extends Component<{}, AppState> {
                 createLobbyError:
                   "There was an error connecting to the server. Please try again.",
               });
-              ReactGA.event({
-                category: "Lobby Creation Failed",
-                action: "Failed to create a new lobby.",
-              });
             } else {
-              ReactGA.event({
-                category: "Lobby Created",
-                action: "Successfully created new lobby.",
-              });
               // Save the username and lobby login
               Cookies.set(COOKIE_NAME, this.state.name, { expires: 7 });
               Cookies.set(COOKIE_LOBBY, lobbyCode);
@@ -658,20 +612,12 @@ class App extends Component<{}, AppState> {
             createLobbyError:
               "There was an error connecting to the server. Please try again.",
           });
-          ReactGA.event({
-            category: "Lobby Creation Failed",
-            action: "Failed to create a new lobby.",
-          });
         }
       })
       .catch(() => {
         this.setState({
           createLobbyError:
             "There was an error connecting to the server. Please try again.",
-        });
-        ReactGA.event({
-          category: "Lobby Creation Failed",
-          action: "Failed to create a new lobby.",
         });
       });
   };
@@ -801,9 +747,7 @@ class App extends Component<{}, AppState> {
           playerToIcon={this.state.icons}
           players={this.state.usernames}
           user={this.state.name}
-          onClickTweet={() => {
-            ReactGA.event({ category: "Sharing", action: "User shared tweet" });
-          }}
+          onClickTweet={() => {}}
         />
       ),
     });
@@ -831,10 +775,6 @@ class App extends Component<{}, AppState> {
    * Contacts the server and requests to start the game.
    */
   onClickStartGame() {
-    ReactGA.event({
-      category: "Starting Game",
-      action: this.state.usernames.length + " players started game.",
-    });
     this.sendWSCommand({ command: WSCommandType.START_GAME });
   }
 
@@ -1402,28 +1342,6 @@ class App extends Component<{}, AppState> {
           let liberalVictoryPolicy = state === STATE_LIBERAL_VICTORY_POLICY;
           let liberalVictoryExecution =
             state === STATE_LIBERAL_VICTORY_EXECUTION;
-          let playerID = newState.players[name].id;
-          let playerWon =
-            (playerID === Role.LIBERAL &&
-              (liberalVictoryExecution || liberalVictoryPolicy)) ||
-            (playerID !== Role.LIBERAL &&
-              (fascistVictoryElection || fascistVictoryPolicy));
-
-          // Register player victory/loss with analytics.
-          // TODO: Only register if player is host, or if player is the only
-          // non-bot player in the game.
-          if (playerWon) {
-            ReactGA.event({
-              category: "Victory",
-              action: playerID + " team won the game.",
-            });
-          } else {
-            ReactGA.event({
-              category: "Loss",
-              action: playerID + " team lost the game.",
-            });
-          }
-
           if (fascistVictoryElection || fascistVictoryPolicy) {
             players = fascistPlayers.concat(liberalPlayers);
             headerImage = VictoryFascistHeader;
@@ -1795,10 +1713,6 @@ class App extends Component<{}, AppState> {
     let url = window.location.search;
     let lobby = new URLSearchParams(url).get("lobby");
     if (lobby !== null && !this.state.lobbyFromURL) {
-      ReactGA.event({
-        category: "Lobby Link",
-        action: "User is using a lobby link.",
-      });
       this.setState({
         joinLobby: lobby.toUpperCase().substr(0, 4),
         lobbyFromURL: true,
