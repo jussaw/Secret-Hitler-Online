@@ -14,6 +14,15 @@ test("the login page fits the phone", async ({ page }) => {
   expect(await smallTargets(page, "body"), "small touch targets").toEqual([]);
 });
 
+test("text fields use 16px text, so iOS Safari does not zoom in on focus", async ({ page }) => {
+  await page.goto("/");
+  const sizes = await page.$$eval("input", (inputs) =>
+    inputs.map((input) => parseFloat(getComputedStyle(input).fontSize))
+  );
+  expect(sizes.length, "login text fields").toBeGreaterThan(0);
+  for (const size of sizes) expect(size, "text field font size").toBeGreaterThanOrEqual(16);
+});
+
 test("the lobby and its portrait picker fit the phone", async ({ page, baseURL }) => {
   const { width } = page.viewportSize()!;
   await page.goto("/");
