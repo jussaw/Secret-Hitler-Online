@@ -37,7 +37,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 4. Round-table game screen | `phase-4-round-table` | done |
 | 5. Phone layout | `phase-5-phone` | done |
 | 6. Sounds | `phase-6-sounds` | done |
-| 7. Spectators | `phase-7-spectators` | in progress |
+| 7. Spectators | `phase-7-spectators` | done |
 
 ---
 
@@ -499,11 +499,11 @@ Files: `frontend/src/App.tsx` (login form `renderLoginPage` 646, `tryOpenWebSock
 - [x] Backend tests pass
 - [x] e2e: a spectator joins a running game, the WebSocket frames it receives contain no role or hand fields before game end, and layout tests still pass with a spectator viewport
 - [x] A spectator joining mid-game and refreshing stays a spectator
-- [ ] PR merged into `development` and deployed
+- [x] PR merged into `development` (#18) and deployed
 
 ---
 
 ## Done when
 
-- [ ] All seven phases merged and the Progress table reads "done" for each
+- [x] All seven phases merged and the Progress table reads "done" for each
 - [ ] The deployed instance has hosted one full game with real players, at least one spectator and at least one phone
