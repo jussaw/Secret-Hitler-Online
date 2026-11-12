@@ -1,20 +1,11 @@
 import React, { Component } from "react";
 import "../selectable.css";
 import "./IconSelection.css";
-import Cookies from "js-cookie";
-// TODO: Remove this package!
-import { TwitterShareButton } from "react-twitter-embed";
-import portraits, {
-  unlockedPortraits,
-  lockedPortraits,
-  defaultPortrait,
-} from "../assets";
+import portraits, { selectablePortraits, defaultPortrait } from "../assets";
 import { portraitsAltText } from "../assets";
 
 import ButtonPrompt from "./ButtonPrompt";
 import { SendWSCommand, WSCommandType } from "../types";
-
-export const UNLOCK_ICONS_COOKIE_NAME = "_unlock_icons";
 
 type IconSelectionProps = {
   playerToIcon: Record<string, string>;
@@ -22,36 +13,17 @@ type IconSelectionProps = {
   sendWSCommand: SendWSCommand;
   user: string;
   onConfirm: () => void;
-  onClickTweet: () => void;
 };
 
-type IconSelectionState = {
-  unlockLockedIcons: boolean;
-  showLockedPrompt: boolean;
-};
-
-class IconSelection extends Component<IconSelectionProps, IconSelectionState> {
+class IconSelection extends Component<IconSelectionProps> {
   timeoutID: NodeJS.Timeout | undefined;
 
   constructor(props: IconSelectionProps) {
     super(props);
 
-    // Check if the locked icons prompt should be shown. (using cookies!)
-    let hasUserUnlockedIcons = false;
-    if (Cookies.get(UNLOCK_ICONS_COOKIE_NAME)) {
-      hasUserUnlockedIcons = true;
-    }
-
-    this.state = {
-      unlockLockedIcons: hasUserUnlockedIcons,
-      showLockedPrompt: !hasUserUnlockedIcons,
-    };
-
     this.onConfirmButtonClick = this.onConfirmButtonClick.bind(this);
     this.getIconButtonHML = this.getIconButtonHML.bind(this);
     this.isIconInUse = this.isIconInUse.bind(this);
-    this.onClickUnlock = this.onClickUnlock.bind(this);
-    this.addTwitterHooks = this.addTwitterHooks.bind(this);
   }
 
   componentWillUnmount() {
@@ -70,13 +42,8 @@ class IconSelection extends Component<IconSelectionProps, IconSelectionState> {
   }
 
   onClickIcon(iconID: string) {
-    // Verify that player is able to select this icon.
-    let isPremium = lockedPortraits.indexOf(iconID) !== -1;
-    // Also does not allow selection if user has already selected this icon
-    let unselectable =
-      (isPremium && !this.state.unlockLockedIcons) || this.isIconInUse(iconID);
-
-    if (!unselectable) {
+    // Does not allow selection if another player has already selected this icon
+    if (!this.isIconInUse(iconID)) {
       // This is a valid choice according to our current game state
       // Register the selection with the server.
       // Contact the server using provided method.
@@ -110,13 +77,9 @@ class IconSelection extends Component<IconSelectionProps, IconSelectionState> {
         if (!portraits[portraitID]) {
           return undefined;
         }
-        // Disable locked icons or icons currently selected by other players.
-        let isIconAvailable =
+        // Disable icons currently selected by other players.
+        let isEnabled =
           !this.isIconInUse(portraitID) || portraitID === currPortrait;
-        let isIconUnlocked =
-          lockedPortraits.indexOf(portraitID) === -1 ||
-          this.state.unlockLockedIcons;
-        let isEnabled = isIconUnlocked && isIconAvailable;
         let isSelected = currPortrait === portraitID;
         // TODO: Convert this to a button since a clickable div is not accessible.
         return (
@@ -141,90 +104,7 @@ class IconSelection extends Component<IconSelectionProps, IconSelectionState> {
     return <div id={"icon-container"}>{iconHTML}</div>;
   }
 
-  onClickUnlock() {
-    // Unlock the icons
-    this.setState({ unlockLockedIcons: true });
-    // Set cookie signaling that this action has occurred, which gives the player a different
-    // icon selection screen on the next load.
-    Cookies.set(UNLOCK_ICONS_COOKIE_NAME, "true", { expires: 365 });
-    // Callback for analytics logging
-    this.props.onClickTweet();
-  }
-
-  addTwitterHooks() {
-    window.twttr.ready((twttr) => {
-      twttr.events.bind("tweet", this.onClickUnlock);
-    });
-  }
-
   render() {
-    let headerPortraits: string[];
-    let footerContent: () => React.ReactNode;
-    if (this.state.showLockedPrompt) {
-      headerPortraits = unlockedPortraits;
-      footerContent = () => {
-        return (
-          <>
-            <h2 style={{ textAlign: "left" }}>EXTRA ICONS:</h2>
-            <div id={"locked-icon-text-container"}>
-              <p id={"icon-text"} style={{ textAlign: "left" }}>
-                Unlock these {lockedPortraits.length} extra icons by sharing
-                this website! I'd really like for more people to enjoy this
-                game, so this would be a big help.
-              </p>
-              <TwitterShareButton
-                url={"https://secret-hitler.online!"}
-                options={{
-                  text: "I'm playing #SecretHitlerOnline at",
-                  size: "large",
-                }}
-                onLoad={this.addTwitterHooks}
-                placeholder={
-                  <p
-                    id={"icon-text"}
-                    style={{ color: "var(--textColorLiberal)" }}
-                  >
-                    Loading...
-                  </p>
-                }
-              />
-            </div>
-            {this.getIconButtonHML(lockedPortraits)}
-          </>
-        );
-      }; // end footer content
-    } else {
-      headerPortraits = unlockedPortraits.concat(lockedPortraits);
-      footerContent = () => {
-        return (
-          <>
-            <div id={"locked-icon-text-container"}>
-              <p>
-                (You unlocked {lockedPortraits.length} extra icons by sharing
-                Secret Hitler Online! Thank you! 💖)
-              </p>
-              <TwitterShareButton
-                url={"https://secret-hitler.online!"}
-                options={{
-                  text: "I'm playing #SecretHitlerOnline at",
-                  size: "large",
-                }}
-                onLoad={this.addTwitterHooks}
-                placeholder={
-                  <p
-                    id={"icon-text"}
-                    style={{ color: "var(--textColorLiberal)" }}
-                  >
-                    Loading...
-                  </p>
-                }
-              />
-            </div>
-          </>
-        );
-      }; // end footer content
-    }
-
     return (
       <ButtonPrompt
         label={"PLAYER LOOK"}
@@ -232,11 +112,10 @@ class IconSelection extends Component<IconSelectionProps, IconSelectionState> {
           return (
             <>
               <p>Choose a look, then press confirm.</p>
-              {this.getIconButtonHML(headerPortraits)}
+              {this.getIconButtonHML(selectablePortraits)}
             </>
           );
         }}
-        renderFooter={footerContent}
         buttonDisabled={
           this.props.playerToIcon[this.props.user] === defaultPortrait
         }

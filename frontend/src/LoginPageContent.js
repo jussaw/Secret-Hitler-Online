@@ -1,24 +1,9 @@
 import React, {Component} from "react";
-import ReactGA from "react-ga";
 import "./LoginPageContent.css";
 import "./util/CustomAliceCarousel.css";
 
 
 class LoginPageContent extends Component {
-
-    onClickAbout = () => {
-        ReactGA.event({
-            category: "Clicked About",
-            action: "User clicked the link for the about page."
-        });
-    };
-
-    onClickGameWebsite = () => {
-        ReactGA.event({
-            category: "Clicked Game Website",
-            action: "User clicked the link for the board game website."
-        });
-    };
 
     render() {
         let handleDragStart = (e) => e.preventDefault();
@@ -51,11 +36,11 @@ class LoginPageContent extends Component {
                             You can read more about the project <a
                                 href={"https://github.com/ShrimpCryptid/Secret-Hitler-Online/"}
                                 rel="noreferrer"
-                                target={"_blank"} onClick={this.onClickAbout}>
+                                target={"_blank"}>
                                     on GitHub
                             </a>!
                             <br/><br/>
-                            Adapted from the original <a href={"https://secrethitler.com"} target={"_blank"} rel="noreferrer" onClick={this.onClickGameWebsite}>
+                            Adapted from the original <a href={"https://secrethitler.com"} target={"_blank"} rel="noreferrer">
                                 Secret Hitler
                             </a> board game by Goat, Wolf, & Cabbage (© 2016-2020). Developed by ShrimpCryptid (© 2020-2023).
                             <br/><br/>
