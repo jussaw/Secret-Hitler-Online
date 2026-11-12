@@ -492,7 +492,7 @@ Files: `frontend/src/App.tsx` (login form `renderLoginPage` 646, `tryOpenWebSock
 - [x] Spectators see the lobby page read-only before the game starts, then `GameScreen`; no prompts are queued for them; status text describes what the table is doing
 - [x] Spectator count shown in the lobby and on the game screen when above zero
 - [x] Sounds play for spectators
-- [ ] `CLAUDE.md` updated: spectator handshake parameter and the server-side filtering rule
+- [x] `CLAUDE.md` updated: spectator handshake parameter and the server-side filtering rule
 
 **Phase 7 acceptance**
 
