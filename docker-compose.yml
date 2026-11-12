@@ -33,15 +33,12 @@ services:
       - "4040:4040"
 
   frontend:
-    image: node:18
+    image: node:24
     container_name: sh-frontend
     working_dir: /app/frontend
     volumes:
       - ./frontend:/app/frontend
-    environment:
-      HOST: 0.0.0.0
-      CHOKIDAR_USEPOLLING: "true"
-    command: bash -lc "npm install && npm run devLocal"
+    command: bash -lc "npm install && npm run dev -- --host"
     depends_on:
       - backend
     ports:

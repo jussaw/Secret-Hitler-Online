@@ -708,7 +708,7 @@ The `frontend` service in `docker-compose.yml` becomes:
 
 - [ ] **Step 2: Verify the compose stack in a throwaway worktree**
 
-The container runs `npm install` as root into the bind-mounted `frontend/`, so run it from a scratch worktree rather than the working checkout. Stop the local backend and dev server first (ports 4040 and 3000).
+The containers run as root and write into the bind-mounted `frontend/` and `backend/`, so run this from a scratch worktree rather than the working checkout. Copy the edited `docker-compose.yml` into the worktree if it is not committed yet. Stop the local backend and dev server first (ports 4040, 3000 and 5432 must be free).
 
 ```bash
 SCRATCH=$(mktemp -d)   # or the session scratchpad
@@ -720,7 +720,7 @@ curl -s localhost:4040/ping
 docker compose down -v
 ```
 
-Expected: `docker compose config -q` silent, `1` from the grep, and `/ping` answers. Afterwards, remove the worktree. Its `node_modules` is root-owned, so delete it with `docker run --rm -v "$SCRATCH/compose-check":/w node:24 rm -rf /w/frontend/node_modules` before `git worktree remove "$SCRATCH/compose-check"`.
+Expected: `docker compose config -q` silent, `1` from the grep, and `/ping` answers (about 20 seconds after `up` once images are cached). Creating a lobby against the stack reaches the PLAYER LOOK dialog. The containers run as root, so they leave root-owned `frontend/node_modules`, `backend/build` and `backend/.gradle` in the worktree. Removing it therefore needs root: `sudo rm -rf "$SCRATCH/compose-check" && git worktree prune`, run by a person.
 
 - [ ] **Step 3: Commit the compose change**
 
