@@ -16,24 +16,24 @@ import { findSecrets } from "./secrets";
 import { heard, recordSounds } from "./soundLog";
 
 /**
- * Logs the text of every prompt that opens (#alert-box gains appear-custom-alert), so a test can
- * prove a spectator sees none before the victory screen.
+ * Logs the full text of every prompt that opens (#alert-box gains appear-custom-alert), so a test
+ * can prove a spectator sees none before the victory screen. The log lives in the test, so it
+ * keeps what opened before a reload.
  */
-async function recordAlerts(page: Page): Promise<void> {
+async function recordAlerts(page: Page): Promise<string[]> {
+  const opened: string[] = [];
+  await page.exposeFunction("__alertOpened", (text: string) => opened.push(text));
   await page.addInitScript(() => {
-    const w = window as unknown as { __alerts: string[]; __alertOpen: boolean };
-    w.__alerts = [];
-    w.__alertOpen = false;
+    const w = window as unknown as { __alertOpened(text: string): void };
+    let open = false;
     new MutationObserver(() => {
       const box = document.querySelector("#alert-box.appear-custom-alert");
-      if (box && !w.__alertOpen) w.__alerts.push((box.textContent ?? "").trim().slice(0, 80));
-      w.__alertOpen = box !== null;
+      if (box && !open) w.__alertOpened((box.textContent ?? "").trim());
+      open = box !== null;
     }).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ["class"] });
   });
+  return opened;
 }
-
-const alerts = (page: Page): Promise<string[]> =>
-  page.evaluate(() => (window as unknown as { __alerts: string[] }).__alerts);
 
 test("a spectator gets the player's error for an unknown lobby", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "one browser is enough");
@@ -53,7 +53,7 @@ test("a spectator watches a scripted game without prompts", async ({ page }, tes
   test.skip(testInfo.project.name !== "desktop", "the scripted game runs in one browser");
   test.setTimeout(120_000);
   await recordSounds(page);
-  await recordAlerts(page);
+  const alerts = await recordAlerts(page);
   const game = await openFakeWatch(page);
 
   // The lobby, read-only.
@@ -103,7 +103,7 @@ test("a spectator watches a scripted game without prompts", async ({ page }, tes
   game.send(investigated);
   await expect(status).toHaveText(`${P} investigated ${T}.`, { timeout: 30_000 });
   await expect(status).toHaveText(`Waiting for ${P} to end their term.`, { timeout: 30_000 });
-  expect(await alerts(page), "prompts before the end").toEqual([]);
+  expect(alerts, "prompts before the end").toEqual([]);
 
   const end = spectatorPacket({
     state: S.FASCIST_VICTORY_POLICY,
@@ -117,9 +117,8 @@ test("a spectator watches a scripted game without prompts", async ({ page }, tes
   game.send(end);
   const returnToLobby = page.getByRole("button", { name: "RETURN TO LOBBY" });
   await expect(returnToLobby).toBeVisible({ timeout: 30_000 });
-  const opened = await alerts(page);
-  expect(opened, "the victory screen is the only prompt").toHaveLength(1);
-  expect(opened[0]).toContain("Fascists successfully passed six policies!");
+  expect(alerts, "the victory screen is the only prompt").toHaveLength(1);
+  expect(alerts[0]).toContain("Fascists successfully passed six policies!");
 
   const sounds = (await heard(page, 12)).map((sound) => sound.name);
   expect(sounds).toEqual([
@@ -170,7 +169,9 @@ test("a spectator who leaves gets the name cookie back in the JOIN form", async 
 test("a spectator joins a running game and never receives a secret", async ({ page, baseURL }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "one browser is enough");
   test.setTimeout(180_000);
-  await recordAlerts(page);
+  // The page's clock runs as usual until the end, when the test runs it on (below).
+  await page.clock.install();
+  const alerts = await recordAlerts(page);
   const table = await openTable(baseURL!, 7);
   try {
     const policies = (g: GameState) => g.liberalPolicies + g.fascistPolicies;
@@ -210,9 +211,15 @@ test("a spectator joins a running game and never receives a secret", async ({ pa
       expect(query.get("spectator"), url).toBe("true");
       expect(query.has("name"), url).toBe(false);
     }
-    for (const opened of await alerts(page)) {
-      expect(opened, "only the victory screen opens").toContain("RETURN TO LOBBY");
-    }
+
+    // The spectator's animations trail the game, so run them on to the victory screen.
+    const returnToLobby = page.getByRole("button", { name: "RETURN TO LOBBY" });
+    await expect(async () => {
+      await page.clock.runFor(10_000);
+      await expect(returnToLobby).toBeVisible({ timeout: 500 });
+    }).toPass({ timeout: 60_000 });
+    expect(alerts, "only the victory screen opens").toHaveLength(1);
+    expect(alerts[0], "only the victory screen opens").toContain("RETURN TO LOBBY");
   } finally {
     table.close();
   }
