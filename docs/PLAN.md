@@ -418,9 +418,9 @@ Files: new `frontend/src/sound/soundEvents.ts`, `frontend/src/sound/soundEvents.
 
 Files: `frontend/src/App.tsx`: `onGameStateChanged` (line 968), the animation queue (`animationQueue`, `addAnimationToQueue`, `clearAnimationQueue`; lines 198 and 1469-1491), `showVotes` (1493), the lobby and investigation packets in `onWebSocketMessage` (405, 437), `tryOpenWebSocket` (276); new browser test `frontend/e2e/sounds.spec.ts`
 
-- [ ] Call `soundEvents` in `onGameStateChanged` and queue each sound through the existing animation queue so audio lines up with the visuals, not with packet arrival
-- [ ] Lobby user-list growth plays `playerJoined`
-- [ ] The first packet after a socket opens (a reload, a reconnect, a rejoin) plays nothing
+- [x] Call `soundEvents` in `onGameStateChanged` and queue each sound through the existing animation queue so audio lines up with the visuals, not with packet arrival
+- [x] Lobby user-list growth plays `playerJoined`
+- [x] The first packet after a socket opens (a reload, a reconnect, a rejoin) plays nothing
 
 ### Task 6.5: Controls
 

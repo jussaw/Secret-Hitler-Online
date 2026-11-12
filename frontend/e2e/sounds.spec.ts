@@ -1,0 +1,238 @@
+import { expect, test, type Page, type WebSocketRoute } from "@playwright/test";
+import type { SoundRecord } from "../src/sound/SoundManager";
+import { LobbyState, type PolicyType, type Role } from "../src/types";
+import { TEN, gamePacket, openFakeGame } from "./fakeGame";
+
+/** A play() call as the page recorded it, with what was on screen just after it. */
+type Heard = SoundRecord & { t: number; alert: string; eventBar: string; status: string };
+
+/**
+ * Records every play() call (SoundManager dispatches "sound-play" on window) with what was on
+ * screen just after it: the alert and event bar two frames later, once the animation queued after
+ * the sound has rendered, and the status line 350 ms later, once its 250 ms text fade is done.
+ * Also counts how many AudioContexts the page creates.
+ */
+export async function recordSounds(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const w = window as unknown as {
+      __sounds: unknown[];
+      __audioContexts: number;
+      AudioContext?: typeof AudioContext;
+    };
+    w.__sounds = [];
+    w.__audioContexts = 0;
+    const Original = w.AudioContext;
+    if (Original) {
+      w.AudioContext = class extends Original {
+        constructor(options?: AudioContextOptions) {
+          super(options);
+          w.__audioContexts++;
+        }
+      };
+    }
+    const text = (selector: string) => document.querySelector(selector)?.textContent?.trim() ?? "";
+    window.addEventListener("sound-play", (event) => {
+      const entry = {
+        ...(event as CustomEvent).detail,
+        t: performance.now(),
+        alert: "",
+        eventBar: "",
+        status: "",
+      };
+      w.__sounds.push(entry);
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          entry.alert = text("#alert-box.appear-custom-alert");
+          entry.eventBar = text("#event-bar.appear-eventbar");
+        })
+      );
+      setTimeout(() => (entry.status = text("#status-bar-text")), 350);
+    });
+  });
+}
+
+export const soundLog = (page: Page): Promise<Heard[]> =>
+  page.evaluate(() => (window as unknown as { __sounds: Heard[] }).__sounds);
+
+const audioContexts = (page: Page): Promise<number> =>
+  page.evaluate(() => (window as unknown as { __audioContexts: number }).__audioContexts);
+
+/** Waits until the page has recorded `count` sounds, and their screen context. */
+async function heard(page: Page, count: number): Promise<Heard[]> {
+  await expect
+    .poll(async () => (await soundLog(page)).length, { timeout: 20_000 })
+    .toBeGreaterThanOrEqual(count);
+  await page.waitForTimeout(400);
+  return soundLog(page);
+}
+
+const icon = Object.fromEntries(TEN.map((name, i) => [name, `p${i + 1}`]));
+const [USER, HITLER] = TEN;
+/** Every role, as players see them at the end of a game: the user is a fascist. */
+const ROLES = Object.fromEntries(
+  TEN.map((name) => [name, (name === USER ? "FASCIST" : name === HITLER ? "HITLER" : "LIBERAL") as Role])
+);
+
+test("no sound plays and no AudioContext exists before the first gesture", async ({
+  page,
+  context,
+  baseURL,
+  browserName,
+}) => {
+  test.skip(browserName !== "chromium", "Chromium alone runs the audio tests");
+  const warnings: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "warning" || message.type() === "error") warnings.push(message.text());
+  });
+  await recordSounds(page);
+  // The login form fills Create Lobby's name from this cookie, so no typing is needed.
+  await context.addCookies([{ name: "name", value: encodeURIComponent(USER), url: baseURL! }]);
+  await page.route("**/new-lobby", (route) => route.fulfill({ body: "FAKE" }));
+  let connect!: (ws: WebSocketRoute) => void;
+  const connected = new Promise<WebSocketRoute>((resolve) => (connect = resolve));
+  await page.routeWebSocket(/\/game\?/, (ws) => {
+    ws.onMessage(() => {});
+    connect(ws);
+  });
+
+  await page.goto("/");
+  // A click from a script is not a gesture: the page has had no trusted input yet.
+  await page.evaluate(() =>
+    Array.from(document.querySelectorAll("button"))
+      .find((button) => button.textContent === "CREATE LOBBY")!
+      .click()
+  );
+  const ws = await connected;
+  ws.send(JSON.stringify({ type: "lobby", usernames: TEN.slice(0, 9), icon }));
+  ws.send(JSON.stringify({ type: "lobby", usernames: TEN, icon }));
+  // The lobby rebuilds the portrait dialog after it renders, so let it render before the game.
+  await page.getByText(`Players (${TEN.length}/10)`).waitFor();
+  ws.send(JSON.stringify(gamePacket()));
+  const okay = page.locator("#alert-box.appear-custom-alert").getByRole("button", { name: "OKAY" });
+  await okay.waitFor();
+
+  const before = await heard(page, 2);
+  expect(before.map(({ name, played, reason }) => ({ name, played, reason }))).toEqual([
+    { name: "playerJoined", played: false, reason: "locked" },
+    { name: "gameStart", played: false, reason: "locked" },
+  ]);
+  expect(await audioContexts(page), "AudioContexts before a gesture").toBe(0);
+  expect(warnings, "console warnings and errors").toEqual([]);
+
+  await okay.click();
+  const after = await heard(page, 3);
+  expect(after[2]).toMatchObject({ name: "yourTurn", played: true });
+  expect(await audioContexts(page), "AudioContexts after the first gesture").toBe(1);
+  expect(warnings, "console warnings and errors").toEqual([]);
+});
+
+test("each sound waits for its animation", async ({ page, browserName, isMobile }) => {
+  test.skip(browserName !== "chromium" || isMobile, "the desktop project runs the wiring test");
+  test.setTimeout(120_000);
+  await recordSounds(page);
+  const game = await openFakeGame(page); // Its CREATE LOBBY click unlocks audio.
+  const alertBox = page.locator("#alert-box.appear-custom-alert");
+  const press = (name: string) => alertBox.getByRole("button", { name, exact: true }).click();
+  const ok = () => game.send({ type: "ok" });
+  const F = "FASCIST" as PolicyType;
+  const L = "LIBERAL" as PolicyType;
+
+  // 1. Another player joins the lobby.
+  game.send({ type: "lobby", usernames: TEN.slice(0, 9), icon });
+  game.send({ type: "lobby", usernames: TEN, icon });
+  await heard(page, 1);
+  // 2. The game starts with the user as president.
+  game.send(gamePacket());
+  await heard(page, 2);
+  await press("OKAY");
+  await heard(page, 3);
+  ok(); // closes the nomination prompt
+  // 3. The user nominates; 4. another player votes while the user's vote prompt is open.
+  game.send(gamePacket({ state: LobbyState.CHANCELLOR_VOTING, chancellor: TEN[1] }));
+  await alertBox.getByRole("button", { name: "CONFIRM" }).waitFor();
+  game.send(
+    gamePacket({ state: LobbyState.CHANCELLOR_VOTING, chancellor: TEN[1], userVotes: { [TEN[2]]: true } })
+  );
+  await heard(page, 5);
+  ok(); // closes the vote prompt
+  // 5. The vote fails and the tracker moves; the president must end the term.
+  const failed = Object.fromEntries(TEN.map((name, i) => [name, i < 3]));
+  game.send(
+    gamePacket({
+      state: LobbyState.POST_LEGISLATIVE,
+      chancellor: TEN[1],
+      userVotes: failed,
+      electionTracker: 1,
+      electionTrackerAdvanced: true,
+    })
+  );
+  await heard(page, 8);
+  await press("OKAY");
+  await heard(page, 9);
+  // 6. The next government enacts a fascist policy, which grants an execution.
+  game.send(
+    gamePacket({ state: LobbyState.LEGISLATIVE_CHANCELLOR, chancellor: TEN[1], chancellorChoices: [F, L] })
+  );
+  game.send(
+    gamePacket({
+      state: LobbyState.PP_EXECUTION,
+      chancellor: TEN[1],
+      fascistPolicies: 1,
+      lastPolicy: "FASCIST",
+    })
+  );
+  await heard(page, 10);
+  await press("OKAY");
+  await heard(page, 12);
+  ok(); // closes the execution prompt
+  // 7. Hitler is executed: liberals win, and the user, a fascist, loses.
+  game.send(
+    gamePacket(
+      {
+        state: LobbyState.LIBERAL_VICTORY_EXECUTION,
+        chancellor: TEN[1],
+        targetUser: HITLER,
+        fascistPolicies: 1,
+        lastPolicy: "FASCIST",
+      },
+      ROLES,
+      [HITLER]
+    )
+  );
+  await heard(page, 13);
+  await press("OKAY");
+  const log = await heard(page, 14);
+
+  expect(log.map((sound) => sound.name)).toEqual([
+    "playerJoined",
+    "gameStart",
+    "yourTurn",
+    "nominate",
+    "voteCast",
+    "voteCast",
+    "voteFailed",
+    "trackerAdvance",
+    "yourTurn",
+    "policyFascist",
+    "power",
+    "yourTurn",
+    "execution",
+    "defeat",
+  ]);
+  const [, gameStart, nominationTurn, nominate, voteCast, closingVote, voteFailed, tracker,
+    endTermTurn, policy, power, executionTurn, execution, defeat] = log;
+  expect(gameStart.alert, "gameStart").toContain("YOU ARE: LIBERAL");
+  expect(nominationTurn.alert, "yourTurn to nominate").toContain("NOMINATION");
+  expect(nominate.eventBar, "nominate").toBe("VOTING");
+  expect(voteCast.alert, "voteCast plays while the vote prompt is open").toContain("VOTING");
+  expect(voteFailed.status, "voteFailed").toMatch(/Vote failed$/);
+  expect(voteFailed.t - closingVote.t, "the tally comes 2 s into the reveal").toBeGreaterThan(1800);
+  expect(voteFailed.t - closingVote.t, "the tally comes 2 s into the reveal").toBeLessThan(2600);
+  expect(tracker.alert, "trackerAdvance").toContain("LEGISLATURE FAILED");
+  expect(endTermTurn.status, "yourTurn to end the term").toBe("Waiting for the president to end their term.");
+  expect(policy.alert, "policyFascist").toContain("POLICY ENACTED");
+  expect(power.eventBar, "power").toBe("PRESIDENTIAL POWER");
+  expect(executionTurn.alert, "yourTurn to execute").toContain("EXECUTION");
+  expect(execution.alert, "execution").toContain("EXECUTION RESULTS");
+  expect(defeat.alert, "defeat").toContain("Liberals successfully executed Hitler!");
+});
