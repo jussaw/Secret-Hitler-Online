@@ -64,6 +64,8 @@ public class GameToJSONConverter {
             throw new NullPointerException();
         }
 
+        // getState() is what notices a policy victory; hasGameFinished() alone can lag behind it.
+        game.getState();
         // Players should only be shown all roles under specific circumstances.
         Identity role = game.getPlayer(userName).getIdentity();
         boolean showAllRoles = game.hasGameFinished() || role == Identity.FASCIST
