@@ -52,6 +52,8 @@
     display: flex;
     align-items: center;
     gap: 2vh;
+    /* A full pile's cards stand up to 23% of the deck's height (1.468 x its width) above it. */
+    padding-top: calc(var(--deck-width) * 0.34);
 }
 
 .game-decks #deck-container,
@@ -93,7 +95,13 @@
     min-height: 0;
 }
 
+/* Two lines are always reserved, so a status that wraps does not resize the boards. */
 .game-status #status-bar-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.5em; /* a little over two 1.2 lines, so rounding never grows it */
+    line-height: 1.2;
     padding: 0.8vh 8px;
     font-size: clamp(12px, 2vh, 22px);
 }
