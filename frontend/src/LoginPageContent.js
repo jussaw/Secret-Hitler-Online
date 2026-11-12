@@ -1,6 +1,5 @@
 import React, {Component} from "react";
 import "./LoginPageContent.css";
-import "./util/CustomAliceCarousel.css";
 
 
 class LoginPageContent extends Component {
