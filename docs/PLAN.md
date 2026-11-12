@@ -49,7 +49,7 @@ Outcome: a clean fork that runs locally, with upstream's hosted-service extras g
 
 - [x] Run `cd backend && ./gradlew test`; record pass/fail counts in the PR description
 - [x] Run `./gradlew runLocal` and `cd frontend && npm install && npm run devLocal`; play one 5-player game with CPU players to the end
-- [x] Note any pre-existing failures as issues on the fork; do not fix them in this phase (#2, #3, #4, #5: dev-mode console warnings)
+- [x] Note any pre-existing failures as issues on the fork; do not fix them in this phase (#2, #3, #4, #5: dev-mode console warnings; #6: `App.test.js` fails)
 
 ### Task 1.2: Remove analytics
 
