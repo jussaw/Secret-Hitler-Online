@@ -211,11 +211,11 @@ Files: `backend/src/main/java/server/SecretHitlerServer.java` (Javalin config), 
 
 Files: new `Dockerfile` and `.dockerignore` at repo root, delete `backend/Dockerfile` and `backend/config/Dockerfile.dev` if unused
 
-- [ ] Stage 1 `node:24` (Phase 2 needs Node 22+), on `$BUILDPLATFORM`: `npm ci && npm run build` in `frontend/`
-- [ ] Stage 2 `eclipse-temurin:17-jdk` on `$BUILDPLATFORM`: copy `frontend/dist`, run the wrapper's `./gradlew jar` (the build is only known-good on Gradle 7.4.2)
-- [ ] Stage 3 `eclipse-temurin:17-jre`: copy the jar, `ENV PORT=8080 DATABASE_PATH=/data/backup.db`, `VOLUME /data`, `EXPOSE 8080`, run as non-root uid 1000
-- [ ] `docker build` then `docker run -p 8080:8080 -v sh-data:/data` plays a game locally
-- [ ] Restart the container mid-game; the lobby is still there after rejoin
+- [x] Stage 1 `node:24` (Phase 2 needs Node 22+), on `$BUILDPLATFORM`: `npm ci && npm run build` in `frontend/`
+- [x] Stage 2 `eclipse-temurin:17-jdk` on `$BUILDPLATFORM`: copy `frontend/dist`, run the wrapper's `./gradlew jar` (the build is only known-good on Gradle 7.4.2)
+- [x] Stage 3 `eclipse-temurin:17-jre`: copy the jar, `ENV PORT=8080 DATABASE_PATH=/data/backup.db`, `VOLUME /data`, `EXPOSE 8080`, run as non-root uid 1000
+- [x] `docker build` then `docker run -p 8080:8080 -v sh-data:/data` plays a game locally
+- [x] Restart the container mid-game; the lobby is still there after rejoin
 
 ### Task 3.4: Dev compose
 

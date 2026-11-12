@@ -609,6 +609,8 @@ Expected: `OK`, then `1000`. Play a CPU game at `http://localhost:8080` to the e
 
 Start a game with two players (host and guest) and three CPU players. After a few prompts, run `docker restart sh-local`. The shutdown hook stores the backup, and the logs show `Loaded backup from …` on start. Both clients reconnect on their own (the WebSocket retry), or by pressing JOIN on the prefilled form after a reload. The lobby and game are still there, and the game continues to a victory screen.
 
+Measured: `docker restart` took under a second. The client's built-in reconnect gives up before the server is back, so both players see "Disconnected from the lobby." on the prefilled form, and JOIN gets them back into the game; a JOIN while the server is still starting says "There was an error contacting the server", and the next one works. The game then finished normally.
+
 Clean up: `docker rm -f sh-local && docker volume rm sh-data`.
 
 - [ ] **Step 5: Commit**
