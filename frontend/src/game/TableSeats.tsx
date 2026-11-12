@@ -1,6 +1,7 @@
+import { CSSProperties } from "react";
 import { DISABLE_EXECUTED_PLAYERS, usePlayerTiles } from "../player/PlayerDisplay";
 import { GameState } from "../types";
-import { seatPositions } from "./seatPositions";
+import { MAX_WIDE_GRID_COLUMNS, seatColumns, seatPositions } from "./seatPositions";
 import "./TableSeats.css";
 
 type TableSeatsProps = {
@@ -13,6 +14,8 @@ type TableSeatsProps = {
 /**
  * Seats every player around the table, the user at bottom centre and the rest clockwise in
  * playerOrder. Each seat is the same tile PlayerDisplay shows, with its labels, votes and icons.
+ * On phones and in narrow windows TableSeats.css turns the seats into a grid, seatColumns() to
+ * a row.
  */
 export default function TableSeats(props: TableSeatsProps) {
   const { gameState, user } = props;
@@ -28,17 +31,24 @@ export default function TableSeats(props: TableSeatsProps) {
     gameState.playerOrder.indexOf(user)
   );
 
+  const count = gameState.playerOrder.length;
+  const grid = {
+    "--seat-columns": seatColumns(count),
+    "--seat-columns-wide": seatColumns(count, MAX_WIDE_GRID_COLUMNS),
+  } as CSSProperties;
+
   return (
-    <div className="table-seats">
-      {tiles.map((tile, i) => (
-        <div
-          className="table-seat"
-          key={gameState.playerOrder[i]}
-          style={{ left: `${seats[i].x}%`, top: `${seats[i].y}%` }}
-        >
-          {tile}
-        </div>
-      ))}
+    <div className="table-seats" style={grid}>
+      {tiles.map((tile) => {
+        // Each tile is keyed by its player's name; place it by that, not by its index.
+        const name = String(tile.key);
+        const seat = seats[gameState.playerOrder.indexOf(name)];
+        return (
+          <div className="table-seat" key={name} style={{ left: `${seat.x}%`, top: `${seat.y}%` }}>
+            {tile}
+          </div>
+        );
+      })}
     </div>
   );
 }

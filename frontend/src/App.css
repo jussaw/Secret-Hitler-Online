@@ -140,6 +140,19 @@ input {
     outline:none;
 }
 
+/* Touch targets on phones are at least 44px tall. */
+@media (max-width: 768px) {
+    button, input {
+        min-height: 44px;
+    }
+
+    /* iOS Safari zooms the page into a text field under 16px when it gets focus, and stays zoomed. */
+    input {
+        box-sizing: border-box;
+        font-size: max(16px, calc(4px + 3vmin));
+    }
+}
+
 input::placeholder {
     color: var(--textColorOnDark);
 }

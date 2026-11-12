@@ -8,8 +8,22 @@ export default defineConfig({
   timeout: 60_000,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  reporter: "list",
-  use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${PORT}` },
+  // CI also writes an HTML report, which ci.yml keeps (with the traces) when a run fails.
+  reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
+  use: { baseURL: `http://localhost:${PORT}`, trace: "retain-on-failure" },
+  projects: [
+    // The round table at the five desktop sizes.
+    { name: "desktop", use: devices["Desktop Chrome"], testIgnore: /phone\.spec/ },
+    // Firefox lays out the zoomed seats of narrow windows with its own rounding.
+    { name: "firefox", use: devices["Desktop Firefox"], testMatch: /no-scroll\.spec/ },
+    // Phones in portrait, emulated with touch and their own pixel ratio.
+    { name: "phone-360", use: devices["Galaxy S8"], testIgnore: /no-scroll\.spec/ },
+    {
+      name: "phone-412",
+      use: { ...devices["Pixel 7"], viewport: { width: 412, height: 915 } },
+      testIgnore: /no-scroll\.spec/,
+    },
+  ],
   webServer: {
     // Needs Java 17 for the Gradle wrapper.
     command:

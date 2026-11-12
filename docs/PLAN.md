@@ -34,8 +34,8 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 1. Housekeeping | `phase-1-housekeeping` | done |
 | 2. Frontend modernization | `phase-2-vite` | done |
 | 3. Persistence, packaging, first deploy | `phase-3-deploy` | done |
-| 4. Round-table game screen | `phase-4-round-table` | in progress |
-| 5. Phone layout | `phase-5-phone` | not started |
+| 4. Round-table game screen | `phase-4-round-table` | done |
+| 5. Phone layout | `phase-5-phone` | in progress |
 | 6. Sounds | `phase-6-sounds` | not started |
 | 7. Spectators | `phase-7-spectators` | not started |
 
@@ -252,7 +252,7 @@ TLS ends at a proxy in front of the host.
 - [x] `https://<subdomain>/ping` answers (`OK`)
 - [x] A game with two real browsers plus CPU players completes over `wss` (`wss://<subdomain>/game`, liberal win, mid-game reload and rejoin)
 - [x] `docker restart` of the container mid-game; players rejoin and continue (backup stored on shutdown, loaded on start; both rejoined via JOIN; #13 explains a transient 404 right after start)
-- [ ] Pushing to `development` produces a new image that the host picks up (checked after this PR merges; the host checks for new images daily. 2026-11-12: CI run 43175719551 published `:latest` for `bb968e1`, but the host still runs the previous image because its daily pull has not happened yet)
+- [x] Pushing to `development` produces a new image that the host picks up (2026-11-12: CI run 43187178189 published `:latest` for `6b01066`, and the host's container runs that image, digest `sha256:24324133…c252`)
 - [x] PR merged into `development` (#14)
 
 **Start Phase 4: Round-table game screen**
@@ -313,46 +313,64 @@ Playwright is not installed yet: `@playwright/test` and a browser are new dev de
 **Phase 4 acceptance**
 
 - [x] `npm run e2e` passes at all five desktop sizes for 5, 7 and 10 players
-- [ ] Vote reveal, policy enactment, investigation, special election, execution and victory animations all display correctly over the table
+- [x] Vote reveal, policy enactment, investigation, special election, execution and victory animations all display correctly over the table
 - [ ] PR merged into `development`; deployed image checked on a real 1080p monitor
 
 **Start Phase 5: Phone layout**
 
-- [ ] Progress table: Phase 4 set to "done", Phase 5 set to "in progress"
-- [ ] `git checkout development && git pull`, then `git checkout -b phase-5-phone`
-- [ ] Re-read Phase 5 below against the code as it now stands; fix any file paths or line numbers that moved
-- [ ] Write the Phase 5 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 5 heading
-- [ ] Begin Task 5.1
+- [x] Progress table: Phase 4 set to "done", Phase 5 set to "in progress"
+- [x] `git checkout development && git pull`, then `git checkout -b phase-5-phone`
+- [x] Re-read Phase 5 below against the code as it now stands; fix any file paths or line numbers that moved
+- [x] Write the Phase 5 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 5 heading
+- [x] Begin Task 5.1
 
 ---
 
 ## Phase 5: Phone layout
 
+Breakdown: [`docs/superpowers/plans/2026-11-12-phase-5-phone.md`](superpowers/plans/2026-11-12-phase-5-phone.md)
+
 Outcome: playable on a phone in portrait, with vertical scrolling allowed.
 
 ### Task 5.1: Stacked game layout
 
-Files: `frontend/src/game/GameScreen.css`, `frontend/src/game/TableSeats.tsx`, `frontend/src/player/Player.css`
+Files: `frontend/src/game/GameScreen.css`, `frontend/src/game/TableSeats.css`, `frontend/src/game/TableSeats.tsx`, `frontend/src/game/seatPositions.ts` (`seatColumns`); browser tests `frontend/e2e/phone.spec.ts` (new), `frontend/e2e/no-scroll.spec.ts`, shared helpers `frontend/e2e/lobby.ts` (was `guests.ts`) and `frontend/e2e/layout.ts`, and the `desktop`, `phone-360` and `phone-412` projects in `frontend/playwright.config.ts`
 
-- [ ] At `max-width: 768px`, seats render as a wrapping grid instead of ellipse positions; then status, boards at full width, decks
-- [ ] Touch targets (player selection, vote buttons, policy cards) are at least 44px
+Seat and centre-box positions are inline styles: `TableSeats.tsx` sets each seat's `left`/`top` from `seatPositions()`, and `GameScreen.tsx` sets `.game-centre`'s `left`/`right`/`top`/`bottom` from `centreBox()`. Seats are the default player tile scaled with a transform in `TableSeats.css`, and the table's board, deck and status sizes are overrides scoped in `GameScreen.css`; `Player.css` was not changed in Phase 4. Phase 4 deferred two desktop problems here: windows narrower than about 5:4 (for example 960x1080) put the diagonal seats over the boards, and tall prompts (below) run past the bottom of a desktop screen.
+
+- [x] Under `(max-width: 768px), (aspect-ratio < 5/4)`, seats render as a wrapping grid instead of ellipse positions; then status and END TERM, boards at full width, decks
 
 ### Task 5.2: Other pages and prompts
 
-Files: `frontend/src/LoginPageContent.css`, `frontend/src/Lobby.css`, `frontend/src/custom-alert/CustomAlert.css` (currently `max-width: 40vw`), prompt CSS files, `frontend/index.html` viewport meta
+Files: `frontend/src/custom-alert/CustomAlert.css` (prompts become a fixed overlay whose box scrolls), `frontend/src/App.css` (44px minimum for buttons and text fields on phones); browser tests `frontend/e2e/prompts.spec.ts` and `frontend/e2e/fakeGame.ts` (new; every prompt opened from a scripted game socket), `frontend/e2e/phone.spec.ts` (login and lobby). The login page (`App.tsx` `renderLoginPage`, lines 629-712), the lobby (`renderLobbyPage`, lines 816-921) and the prompt CSS files needed no change.
 
-- [ ] Login and lobby fit 360px width
-- [ ] Alerts use near-full width on phones; policy and vote prompts fit without horizontal scroll
+`frontend/index.html` already has `width=device-width, initial-scale=1`. Before this phase `#alert-box` was `position: absolute` at `top: 10vh` with `min-width: 80vmin` and `max-width: 40vw`; below a 2:1 window the `min-width` wins, so it is 80vmin wide plus padding. With ten players the nomination, investigation, special election, execution and victory prompts are taller than a 1920x1080 screen (RETURN TO LOBBY ends at y 1398), and at 1280x720 the vote prompt is too.
+
+- [x] Login and lobby fit 360px width
+- [x] On phones every button, text field, player tile, vote card and policy card is at least 44x44px
+- [x] Alerts use near-full width on phones; policy and vote prompts fit without horizontal scroll
 
 ### Task 5.3: Phone browser test
 
-Files: new `frontend/e2e/phone.spec.ts`
+Files: new `frontend/e2e/phone.spec.ts` and `frontend/e2e/prompts.spec.ts` (built in Tasks 5.1 and 5.2), `frontend/playwright.config.ts` (trace and HTML report on failure), `.github/workflows/ci.yml` (keeps them as an artifact)
 
-- [ ] At 360x740 and 412x915, assert `scrollWidth <= innerWidth` on login, lobby, game, and with a vote prompt open
+`App.css` sets `overflow-x: hidden` on both `html` and `body`, so `body` clips anything too wide and `document.documentElement.scrollWidth` stays at the viewport width whatever overflows; only `document.body.scrollWidth` shows it. The same holds for Phase 4's desktop `scrollWidth` check in `no-scroll.spec.ts`.
+
+- [x] Galaxy S8 (360x740) and Pixel 7 (412x915) projects assert no horizontal overflow (`body.scrollWidth`, and no element past the edge) on login, lobby, the game at 5 and 10 players, and every prompt opened from a scripted game socket
+
+### Task 5.4: Narrow windows and upright tablets
+
+Files: `frontend/src/game/GameScreen.css`, `frontend/src/game/TableSeats.css`, `frontend/src/game/TableSeats.tsx`, `frontend/src/game/seatPositions.ts` (`seatColumns`); browser test `frontend/e2e/no-scroll.spec.ts`, with the window sizes in `frontend/e2e/layout.ts`, also run in Firefox by a `firefox` project (`frontend/playwright.config.ts`, `.github/workflows/ci.yml`)
+
+Tasks 5.1-5.3 give every window narrower than 5:4 the phone layout, with full-size tiles. With ten players, half a 1080p screen (960x1080) shows only tiles on its first screen, and the boards start at y 1037; held upright, an iPad Air (820x1180) starts them at y 991.
+
+- [x] Windows at least 700px wide and narrower than 5:4 (half-screen desktop windows, upright monitors, tablets held upright) fit the game screen without scrolling: round-table-size tiles up to 5 to a row, then status and END TERM, then the boards with the decks in a column beside them
 
 **Phase 5 acceptance**
 
-- [ ] Phone e2e passes; Phase 4 e2e still passes
+Deferred: a desktop prompt taller than the window (ten-player pickers and the victory prompt at 1080p and below) now scrolls inside its box instead of growing the page, but it does not yet fit the window without scrolling. That needs smaller prompt contents, not layout.
+
+- [x] Phone e2e passes; Phase 4 e2e still passes
 - [ ] One full game played on a real phone against the deployed instance
 - [ ] PR merged into `development`
 

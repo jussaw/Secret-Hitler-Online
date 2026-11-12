@@ -1,11 +1,14 @@
 import { describe, expect, test } from "vitest";
 import {
+  MAX_GRID_COLUMNS,
+  MAX_WIDE_GRID_COLUMNS,
   MIN_SEAT_DISTANCE,
   SEAT_HALF_SIZE,
   Seat,
   TABLE_RADIUS_X,
   TABLE_RADIUS_Y,
   centreBox,
+  seatColumns,
   seatPositions,
 } from "./seatPositions";
 
@@ -97,4 +100,27 @@ test("lets the centre box use the room the seats leave", () => {
 test("seats a spectator, who has no seat of their own, as player 0", () => {
   expect(seatPositions(7)).toEqual(seatPositions(7, 0));
   expect(seatPositions(7, -1)).toEqual(seatPositions(7, 0));
+});
+
+test.each([
+  [5, 3],
+  [6, 3],
+  [7, 4],
+  [8, 4],
+  [9, 3],
+  [10, 4],
+])("%i players sit %i to a row on a phone", (count, columns) => {
+  expect(seatColumns(count)).toBe(columns);
+  expect(seatColumns(count)).toBeLessThanOrEqual(MAX_GRID_COLUMNS);
+});
+
+test.each([
+  [5, 5],
+  [6, 3],
+  [7, 4],
+  [8, 4],
+  [9, 5],
+  [10, 5],
+])("%i players sit %i to a row in a narrow window", (count, columns) => {
+  expect(seatColumns(count, MAX_WIDE_GRID_COLUMNS)).toBe(columns);
 });
