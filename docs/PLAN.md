@@ -259,7 +259,7 @@ TLS ends at a proxy in front of the host.
 
 - [x] Progress table: Phase 3 set to "done", Phase 4 set to "in progress"
 - [x] `git checkout development && git pull`, then `git checkout -b phase-4-round-table`
-- [ ] Re-read Phase 4 below against the code as it now stands; fix any file paths or line numbers that moved
+- [x] Re-read Phase 4 below against the code as it now stands; fix any file paths or line numbers that moved
 - [ ] Write the Phase 4 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 4 heading
 - [ ] Begin Task 4.1
 
@@ -271,7 +271,7 @@ Outcome: all players and both boards visible with no scrolling on desktop.
 
 ### Task 4.1: Extract `GameScreen`
 
-Files: new `frontend/src/game/GameScreen.tsx`, `frontend/src/game/GameScreen.css`; modify `frontend/src/App.tsx` (`renderGamePage`, lines 1701-1791)
+Files: new `frontend/src/game/GameScreen.tsx`, `frontend/src/game/GameScreen.css`; modify `frontend/src/App.tsx` (`renderGamePage`, lines 1625-1713)
 
 - [ ] Move the game markup into `GameScreen`, a presentational component: props are `gameState`, `user`, `showVotes`, `showBusy`, `statusBarText`, deck sizes, policy counts, `electionTracker`, `onEndTerm`
 - [ ] `App.tsx` renders `<GameScreen …/>` plus the existing `CustomAlert`, `EventBar` and snackbar; no inline layout styles remain in `renderGamePage`
@@ -289,6 +289,8 @@ Files: new `frontend/src/game/seatPositions.ts`, `frontend/src/game/seatPosition
 
 Files: new `frontend/src/game/TableSeats.tsx`; modify `GameScreen.tsx/.css`, `frontend/src/player/PlayerDisplay.tsx`, `frontend/src/player/Player.css`, `frontend/src/board/Board.css`, `frontend/src/App.css` (header height)
 
+`PlayerDisplay` is also rendered inside prompts (execution, special election, investigation and victory results at `App.tsx:954`, `1259`, `1291` and `1414`, and `PlayerDisplayPrompt`, which `SelectPlayerPrompt` uses), and the lobby renders `Player` directly (`App.tsx:729`). Those keep their current layout.
+
 - [ ] `GameScreen` is a grid filling `100dvh` minus a slimmer header; `overflow: hidden` is not used to fake the result
 - [ ] `TableSeats` absolutely positions each existing `Player` at its seat; president/chancellor markers, vote icons, busy icons and the executed state render as before
 - [ ] Centre column: board(s), then draw deck / policy status / discard deck, then status text and END TERM
@@ -298,6 +300,8 @@ Files: new `frontend/src/game/TableSeats.tsx`; modify `GameScreen.tsx/.css`, `fr
 ### Task 4.4: No-scroll browser test
 
 Files: new `frontend/e2e/no-scroll.spec.ts`, `frontend/playwright.config.ts`; `package.json` script `e2e`; CI job
+
+Playwright is not installed yet: `@playwright/test` and a browser are new dev dependencies. CPU players only fill a lobby up to 5 (`backend/src/main/java/server/util/Lobby.java:497-511`), so 7 and 10 players need extra connections.
 
 - [ ] Test starts a lobby against a local backend, adds CPU players to reach 5, 7 and 10, starts the game
 - [ ] At each desktop acceptance size asserts `document.documentElement.scrollHeight <= window.innerHeight` and `scrollWidth <= innerWidth`, and that every seat's bounding box is inside the viewport
