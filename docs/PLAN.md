@@ -380,7 +380,7 @@ Deferred: a desktop prompt taller than the window (ten-player pickers and the vi
 - [x] `git checkout development && git pull`, then `git checkout -b phase-6-sounds`
 - [x] Re-read Phase 6 below against the code as it now stands; fix any file paths or line numbers that moved
 - [x] Write the Phase 6 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 6 heading
-- [ ] Begin Task 6.1
+- [x] Begin Task 6.1
 
 ---
 
@@ -394,9 +394,9 @@ Outcome: game events are audible, with volume and mute controls.
 
 Files: new `frontend/src/assets/sounds/*` (an `.ogg` and an `.mp3` per sound), new `docs/SOUND-CREDITS.md` (`CLAUDE.md` already names it)
 
-- [ ] One CC0 clip per sound name: `yourTurn`, `playerJoined`, `gameStart`, `nominate`, `voteCast`, `votePassed`, `voteFailed`, `trackerAdvance`, `cardDraw`, `cardDiscard`, `policyLiberal`, `policyFascist`, `power`, `investigate`, `execution`, `veto`, `victory`, `defeat`
-- [ ] Each trimmed, loudness-normalized, exported as OGG and MP3, under 100 KB where possible
-- [ ] `docs/SOUND-CREDITS.md` lists file, source URL, author and licence for every clip
+- [x] One CC0 clip per sound name: `yourTurn`, `playerJoined`, `gameStart`, `nominate`, `voteCast`, `votePassed`, `voteFailed`, `trackerAdvance`, `cardDraw`, `cardDiscard`, `policyLiberal`, `policyFascist`, `power`, `investigate`, `execution`, `veto`, `victory`, `defeat`
+- [x] Each trimmed, loudness-normalized, exported as Ogg Opus and MP3, under 100 KB where possible
+- [x] `docs/SOUND-CREDITS.md` lists file, source URL, author and licence for every clip
 
 ### Task 6.2: `SoundManager`
 
