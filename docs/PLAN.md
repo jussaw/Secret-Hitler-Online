@@ -76,9 +76,9 @@ Files: `frontend/src/custom-alert/IconSelection.tsx` (two `TwitterShareButton` b
 
 ### Task 1.5: Prune fork branches
 
-- [ ] List: `git branch -r | grep origin/ | grep -vE 'origin/(HEAD|main|development)'`
-- [ ] Delete each listed branch on the fork with `git push origin --delete <branch>` (fork only; never `upstream`)
-- [ ] `git fetch --prune origin` shows only `main` and `development`
+- [x] List: `git branch -r | grep origin/ | grep -vE 'origin/(HEAD|main|development)'`
+- [x] Delete each listed branch on the fork with `git push origin --delete <branch>` (fork only; never `upstream`)
+- [x] `git fetch --prune origin` shows only `main` and `development`
 
 ### Task 1.6: Docs
 
