@@ -260,12 +260,14 @@ TLS ends at a proxy in front of the host.
 - [x] Progress table: Phase 3 set to "done", Phase 4 set to "in progress"
 - [x] `git checkout development && git pull`, then `git checkout -b phase-4-round-table`
 - [x] Re-read Phase 4 below against the code as it now stands; fix any file paths or line numbers that moved
-- [ ] Write the Phase 4 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 4 heading
+- [x] Write the Phase 4 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 4 heading
 - [ ] Begin Task 4.1
 
 ---
 
 ## Phase 4: Round-table game screen
+
+Breakdown: [`docs/superpowers/plans/2026-11-12-phase-4-round-table.md`](superpowers/plans/2026-11-12-phase-4-round-table.md)
 
 Outcome: all players and both boards visible with no scrolling on desktop.
 
