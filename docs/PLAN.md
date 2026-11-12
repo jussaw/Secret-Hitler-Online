@@ -378,19 +378,21 @@ Deferred: a desktop prompt taller than the window (ten-player pickers and the vi
 
 - [x] Progress table: Phase 5 set to "done", Phase 6 set to "in progress"
 - [x] `git checkout development && git pull`, then `git checkout -b phase-6-sounds`
-- [ ] Re-read Phase 6 below against the code as it now stands; fix any file paths or line numbers that moved
-- [ ] Write the Phase 6 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 6 heading
+- [x] Re-read Phase 6 below against the code as it now stands; fix any file paths or line numbers that moved
+- [x] Write the Phase 6 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 6 heading
 - [ ] Begin Task 6.1
 
 ---
 
 ## Phase 6: Sounds
 
+Breakdown: [`docs/superpowers/plans/2026-11-12-phase-6-sounds.md`](superpowers/plans/2026-11-12-phase-6-sounds.md)
+
 Outcome: game events are audible, with volume and mute controls.
 
 ### Task 6.1: Source clips
 
-Files: new `frontend/src/assets/sounds/*`, `docs/SOUND-CREDITS.md`
+Files: new `frontend/src/assets/sounds/*` (an `.ogg` and an `.mp3` per sound), new `docs/SOUND-CREDITS.md` (`CLAUDE.md` already names it)
 
 - [ ] One CC0 clip per sound name: `yourTurn`, `playerJoined`, `gameStart`, `nominate`, `voteCast`, `votePassed`, `voteFailed`, `trackerAdvance`, `cardDraw`, `cardDiscard`, `policyLiberal`, `policyFascist`, `power`, `investigate`, `execution`, `veto`, `victory`, `defeat`
 - [ ] Each trimmed, loudness-normalized, exported as OGG and MP3, under 100 KB where possible
@@ -398,7 +400,7 @@ Files: new `frontend/src/assets/sounds/*`, `docs/SOUND-CREDITS.md`
 
 ### Task 6.2: `SoundManager`
 
-Files: new `frontend/src/sound/SoundManager.ts`, `frontend/src/sound/SoundManager.test.ts`
+Files: new `frontend/src/sound/SoundManager.ts`, `frontend/src/sound/SoundManager.test.ts`; `frontend/src/main.tsx` (preload, first-gesture listener)
 
 - [ ] Tests first: volume and mute persist to and restore from `localStorage`; `play` before unlock does nothing; `play` when muted does nothing; a clip that fails to load does not throw
 - [ ] Implement `play(name: SoundName)`, `setVolume(0..1)`, `setMuted(boolean)`, `unlock()`; `unlock` is called on the first pointer or key event
@@ -408,29 +410,31 @@ Files: new `frontend/src/sound/SoundManager.ts`, `frontend/src/sound/SoundManage
 
 Files: new `frontend/src/sound/soundEvents.ts`, `frontend/src/sound/soundEvents.test.ts`
 
-- [ ] Tests first, one per event, using pairs of `GameState` fixtures (types in `frontend/src/types/game.ts`): for example state changes to the vote-result state with a passing vote returns `["votePassed"]`; `electionTrackerAdvanced` true returns `["trackerAdvance"]`; the local player becomes the one who must act returns `["yourTurn"]`
+- [ ] Tests first, one per event, using pairs of `GameState` fixtures (types in `frontend/src/types/lobby_state.ts`, built with `frontend/src/game/testGameState.ts`): for example state changes to the vote-result state with a passing vote returns `["votePassed"]`; the election tracker moving returns `["trackerAdvance"]` (`electionTrackerAdvanced` alone stays true until the next nomination); the local player becomes the one who must act returns `["yourTurn"]`
 - [ ] Implement `soundEvents(prev: GameState | undefined, next: GameState, user: string): SoundName[]` as a pure function
 - [ ] Victory versus defeat is decided from the local player's party; spectators get `victory`
 
 ### Task 6.4: Wire up
 
-Files: `frontend/src/App.tsx` (`onGameStateChanged`, line 1025, and the lobby update path)
+Files: `frontend/src/App.tsx`: `onGameStateChanged` (line 968), the animation queue (`animationQueue`, `addAnimationToQueue`, `clearAnimationQueue`; lines 198 and 1469-1491), `showVotes` (1493), the lobby and investigation packets in `onWebSocketMessage` (405, 437), `tryOpenWebSocket` (276); new browser test `frontend/e2e/sounds.spec.ts`
 
 - [ ] Call `soundEvents` in `onGameStateChanged` and queue each sound through the existing animation queue so audio lines up with the visuals, not with packet arrival
 - [ ] Lobby user-list growth plays `playerJoined`
+- [ ] The first packet after a socket opens (a reload, a reconnect, a rejoin) plays nothing
 
 ### Task 6.5: Controls
 
-Files: new `frontend/src/sound/SoundControl.tsx` and `.css`; `frontend/src/App.tsx` header on all three pages
+Files: new `frontend/src/sound/SoundControl.tsx` and `.css`; the headers at `frontend/src/App.tsx:632` (login), `App.tsx:823` (lobby) and `frontend/src/game/GameScreen.tsx:40` (game); `frontend/e2e/sounds.spec.ts`
 
 - [ ] Speaker button toggles mute; hovering or tapping shows a volume slider
-- [ ] Control fits in the slim header from Phase 4 and does not break the no-scroll tests
+- [ ] Control fits in the header of every page in every layout (the round table at the five desktop sizes, the stacked phone layout at 360x740 and 412x915, the narrow windows in `NARROW_WINDOWS`) and does not break the no-scroll tests or the phone tests' 44px touch targets
 - [ ] `CLAUDE.md` updated: `frontend/src/sound/` modules and the CC0 credits rule
 
 **Phase 6 acceptance**
 
-- [ ] Unit tests pass; Phase 4 and 5 e2e still pass
-- [ ] In a full game every listed event is heard once, in sync with its animation
+- [ ] Unit tests pass; Phase 4 and 5 e2e still pass, and so does the sounds e2e
+- [ ] A recorded 7-player game shows every listed event playing once, in sync with its animation
+- [ ] In a full game every listed event is heard (the user, in a real game)
 - [ ] Mute and volume survive a page refresh
 - [ ] No sound plays before the first click, and no autoplay error appears in the console
 - [ ] PR merged into `development`
