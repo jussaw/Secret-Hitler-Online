@@ -8,6 +8,8 @@ export default defineConfig({
   timeout: 60_000,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
+  // On CI a test that fails once is run again, and a pass on the retry is reported as flaky.
+  retries: process.env.CI ? 1 : 0,
   // CI also writes an HTML report, which ci.yml keeps (with the traces) when a run fails.
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   use: { baseURL: `http://localhost:${PORT}`, trace: "retain-on-failure" },
