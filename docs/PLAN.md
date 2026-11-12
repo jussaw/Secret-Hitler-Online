@@ -182,6 +182,8 @@ Breakdown: [`docs/superpowers/plans/2026-11-12-phase-3-persistence-packaging-dep
 
 Outcome: the unmodified-looking game runs on the home server at its public subdomain and survives restarts.
 
+Phase 3 lands in two PRs. CI publishes images only from `development`, so Tasks 3.1-3.5 merged first (#12), which published the first image. Tasks 3.6-3.7 and the acceptance checks follow on a second `phase-3-deploy` branch.
+
 ### Task 3.1: SQLite backup
 
 Files: `backend/build.gradle`, `backend/src/main/java/server/ApplicationConfig.java`, `backend/src/main/java/server/SecretHitlerServer.java` (database section, lines 211-359), new `backend/src/test/java/server/DatabaseBackupTest.java`
@@ -229,28 +231,28 @@ Files: new `.github/workflows/ci.yml`
 
 - [x] Job `test`: `./gradlew test` and `npm ci && npm test -- --run && npm run build`, on pull requests and pushes to `development`
 - [x] Job `image` (push to `development` only, after `test`): buildx with QEMU, platforms `linux/arm64,linux/amd64`, push `ghcr.io/jussaw/secret-hitler-online:latest` and `:sha-<short>`
-- [ ] First run is green and the package is visible on GHCR
+- [x] First run is green and the package is visible on GHCR (run 43167662489; public, `linux/amd64` + `linux/arm64`)
 
 ### Task 3.6: Host stack
 
-- [ ] Add a compose service on the host: `container_name`, the GHCR image, `TZ`, a free published port mapped to `8080`, `restart: unless-stopped`, and a bind mount to `/data`
-- [ ] `docker compose config` validates for the host's stack
-- [ ] Commit the stack change, then deploy it on the host
-- [ ] The GHCR package is public, so the host pulls it without credentials; if it is private, make it public
+- [x] Add a compose service on the host: `container_name`, the GHCR image, `TZ`, a free published port mapped to `8080`, `restart: unless-stopped`, and a bind mount to `/data`
+- [x] `docker compose config` validates for the host's stack
+- [x] Commit the stack change, then deploy it on the host
+- [x] The GHCR package is public, so the host pulls it without credentials; if it is private, make it public
 
 ### Task 3.7: Proxy
 
 TLS ends at a proxy in front of the host.
 
-- [ ] Add a public hostname for the subdomain on the host's proxy, pointing at the published port; the proxy terminates TLS and passes WebSockets
-- [ ] Add the URL to an uptime monitor using `/ping`
+- [x] Add a public hostname for the subdomain on the host's proxy, pointing at the published port; the proxy terminates TLS and passes WebSockets
+- [ ] Add the URL to an uptime monitor using `/ping` (deferred by the user)
 
 **Phase 3 acceptance**
 
-- [ ] `https://<subdomain>/ping` answers
-- [ ] A game with two real browsers plus CPU players completes over `wss`
-- [ ] `docker restart` of the container mid-game; players rejoin and continue
-- [ ] Pushing to `development` produces a new image that the host picks up
+- [x] `https://<subdomain>/ping` answers (`OK`)
+- [x] A game with two real browsers plus CPU players completes over `wss` (`wss://<subdomain>/game`, liberal win, mid-game reload and rejoin)
+- [x] `docker restart` of the container mid-game; players rejoin and continue (backup stored on shutdown, loaded on start; both rejoined via JOIN; #13 explains a transient 404 right after start)
+- [ ] Pushing to `development` produces a new image that the host picks up (checked after this PR merges; the host checks for new images daily)
 - [ ] PR merged into `development`
 
 **Start Phase 4: Round-table game screen**

@@ -52,6 +52,8 @@ Known baseline failures (do not "fix" them while doing unrelated work):
   #8 (`Player.render` calls `setState`), and #5 (prompts set state from uncleared timers; on
   React 18 only `ElectionTrackerAlert`'s constructor timer still warns, after a failed election).
 - #9: the lobby tags every player except the host as `[Host]`.
+- #10: rejoining within 3 s of a reload is refused as "in a game"; #13: a request right after the
+  server starts can 404 because routes are registered after `start()`.
 
 `npm run dev:server` points at upstream's hosted dev backend, not anything this fork runs.
 
@@ -60,8 +62,9 @@ Known baseline failures (do not "fix" them while doing unrelated work):
 CI (`.github/workflows/ci.yml`) runs the backend and frontend tests and the frontend build on every
 pull request into `development`. On every push to `development` it also publishes
 `ghcr.io/jussaw/secret-hitler-online:latest` and `:sha-<short>` for `linux/arm64` and `linux/amd64`.
-A home server runs that image and pulls new `:latest` images. TLS ends at a proxy in front of it,
-so the container serves plain HTTP on `8080`.
+A home server runs that image and pulls new `:latest` images once a day. TLS ends at a proxy in
+front of it, so the container serves plain HTTP on `8080`. Lobby backups go to `/data/backup.db`,
+so mount a volume at `/data`.
 
 ## Workflow
 

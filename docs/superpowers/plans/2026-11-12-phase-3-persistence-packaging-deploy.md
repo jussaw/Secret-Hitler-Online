@@ -28,7 +28,7 @@ Parent plan: [`docs/PLAN.md`](../../PLAN.md), Phase 3. Spec: [`docs/superpowers/
 5. **The container runs as uid 1000**, matching the owner of the host's data directory, so the bind-mounted `/data` is writable.
 6. **TLS ends at a proxy in front of the host.** A public hostname on it terminates TLS and passes WebSockets. The host runs an uptime monitor and an image updater; the updater is how "the host picks up" new `:latest` images.
 7. **Public GHCR packages allow anonymous pulls**, so the host needs no registry credentials as long as this package is public.
-8. **The image job only runs on pushes to `development`, so the first image needs a merge.** Proposed sequence (confirm with the user at the gate before Task 6): PR 1 carries Tasks 1-5 and is merged, which publishes the first image. Tasks 6-7 and the acceptance checks follow on a fresh `phase-3-deploy` branch with PR 2.
+8. **The image job only runs on pushes to `development`, so the first image needs a merge.** Confirmed by the user at the gate (2026-11-12). The sequence: PR 1 carries Tasks 1-5 and is merged, which publishes the first image. Tasks 6-7 and the acceptance checks follow on a fresh `phase-3-deploy` branch with PR 2.
 10. **The production CORS rule blocks the same-origin page.** Outside debug mode, the CORS plugin allowed only upstream's `https://secret-hitler.online`, and Javalin answers any other `Origin` with 400. Vite's `<script type="module" crossorigin>` and stylesheet tags make the browser send `Origin` even for same-origin assets, so the served page stayed blank (curl without `Origin` got 200, which hid it). Same-origin serving needs no CORS, so the plugin is now enabled only in debug mode.
 9. **The service gets a free published port on the host.**
 
