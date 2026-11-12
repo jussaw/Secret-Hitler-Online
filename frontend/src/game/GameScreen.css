@@ -1,0 +1,31 @@
+@import '../variables.css';
+
+.game-screen {
+    text-align: center;
+}
+
+.game-players {
+    background-color: var(--backgroundDark);
+}
+
+.game-board-area {
+    display: inline-block;
+}
+
+.game-board-layout {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    margin: 10px auto;
+}
+
+.game-deck-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    margin-top: 15px;
+}
+
+.game-end-term {
+    margin: auto auto;
+}

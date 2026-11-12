@@ -261,7 +261,7 @@ TLS ends at a proxy in front of the host.
 - [x] `git checkout development && git pull`, then `git checkout -b phase-4-round-table`
 - [x] Re-read Phase 4 below against the code as it now stands; fix any file paths or line numbers that moved
 - [x] Write the Phase 4 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 4 heading
-- [ ] Begin Task 4.1
+- [x] Begin Task 4.1
 
 ---
 
@@ -275,9 +275,9 @@ Outcome: all players and both boards visible with no scrolling on desktop.
 
 Files: new `frontend/src/game/GameScreen.tsx`, `frontend/src/game/GameScreen.css`; modify `frontend/src/App.tsx` (`renderGamePage`, lines 1625-1713)
 
-- [ ] Move the game markup into `GameScreen`, a presentational component: props are `gameState`, `user`, `showVotes`, `showBusy`, `statusBarText`, deck sizes, policy counts, `electionTracker`, `onEndTerm`
-- [ ] `App.tsx` renders `<GameScreen …/>` plus the existing `CustomAlert`, `EventBar` and snackbar; no inline layout styles remain in `renderGamePage`
-- [ ] No visual change in this task (compare screenshots before and after)
+- [x] Move the game markup into `GameScreen`, a presentational component: props are `gameState`, `user`, `showVotes`, `showBusy`, `statusBarText`, deck sizes, policy counts, `electionTracker`, `onEndTerm`
+- [x] `App.tsx` renders `<GameScreen …/>` plus the existing `CustomAlert`, `EventBar` and snackbar; no inline layout styles remain in `renderGamePage`
+- [x] No visual change in this task (compare screenshots before and after)
 
 ### Task 4.2: Seat geometry
 
