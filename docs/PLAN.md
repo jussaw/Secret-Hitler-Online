@@ -89,13 +89,13 @@ Files: `frontend/src/custom-alert/IconSelection.tsx` (two `TwitterShareButton` b
 
 Files: new `CLAUDE.md` at the repo root
 
-- [ ] What this is: a personal fork of `ShrimpCryptid/Secret-Hitler-Online`, remotes `origin` (fork) and `upstream`, default working branch `development`, licence CC BY-NC-SA 4.0
-- [ ] Layout: `backend/` (Java, Gradle, Javalin; rules in `src/main/java/game/`, server in `src/main/java/server/`), `frontend/` (React, TypeScript), `docs/`
-- [ ] Commands: run backend, run frontend, run each test suite, build (verified by running each one)
-- [ ] Workflow: one branch per phase off `development`, PRs target the fork (`--repo jussaw/Secret-Hitler-Online`, since `gh` defaults to upstream), never push to `upstream`
-- [ ] Commit convention: Conventional Commits with a scope; list the scopes in use (`frontend`, `backend`, `docker`, `ci`, `docs`, `plan`)
-- [ ] Pointers: `docs/PLAN.md` is the source of truth for progress and boxes are ticked in the same commit as the work; the spec path
-- [ ] Constraints: no new art, CC0 sounds only, WebSocket protocol stays backward compatible for players, Pi deploys go through jussaw-server
+- [x] What this is: a personal fork of `ShrimpCryptid/Secret-Hitler-Online`, remotes `origin` (fork) and `upstream`, default working branch `development`, licence CC BY-NC-SA 4.0
+- [x] Layout: `backend/` (Java, Gradle, Javalin; rules in `src/main/java/game/`, server in `src/main/java/server/`), `frontend/` (React, TypeScript), `docs/`
+- [x] Commands: run backend, run frontend, run each test suite, build (verified by running each one)
+- [x] Workflow: one branch per phase off `development`, PRs target the fork (`--repo jussaw/Secret-Hitler-Online`, since `gh` defaults to upstream), never push to `upstream`
+- [x] Commit convention: Conventional Commits with a scope; list the scopes in use (`frontend`, `backend`, `docker`, `ci`, `docs`, `plan`)
+- [x] Pointers: `docs/PLAN.md` is the source of truth for progress and boxes are ticked in the same commit as the work; the spec path
+- [x] Constraints: no new art, CC0 sounds only, WebSocket protocol stays backward compatible for players, Pi deploys go through jussaw-server
 - [ ] Add a line for this repo to `~/CLAUDE.md` (in `~/dotfiles`) under the `~/repos/` list
 
 **Phase 1 acceptance**
