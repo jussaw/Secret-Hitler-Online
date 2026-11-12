@@ -29,12 +29,23 @@ keeps credit to upstream and to the board game's creators.
   `TableSeats.css`. Among those, windows at least 700px wide (half-screen desktop windows, tablets
   held upright) fit one screen instead, with round-table-size seats, from a second block,
   `(min-width: 700px) and (aspect-ratio < 5/4)`, in the same two files. Prompts are a fixed
-  overlay whose box scrolls (`CustomAlert.css`). Playwright tests live in `frontend/e2e/`, in
-  four projects: `desktop` (`no-scroll.spec.ts` at the five desktop sizes and the narrow windows
-  in `NARROW_WINDOWS`), `firefox` (the same no-scroll tests, since Firefox rounds zoomed seats
-  differently), and `phone-360`/`phone-412` (Galaxy S8 and Pixel 7 emulation, `phone.spec.ts`).
+  overlay whose box scrolls (`CustomAlert.css`). Sounds are in `src/sound/`: `SoundManager`
+  (Web Audio; the `AudioContext` is created in the first trusted gesture, so `play()` before it
+  is a silent no-op; volume and mute in `localStorage` under `sounds`; every `play()` dispatches a
+  `sound-play` event, which tests record), `soundEvents` (a pure function from the previous and
+  next game state to sound names, and `SOUND_CUES`, the queued animation each sound waits for;
+  `App` puts each sound into its animation queue just before that animation) and `SoundControl`
+  (the speaker button and volume slider in all three headers, above the prompt overlay, with
+  Lucide icons from `lucide-react`). The clips are in `src/assets/sounds/`, an Ogg Opus and an
+  MP3 per sound, each credited in `docs/SOUND-CREDITS.md`. Playwright tests live in
+  `frontend/e2e/`, in four projects: `desktop` (`no-scroll.spec.ts` at the five desktop sizes and
+  the narrow windows in `NARROW_WINDOWS`), `firefox` (the same no-scroll tests, since Firefox
+  rounds zoomed seats differently, and the header-fit test of `sounds.spec.ts`), and
+  `phone-360`/`phone-412` (Galaxy S8 and Pixel 7 emulation, `phone.spec.ts`).
   `prompts.spec.ts` runs in `desktop` and both phone projects; it opens every prompt from a
-  scripted game socket (`e2e/fakeGame.ts`). Shared helpers are `e2e/lobby.ts` and
+  scripted game socket (`e2e/fakeGame.ts`). `sounds.spec.ts` runs in every project: no sound and
+  no `AudioContext` before the first trusted gesture, each sound in step with its animation, and
+  the header control's fit, touch targets, keyboard use and saved settings. Shared helpers are `e2e/lobby.ts` and
   `e2e/layout.ts`. `App.css` hides `overflow-x` on `html` and `body`, so horizontal overflow shows
   only in `body.scrollWidth`, and `body` scrolls vertically by itself (`pageHeight` measures both).
   The client talks to its own origin (`src/constants/serverUrls.ts`; `wss:` on `https:` pages) unless
@@ -105,7 +116,8 @@ documents the file's name (`readme`, `development`, `claude`).
 
 ## Constraints
 
-- No new art. Sound clips are CC0 only and listed in `docs/SOUND-CREDITS.md`.
+- No new art (the header's speaker icons come from the Lucide icon pack). Sound clips are CC0 only
+  and listed in `docs/SOUND-CREDITS.md`.
 - The WebSocket protocol stays backward compatible for players; spectator support only adds
   fields and a query parameter.
 - Deploys go through the host's deploy tooling, never `docker compose up` from a checkout.

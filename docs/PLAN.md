@@ -428,7 +428,7 @@ Files: new `frontend/src/sound/SoundControl.tsx` and `.css`; the headers at `fro
 
 - [x] Speaker button toggles mute; hovering or tapping shows a volume slider
 - [x] Control fits in the header of every page in every layout (the round table at the five desktop sizes, the stacked phone layout at 360x740 and 412x915, the narrow windows in `NARROW_WINDOWS`) and does not break the no-scroll tests or the phone tests' 44px touch targets
-- [ ] `CLAUDE.md` updated: `frontend/src/sound/` modules and the CC0 credits rule
+- [x] `CLAUDE.md` updated: `frontend/src/sound/` modules and the CC0 credits rule
 
 **Phase 6 acceptance**
 
