@@ -140,6 +140,17 @@ input {
     outline:none;
 }
 
+/* Touch targets on phones are at least 44px tall. */
+@media (max-width: 768px) {
+    button, input {
+        min-height: 44px;
+    }
+
+    input {
+        box-sizing: border-box;
+    }
+}
+
 input::placeholder {
     color: var(--textColorOnDark);
 }

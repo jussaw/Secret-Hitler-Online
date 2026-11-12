@@ -342,13 +342,13 @@ Seat and centre-box positions are inline styles: `TableSeats.tsx` sets each seat
 
 ### Task 5.2: Other pages and prompts
 
-Files: `frontend/src/App.tsx` (`renderLoginPage`, lines 629-712, and `renderLobbyPage`, lines 816-921, both with inline styles), `frontend/src/LoginPageContent.css`, `frontend/src/util/AnnouncementBox.css`, `frontend/src/Lobby.css`, `frontend/src/custom-alert/CustomAlert.css`, prompt CSS files
+Files: `frontend/src/custom-alert/CustomAlert.css` (prompts become a fixed overlay whose box scrolls), `frontend/src/App.css` (44px minimum for buttons and text fields on phones); browser tests `frontend/e2e/prompts.spec.ts` and `frontend/e2e/fakeGame.ts` (new; every prompt opened from a scripted game socket), `frontend/e2e/phone.spec.ts` (login and lobby). The login page (`App.tsx` `renderLoginPage`, lines 629-712), the lobby (`renderLobbyPage`, lines 816-921) and the prompt CSS files needed no change.
 
 `frontend/index.html` already has `width=device-width, initial-scale=1`. `#alert-box` is `position: absolute` at `top: 10vh` with `min-width: 80vmin` and `max-width: 40vw`; below a 2:1 window the `min-width` wins, so it is 80vmin wide plus padding. With ten players the nomination, investigation, special election, execution and victory prompts are taller than a 1920x1080 screen (RETURN TO LOBBY ends at y 1398), and at 1280x720 the vote prompt is too.
 
-- [ ] Login and lobby fit 360px width
-- [ ] On phones every button, text field, player tile, vote card and policy card is at least 44x44px
-- [ ] Alerts use near-full width on phones; policy and vote prompts fit without horizontal scroll
+- [x] Login and lobby fit 360px width
+- [x] On phones every button, text field, player tile, vote card and policy card is at least 44x44px
+- [x] Alerts use near-full width on phones; policy and vote prompts fit without horizontal scroll
 
 ### Task 5.3: Phone browser test
 

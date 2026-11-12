@@ -1,8 +1,47 @@
 import { expect, test } from "@playwright/test";
 import { labelShift, overflowX, overlaps, smallTargets } from "./layout";
-import { settle, startGame } from "./lobby";
+import { joinGuests, settle, startGame } from "./lobby";
 
 // Runs in the phone projects; each sets its own viewport (360x740 or 412x915).
+
+test("the login page fits the phone", async ({ page }) => {
+  const { width } = page.viewportSize()!;
+  await page.goto("/");
+  await settle(page);
+  const overflow = await overflowX(page);
+  expect(overflow.scrollWidth, "scrollWidth").toBeLessThanOrEqual(width);
+  expect(overflow.offscreen, "past the edge").toEqual([]);
+  expect(await smallTargets(page, "body"), "small touch targets").toEqual([]);
+});
+
+test("the lobby and its portrait picker fit the phone", async ({ page, baseURL }) => {
+  const { width } = page.viewportSize()!;
+  await page.goto("/");
+  await page.getByRole("textbox", { name: "Your Name" }).last().fill("Host Player");
+  await page.getByRole("button", { name: "CREATE LOBBY" }).click();
+  const portraits = page.locator("#icon.selectable:not(.disabled)");
+  await portraits.first().waitFor();
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  let overflow = await overflowX(page);
+  expect(overflow.scrollWidth, "scrollWidth with the picker open").toBeLessThanOrEqual(width);
+  expect(overflow.offscreen, "picker past the edge").toEqual([]);
+  expect(await smallTargets(page, "#alert-box"), "small targets in the picker").toEqual([]);
+
+  await portraits.first().click();
+  await page.getByRole("button", { name: "CONFIRM" }).click();
+  const link = await page.locator("#linkText").inputValue();
+  const guests = await joinGuests(baseURL!, new URL(link).searchParams.get("lobby")!, 9);
+  try {
+    await expect(page.getByText("Players (10/10)")).toBeVisible();
+    await settle(page);
+    overflow = await overflowX(page);
+    expect(overflow.scrollWidth, "scrollWidth").toBeLessThanOrEqual(width);
+    expect(overflow.offscreen, "past the edge").toEqual([]);
+    expect(await smallTargets(page, "body"), "small touch targets").toEqual([]);
+  } finally {
+    guests.forEach((ws) => ws.close());
+  }
+});
 
 for (const players of [5, 10]) {
   test(`${players} players get the stacked game screen`, async ({ page, baseURL }) => {

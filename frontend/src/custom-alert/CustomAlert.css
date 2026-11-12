@@ -1,9 +1,9 @@
 @import '../variables.css';
 
+/* Fixed to the window, so a prompt opens on screen however far the page is scrolled. */
 #alert {
-    position: absolute;
-    width: 100%;
-    height: 100%;
+    position: fixed;
+    inset: 0;
     align-items: center;
     justify-content: center;
     display: flex;
@@ -37,6 +37,11 @@
     text-align: center;
     top: 10vh;
     margin-bottom: 10px;
+    /* A prompt taller than the window scrolls inside its box instead of growing the page.
+       50px is the 40px of vertical padding plus 10px clear of the bottom. */
+    max-height: calc(100% - 10vh - 50px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 .left-align {
