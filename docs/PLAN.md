@@ -312,7 +312,7 @@ Playwright is not installed yet: `@playwright/test` and a browser are new dev de
 
 **Phase 4 acceptance**
 
-- [ ] `npm run e2e` passes at all five desktop sizes for 5, 7 and 10 players
+- [x] `npm run e2e` passes at all five desktop sizes for 5, 7 and 10 players
 - [ ] Vote reveal, policy enactment, investigation, special election, execution and victory animations all display correctly over the table
 - [ ] PR merged into `development`; deployed image checked on a real 1080p monitor
 
