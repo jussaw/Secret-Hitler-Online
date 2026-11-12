@@ -26,7 +26,8 @@ export const SERVER_PING = "/ping";
 export const MAX_FAILED_CONNECTIONS = 5;
 export const LOBBY_CODE_LENGTH = 4;
 export const SERVER_TIMEOUT = 4000;
-export const PING_INTERVAL = 50000;
+/** The server closes a /game socket after 30 s with no traffic either way, so ping within that. */
+export const PING_INTERVAL = 20000;
 
 //////// Game Constants
 export const MIN_PLAYERS = 5;
