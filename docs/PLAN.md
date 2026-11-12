@@ -25,7 +25,7 @@
 
 Each phase lists its tasks, the files they touch, and acceptance checks. Phases 2 to 7 depend on the code shape left by the phase before, so the step-by-step breakdown (exact code and test bodies) for a phase is written to `docs/superpowers/plans/` when that phase starts, and linked from its heading here. This file is the source of truth for what is done.
 
-Every phase ends with a **Start Phase N** block. A phase is not finished until that block is done, so work flows straight from one phase into the next. Its boxes are ticked in the first commit on the new phase's branch, because the previous phase's PR is already merged by then. Phase 7 ends with **Done when** instead.
+Every phase ends with a **Start Phase N** block. A phase is not finished until that block is done, so work flows straight from one phase into the next. Its boxes are ticked in the first commit on the new phase's branch, because the previous phase's PR is already merged by then. Phase 8 ends with **Done when** instead.
 
 ## Progress
 
@@ -38,6 +38,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 5. Phone layout | `phase-5-phone` | done |
 | 6. Sounds | `phase-6-sounds` | done |
 | 7. Spectators | `phase-7-spectators` | done |
+| 8. Game screen redesign | `phase-8-game-screen` | in progress |
 
 ---
 
@@ -501,9 +502,88 @@ Files: `frontend/src/App.tsx` (login form `renderLoginPage` 646, `tryOpenWebSock
 - [x] A spectator joining mid-game and refreshing stays a spectator
 - [x] PR merged into `development` (#18) and deployed
 
+**Start Phase 8: Game screen redesign**
+
+- [x] Progress table: Phase 8 added and set to "in progress"
+- [x] `git checkout development && git pull`, then `git checkout -b phase-8-game-screen`
+- [x] Design written and committed: [`docs/superpowers/specs/2026-11-12-game-screen-redesign-design.md`](superpowers/specs/2026-11-12-game-screen-redesign-design.md), with reference screenshots
+- [x] Write the Phase 8 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 8 heading
+- [ ] Begin Task 8.1
+
+---
+
+## Phase 8: Game screen redesign
+
+Breakdown: [`docs/superpowers/plans/2026-11-12-phase-8-game-screen.md`](superpowers/plans/2026-11-12-phase-8-game-screen.md) · Spec: [`docs/superpowers/specs/2026-11-12-game-screen-redesign-design.md`](superpowers/specs/2026-11-12-game-screen-redesign-design.md)
+
+Outcome: the players sit in a roster at the side and the boards are more than twice as wide on desktop; a round tracker replaces the black status bar; a phone shows the whole game without scrolling; the banner reads `SECRET-HITLER`.
+
+### Task 8.1: Banner reads SECRET-HITLER
+
+Files: `frontend/src/App.tsx` (754, 957), `frontend/src/game/GameScreen.tsx` (47), `frontend/e2e/spectator.spec.ts` (375), with tests in `App.test.tsx` and `GameScreen.test.tsx`
+
+- [ ] The login, lobby and game headers read `SECRET-HITLER`
+
+### Task 8.2: Round step mapping
+
+Files: new `frontend/src/game/roundStep.ts` and `roundStep.test.ts`
+
+- [ ] Tests first: `stepForState` for every state, `POST_LEGISLATIVE` after each kind of `lastState`, `null` for setup and victory; `stepForPolicyLine`
+- [ ] Implement `RoundStep`, `ROUND_STEPS`, `stepForState`, `stepForPolicyLine`
+
+### Task 8.3: Per-player row data
+
+Files: new `frontend/src/player/usePlayerRows.ts` and `usePlayerRows.test.tsx`, `frontend/src/player/PlayerDisplay.tsx`
+
+- [ ] Tests first: office, busy, role by viewer, executed, staged votes, the user's row
+- [ ] Move the per-player logic out of `usePlayerTiles` into `usePlayerRows`; the prompts' tiles are unchanged (`PlayerDisplay.test.tsx` passes as is)
+
+### Task 8.4: PlayerRoster
+
+Files: new `frontend/src/game/PlayerRoster.tsx`, `PlayerRoster.css`, `PlayerRoster.test.tsx`
+
+- [ ] Tests first: order, the user's row, offices, own and teammates' roles beside offices, executed, busy, votes, the reserved detail line
+- [ ] Implement the roster rows (portrait in the card's frame, name, detail line, vote or busy)
+
+### Task 8.5: RoundTracker
+
+Files: new `frontend/src/game/RoundTracker.tsx`, `RoundTracker.css`, `RoundTracker.test.tsx`
+
+- [ ] Tests first: the lit step, no step, the orange words, `#status-bar-text`, the fade
+- [ ] Implement the tracker
+
+### Task 8.6: Queue the step with each status line
+
+Files: `frontend/src/App.tsx` (state 179 and 210, `queueStatusMessage` 1817 and its callers, `showVotes` 1693), `frontend/src/game/GameScreen.tsx`, new `frontend/e2e/tracker.spec.ts`
+
+- [ ] Browser tests first: the vote result keeps ELECTION lit; end of term after a failed vote lights ELECTION
+- [ ] `App` queues a step with every status line; `GameScreen` shows `RoundTracker` in place of `StatusBar`
+
+### Task 8.7: Desktop and tall-window layout
+
+Files: `frontend/src/game/GameScreen.tsx`, `GameScreen.css`, `GameScreen.test.tsx`, `frontend/e2e/layout.ts`, `frontend/e2e/no-scroll.spec.ts`; deletes `TableSeats.*`, `seatPositions.*` and `frontend/src/status-bar/`
+
+- [ ] Browser tests first: no scroll, the board floors, the roster beside or above, the tracker centred on the boards, END TERM above the draw pile, rows that never jump, the spectator view
+- [ ] Rebuild the game page as roster, tracker, boards and decks column; delete the round table
+
+### Task 8.8: Phone layout and docs
+
+Files: `frontend/src/game/GameScreen.css`, `frontend/src/game/PlayerRoster.css`, `frontend/e2e/phone.spec.ts`, `CLAUDE.md`
+
+- [ ] Browser tests first: no scroll at 360x740 and 412x915 with ten players and the longest status, the order, END TERM over the counts box, touch targets, a sideways phone, the spectator view
+- [ ] Compact roster and the phone column
+- [ ] `CLAUDE.md` updated: the game page's files, layouts, breakpoints and tests
+
+**Phase 8 acceptance**
+
+- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [ ] Every board floor in the breakdown's Global Constraints holds
+- [ ] One real game on the deployed build, on a desktop and on a phone, shows every row state: office, busy, votes, roles, executed, victory
+- [ ] PR merged into `development` and deployed
+
 ---
 
 ## Done when
 
-- [x] All seven phases merged and the Progress table reads "done" for each
+- [ ] All eight phases merged and the Progress table reads "done" for each
 - [ ] The deployed instance has hosted one full game with real players, at least one spectator and at least one phone
