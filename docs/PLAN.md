@@ -528,8 +528,8 @@ Files: `frontend/src/App.tsx` (754, 957), `frontend/src/game/GameScreen.tsx` (47
 
 Files: new `frontend/src/game/roundStep.ts` and `roundStep.test.ts`
 
-- [ ] Tests first: `stepForState` for every state, `POST_LEGISLATIVE` after each kind of `lastState`, `null` for setup and victory; `stepForPolicyLine`
-- [ ] Implement `RoundStep`, `ROUND_STEPS`, `stepForState`, `stepForPolicyLine`
+- [x] Tests first: `stepForState` for every state, `POST_LEGISLATIVE` after each kind of `lastState`, `null` for setup and victory; `stepForPolicyLine`
+- [x] Implement `RoundStep`, `ROUND_STEPS`, `stepForState`, `stepForPolicyLine`
 
 ### Task 8.3: Per-player row data
 
