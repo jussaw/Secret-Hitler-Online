@@ -157,7 +157,7 @@ Files: `frontend/package.json`, new `frontend/vite.config.ts`, `frontend/index.h
 
 - [x] `docker-compose.yml` frontend service: `node:24` (Vitest 5 and jsdom 30 need Node 22+), command `npm install && npm run dev -- --host`
 - [x] `DEVELOPMENT.md`, `README.md` and `frontend/README.md` reflect the new script names
-- [ ] `CLAUDE.md` commands and layout updated for Vite and Vitest
+- [x] `CLAUDE.md` commands and layout updated for Vite and Vitest
 
 **Phase 2 acceptance**
 
