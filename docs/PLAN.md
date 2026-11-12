@@ -221,7 +221,7 @@ Files: new `Dockerfile` and `.dockerignore` at repo root, delete `backend/Docker
 
 - [x] `docker-compose.yml`: remove the `db` service and `DATABASE_URL`; backend gets `DATABASE_PATH` on a named volume; frontend gets `BACKEND_URL` for the proxy
 - [x] `DEVELOPMENT.md` updated
-- [ ] `CLAUDE.md` updated: SQLite `DATABASE_PATH`, same-origin serving, image build and deploy path
+- [x] `CLAUDE.md` updated: SQLite `DATABASE_PATH`, same-origin serving, image build and deploy path
 
 ### Task 3.5: CI
 

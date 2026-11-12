@@ -16,12 +16,17 @@ keeps credit to upstream and to the board game's creators.
 - `backend/`: Java 17, Gradle (7.4.2 wrapper), Javalin 5. Game rules and CPU players in
   `src/main/java/game/`; HTTP endpoints (`/check-login`, `/new-lobby`, `/ping`), the `/game`
   WebSocket, lobbies and state serialization in `src/main/java/server/`. JUnit 4 tests in
-  `src/test/java/game/`.
+  `src/test/java/game/` and `src/test/java/server/`. Lobbies are backed up to a SQLite file at
+  `DATABASE_PATH` (unset = no persistence). The server also serves the built frontend from the
+  classpath directory `/public`, which `processResources` fills from `frontend/dist` when it exists;
+  CORS is enabled only in debug mode.
 - `frontend/`: React 18 and TypeScript 5, built with Vite and tested with Vitest. The entry is
   `src/main.tsx`, with `index.html` at the `frontend/` root. `src/App.tsx` owns the WebSocket, all
-  state, and the login, lobby and game pages; prompts live in `src/custom-alert/`. `VITE_*`
-  variables live in `.env.local` (loaded in every mode) and `.env.dev` (`--mode dev`), typed in
-  `src/vite-env.d.ts`.
+  state, and the login, lobby and game pages; prompts live in `src/custom-alert/`. The client talks
+  to its own origin (`src/constants/serverUrls.ts`; `wss:` on `https:` pages) unless
+  `VITE_SERVER_ADDRESS` is set, and the dev server proxies the backend paths to `BACKEND_URL`
+  (default `http://localhost:4040`). `VITE_*` variables live in `.env.development` (dev server only:
+  `VITE_DEBUG`) and `.env.dev` (`--mode dev`), typed in `src/vite-env.d.ts`.
 - `docs/`: `PLAN.md` (phased plan and progress), `superpowers/specs/` (design),
   `superpowers/plans/` (per-phase step-by-step breakdowns).
 
@@ -38,6 +43,8 @@ The Gradle 7.4.2 wrapper does not run on JDKs newer than 17. Java 17 comes from 
 | Frontend tests (single run) | `cd frontend && npm test -- --run` |
 | Backend build (tests + fat jar at `backend/build/libs/secret-hitler-online.jar`) | `cd backend && ./gradlew build` |
 | Frontend production build (type-check, then `frontend/dist/`) | `cd frontend && npm run build` |
+| Whole app on one port (after the frontend build) | `cd backend && ./gradlew jar && java -jar build/libs/secret-hitler-online.jar` |
+| Image (repo root) | `docker build -t secret-hitler-online .` |
 
 Known baseline failures (do not "fix" them while doing unrelated work):
 
@@ -47,6 +54,14 @@ Known baseline failures (do not "fix" them while doing unrelated work):
 - #9: the lobby tags every player except the host as `[Host]`.
 
 `npm run dev:server` points at upstream's hosted dev backend, not anything this fork runs.
+
+## Deploy
+
+CI (`.github/workflows/ci.yml`) runs the backend and frontend tests and the frontend build on every
+pull request into `development`. On every push to `development` it also publishes
+`ghcr.io/jussaw/secret-hitler-online:latest` and `:sha-<short>` for `linux/arm64` and `linux/amd64`.
+A home server runs that image and pulls new `:latest` images. TLS ends at a proxy in front of it,
+so the container serves plain HTTP on `8080`.
 
 ## Workflow
 
