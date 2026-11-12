@@ -118,6 +118,30 @@ public class SpectatorStateTest {
     }
 
     @Test
+    public void playersSeeEveryRoleAfterTheWinningPolicy() {
+        // A liberal's packet built straight after the winning policy, before anything else has
+        // asked for the state: the first player the server converts after the move.
+        String[] liberal = new String[1];
+        JSONObject[] last = new JSONObject[1];
+        SecretHitlerGame game = GameDriver.play(10, g -> {
+            if (liberal[0] == null) {
+                liberal[0] = g.getPlayerList().stream()
+                        .filter(p -> p.getIdentity() == Identity.LIBERAL).findFirst().get().getUsername();
+            }
+            last[0] = GameToJSONConverter.convert(g, liberal[0]);
+        });
+        JSONObject packet = last[0];
+        assertTrue("a policy victory: " + game.getState(), game.getState() == GameState.FASCIST_VICTORY_POLICY
+                || game.getState() == GameState.LIBERAL_VICTORY_POLICY);
+        assertEquals("the final state", game.getState().toString(), packet.getString("state"));
+        for (Player player : game.getPlayerList()) {
+            String name = player.getUsername();
+            assertEquals(name + "'s role", player.getIdentity().toString(),
+                    packet.getJSONObject("players").getJSONObject(name).optString("id"));
+        }
+    }
+
+    @Test
     public void spectatorPacketKeepsEveryPublicField() {
         GameDriver.play(10, game -> {
             game.getState(); // settles a policy victory, so the check below sees it
