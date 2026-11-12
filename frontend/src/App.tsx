@@ -88,6 +88,9 @@ import {
   WSCommand,
   WSCommandType,
 } from "./types";
+import { sounds, type SoundName } from "./sound/SoundManager";
+import SoundControl from "./sound/SoundControl";
+import { lobbySounds, SOUND_CUES, soundEvents, type Cue } from "./sound/soundEvents";
 
 const EVENT_BAR_FADE_OUT_DURATION = 500;
 const CUSTOM_ALERT_FADE_DURATION = 1000;
@@ -199,6 +202,12 @@ class App extends Component<{}, AppState> {
   okMessageListeners: (() => void)[] = [];
   allAnimationsFinished: boolean = true;
   gameOver: boolean = false;
+  /** The last game state this socket delivered, the lobby (SETUP), or none yet: see soundEvents. */
+  soundState?: GameState = undefined;
+  /** The last lobby list this socket delivered, for playerJoined. */
+  lobbyUsers?: string[] = undefined;
+  /** Vote-tally sounds that a running showVotes has scheduled. */
+  soundTimers: ReturnType<typeof setTimeout>[] = [];
 
   // noinspection DuplicatedCode
   constructor(props: any) {
@@ -302,6 +311,9 @@ class App extends Component<{}, AppState> {
     if (ws.OPEN) {
       console.log("Websocket opened successfully to " + url);
       this.websocket = ws;
+      // A new socket has no history, so its first packet plays no sounds (no burst on reconnect).
+      this.soundState = undefined;
+      this.lobbyUsers = undefined;
       this.reconnectOnConnectionClosed = true;
       // Only move the player to the lobby page if they were logging in.
       // This is to prevent the bug where players flash in/out of the lobby page
@@ -403,6 +415,9 @@ class App extends Component<{}, AppState> {
     }
     switch (message[PARAM_PACKET_TYPE]) {
       case PACKET_LOBBY:
+        this.queueSounds(lobbySounds(this.lobbyUsers, message[PARAM_USERNAMES]), "now");
+        this.lobbyUsers = message[PARAM_USERNAMES];
+        this.soundState = DEFAULT_GAME_STATE;
         // The icon dialog is rebuilt from this.state, so wait for the update to apply.
         this.setState(
           {
@@ -442,6 +457,8 @@ class App extends Component<{}, AppState> {
         // Set party to liberal/fascist using sent packet
         const party = message[PARAM_INVESTIGATION];
 
+        // The president hears the investigation with this alert; everyone else with the results.
+        this.queueSounds(["investigate"], "result");
         this.queueAlert(
           <InvestigationAlert
             party={party}
@@ -629,7 +646,10 @@ class App extends Component<{}, AppState> {
   renderLoginPage() {
     return (
       <div className="App">
-        <header className="App-header">SECRET-HITLER.ONLINE</header>
+        <header className="App-header">
+          SECRET-HITLER.ONLINE
+          <SoundControl />
+        </header>
         <br />
         <div style={{ textAlign: "center" }}>
           {/** TODO: Add reusable announcement component. 
@@ -820,7 +840,10 @@ class App extends Component<{}, AppState> {
       this.state.usernames[0] === this.state.name;
     return (
       <div className="App">
-        <header className="App-header">SECRET-HITLER.ONLINE</header>
+        <header className="App-header">
+          SECRET-HITLER.ONLINE
+          <SoundControl />
+        </header>
 
         <CustomAlert show={this.state.showAlert}>
           {this.state.alertContent}
@@ -971,6 +994,10 @@ class App extends Component<{}, AppState> {
     let isPresident = this.state.name === newState.president;
     let isChancellor = this.state.name === newState.chancellor;
     let state = newState.state;
+    // Each sound is queued just before the animation it belongs to (SOUND_CUES).
+    const soundNames = soundEvents(this.soundState, newState, name);
+    this.soundState = newState;
+    this.queueSounds(soundNames, "now");
 
     // If last state was setup, which indicates that the client is re-entering the game or starting the game, then
     // we set the card count, liberal/fascist policy count, and the tracker.
@@ -1007,7 +1034,7 @@ class App extends Component<{}, AppState> {
           // If the last phase was voting, we failed due to voting. Therefore, show votes.
           if (oldState[PARAM_STATE] === STATE_CHANCELLOR_VOTING) {
             //this.queueAlert(<RoleAlert onClick={this.hideAlertAndFinish} />);
-            this.addAnimationToQueue(() => this.showVotes(newState));
+            this.addAnimationToQueue(() => this.showVotes(newState, soundNames));
           }
 
           let trackerPosition = newPos;
@@ -1015,6 +1042,7 @@ class App extends Component<{}, AppState> {
             // If the tracker was reset because it advanced to 3, show it moving to 3 in the dialog box.
             trackerPosition = 3;
           }
+          this.queueSounds(soundNames, "tracker");
           this.queueAlert(
             <ElectionTrackerAlert
               trackerPosition={trackerPosition}
@@ -1031,6 +1059,7 @@ class App extends Component<{}, AppState> {
 
       if (liberalChanged || fascistChanged) {
         // Show an alert with the new policy
+        this.queueSounds(soundNames, "policy");
         this.queueAlert(
           <PolicyEnactedAlert
             hideAlert={this.hideAlertAndFinish}
@@ -1055,6 +1084,7 @@ class App extends Component<{}, AppState> {
       // state has changed
       switch (newState[PARAM_STATE]) {
         case STATE_CHANCELLOR_NOMINATION:
+          this.queueSounds(soundNames, "start");
           if (
             newState.electionTracker === 0 &&
             newState.liberalPolicies === 0 &&
@@ -1081,6 +1111,7 @@ class App extends Component<{}, AppState> {
 
           if (isPresident) {
             //Show the chancellor nomination window.
+            this.queueSounds(soundNames, "prompt");
             this.queueAlert(
               SelectNominationPrompt(name, newState, this.sendWSCommand)
             );
@@ -1090,6 +1121,7 @@ class App extends Component<{}, AppState> {
 
         case STATE_CHANCELLOR_VOTING:
           this.setState({ statusBarText: "" });
+          this.queueSounds(soundNames, "phase");
           this.queueEventUpdate("VOTING");
           this.queueStatusMessage("Waiting for all players to vote.");
           // Check if the player is dead or has already voted-- if so, do not show the voting prompt.
@@ -1111,7 +1143,8 @@ class App extends Component<{}, AppState> {
 
         case STATE_LEGISLATIVE_PRESIDENT:
           // The vote completed, so show the votes.
-          this.addAnimationToQueue(() => this.showVotes(newState));
+          this.addAnimationToQueue(() => this.showVotes(newState, soundNames));
+          this.queueSounds(soundNames, "phase");
           this.queueEventUpdate("LEGISLATIVE SESSION");
 
           // TODO: Animate cards being pulled from the draw deck for all users.
@@ -1124,6 +1157,7 @@ class App extends Component<{}, AppState> {
             if (!newState.presidentChoices) {
               throw new Error("President choices not found.");
             }
+            this.queueSounds(soundNames, "prompt");
             this.queueAlert(
               <PresidentLegislativePrompt
                 policyOptions={newState.presidentChoices}
@@ -1135,6 +1169,7 @@ class App extends Component<{}, AppState> {
           break;
 
         case STATE_LEGISLATIVE_CHANCELLOR:
+          this.queueSounds(soundNames, "phase");
           this.queueStatusMessage(
             "Waiting for the chancellor to choose a policy to enact."
           );
@@ -1142,6 +1177,7 @@ class App extends Component<{}, AppState> {
             if (!newState.chancellorChoices) {
               throw new Error("Chancellor choices not found.");
             }
+            this.queueSounds(soundNames, "prompt");
             this.queueAlert(
               <ChancellorLegislativePrompt
                 fascistPolicies={newState.fascistPolicies}
@@ -1160,10 +1196,12 @@ class App extends Component<{}, AppState> {
           break;
 
         case STATE_LEGISLATIVE_PRESIDENT_VETO:
+          this.queueSounds(soundNames, "phase");
           this.queueStatusMessage(
             "Chancellor has motioned to veto the agenda. Waiting for the president to decide."
           );
           if (isPresident) {
+            this.queueSounds(soundNames, "prompt");
             this.queueAlert(
               <VetoPrompt
                 sendWSCommand={this.sendWSCommand}
@@ -1175,8 +1213,10 @@ class App extends Component<{}, AppState> {
           break;
 
         case STATE_PP_PEEK:
+          this.queueSounds(soundNames, "phase");
           this.queueEventUpdate("PRESIDENTIAL POWER");
           if (isPresident) {
+            this.queueSounds(soundNames, "prompt");
             if (!newState.peek) {
               throw new Error("Peek policies not found.");
             }
@@ -1195,8 +1235,10 @@ class App extends Component<{}, AppState> {
           break;
 
         case STATE_PP_ELECTION:
+          this.queueSounds(soundNames, "phase");
           this.queueEventUpdate("PRESIDENTIAL POWER");
           if (isPresident) {
+            this.queueSounds(soundNames, "prompt");
             this.queueAlert(
               SelectSpecialElectionPrompt(name, newState, this.sendWSCommand)
             );
@@ -1208,8 +1250,10 @@ class App extends Component<{}, AppState> {
           break;
 
         case STATE_PP_EXECUTION:
+          this.queueSounds(soundNames, "phase");
           this.queueEventUpdate("PRESIDENTIAL POWER");
           if (isPresident) {
+            this.queueSounds(soundNames, "prompt");
             this.queueAlert(
               SelectExecutionPrompt(name, newState, this.sendWSCommand),
               true
@@ -1222,8 +1266,10 @@ class App extends Component<{}, AppState> {
           break;
 
         case STATE_PP_INVESTIGATE:
+          this.queueSounds(soundNames, "phase");
           this.queueEventUpdate("PRESIDENTIAL POWER");
           if (isPresident) {
+            this.queueSounds(soundNames, "prompt");
             this.queueAlert(
               SelectInvestigationPrompt(name, newState, this.sendWSCommand)
             );
@@ -1236,6 +1282,7 @@ class App extends Component<{}, AppState> {
 
         case STATE_POST_LEGISLATIVE:
           // Show results of any special elections, executions, or investigations.
+          this.queueSounds(soundNames, "result");
           switch (newState.lastState) {
             case STATE_PP_ELECTION:
               if (!isPresident) {
@@ -1303,6 +1350,8 @@ class App extends Component<{}, AppState> {
             default:
           }
 
+          // END TERM is the president's turn too.
+          this.queueSounds(soundNames, "prompt");
           this.queueStatusMessage(
             "Waiting for the president to end their term."
           );
@@ -1314,10 +1363,11 @@ class App extends Component<{}, AppState> {
         case STATE_LIBERAL_VICTORY_POLICY:
           // Show normal enactments when victory events happen.
           if (newState.state === STATE_LIBERAL_VICTORY_EXECUTION) {
+            this.queueSounds(soundNames, "result");
             this.showExecutionResults(name, newState);
           }
           if (newState.state === STATE_FASCIST_VICTORY_ELECTION) {
-            this.addAnimationToQueue(() => this.showVotes(newState));
+            this.addAnimationToQueue(() => this.showVotes(newState, soundNames));
           }
           // Policies will already be shown for policy-based victories.
           // If the game was won via election, show the votes.
@@ -1370,6 +1420,7 @@ class App extends Component<{}, AppState> {
           if (DEBUG) {
             console.log("Player ordering: " + players);
           }
+          this.queueSounds(soundNames, "end");
           this.addAnimationToQueue(() => {
             this.setState({
               alertContent: (
@@ -1470,6 +1521,30 @@ class App extends Component<{}, AppState> {
     this.allAnimationsFinished = true;
     this.setState({ allAnimationsFinished: true });
     this.animationQueue = [];
+    // Sounds still in the queue go with it; so does a vote tally that has not sounded yet.
+    this.soundTimers.forEach(clearTimeout);
+    this.soundTimers = [];
+  }
+
+  playSounds(names: SoundName[]) {
+    names.forEach((name) => sounds.play(name));
+  }
+
+  /**
+   * Plays the sounds whose cue is `cue` (SOUND_CUES): at once for "now", otherwise as an instant
+   * step in the animation queue, so they start with the animation queued right after them.
+   */
+  queueSounds(names: SoundName[], cue: Cue) {
+    const due = names.filter((name) => SOUND_CUES[name] === cue);
+    if (due.length === 0) return;
+    if (cue === "now") {
+      this.playSounds(due);
+      return;
+    }
+    this.addAnimationToQueue(() => {
+      this.playSounds(due);
+      this.onAnimationFinish();
+    });
   }
 
   /**
@@ -1490,7 +1565,8 @@ class App extends Component<{}, AppState> {
     }
   }
 
-  showVotes(newState: GameState) {
+  /** @param names the state change's sounds; the vote result plays with the tally line. */
+  showVotes(newState: GameState, names: SoundName[] = []) {
     this.setState({ statusBarText: "Tallying votes..." });
     setTimeout(() => {
       this.setState({ showVotes: true });
@@ -1517,6 +1593,12 @@ class App extends Component<{}, AppState> {
         });
       }
     }, 2000);
+    // The result sounds with the tally line above.
+    const tally = setTimeout(() => {
+      this.soundTimers = this.soundTimers.filter((timer) => timer !== tally);
+      this.playSounds(names.filter((name) => SOUND_CUES[name] === "votes"));
+    }, 2000);
+    this.soundTimers.push(tally);
     setTimeout(
       () => this.setState({ showVotes: false, statusBarText: "" }),
       6000
