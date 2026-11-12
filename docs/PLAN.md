@@ -100,9 +100,9 @@ Files: new `CLAUDE.md` at the repo root
 
 **Phase 1 acceptance**
 
-- [ ] `./gradlew test` matches the baseline
-- [ ] `npm run build` succeeds in `frontend/`
-- [ ] A full CPU game plays locally with no console errors beyond the baseline tracked in #2 to #5
+- [x] `./gradlew test` matches the baseline
+- [x] `npm run build` succeeds in `frontend/`
+- [x] A full CPU game plays locally with no console errors beyond the baseline tracked in #2 to #5
 - [ ] PR merged into `development`
 
 **Start Phase 2: Frontend modernization**
