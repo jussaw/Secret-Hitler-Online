@@ -419,7 +419,7 @@ class App extends Component<{}, AppState> {
         console.log("Disconnecting from lobby.");
       }
       this.setState({
-        joinName: this.state.name,
+        joinName: this.rejoinName(),
         joinLobby: this.state.lobby,
         joinError: "Disconnected from the lobby.",
         page: PAGE.LOGIN,
@@ -432,13 +432,18 @@ class App extends Component<{}, AppState> {
       } else {
         this.setState({
           page: PAGE.LOGIN,
-          joinName: this.state.name,
+          joinName: this.rejoinName(),
           joinLobby: this.state.lobby,
           joinError: "",
         });
         this.clearAnimationQueue();
       }
     }
+  }
+
+  /** The JOIN form's name after leaving: the player's, or for a spectator (who has none) the saved one. */
+  rejoinName(): string {
+    return this.state.name || (Cookies.get(COOKIE_NAME) ?? "");
   }
 
   async onWebSocketMessage(msg: MessageEvent) {

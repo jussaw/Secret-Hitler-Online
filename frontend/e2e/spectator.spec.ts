@@ -1,7 +1,15 @@
 import { expect, test, type Page } from "@playwright/test";
 import { LobbyState as S, type GameState } from "../src/types";
 import { isVictory, openTable, play } from "./driveGame";
-import { EVERY_ROLE, TEN, gamePacket, openFakeGame, openFakeWatch, spectatorPacket } from "./fakeGame";
+import {
+  EVERY_ROLE,
+  TEN,
+  WATCHED_LOBBY,
+  gamePacket,
+  openFakeGame,
+  openFakeWatch,
+  spectatorPacket,
+} from "./fakeGame";
 import { DESKTOP_SIZES, NARROW_WINDOWS, overlaps } from "./layout";
 import { settle, watchLobby } from "./lobby";
 import { findSecrets } from "./secrets";
@@ -136,6 +144,27 @@ test("a spectator watches a scripted game without prompts", async ({ page }, tes
     expect(query.get("spectator"), url).toBe("true");
     expect(query.has("name"), url).toBe(false);
   }
+});
+
+test("a spectator who leaves gets the name cookie back in the JOIN form", async ({ page, context, baseURL }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "one browser is enough");
+  await context.addCookies([{ name: "name", value: "Ann", url: baseURL! }]);
+  const joinName = page.getByRole("textbox", { name: "Your Name" }).first();
+
+  const game = await openFakeWatch(page);
+  await page.getByRole("button", { name: "LEAVE LOBBY" }).click();
+  await expect(page.getByRole("button", { name: "WATCH" })).toBeVisible();
+  await expect(joinName, "after LEAVE LOBBY").toHaveValue("Ann");
+
+  // The same after the server goes away and every reconnect fails.
+  const sockets = game.urls.length;
+  await page.getByRole("button", { name: "WATCH" }).click();
+  await expect.poll(() => game.urls.length).toBe(sockets + 1);
+  game.send(WATCHED_LOBBY);
+  await expect(page.getByText(`Players (${TEN.length}/10)`)).toBeVisible();
+  game.down(true);
+  await expect(page.getByText("Disconnected from the lobby.")).toBeVisible();
+  await expect(joinName, "after a disconnect").toHaveValue("Ann");
 });
 
 test("a spectator joins a running game and never receives a secret", async ({ page, baseURL }, testInfo) => {
