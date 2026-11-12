@@ -330,7 +330,7 @@ test("a spectator joins a running game and never receives a secret", async ({ pa
   }
 });
 
-/** The spectator count, the header, its title's text and the speaker button, as boxes. */
+/** The spectator count, the header, its title's text and the sound control, as boxes. */
 function countFit(page: Page) {
   return page.evaluate(() => {
     const box = (el: Element | Range) => {
@@ -352,7 +352,7 @@ function countFit(page: Page) {
       count: box(count),
       icon: box(count.querySelector("svg")!),
       title: box(title),
-      speaker: box(header.querySelector(".sound-toggle")!),
+      speaker: box(header.querySelector(".sound-control")!),
       height,
       heightWithout,
     };
