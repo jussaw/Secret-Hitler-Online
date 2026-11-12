@@ -358,6 +358,14 @@ Files: new `frontend/e2e/phone.spec.ts` and `frontend/e2e/prompts.spec.ts` (buil
 
 - [x] Galaxy S8 (360x740) and Pixel 7 (412x915) projects assert no horizontal overflow (`body.scrollWidth`, and no element past the edge) on login, lobby, the game at 5 and 10 players, and every prompt opened from a scripted game socket
 
+### Task 5.4: Narrow windows and upright tablets
+
+Files: `frontend/src/game/GameScreen.css`, `frontend/src/game/TableSeats.css`, `frontend/src/game/TableSeats.tsx`, `frontend/src/game/seatPositions.ts` (`seatColumns`); browser test `frontend/e2e/no-scroll.spec.ts`, with the window sizes in `frontend/e2e/layout.ts`
+
+Tasks 5.1-5.3 give every window narrower than 5:4 the phone layout, with full-size tiles. With ten players, half a 1080p screen (960x1080) shows only tiles on its first screen, and the boards start at y 1037; held upright, an iPad Air (820x1180) starts them at y 991.
+
+- [ ] Windows at least 700px wide and narrower than 5:4 (half-screen desktop windows, upright monitors, tablets held upright) fit the game screen without scrolling: round-table-size tiles up to 5 to a row, then status and END TERM, then the boards with the decks in a column beside them
+
 **Phase 5 acceptance**
 
 Deferred: a desktop prompt taller than the window (ten-player pickers and the victory prompt at 1080p and below) now scrolls inside its box instead of growing the page, but it does not yet fit the window without scrolling. That needs smaller prompt contents, not layout.

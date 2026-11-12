@@ -39,6 +39,7 @@ Measured against `./gradlew runLocal` and `npm run dev` with Playwright's Chromi
 11. **Playwright can script the game socket.** `page.routeWebSocket` (1.48+) stands in for `/game`, `page.route` answers `/new-lobby`, and a spec can import `makeGameState` and `LobbyState` from `src/` (checked with a throwaway spec). Packets are what `Lobby.updateUser` sends: the converter's fields plus `type: "game"` and `icon`.
 12. **Prompt triggers** (`App.tsx` `onGameStateChanged` and `onWebSocketMessage`): role reveal on the first CHANCELLOR_NOMINATION with no policies and tracker 0; a policy-enacted alert whenever policy counts change in POST_LEGISLATIVE, a power state or a policy victory; the election-tracker alert only when such a state also moves the tracker (in practice the third failed election). So each fixture sets counts that open only its own prompt.
 13. **Device presets.** `devices["Galaxy S8"]` is 360x740 (DPR 3, touch, mobile). `devices["Pixel 7"]` is 412x839, so the 412x915 project overrides the viewport.
+14. **Narrow windows after Task 3** (measured with the scripted socket, added before Task 4). Every window narrower than 5:4 gets the phone layout with full-size tiles, and the page is about 1.4 to 1.7 screens tall. With ten players the boards start at y 1037 at 960x1080 (half a 1080p screen), 991 at 820x1180 (iPad Air upright), 1193 at 1024x1366 (iPad Pro upright) and 999 at 1279x1024. With 5 or 7 players they start in view, but they end below it. In a prototype, round-table-size tiles with up to 5 to a row, the decks in a column beside the boards, and boards sized to the height left over, fit one screen at nine sizes from 700x900 to 1280x1440. Chromium, WebKit and Firefox laid out the zoomed tiles within 2px of each other. Below 700px wide, round-table-size tiles are smaller than the phone tiles, and names drop under 8px.
 
 ## Decisions
 
@@ -72,6 +73,11 @@ At 360x740 with ten players, that is about 375px of tiles (three rows) and rough
 
 **D10. Out of scope.** Landscape phones: 740x360 stacks through the width clause; 915x412 keeps a cramped round table. Fitting tall desktop prompts without scrolling (D4). The baseline issues and the idle timeout.
 
+**D11. Narrow windows fit one screen (Task 4, added at the user's request after Task 3).** `@media (min-width: 700px) and (aspect-ratio < 5/4)`, after the stacked block in `TableSeats.css` and `GameScreen.css`, so it refines D2 for half-screen desktop windows, upright monitors and tablets held upright. Phones (D2, D3) and the round table are unchanged.
+- Seats: `zoom: var(--seat-scale)`, the round table's 0.5625. Unlike a transform, zoom also shrinks the layout box, so a flex row of zoomed seats packs as tightly as the tiles look. `--seat-scale` moves from `.table-seat` to `.table-seats`, so the row's width can use it too: `calc(var(--seat-columns-wide) * var(--seat-width) * var(--seat-scale))`. `TableSeats` sets `--seat-columns-wide` to `seatColumns(count, MAX_WIDE_GRID_COLUMNS)`, with `MAX_WIDE_GRID_COLUMNS = 5`: 5→5, 6→3, 7→4, 8→4, 9→5, 10→5.
+- The page goes back to the desktop's one-screen grid (`display: grid; height: 100dvh`). `.game-centre` takes the height the seats leave (`flex: 1 1 0; min-height: 0`), loses its 720px cap, and becomes a two-column grid: status and END TERM across the top, then the boards and a column of decks. The boards are a size container again, and `#board` uses the desktop formula, `min(100cqw - 20px, (100cqh - 16px) * 1.2946)`. The decks use the desktop deck width, `clamp(40px, 7vh, 80px)`, with a gap of a pile's height between the decks and the policy status.
+- Scrolling is still allowed there, as in D2, but the test expects none at its nine sizes.
+
 ## Review Focus
 
 1. A prompt that opens while the phone page is scrolled down must appear on screen, with its button reachable. Task 2 test: "a prompt that opens while the page is scrolled is on screen".
@@ -79,6 +85,7 @@ At 360x740 with ten players, that is about 375px of tiles (three rows) and rough
 3. PRESIDENT/CHANCELLOR filling a label must not move a seat in either layout, and twelve-character names must stay on the nameplate at 4 per row. `labelShift` in Task 1 (desktop and phone), plus the acceptance screenshots.
 4. Windows on either side of the breakpoint (960x1080, 1279x1024, 1280x1024) get the right layout with no overlap and no horizontal overflow. Task 1 window-shape test.
 5. The vote reveal, busy icons and EXECUTED overlay stay visible on phone tiles. The TableSeats unit test covers EXECUTED; the Task 3 acceptance drive screenshots the vote reveal and an execution at 360x740.
+6. In narrow windows (D11), zoomed tiles must scale their vote cards, busy icons and EXECUTED text with them, as the round table's transform does. A window resized across 700px or 5:4 mid-game must re-lay out with no stale sizes. The Task 4 test resizes one game through all nine sizes; the overlays are checked by eye in the Task 4 screenshots.
 
 ## File map
 
@@ -97,7 +104,10 @@ At 360x740 with ten players, that is about 375px of tiles (three rows) and rough
 | `frontend/src/App.css` | phone touch-target minimum | 2 |
 | `.github/workflows/ci.yml` | upload the report and traces on failure | 3 |
 | `CLAUDE.md` | e2e projects, scripted socket, phone breakpoint | 3 |
-| `docs/PLAN.md` | ticks; Phase 5 wording follows this breakdown | 1-3 |
+| `frontend/src/game/seatPositions.ts`, `TableSeats.tsx` and their tests | `seatColumns(count, max)`; `--seat-columns-wide` | 4 |
+| `frontend/src/game/TableSeats.css`, `GameScreen.css` | narrow-window block (D11) | 4 |
+| `frontend/e2e/layout.ts`, `no-scroll.spec.ts` | `NARROW_WINDOWS`; the narrow-window test | 4 |
+| `docs/PLAN.md` | ticks; Phase 5 wording follows this breakdown | 1-4 |
 
 ---
 
@@ -448,3 +458,65 @@ git commit -m "ci(frontend): keep the playwright report and traces of failed run
 ```
 
 (Split it if the docs change grows: `docs(claude): …` for `CLAUDE.md`, `docs(plan): …` for `PLAN.md`.) Then the final review, the fix pass, push, and `gh pr create --repo jussaw/Secret-Hitler-Online --base development`. Show the user the screenshots and the console findings. Ask before merging.
+
+### Task 4 (PLAN 5.4): Narrow windows and upright tablets
+
+Added after Task 3, at the user's request, before the PR merges (Finding 14, D11).
+
+**Files:**
+- Modify: `frontend/src/game/seatPositions.ts`, `seatPositions.test.ts`, `TableSeats.tsx`, `TableSeats.test.tsx`, `TableSeats.css`, `GameScreen.css`, `frontend/e2e/layout.ts`, `frontend/e2e/no-scroll.spec.ts`, `CLAUDE.md`, `docs/PLAN.md`
+
+**Interfaces:**
+- Consumes: `startGame`, `settle` (`e2e/lobby.ts`); `overflowX`, `overlaps`, `smallTargets`, `labelShift` (`e2e/layout.ts`); `measureTable` (`no-scroll.spec.ts`).
+- Produces, in `seatPositions.ts`: `export const MAX_WIDE_GRID_COLUMNS = 5;` and `seatColumns(count: number, max: number = MAX_GRID_COLUMNS): number` (same formula, with `max` in place of 4).
+- Produces, in `e2e/layout.ts`: `NARROW_WINDOWS: { width: number; height: number }[]`, in this order: 960x1080 (half a 1080p screen), 1280x1440 (half a 1440p screen), 1080x1920 (a 1080p monitor upright), 1279x1024 (just under 5:4), 1024x1366 (iPad Pro upright), 820x1180 (iPad Air upright), 744x1133 (iPad mini upright), 700x900 (the narrowest), 800x700 (a short window).
+
+- [ ] **Step 1: "Before" screenshots.** Taken while measuring Finding 14, in the scratchpad: `narrow/now-10p-{960x1080,820x1180}.png`.
+
+- [ ] **Step 2: Unit tests.** In `seatPositions.test.ts`:
+
+```ts
+test.each([
+  [5, 5], [6, 3], [7, 4], [8, 4], [9, 5], [10, 5],
+])("%i players sit %i to a row in a narrow window", (count, columns) => {
+  expect(seatColumns(count, MAX_WIDE_GRID_COLUMNS)).toBe(columns);
+});
+```
+
+In `TableSeats.test.tsx`, for five players (`SEVEN.slice(0, 5)`): `--seat-columns` is `"3"` and `--seat-columns-wide` is `"5"`.
+
+- [ ] **Step 3: Run them to verify they fail.** `cd frontend && npm test -- --run src/game`. Expected: FAIL, `MAX_WIDE_GRID_COLUMNS` is not exported, and `--seat-columns-wide` is `""`.
+
+- [ ] **Step 4: Implement** `MAX_WIDE_GRID_COLUMNS` and the `max` parameter, and set `--seat-columns-wide` beside `--seat-columns` in `TableSeats`.
+
+- [ ] **Step 5: Run the unit tests.** `cd frontend && npm test -- --run`. Expected: all pass.
+
+- [ ] **Step 6: Write the failing browser test** in `no-scroll.spec.ts`, for 5, 7 and 10 players: `${players} players fit narrow windows and upright tablets without scrolling`. One game, resized through `NARROW_WINDOWS`. At each size:
+  - `scrollHeight <= height`; `overflowX` has `scrollWidth <= width` and nothing offscreen;
+  - every seat is `position: static`, inside the window, and overlaps no other seat;
+  - the seats end above the status, and the status ends above the boards and the decks;
+  - the decks are beside the boards (`decks.left >= boards.right - 1`), and no deck card overlaps the boards or the status;
+  - `smallTargets(page, ".game-screen")` is `[]`; `labelShift(page) <= 0.5`.
+
+`measureTable` gains `status` (`.game-status`) and `decks` (`.game-decks`).
+
+- [ ] **Step 7: Run it to verify it fails.** `cd frontend && JAVA_HOME=<Java 17> npm run e2e -- --project=desktop e2e/no-scroll.spec.ts`. Expected: the three new tests FAIL on `scrollHeight at 960x1080`; the existing no-scroll tests and the window-shape test pass.
+
+- [ ] **Step 8: Implement D11** in `TableSeats.css` and `GameScreen.css`, with comments naming each other. Values other than the breakpoint and the seat scale may be tuned while the test is red.
+
+- [ ] **Step 9: Run every browser test.** `cd frontend && JAVA_HOME=<Java 17> npm run e2e`. Expected: every project passes. The phone tests confirm that 360 and 412 keep D2's layout.
+
+- [ ] **Step 10: "After" screenshots and diffs.** Retake `narrow/` at the nine sizes with 10 players, and look at them. Rerun `desktopshots.cjs` at the five desktop sizes and the phone shots at 360x740 and 412x915, and diff them against Task 3's output. Expected: 0 pixels changed.
+
+- [ ] **Step 11: Full suite.** `cd frontend && npm test -- --run && npm run build`, and `cd backend && JAVA_HOME=<Java 17> ./gradlew test`. Expected: all green.
+
+- [ ] **Step 12: Commit.** It ticks the Task 5.4 box. `CLAUDE.md`'s Layout section names the narrow-window block, in its own `docs(claude)` commit.
+
+```bash
+git add frontend/src/game frontend/e2e docs/PLAN.md
+git commit -m "feat(frontend): fit narrow windows and upright tablets on one screen"
+git add CLAUDE.md
+git commit -m "docs(claude): describe the narrow-window layout"
+```
+
+Then a fresh review of Task 4's commits, the fix pass, push, and update the PR description. Ask before merging.
