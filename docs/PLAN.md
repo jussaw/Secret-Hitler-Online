@@ -32,8 +32,8 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | Phase | Branch | Status |
 |---|---|---|
 | 1. Housekeeping | `phase-1-housekeeping` | done |
-| 2. Frontend modernization | `phase-2-vite` | in progress |
-| 3. Persistence, packaging, first deploy | `phase-3-deploy` | not started |
+| 2. Frontend modernization | `phase-2-vite` | done |
+| 3. Persistence, packaging, first deploy | `phase-3-deploy` | in progress |
 | 4. Round-table game screen | `phase-4-round-table` | not started |
 | 5. Phone layout | `phase-5-phone` | not started |
 | 6. Sounds | `phase-6-sounds` | not started |
@@ -164,28 +164,30 @@ Files: `frontend/package.json`, new `frontend/vite.config.ts`, `frontend/index.h
 - [x] `npm run build` and `npm test -- --run` pass
 - [x] `grep -rn "REACT_APP_\|react-scripts" frontend --include='*' --exclude-dir=node_modules` returns nothing
 - [x] Manual regression: create lobby, join with a second browser, add CPU players, play to both a liberal and a fascist win, refresh mid-game and rejoin
-- [ ] PR merged into `development`
+- [x] PR merged into `development` (#11)
 
 **Start Phase 3: Persistence, packaging, first deploy**
 
-- [ ] Progress table: Phase 2 set to "done", Phase 3 set to "in progress"
-- [ ] `git checkout development && git pull`, then `git checkout -b phase-3-deploy`
-- [ ] Re-read Phase 3 below against the code as it now stands; fix any file paths or line numbers that moved
-- [ ] Write the Phase 3 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 3 heading
-- [ ] Begin Task 3.1
+- [x] Progress table: Phase 2 set to "done", Phase 3 set to "in progress"
+- [x] `git checkout development && git pull`, then `git checkout -b phase-3-deploy`
+- [x] Re-read Phase 3 below against the code as it now stands; fix any file paths or line numbers that moved
+- [x] Write the Phase 3 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 3 heading
+- [x] Begin Task 3.1
 
 ---
 
 ## Phase 3: Persistence, packaging, first deploy
 
+Breakdown: [`docs/superpowers/plans/2026-11-12-phase-3-persistence-packaging-deploy.md`](superpowers/plans/2026-11-12-phase-3-persistence-packaging-deploy.md)
+
 Outcome: the unmodified-looking game runs on the home server at its public subdomain and survives restarts.
 
 ### Task 3.1: SQLite backup
 
-Files: `backend/build.gradle`, `backend/src/main/java/server/ApplicationConfig.java`, `backend/src/main/java/server/SecretHitlerServer.java` (database section, about lines 211-380), new `backend/src/test/java/server/DatabaseBackupTest.java`
+Files: `backend/build.gradle`, `backend/src/main/java/server/ApplicationConfig.java`, `backend/src/main/java/server/SecretHitlerServer.java` (database section, lines 211-359), new `backend/src/test/java/server/DatabaseBackupTest.java`
 
 - [ ] Write a failing test: store a lobby map to a temp-file database, load it back, assert lobby codes and usernames match
-- [ ] Replace `org.postgresql:postgresql` with `org.xerial:sqlite-jdbc`
+- [ ] Replace `org.postgresql:postgresql` with `org.xerial:sqlite-jdbc` (3.53.4.0)
 - [ ] `ApplicationConfig`: replace `DATABASE_URL` with `DATABASE_PATH`; unset means persistence disabled
 - [ ] `getDatabaseConnection()`: `jdbc:sqlite:<DATABASE_PATH>`; table column `lobby_bytes BLOB`; make the insert an upsert that SQLite accepts
 - [ ] Extract store/load so they take a connection (or path) parameter and are callable from the test
@@ -194,11 +196,13 @@ Files: `backend/build.gradle`, `backend/src/main/java/server/ApplicationConfig.j
 
 ### Task 3.2: Same-origin serving
 
-Files: `backend/src/main/java/server/SecretHitlerServer.java` (Javalin config), `backend/build.gradle`, `frontend/src/App.tsx` (server address constants), `frontend/vite.config.ts`, `frontend/.env.*`
+Files: `backend/src/main/java/server/SecretHitlerServer.java` (Javalin config), `backend/build.gradle`, `frontend/src/constants/index.ts` (server address constants), `frontend/src/App.tsx:858` (invite link), `frontend/vite.config.ts`, `frontend/.env.*`
 
-- [ ] Javalin serves static files from the classpath directory `/public` with `index.html` at `/`
+- [ ] Javalin serves static files from the classpath directory `/public` with `index.html` at `/` (only when it exists; Javalin refuses to start on a missing classpath directory)
 - [ ] Frontend builds API and WebSocket URLs from `window.location` (`wss:` when the page is `https:`) unless `VITE_SERVER_ADDRESS` is set
-- [ ] Vite dev server proxies `/check-login`, `/new-lobby`, `/ping` and `/game` (with `ws: true`) to `localhost:4040`
+- [ ] The lobby invite link uses the page's own origin instead of `https://secret-hitler.online`
+- [ ] `.env.local` becomes `.env.development` with only `VITE_DEBUG`, so `vite build` no longer bakes in a backend address or debug logging
+- [ ] Vite dev server proxies `/check-login`, `/new-lobby`, `/ping` and `/game` (with `ws: true`) to `BACKEND_URL` (default `localhost:4040`)
 - [ ] Gradle task copies `frontend/dist` into the jar's `public/` when present
 - [ ] `java -jar` with a built frontend serves the whole app on one port
 
@@ -206,15 +210,15 @@ Files: `backend/src/main/java/server/SecretHitlerServer.java` (Javalin config), 
 
 Files: new `Dockerfile` and `.dockerignore` at repo root, delete `backend/Dockerfile` and `backend/config/Dockerfile.dev` if unused
 
-- [ ] Stage 1 `node:20`: `npm ci && npm run build` in `frontend/`
-- [ ] Stage 2 `gradle:8-jdk17`: copy `frontend/dist`, run `gradle jar`
-- [ ] Stage 3 `eclipse-temurin:17-jre`: copy the jar, `ENV PORT=8080 DATABASE_PATH=/data/backup.db`, `VOLUME /data`, `EXPOSE 8080`, run as a non-root user
+- [ ] Stage 1 `node:24` (Phase 2 needs Node 22+), on `$BUILDPLATFORM`: `npm ci && npm run build` in `frontend/`
+- [ ] Stage 2 `eclipse-temurin:17-jdk` on `$BUILDPLATFORM`: copy `frontend/dist`, run the wrapper's `./gradlew jar` (the build is only known-good on Gradle 7.4.2)
+- [ ] Stage 3 `eclipse-temurin:17-jre`: copy the jar, `ENV PORT=8080 DATABASE_PATH=/data/backup.db`, `VOLUME /data`, `EXPOSE 8080`, run as non-root uid 1000
 - [ ] `docker build` then `docker run -p 8080:8080 -v sh-data:/data` plays a game locally
 - [ ] Restart the container mid-game; the lobby is still there after rejoin
 
 ### Task 3.4: Dev compose
 
-- [ ] `docker-compose.yml`: remove the `db` service and `DATABASE_URL`; backend gets `DATABASE_PATH` on a named volume
+- [ ] `docker-compose.yml`: remove the `db` service and `DATABASE_URL`; backend gets `DATABASE_PATH` on a named volume; frontend gets `BACKEND_URL` for the proxy
 - [ ] `DEVELOPMENT.md` updated
 - [ ] `CLAUDE.md` updated: SQLite `DATABASE_PATH`, same-origin serving, image build and deploy path
 
@@ -231,13 +235,14 @@ Files: new `.github/workflows/ci.yml`
 - [ ] Add a compose service on the host: `container_name`, the GHCR image, `TZ`, a free published port mapped to `8080`, `restart: unless-stopped`, and a bind mount to `/data`
 - [ ] `docker compose config` validates for the host's stack
 - [ ] Commit the stack change, then deploy it on the host
-- [ ] If the GHCR package is private, add pull credentials on the host
+- [ ] The GHCR package is public, so the host pulls it without credentials; if it is private, make it public
 
 ### Task 3.7: Proxy
 
-- [ ] Add the subdomain's DNS record
-- [ ] Add a proxy host on the server's reverse proxy to the published port with WebSocket upgrade enabled and a TLS certificate
-- [ ] Add the URL to uptime monitoring using `/ping`
+TLS ends at a proxy in front of the host.
+
+- [ ] Add a public hostname for the subdomain on the host's proxy, pointing at the published port; the proxy terminates TLS and passes WebSockets
+- [ ] Add the URL to an uptime monitor using `/ping`
 
 **Phase 3 acceptance**
 
