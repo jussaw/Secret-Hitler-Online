@@ -803,9 +803,9 @@ With `./gradlew runLocal` and `npm run dev` running, use two separate browser pr
 
 1. H creates a lobby and picks a portrait. G joins with the lobby code and picks a different portrait; both see each other in the lobby.
 2. H starts the game (3 CPU players fill the lobby to 5). Both players act on every prompt addressed to them.
-3. Mid-game, G reloads the page. The login page shows G's name and the lobby code filled in. G presses JOIN and is back in the game in the right state.
+3. Mid-game, G reloads the page. The login page shows G's name and the lobby code filled in. G presses JOIN and is back in the game in the right state. Within 3 seconds of the reload the server still counts G as connected and answers "The lobby is currently in a game" (#10, pre-existing); pressing JOIN again after that works.
 4. Play to the end. Repeat games until there has been at least one liberal win and one fascist win. On each victory screen, RETURN TO LOBBY works for both.
-5. Throughout, the console shows no errors other than #4.
+5. Throughout, the console shows no errors other than the tracked ones: #4, #8, #5's `ElectionTrackerAlert` warning, and the 488 from an early rejoin (#10).
 
 - [ ] **Step 4: Tick, push, PR**
 

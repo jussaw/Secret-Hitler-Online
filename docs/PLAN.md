@@ -161,9 +161,9 @@ Files: `frontend/package.json`, new `frontend/vite.config.ts`, `frontend/index.h
 
 **Phase 2 acceptance**
 
-- [ ] `npm run build` and `npm test -- --run` pass
-- [ ] `grep -rn "REACT_APP_\|react-scripts" frontend --include='*' --exclude-dir=node_modules` returns nothing
-- [ ] Manual regression: create lobby, join with a second browser, add CPU players, play to both a liberal and a fascist win, refresh mid-game and rejoin
+- [x] `npm run build` and `npm test -- --run` pass
+- [x] `grep -rn "REACT_APP_\|react-scripts" frontend --include='*' --exclude-dir=node_modules` returns nothing
+- [x] Manual regression: create lobby, join with a second browser, add CPU players, play to both a liberal and a fascist win, refresh mid-game and rejoin
 - [ ] PR merged into `development`
 
 **Start Phase 3: Persistence, packaging, first deploy**
