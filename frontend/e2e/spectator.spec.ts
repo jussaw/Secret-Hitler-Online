@@ -330,7 +330,10 @@ test("a spectator joins a running game and never receives a secret", async ({ pa
   }
 });
 
-/** The spectator count, the header, its title's text and the sound control, as boxes. */
+/**
+ * The spectator count, the header, its title's text and the sound control, as boxes, and whether
+ * the count is what a pointer at its centre hits (for its tooltip).
+ */
 function countFit(page: Page) {
   return page.evaluate(() => {
     const box = (el: Element | Range) => {
@@ -343,6 +346,8 @@ function countFit(page: Page) {
     title.selectNodeContents(
       Array.from(header.childNodes).find((node) => node.nodeType === 3 && node.textContent!.trim())!
     );
+    const c = count.getBoundingClientRect();
+    const hit = document.elementFromPoint((c.left + c.right) / 2, (c.top + c.bottom) / 2);
     const height = header.getBoundingClientRect().height;
     count.style.display = "none";
     const heightWithout = header.getBoundingClientRect().height;
@@ -353,6 +358,7 @@ function countFit(page: Page) {
       icon: box(count.querySelector("svg")!),
       title: box(title),
       speaker: box(header.querySelector(".sound-control")!),
+      hitsCount: hit !== null && count.contains(hit),
       height,
       heightWithout,
     };
@@ -381,6 +387,7 @@ test("the spectator count fits every header", async ({ page, isMobile }) => {
       expect(overlaps(fit.count, fit.title), `count clear of the title, ${at}`).toBe(false);
       expect(overlaps(fit.count, fit.speaker), `count clear of the speaker, ${at}`).toBe(false);
       expect(fit.height, `header height, ${at}`).toBeCloseTo(fit.heightWithout, 1);
+      expect(fit.hitsCount, `a pointer at the count's centre reaches it, ${at}`).toBe(true);
     }
   };
 
