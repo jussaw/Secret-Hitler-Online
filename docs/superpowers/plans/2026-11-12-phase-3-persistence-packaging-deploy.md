@@ -759,7 +759,7 @@ jobs:
 
 - [ ] **Step 2: Commit, push, open PR 1**
 
-`git commit -m "ci(ci): test every pull request and publish images from development"` (no box yet; the first green run on `development` is the box). Push and open PR 1 into `development`. The `test` job must pass on the PR.
+`git commit -m "ci(ci): test every pull request and publish images from development"`, ticking the two job boxes. ("First run is green" waits for the first run on `development`.) `actionlint` (`docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:latest -no-color .github/workflows/ci.yml`) must be clean first. Push and open PR 1 into `development`. The `test` job must pass on the PR.
 
 - [ ] **Step 3: Gate (ask the user)**
 
