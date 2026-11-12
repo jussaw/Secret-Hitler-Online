@@ -31,7 +31,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 
 | Phase | Branch | Status |
 |---|---|---|
-| 1. Housekeeping | `phase-1-housekeeping` | not started |
+| 1. Housekeeping | `phase-1-housekeeping` | in progress |
 | 2. Frontend modernization | `phase-2-vite` | not started |
 | 3. Persistence, packaging, first deploy | `phase-3-deploy` | not started |
 | 4. Round-table game screen | `phase-4-round-table` | not started |
@@ -47,62 +47,62 @@ Outcome: a clean fork that runs locally, with upstream's hosted-service extras g
 
 ### Task 1.1: Baseline
 
-- [ ] Run `cd backend && ./gradlew test`; record pass/fail counts in the PR description
-- [ ] Run `./gradlew runLocal` and `cd frontend && npm install && npm run devLocal`; play one 5-player game with CPU players to the end
-- [ ] Note any pre-existing failures as issues on the fork; do not fix them in this phase
+- [x] Run `cd backend && ./gradlew test`; record pass/fail counts in the PR description
+- [x] Run `./gradlew runLocal` and `cd frontend && npm install && npm run devLocal`; play one 5-player game with CPU players to the end
+- [x] Note any pre-existing failures as issues on the fork; do not fix them in this phase (#2, #3, #4, #5: dev-mode console warnings; #6: `App.test.js` fails)
 
 ### Task 1.2: Remove analytics
 
 Files: `frontend/src/App.tsx` (import at line 2, `ReactGA.initialize` at 223, about 20 `ReactGA.event` calls), `frontend/src/LoginPageContent.js`, `frontend/package.json`
 
-- [ ] Delete every `ReactGA` import and call
-- [ ] `npm uninstall react-ga`
-- [ ] `grep -rn "ReactGA\|react-ga" frontend/src frontend/package.json` returns nothing
+- [x] Delete every `ReactGA` import and call
+- [x] `npm uninstall react-ga`
+- [x] `grep -rn "ReactGA\|react-ga" frontend/src frontend/package.json` returns nothing
 
 ### Task 1.3: Remove Twitter embed
 
 Files: `frontend/src/custom-alert/IconSelection.tsx` (two `TwitterShareButton` blocks), `frontend/src/custom-alert/IconSelection.css` (`#twitter-icon`), `frontend/src/assets/index.ts` and `twitter-icon.svg`, `frontend/src/index.d.ts`, `frontend/src/App.tsx:805`, `frontend/package.json`
 
-- [ ] Remove the share buttons, icon asset, CSS rule and module declaration
-- [ ] `npm uninstall react-twitter-embed @types/twitter-for-web`
-- [ ] `grep -rni "twitter" frontend/src frontend/package.json` returns nothing
-- [ ] Icon selection dialog still opens and selects a portrait
+- [x] Remove the share buttons, icon asset, CSS rule and module declaration
+- [x] `npm uninstall react-twitter-embed @types/twitter-for-web`
+- [x] `grep -rni "twitter" frontend/src frontend/package.json` returns nothing
+- [x] Icon selection dialog still opens and selects a portrait
 
 ### Task 1.4: Remove upstream deploy config
 
-- [ ] Delete `.github/workflows/firebase-deploy.yml`, `firebase-deploy-dev.yml`, `firebase-preview.yml`, `fly-deploy.yml`, `fly-deploy-dev.yml`
-- [ ] Delete `backend/fly.toml`, `backend/DEPLOYMENT.md`, and any `firebase.json` / `.firebaserc` under `frontend/`
-- [ ] Keep `codeql-analysis.yml`
+- [x] Delete `.github/workflows/firebase-deploy.yml`, `firebase-deploy-dev.yml`, `firebase-preview.yml`, `fly-deploy.yml`, `fly-deploy-dev.yml`
+- [x] Delete `backend/fly.toml`, `backend/DEPLOYMENT.md`, and any `firebase.json` / `.firebaserc` under `frontend/`
+- [x] Keep `codeql-analysis.yml`
 
 ### Task 1.5: Prune fork branches
 
-- [ ] List: `git branch -r | grep origin/ | grep -vE 'origin/(HEAD|main|development)'`
-- [ ] Delete each listed branch on the fork with `git push origin --delete <branch>` (fork only; never `upstream`)
-- [ ] `git fetch --prune origin` shows only `main` and `development`
+- [x] List: `git branch -r | grep origin/ | grep -vE 'origin/(HEAD|main|development)'`
+- [x] Delete each listed branch on the fork with `git push origin --delete <branch>` (fork only; never `upstream`)
+- [x] `git fetch --prune origin` shows only `main` and `development`
 
 ### Task 1.6: Docs
 
-- [ ] README: fork notice linking upstream, licence and attribution section, local run instructions
-- [ ] Update `DEVELOPMENT.md` clone URLs to the fork
+- [x] README: fork notice linking upstream, licence and attribution section, local run instructions
+- [x] Update `DEVELOPMENT.md` clone URLs to the fork
 
 ### Task 1.7: Repo `CLAUDE.md`
 
 Files: new `CLAUDE.md` at the repo root
 
-- [ ] What this is: a personal fork of `ShrimpCryptid/Secret-Hitler-Online`, remotes `origin` (fork) and `upstream`, default working branch `development`, licence CC BY-NC-SA 4.0
-- [ ] Layout: `backend/` (Java, Gradle, Javalin; rules in `src/main/java/game/`, server in `src/main/java/server/`), `frontend/` (React, TypeScript), `docs/`
-- [ ] Commands: run backend, run frontend, run each test suite, build (verified by running each one)
-- [ ] Workflow: one branch per phase off `development`, PRs target the fork (`--repo jussaw/Secret-Hitler-Online`, since `gh` defaults to upstream), never push to `upstream`
-- [ ] Commit convention: Conventional Commits with a scope; list the scopes in use (`frontend`, `backend`, `docker`, `ci`, `docs`, `plan`)
-- [ ] Pointers: `docs/PLAN.md` is the source of truth for progress and boxes are ticked in the same commit as the work; the spec path
-- [ ] Constraints: no new art, CC0 sounds only, WebSocket protocol stays backward compatible for players, Pi deploys go through jussaw-server
-- [ ] Add a line for this repo to `~/CLAUDE.md` (in `~/dotfiles`) under the `~/repos/` list
+- [x] What this is: a personal fork of `ShrimpCryptid/Secret-Hitler-Online`, remotes `origin` (fork) and `upstream`, default working branch `development`, licence CC BY-NC-SA 4.0
+- [x] Layout: `backend/` (Java, Gradle, Javalin; rules in `src/main/java/game/`, server in `src/main/java/server/`), `frontend/` (React, TypeScript), `docs/`
+- [x] Commands: run backend, run frontend, run each test suite, build (verified by running each one)
+- [x] Workflow: one branch per phase off `development`, PRs target the fork (`--repo jussaw/Secret-Hitler-Online`, since `gh` defaults to upstream), never push to `upstream`
+- [x] Commit convention: Conventional Commits with a scope; list the scopes in use (`frontend`, `backend`, `docker`, `ci`, `docs`, `plan`)
+- [x] Pointers: `docs/PLAN.md` is the source of truth for progress and boxes are ticked in the same commit as the work; the spec path
+- [x] Constraints: no new art, CC0 sounds only, WebSocket protocol stays backward compatible for players, Pi deploys go through jussaw-server
+- [x] Add a line for this repo to `~/CLAUDE.md` (in `~/dotfiles`) under the `~/repos/` list (dotfiles `b2dc383`)
 
 **Phase 1 acceptance**
 
-- [ ] `./gradlew test` matches the baseline
-- [ ] `npm run build` succeeds in `frontend/`
-- [ ] A full CPU game plays locally with no console errors
+- [x] `./gradlew test` matches the baseline
+- [x] `npm run build` succeeds in `frontend/`
+- [x] A full CPU game plays locally with no console errors beyond the baseline tracked in #2 to #5
 - [ ] PR merged into `development`
 
 **Start Phase 2: Frontend modernization**

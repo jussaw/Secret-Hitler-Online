@@ -15,8 +15,5 @@ bin
 .DS_Store
 .vscode/
 
-# Firebase Hosting Files
-**/.firebase
-
 # Node
 **/node_modules/

@@ -19,7 +19,6 @@ import p18 from "./player-portraits/player-portrait-18.svg";
 import p19 from "./player-portraits/player-portrait-19.svg";
 import p20 from "./player-portraits/player-portrait-20.svg";
 import p_default from "./player-portraits/player-portrait-default.svg";
-import twitter_icon from "./twitter-icon.svg";
 import badge_img from "./badge.svg";
 
 const portraits: Record<string, string> = {
@@ -49,7 +48,7 @@ export default portraits;
 
 export const defaultPortrait = "p_default";
 
-export const unlockedPortraits: string[] = [
+export const selectablePortraits: string[] = [
   "p1",
   "p2",
   "p3",
@@ -60,8 +59,6 @@ export const unlockedPortraits: string[] = [
   "p8",
   "p9",
   "p10",
-];
-export const lockedPortraits: string[] = [
   "p11",
   "p12",
   "p13",
@@ -99,4 +96,3 @@ export const portraitsAltText: Record<string, string> = {
 };
 
 export const badge = badge_img;
-export const twitterIcon = twitter_icon;
