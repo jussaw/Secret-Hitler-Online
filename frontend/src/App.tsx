@@ -221,6 +221,8 @@ class App extends Component<{}, AppState> {
   lobbyUsers?: string[] = undefined;
   /** Vote-tally sounds that a running showVotes has scheduled. */
   soundTimers: ReturnType<typeof setTimeout>[] = [];
+  /** The end of a held status line (queueStatusMessage), which advances the animation queue. */
+  holdTimers: ReturnType<typeof setTimeout>[] = [];
 
   // noinspection DuplicatedCode
   constructor(props: any) {
@@ -1655,6 +1657,9 @@ class App extends Component<{}, AppState> {
     // Sounds still in the queue go with it; so does a vote tally that has not sounded yet.
     this.soundTimers.forEach(clearTimeout);
     this.soundTimers = [];
+    // A held status line's end would advance the next queue early.
+    this.holdTimers.forEach(clearTimeout);
+    this.holdTimers = [];
   }
 
   playSounds(names: SoundName[]) {
@@ -1825,7 +1830,11 @@ class App extends Component<{}, AppState> {
     this.addAnimationToQueue(() => {
       this.setState({ statusBarText: message });
       if (holdMs > 0) {
-        setTimeout(() => this.onAnimationFinish(), holdMs);
+        const hold = setTimeout(() => {
+          this.holdTimers = this.holdTimers.filter((timer) => timer !== hold);
+          this.onAnimationFinish();
+        }, holdMs);
+        this.holdTimers.push(hold);
       } else {
         this.onAnimationFinish();
       }

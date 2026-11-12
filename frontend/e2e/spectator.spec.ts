@@ -224,6 +224,53 @@ for (const { name, first, waiting } of [
   });
 }
 
+test("a held status line from a cleared queue does not cut the next one short", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "one browser is enough");
+  await page.clock.install();
+  const game = await openFakeWatch(page);
+  const [, P, C] = TEN;
+  const status = page.locator("#status-bar-text");
+  const eventBar = page.locator("#event-bar.appear-eventbar");
+  game.send(spectatorPacket({ president: P }));
+  await expect(status).toHaveText(`Waiting for ${P} to nominate a chancellor.`);
+
+  // From here the page's clock moves only when the test moves it.
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 50));
+  game.send(
+    spectatorPacket({
+      state: S.POST_LEGISLATIVE,
+      lastState: S.LEGISLATIVE_CHANCELLOR,
+      president: P,
+      chancellor: C,
+      fascistPolicies: 1,
+      lastPolicy: "FASCIST",
+    })
+  );
+  await page.clock.runFor(400);
+  await expect(status).toHaveText("A fascist policy was enacted.");
+  await page.clock.runFor(1600); // 2 s into the line's 3 s hold
+
+  // The server goes away: the client gives up and clears its queue. WATCH again at once.
+  game.down(true);
+  await expect(page.getByText("Disconnected from the lobby.")).toBeVisible();
+  game.down(false);
+  const sockets = game.urls.length;
+  await page.getByRole("button", { name: "WATCH" }).click();
+  await expect.poll(() => game.urls.length).toBe(sockets + 1);
+  game.send(WATCHED_LOBBY);
+  await expect(page.getByText(`Players (${TEN.length}/10)`)).toBeVisible();
+
+  // The next policy holds its line 3 s, then the board moves (0.5 s) and the power's event bar
+  // shows. The old line's hold ends 1 s in, and must not end this one.
+  game.send(
+    spectatorPacket({ state: S.PP_INVESTIGATE, president: P, chancellor: C, fascistPolicies: 2, lastPolicy: "FASCIST" })
+  );
+  await page.clock.runFor(2500);
+  await expect(eventBar, "2.5 s in, the policy line still holds").toHaveCount(0);
+  await page.clock.runFor(1500);
+  await expect(eventBar, "4 s in, the power's event bar shows").toHaveText("PRESIDENTIAL POWER");
+});
+
 test("a spectator joins a running game and never receives a secret", async ({ page, baseURL }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "one browser is enough");
   test.setTimeout(180_000);
