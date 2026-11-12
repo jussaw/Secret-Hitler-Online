@@ -289,15 +289,15 @@ Files: new `frontend/src/game/seatPositions.ts`, `frontend/src/game/seatPosition
 
 ### Task 4.3: Table layout
 
-Files: new `frontend/src/game/TableSeats.tsx`; modify `GameScreen.tsx/.css`, `frontend/src/player/PlayerDisplay.tsx`, `frontend/src/player/Player.css`, `frontend/src/board/Board.css`, `frontend/src/App.css` (header height)
+Files: new `frontend/src/game/TableSeats.tsx`, `TableSeats.css`; modify `GameScreen.tsx/.css`, `seatPositions.ts` (`centreBox`), `frontend/src/player/PlayerDisplay.tsx` (`usePlayerTiles`). `Player.css`, `Board.css` and `App.css` stay as they are: seats scale the existing tile with a transform, and `GameScreen.css` overrides sizes only inside the game screen.
 
 `PlayerDisplay` is also rendered inside prompts (execution, special election, investigation and victory results at `App.tsx:954`, `1259`, `1291` and `1414`, and `PlayerDisplayPrompt`, which `SelectPlayerPrompt` uses), and the lobby renders `Player` directly (`App.tsx:729`). Those keep their current layout.
 
-- [ ] `GameScreen` is a grid filling `100dvh` minus a slimmer header; `overflow: hidden` is not used to fake the result
-- [ ] `TableSeats` absolutely positions each existing `Player` at its seat; president/chancellor markers, vote icons, busy icons and the executed state render as before
-- [ ] Centre column: board(s), then draw deck / policy status / discard deck, then status text and END TERM
-- [ ] Sizes use `clamp()` with `vh`/`vw` so the table scales between the smallest and largest acceptance sizes
-- [ ] Selecting a player in prompts (`SelectPlayerPrompt`) still works; prompts stay in the overlay
+- [x] `GameScreen` is a grid filling `100dvh` minus a slimmer header; `overflow: hidden` is not used to fake the result
+- [x] `TableSeats` absolutely positions each existing `Player` at its seat; president/chancellor markers, vote icons, busy icons and the executed state render as before
+- [x] Centre column: board(s), then draw deck / policy status / discard deck, then status text and END TERM
+- [x] Sizes use `clamp()` with `vh`/`vw` so the table scales between the smallest and largest acceptance sizes
+- [x] Selecting a player in prompts (`SelectPlayerPrompt`) still works; prompts stay in the overlay
 
 ### Task 4.4: No-scroll browser test
 

@@ -1,0 +1,18 @@
+.table-seats {
+    position: absolute;
+    inset: 0;
+}
+
+/* The default tile (16vh wide at desktop sizes) scaled to 9vh; seatPositions' SEAT_HALF_SIZE assumes this. */
+.table-seat {
+    --seat-scale: 0.5625;
+    position: absolute;
+    transform: translate(-50%, -50%) scale(var(--seat-scale));
+}
+
+/* Reserve the PRESIDENT / CHANCELLOR row on every seat so a seat never moves when it changes. */
+.table-seat #player-display-label {
+    display: block;
+    min-height: 1.2em;
+    line-height: 1.2;
+}

@@ -1,31 +1,105 @@
 @import '../variables.css';
 
+/* The whole game page fits the viewport: a slim header, then the table. */
 .game-screen {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100dvh;
     text-align: center;
 }
 
-.game-players {
-    background-color: var(--backgroundDark);
+.game-screen > header {
+    min-height: 0;
+    padding: 0.4vh 0;
+    font-size: clamp(18px, 3.4vh, 40px);
+    line-height: 1.15;
 }
 
-.game-board-area {
-    display: inline-block;
+/* Seats and the centre box are positioned in percent of this area (seatPositions.ts). */
+.game-table {
+    position: relative;
 }
 
-.game-board-layout {
-    align-items: center;
+.game-centre {
+    position: absolute;
     display: flex;
     flex-direction: column;
-    margin: 10px auto;
-}
-
-.game-deck-row {
-    display: flex;
-    flex-direction: row;
     align-items: center;
-    margin-top: 15px;
+    gap: 1vh;
 }
 
-.game-end-term {
-    margin: auto auto;
+/* Both boards fit the space the deck and status rows leave: two 1683x650 boards plus 16px of margins. */
+.game-boards {
+    flex: 1 1 0;
+    min-height: 0;
+    width: 100%;
+    container-type: size;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.game-boards #board {
+    display: block;
+    min-width: 0;
+    max-width: none;
+    width: min(100cqw - 20px, (100cqh - 16px) * 1.2946);
+}
+
+/* Decks and the policy status keep their proportions at a smaller size. */
+.game-decks {
+    --deck-width: clamp(40px, 7vh, 80px);
+    display: flex;
+    align-items: center;
+    gap: 2vh;
+}
+
+.game-decks #deck-container,
+.game-decks #deck-base {
+    width: var(--deck-width);
+}
+
+.game-decks #deck-card-count {
+    font-size: calc(var(--deck-width) * 0.25);
+}
+
+.game-decks #pps-container {
+    margin: 0;
+    padding: 0.8vh 1.2vh;
+}
+
+.game-decks #pps-text {
+    font-size: clamp(9px, 1.4vh, 16px);
+}
+
+.game-decks #pps-icon {
+    width: 3vh;
+    height: 3vh;
+}
+
+.game-decks #pps-icon-number {
+    font-size: clamp(11px, 2vh, 22px);
+}
+
+.game-status {
+    display: flex;
+    align-items: center;
+    gap: 1.5vh;
+    width: 100%;
+}
+
+.game-status #status-bar {
+    flex: 1;
+    min-height: 0;
+}
+
+.game-status #status-bar-text {
+    padding: 0.8vh 8px;
+    font-size: clamp(12px, 2vh, 22px);
+}
+
+.game-status button {
+    margin: 0 0 5px;
+    padding: 0.8vh 2.2vh;
+    font-size: clamp(14px, 2.6vh, 30px);
 }

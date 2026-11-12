@@ -1,10 +1,11 @@
 import Board from "../board/Board";
 import Deck from "../board/Deck";
-import PlayerDisplay, { DISABLE_EXECUTED_PLAYERS } from "../player/PlayerDisplay";
 import StatusBar from "../status-bar/StatusBar";
 import { GameState, LobbyState } from "../types";
 import PlayerPolicyStatus from "../util/PlayerPolicyStatus";
 import "./GameScreen.css";
+import { centreBox } from "./seatPositions";
+import TableSeats from "./TableSeats";
 
 export type GameScreenProps = {
   gameState: GameState;
@@ -22,7 +23,8 @@ export type GameScreenProps = {
 };
 
 /**
- * The game page below the overlays: players, status text, decks and boards.
+ * The game page below the overlays: a round table with the players seated around the boards,
+ * decks, status text and END TERM.
  */
 export default function GameScreen(props: GameScreenProps) {
   const { gameState, user } = props;
@@ -30,50 +32,55 @@ export default function GameScreen(props: GameScreenProps) {
   const canEndTerm =
     gameState.state === LobbyState.POST_LEGISLATIVE &&
     gameState.president === user;
+  // The centre box comes from the seat geometry, so seats and boards cannot drift apart.
+  const centre = centreBox(gameState.playerOrder.length);
 
   return (
     <div className="game-screen">
       <header className="App-header">SECRET-HITLER.ONLINE</header>
 
-      <div className="game-players">
-        <PlayerDisplay
+      <div className="game-table">
+        <TableSeats
           gameState={gameState}
           user={user}
           showVotes={props.showVotes}
           showBusy={props.showBusy}
-          playerDisabledFilter={DISABLE_EXECUTED_PLAYERS}
         />
-      </div>
 
-      <StatusBar>{props.statusBarText}</StatusBar>
+        <div
+          className="game-centre"
+          style={{
+            left: `${centre.left}%`,
+            right: `${100 - centre.right}%`,
+            top: `${centre.top}%`,
+            bottom: `${100 - centre.bottom}%`,
+          }}
+        >
+          <div className="game-boards">
+            <Board
+              numPlayers={gameState.playerOrder.length}
+              numFascistPolicies={props.fascistPolicies}
+              numLiberalPolicies={props.liberalPolicies}
+              electionTracker={props.electionTracker}
+            />
+          </div>
 
-      <div className="game-board-area">
-        <div className="game-board-layout">
-          <div className="game-deck-row">
+          <div className="game-decks">
             <Deck cardCount={props.drawDeckSize} deckType={"DRAW"} />
-
-            <div className="game-end-term">
-              <button disabled={!canEndTerm} onClick={props.onEndTerm}>
-                {" "}
-                END TERM
-              </button>
-
-              <PlayerPolicyStatus
-                numFascistPolicies={props.fascistPolicies}
-                numLiberalPolicies={props.liberalPolicies}
-                playerCount={gameState.playerOrder.length}
-              />
-            </div>
-
+            <PlayerPolicyStatus
+              numFascistPolicies={props.fascistPolicies}
+              numLiberalPolicies={props.liberalPolicies}
+              playerCount={gameState.playerOrder.length}
+            />
             <Deck cardCount={props.discardDeckSize} deckType={"DISCARD"} />
           </div>
 
-          <Board
-            numPlayers={gameState.playerOrder.length}
-            numFascistPolicies={props.fascistPolicies}
-            numLiberalPolicies={props.liberalPolicies}
-            electionTracker={props.electionTracker}
-          />
+          <div className="game-status">
+            <StatusBar>{props.statusBarText}</StatusBar>
+            <button disabled={!canEndTerm} onClick={props.onEndTerm}>
+              END TERM
+            </button>
+          </div>
         </div>
       </div>
     </div>

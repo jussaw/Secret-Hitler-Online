@@ -12,8 +12,15 @@ export const TABLE_RADIUS_Y = 40;
  */
 export const SEAT_HALF_SIZE = { x: 2.8, y: 8.5 };
 
-/** Where the boards, decks and status row live; no seat reaches into it for 5 to 10 players. */
-export const CENTRE_BOX = { left: 29.5, right: 70.5, top: 23.5, bottom: 80.5 };
+/** A rectangle in percent of the table area. */
+export type Box = { left: number; right: number; top: number; bottom: number };
+
+/** The centre box's sides clear the diagonal seats (x 25.3 at 5 and 10 players). */
+const CENTRE_LEFT = 29.5;
+const CENTRE_RIGHT = 70.5;
+/** Gap between the centre box and a seat above or below it, and the table's edge. */
+const CENTRE_MARGIN = 1;
+const CENTRE_EDGE = 2;
 
 /** The smallest centre-to-centre distance between two seats. */
 export const MIN_SEAT_DISTANCE = 20;
@@ -36,4 +43,25 @@ export function seatPositions(count: number, selfIndex = 0): Seat[] {
       y: 50 + TABLE_RADIUS_Y * Math.sin(angle),
     };
   });
+}
+
+/**
+ * Where the boards, decks and status row live: between the sides, and as tall as the seats above
+ * and below it allow for this many players.
+ * @param count the number of players.
+ */
+export function centreBox(count: number): Box {
+  let top = CENTRE_EDGE;
+  let bottom = 100 - CENTRE_EDGE;
+  for (const seat of seatPositions(count)) {
+    const besideTheBox =
+      seat.x + SEAT_HALF_SIZE.x <= CENTRE_LEFT || seat.x - SEAT_HALF_SIZE.x >= CENTRE_RIGHT;
+    if (besideTheBox) continue;
+    if (seat.y < 50) {
+      top = Math.max(top, seat.y + SEAT_HALF_SIZE.y + CENTRE_MARGIN);
+    } else {
+      bottom = Math.min(bottom, seat.y - SEAT_HALF_SIZE.y - CENTRE_MARGIN);
+    }
+  }
+  return { left: CENTRE_LEFT, right: CENTRE_RIGHT, top, bottom };
 }
