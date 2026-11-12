@@ -3,17 +3,28 @@
 Requirements: Java 17 for the backend, Node.js 22.12 or newer for the frontend (tested with Node 24).
 
 ## Quick start using Docker:
-- Run everything with Docker Compose (DB + backend + frontend):
+- Run the backend and the frontend dev server with Docker Compose:
   - `docker compose up --build`
   - Open frontend: [http://localhost:3000](http://localhost:3000)
   - Backend health: [http://localhost:4040/ping](http://localhost:4040/ping)
+  - Lobbies are backed up to SQLite on the `sh-data` volume (`DATABASE_PATH=/data/backup.db`).
   - The containers run as root, so `frontend/node_modules`, `backend/build` and `backend/.gradle` in your checkout end up owned by root.
-- Alternative: only DB in Docker, run app locally:
-  - `docker compose up -d db`  (or use docker run …)
-  - `export DATABASE_URL=postgres://secret:secret@localhost:5432/secrethitler`
-  - In backend/: `./gradlew runLocal`
-  - In frontend/: `npm install && npm run dev`
-  - Open frontend: [http://localhost:3000](http://localhost:3000)
+
+## Persistence
+
+The server backs up all lobbies to a SQLite file every minute (when something changed) and on shutdown, and restores them on start. Set `DATABASE_PATH` to the file to use, for example `DATABASE_PATH=/tmp/sh-backup.db ./gradlew runLocal`. With it unset, the server logs one error and runs without persistence.
+
+## One port: the production layout
+
+The backend serves the built frontend itself, so the whole app runs on one port:
+
+```bash
+cd frontend && npm install && npm run build      # writes frontend/dist
+cd ../backend && ./gradlew jar                  # bundles frontend/dist into the jar as /public
+PORT=4040 java -jar build/libs/secret-hitler-online.jar
+```
+
+The Docker image does the same in three stages: `docker build -t secret-hitler-online .` at the repo root, then `docker run -p 8080:8080 -v sh-data:/data secret-hitler-online`. CI publishes it as `ghcr.io/jussaw/secret-hitler-online` on every push to `development`.
 
 Your setup will vary depending on if you're only making changes to the frontend, or if you're making changes to the frontend and the backend at once.
 
@@ -50,7 +61,7 @@ cd Secret-Hitler-Online/backend
 ./gradlew runLocal
 ```
 
-This will start the backend server at [`http://localhost:4040`](http://localhost:4040) by default. This will also set the server in debug-mode, so the CORS policy will not block access from the frontend.
+This will start the backend server at [`http://localhost:4040`](http://localhost:4040) by default. This also puts the server in debug mode, which allows cross-origin requests (only needed if a frontend on another origin calls it directly, such as with `VITE_SERVER_ADDRESS`).
 
 **Every time you make changes to Java files, you'll need to stop and restart the development server.**
 
@@ -67,7 +78,7 @@ npm install
 npm run dev
 ```
 
-Note: You may need to modify `.env.local` based on the address your dev server is mounted to. By default, `.env.local` is configured to use `localhost:4040`.
+The dev server proxies `/check-login`, `/new-lobby`, `/ping` and the `/game` WebSocket to the backend, so the page talks to its own origin, as it does in production. The proxy target is `BACKEND_URL` (default `http://localhost:4040`; compose sets `http://backend:4040`). `.env.development` only turns on debug logging.
 
 ### Frontend tests and build
 
