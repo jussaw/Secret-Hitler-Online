@@ -478,10 +478,10 @@ Files: `backend/src/main/java/server/SecretHitlerServer.java` (`onWebsocketConne
 
 Today the socket requires a `name` query parameter, and the server closes it without one (lines 475-480).
 
-- [ ] `/game?lobby=CODE&spectator=true` connects without a `name`; unknown lobby closes with the same error as a player join
-- [ ] `/check-login` accepts a spectator check so the client can validate the code first
-- [ ] Any command other than `ping` and `get-state` from a spectator connection is rejected and logged
-- [ ] Test: a spectator sending `register-vote` does not change the game's votes
+- [x] `/game?lobby=CODE&spectator=true` connects without a `name`; unknown lobby closes with the same error as a player join
+- [x] `/check-login` accepts a spectator check so the client can validate the code first
+- [x] Any command other than `ping` and `get-state` from a spectator connection is rejected and logged
+- [x] Test: a spectator sending `register-vote` does not change the game's votes
 
 ### Task 7.4: Client
 
@@ -496,7 +496,7 @@ Files: `frontend/src/App.tsx` (login form `renderLoginPage` 646, `tryOpenWebSock
 
 **Phase 7 acceptance**
 
-- [ ] Backend tests pass
+- [x] Backend tests pass
 - [ ] e2e: a spectator joins a running game, the WebSocket frames it receives contain no role or hand fields before game end, and layout tests still pass with a spectator viewport
 - [ ] A spectator joining mid-game and refreshing stays a spectator
 - [ ] PR merged into `development` and deployed
