@@ -24,8 +24,15 @@ keeps credit to upstream and to the board game's creators.
   `src/main.tsx`, with `index.html` at the `frontend/` root. `src/App.tsx` owns the WebSocket, all
   state, the overlays, and the login and lobby pages; prompts live in `src/custom-alert/`. The game
   page is `src/game/`: `GameScreen` (markup and the table grid), `TableSeats` and `seatPositions`
-  (seat geometry, unit tested). Playwright tests live in `frontend/e2e/`. The client talks
-  to its own origin (`src/constants/serverUrls.ts`; `wss:` on `https:` pages) unless
+  (seat geometry, unit tested). Phones and windows narrower than 5:4 get a stacked, scrolling
+  layout from `@media (max-width: 768px), (aspect-ratio < 5/4)` in `GameScreen.css` and
+  `TableSeats.css`; prompts are a fixed overlay whose box scrolls (`CustomAlert.css`). Playwright
+  tests live in `frontend/e2e/`, in three projects: `desktop` (`no-scroll.spec.ts` at the five
+  desktop sizes) and `phone-360`/`phone-412` (Galaxy S8 and Pixel 7 emulation, `phone.spec.ts`),
+  with `prompts.spec.ts` in all three; it opens every prompt from a scripted game socket
+  (`e2e/fakeGame.ts`). Shared helpers are `e2e/lobby.ts` and `e2e/layout.ts`. `App.css` hides
+  `overflow-x` on `html` and `body`, so horizontal overflow shows only in `body.scrollWidth`.
+  The client talks to its own origin (`src/constants/serverUrls.ts`; `wss:` on `https:` pages) unless
   `VITE_SERVER_ADDRESS` is set, and the dev server proxies the backend paths to `BACKEND_URL`
   (default `http://localhost:4040`). `VITE_*` variables live in `.env.development` (dev server only:
   `VITE_DEBUG`) and `.env.dev` (`--mode dev`), typed in `src/vite-env.d.ts`.
@@ -43,7 +50,7 @@ The Gradle 7.4.2 wrapper does not run on JDKs newer than 17. Java 17 comes from 
 | Run frontend dev server (`localhost:3000`, against the local backend) | `cd frontend && npm install && npm run dev` |
 | Backend tests | `cd backend && ./gradlew test` |
 | Frontend tests (single run) | `cd frontend && npm test -- --run` |
-| Browser tests (build the frontend and the jar, serve them on `localhost:4545`; Java 17 active) | `cd frontend && npx playwright install chromium && npm run e2e` |
+| Browser tests (build the frontend and the jar, serve them on `localhost:4545`; Java 17 active) | `cd frontend && npx playwright install chromium && npm run e2e` (one project: `-- --project=phone-360`) |
 | Backend build (tests + fat jar at `backend/build/libs/secret-hitler-online.jar`) | `cd backend && ./gradlew build` |
 | Frontend production build (type-check, then `frontend/dist/`) | `cd frontend && npm run build` |
 | Whole app on one port (after the frontend build) | `cd backend && ./gradlew jar && java -jar build/libs/secret-hitler-online.jar` |
@@ -63,7 +70,8 @@ Known baseline failures (do not "fix" them while doing unrelated work):
 ## Deploy
 
 CI (`.github/workflows/ci.yml`) runs the backend and frontend tests, the frontend build and the
-browser tests on every pull request into `development`. On every push to `development` it also
+browser tests on every pull request into `development`, and keeps the Playwright report and traces
+of a failed browser run as an artifact. On every push to `development` it also
 publishes `ghcr.io/jussaw/secret-hitler-online:latest` and `:sha-<short>` for `linux/arm64` and
 `linux/amd64`, once those checks pass.
 A home server runs that image and pulls new `:latest` images once a day. TLS ends at a proxy in
