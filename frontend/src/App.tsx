@@ -747,7 +747,6 @@ class App extends Component<{}, AppState> {
           playerToIcon={this.state.icons}
           players={this.state.usernames}
           user={this.state.name}
-          onClickTweet={() => {}}
         />
       ),
     });

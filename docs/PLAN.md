@@ -63,10 +63,10 @@ Files: `frontend/src/App.tsx` (import at line 2, `ReactGA.initialize` at 223, ab
 
 Files: `frontend/src/custom-alert/IconSelection.tsx` (two `TwitterShareButton` blocks), `frontend/src/custom-alert/IconSelection.css` (`#twitter-icon`), `frontend/src/assets/index.ts` and `twitter-icon.svg`, `frontend/src/index.d.ts`, `frontend/src/App.tsx:805`, `frontend/package.json`
 
-- [ ] Remove the share buttons, icon asset, CSS rule and module declaration
-- [ ] `npm uninstall react-twitter-embed @types/twitter-for-web`
-- [ ] `grep -rni "twitter" frontend/src frontend/package.json` returns nothing
-- [ ] Icon selection dialog still opens and selects a portrait
+- [x] Remove the share buttons, icon asset, CSS rule and module declaration
+- [x] `npm uninstall react-twitter-embed @types/twitter-for-web`
+- [x] `grep -rni "twitter" frontend/src frontend/package.json` returns nothing
+- [x] Icon selection dialog still opens and selects a portrait
 
 ### Task 1.4: Remove upstream deploy config
 
