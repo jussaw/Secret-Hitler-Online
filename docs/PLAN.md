@@ -283,9 +283,9 @@ Files: new `frontend/src/game/GameScreen.tsx`, `frontend/src/game/GameScreen.css
 
 Files: new `frontend/src/game/seatPositions.ts`, `frontend/src/game/seatPositions.test.ts`
 
-- [ ] Tests first: for counts 5 to 10, returns `count` positions; the local player's seat is bottom centre (`x` 50, largest `y`); seating order follows `playerOrder` clockwise; all coordinates within 0 to 100; no two seats closer than a minimum distance
-- [ ] Implement `seatPositions(count: number, selfIndex: number): { x: number; y: number }[]` as points on an ellipse in percent units
-- [ ] A spectator (no `selfIndex`) gets `selfIndex = 0`
+- [x] Tests first: for counts 5 to 10, returns `count` positions; the local player's seat is bottom centre (`x` 50, largest `y`); seating order follows `playerOrder` clockwise; all coordinates within 0 to 100; no two seats closer than a minimum distance
+- [x] Implement `seatPositions(count: number, selfIndex: number): { x: number; y: number }[]` as points on an ellipse in percent units
+- [x] A spectator (no `selfIndex`) gets `selfIndex = 0`
 
 ### Task 4.3: Table layout
 
