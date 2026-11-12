@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { labelShift, overflowX, overlaps, smallTargets } from "./layout";
-import { joinGuests, settle, startGame } from "./lobby";
+import { createLobby, joinGuests, settle, startGame, watchLobby } from "./lobby";
 
 // Runs in the phone projects; each sets its own viewport (360x740 or 412x915).
 
@@ -100,3 +100,35 @@ for (const players of [5, 10]) {
     }
   });
 }
+
+test("a spectator's lobby and game fit the phone", async ({ page, browser, baseURL }) => {
+  const { width } = page.viewportSize()!;
+  // The host plays in a desktop page of its own; this phone watches.
+  const host = await browser.newPage();
+  const code = await createLobby(host, "Host Player");
+  const guests = await joinGuests(baseURL!, code, 9);
+  try {
+    await watchLobby(page, code);
+    await expect(page.getByText("You are watching. The game starts when the VIP starts it.")).toBeVisible();
+    await expect(page.getByText("Players (10/10)")).toBeVisible();
+    await settle(page);
+    let overflow = await overflowX(page);
+    expect(overflow.scrollWidth, "lobby scrollWidth").toBeLessThanOrEqual(width);
+    expect(overflow.offscreen, "lobby past the edge").toEqual([]);
+    expect(await smallTargets(page, "body"), "small touch targets in the lobby").toEqual([]);
+
+    await host.getByRole("button", { name: "START GAME" }).click();
+    await expect(page.locator(".game-screen")).toBeVisible();
+    await settle(page);
+    const positions = await page.$$eval(".table-seat", (seats) => seats.map((s) => getComputedStyle(s).position));
+    expect(new Set(positions), "the seats form a grid").toEqual(new Set(["static"]));
+    overflow = await overflowX(page);
+    expect(overflow.scrollWidth, "game scrollWidth").toBeLessThanOrEqual(width);
+    expect(overflow.offscreen, "game past the edge").toEqual([]);
+    // The hidden END TERM is no touch target.
+    expect(await smallTargets(page, ".game-screen"), "small touch targets in the game").toEqual([]);
+  } finally {
+    guests.forEach((ws) => ws.close());
+    await host.close();
+  }
+});

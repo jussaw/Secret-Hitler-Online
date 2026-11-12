@@ -7,6 +7,7 @@ import "./GameScreen.css";
 import { centreBox } from "./seatPositions";
 import TableSeats from "./TableSeats";
 import SoundControl from "../sound/SoundControl";
+import SpectatorCount from "../spectator/SpectatorCount";
 
 export type GameScreenProps = {
   gameState: GameState;
@@ -44,6 +45,7 @@ export default function GameScreen(props: GameScreenProps) {
     <div className="game-screen">
       <header className="App-header">
         SECRET-HITLER.ONLINE
+        <SpectatorCount count={props.spectatorCount} />
         <SoundControl />
       </header>
 

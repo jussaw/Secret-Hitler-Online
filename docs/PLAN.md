@@ -490,14 +490,14 @@ Files: `frontend/src/App.tsx` (login form `renderLoginPage` 646, `tryOpenWebSock
 - [x] "Watch" button beside Join on the login form; needs only a lobby code
 - [x] Spectator flag stored in a cookie so refresh and reconnect keep spectating
 - [x] Spectators see the lobby page read-only before the game starts, then `GameScreen`; no prompts are queued for them; status text describes what the table is doing
-- [ ] Spectator count shown in the lobby and on the game screen when above zero
+- [x] Spectator count shown in the lobby and on the game screen when above zero
 - [x] Sounds play for spectators
 - [ ] `CLAUDE.md` updated: spectator handshake parameter and the server-side filtering rule
 
 **Phase 7 acceptance**
 
 - [x] Backend tests pass
-- [ ] e2e: a spectator joins a running game, the WebSocket frames it receives contain no role or hand fields before game end, and layout tests still pass with a spectator viewport
+- [x] e2e: a spectator joins a running game, the WebSocket frames it receives contain no role or hand fields before game end, and layout tests still pass with a spectator viewport
 - [x] A spectator joining mid-game and refreshing stays a spectator
 - [ ] PR merged into `development` and deployed
 

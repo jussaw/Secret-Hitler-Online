@@ -92,6 +92,7 @@ import {
 } from "./types";
 import { sounds, type SoundName } from "./sound/SoundManager";
 import SoundControl from "./sound/SoundControl";
+import SpectatorCount from "./spectator/SpectatorCount";
 import { lobbySounds, SOUND_CUES, soundEvents, type Cue } from "./sound/soundEvents";
 import { policyText, resultText, trackerText, waitingText } from "./spectator/spectatorStatus";
 
@@ -941,6 +942,7 @@ class App extends Component<{}, AppState> {
       <div className="App">
         <header className="App-header">
           SECRET-HITLER.ONLINE
+          <SpectatorCount count={this.state.spectatorCount} />
           <SoundControl />
         </header>
 

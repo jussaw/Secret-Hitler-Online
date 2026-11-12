@@ -83,3 +83,13 @@ test("a spectator sees every seat, none their own, and no END TERM", () => {
   // A hidden button has no accessible name, so find it by its text.
   expect(screen.getByText("END TERM")).toHaveStyle({ visibility: "hidden" });
 });
+
+test("the header shows how many spectators watch, once anyone does", () => {
+  renderScreen({ spectatorCount: 2 });
+  expect(screen.getByRole("status", { name: "2 spectators watching" })).toBeInTheDocument();
+});
+
+test("the header shows no count when nobody watches", () => {
+  renderScreen({ spectatorCount: 0 });
+  expect(screen.queryByRole("status", { name: /watching/ })).toBeNull();
+});

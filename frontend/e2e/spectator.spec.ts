@@ -1,8 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { LobbyState as S, type GameState } from "../src/types";
 import { isVictory, openTable, play } from "./driveGame";
-import { EVERY_ROLE, TEN, openFakeWatch, spectatorPacket } from "./fakeGame";
-import { watchLobby } from "./lobby";
+import { EVERY_ROLE, TEN, gamePacket, openFakeGame, openFakeWatch, spectatorPacket } from "./fakeGame";
+import { DESKTOP_SIZES, NARROW_WINDOWS, overlaps } from "./layout";
+import { settle, watchLobby } from "./lobby";
 import { findSecrets } from "./secrets";
 import { heard, recordSounds } from "./soundLog";
 
@@ -185,5 +186,71 @@ test("a spectator joins a running game and never receives a secret", async ({ pa
     }
   } finally {
     table.close();
+  }
+});
+
+/** The spectator count, the header, its title's text and the speaker button, as boxes. */
+function countFit(page: Page) {
+  return page.evaluate(() => {
+    const box = (el: Element | Range) => {
+      const r = el.getBoundingClientRect();
+      return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+    };
+    const header = document.querySelector("header")!;
+    const count = header.querySelector<HTMLElement>(".spectator-count")!;
+    const title = document.createRange();
+    title.selectNodeContents(
+      Array.from(header.childNodes).find((node) => node.nodeType === 3 && node.textContent!.trim())!
+    );
+    const height = header.getBoundingClientRect().height;
+    count.style.display = "none";
+    const heightWithout = header.getBoundingClientRect().height;
+    count.style.display = "";
+    return {
+      header: box(header),
+      count: box(count),
+      icon: box(count.querySelector("svg")!),
+      title: box(title),
+      speaker: box(header.querySelector(".sound-toggle")!),
+      height,
+      heightWithout,
+    };
+  });
+}
+
+test("the spectator count fits every header", async ({ page, isMobile }) => {
+  test.setTimeout(240_000);
+  const sizes = isMobile ? [page.viewportSize()!] : [...DESKTOP_SIZES, ...NARROW_WINDOWS];
+  const game = await openFakeGame(page);
+  await settle(page);
+  // The title's own font, not a wider fallback, is what the count must clear.
+  await page.evaluate(async () => {
+    await document.fonts.load(getComputedStyle(document.querySelector("header")!).font, "SECRET-HITLER.ONLINE");
+  });
+  const icon = Object.fromEntries(TEN.map((name, i) => [name, `p${i + 1}`]));
+  const check = async (where: string) => {
+    for (const size of sizes) {
+      if (!isMobile) await page.setViewportSize(size);
+      const at = `${where} at ${size.width}x${size.height}`;
+      const fit = await countFit(page);
+      expect(fit.count.left, `count inside the header, ${at}`).toBeGreaterThanOrEqual(fit.header.left);
+      expect(fit.count.right, `count inside the header, ${at}`).toBeLessThanOrEqual(fit.header.right);
+      expect(fit.icon.top, `eye inside the header, ${at}`).toBeGreaterThanOrEqual(fit.header.top - 0.5);
+      expect(fit.icon.bottom, `eye inside the header, ${at}`).toBeLessThanOrEqual(fit.header.bottom + 0.5);
+      expect(overlaps(fit.count, fit.title), `count clear of the title, ${at}`).toBe(false);
+      expect(overlaps(fit.count, fit.speaker), `count clear of the speaker, ${at}`).toBe(false);
+      expect(fit.height, `header height, ${at}`).toBeCloseTo(fit.heightWithout, 1);
+    }
+  };
+
+  for (const spectatorCount of [1, 12]) {
+    game.send({ type: "lobby", usernames: TEN, icon, spectatorCount });
+    await expect(page.locator("header .spectator-count")).toHaveText(String(spectatorCount));
+    await check(`lobby watched by ${spectatorCount}`);
+  }
+  for (const spectatorCount of [1, 12]) {
+    game.send({ ...gamePacket({ president: TEN[1] }), spectatorCount });
+    await expect(page.locator(".game-screen header .spectator-count")).toHaveText(String(spectatorCount));
+    await check(`game watched by ${spectatorCount}`);
   }
 });
