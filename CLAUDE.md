@@ -92,3 +92,8 @@ documents the file's name (`readme`, `development`, `claude`).
 - The WebSocket protocol stays backward compatible for players; spectator support only adds
   fields and a query parameter.
 - Deploys go through the host's deploy tooling, never `docker compose up` from a checkout.
+- This repo is public. Never write details of the personal infrastructure it runs on into files,
+  commit messages, PR or issue text, or code comments: machine and host names, the hardware, other
+  repositories (compose stacks, dotfiles), deploy and update tools, LAN addresses, ports, host
+  paths, domains and subdomains, or the proxy, tunnel and monitoring setup. Write "the home server"
+  or "the host" instead, and keep plans and acceptance notes generic (`https://<subdomain>/ping`).
