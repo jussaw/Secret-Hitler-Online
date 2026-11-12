@@ -321,12 +321,14 @@ Playwright is not installed yet: `@playwright/test` and a browser are new dev de
 - [x] Progress table: Phase 4 set to "done", Phase 5 set to "in progress"
 - [x] `git checkout development && git pull`, then `git checkout -b phase-5-phone`
 - [x] Re-read Phase 5 below against the code as it now stands; fix any file paths or line numbers that moved
-- [ ] Write the Phase 5 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 5 heading
+- [x] Write the Phase 5 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 5 heading
 - [ ] Begin Task 5.1
 
 ---
 
 ## Phase 5: Phone layout
+
+Breakdown: [`docs/superpowers/plans/2026-11-12-phase-5-phone.md`](superpowers/plans/2026-11-12-phase-5-phone.md)
 
 Outcome: playable on a phone in portrait, with vertical scrolling allowed.
 
