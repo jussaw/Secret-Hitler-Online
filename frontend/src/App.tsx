@@ -1115,6 +1115,9 @@ class App extends Component<{}, AppState> {
     /** Queues the status line: a player's text, or what the table waits for, named, for a spectator. */
     const queueStatus = (playerText: string) =>
       this.queueStatusMessage(spectator ? waitingText(newState) : playerText);
+    // A socket's first packet (joining, reloading or reconnecting mid-game) shows a spectator the
+    // table as it is: no held lines and no vote reveal for what has already happened.
+    const catchingUp = spectator && this.soundState === undefined;
     // Each sound is queued just before the animation it belongs to (SOUND_CUES).
     const soundNames = soundEvents(this.soundState, newState, name);
     this.soundState = newState;
@@ -1153,7 +1156,7 @@ class App extends Component<{}, AppState> {
         // We ignore all resets to 0, unless that reset was caused by the election tracker reaching 3.
         if (newPos !== 0 || advancedToThree) {
           // If the last phase was voting, we failed due to voting. Therefore, show votes.
-          if (oldState[PARAM_STATE] === STATE_CHANCELLOR_VOTING) {
+          if (oldState[PARAM_STATE] === STATE_CHANCELLOR_VOTING && !catchingUp) {
             //this.queueAlert(<RoleAlert onClick={this.hideAlertAndFinish} />);
             this.addAnimationToQueue(() => this.showVotes(newState, soundNames));
           }
@@ -1165,7 +1168,7 @@ class App extends Component<{}, AppState> {
           }
           this.queueSounds(soundNames, "tracker");
           if (spectator) {
-            this.queueStatusMessage(trackerText(newState), SPECTATOR_RESULT_MS);
+            if (!catchingUp) this.queueStatusMessage(trackerText(newState), SPECTATOR_RESULT_MS);
           } else {
             this.queueAlert(
               <ElectionTrackerAlert
@@ -1186,7 +1189,7 @@ class App extends Component<{}, AppState> {
         // Show an alert with the new policy
         this.queueSounds(soundNames, "policy");
         if (spectator) {
-          this.queueStatusMessage(policyText(newState), SPECTATOR_RESULT_MS);
+          if (!catchingUp) this.queueStatusMessage(policyText(newState), SPECTATOR_RESULT_MS);
         } else {
           this.queueAlert(
             <PolicyEnactedAlert
@@ -1272,7 +1275,9 @@ class App extends Component<{}, AppState> {
 
         case STATE_LEGISLATIVE_PRESIDENT:
           // The vote completed, so show the votes.
-          this.addAnimationToQueue(() => this.showVotes(newState, soundNames));
+          if (!catchingUp) {
+            this.addAnimationToQueue(() => this.showVotes(newState, soundNames));
+          }
           this.queueSounds(soundNames, "phase");
           this.queueEventUpdate("LEGISLATIVE SESSION");
 
@@ -1400,7 +1405,7 @@ class App extends Component<{}, AppState> {
         case STATE_POST_LEGISLATIVE:
           // Show results of any special elections, executions, or investigations.
           this.queueSounds(soundNames, "result");
-          const result = spectator ? resultText(newState) : "";
+          const result = spectator && !catchingUp ? resultText(newState) : "";
           if (result) {
             this.queueStatusMessage(result, SPECTATOR_RESULT_MS);
           }
@@ -1484,12 +1489,12 @@ class App extends Component<{}, AppState> {
           if (newState.state === STATE_LIBERAL_VICTORY_EXECUTION) {
             this.queueSounds(soundNames, "result");
             if (spectator) {
-              this.queueStatusMessage(resultText(newState), SPECTATOR_RESULT_MS);
+              if (!catchingUp) this.queueStatusMessage(resultText(newState), SPECTATOR_RESULT_MS);
             } else {
               this.showExecutionResults(name, newState);
             }
           }
-          if (newState.state === STATE_FASCIST_VICTORY_ELECTION) {
+          if (newState.state === STATE_FASCIST_VICTORY_ELECTION && !catchingUp) {
             this.addAnimationToQueue(() => this.showVotes(newState, soundNames));
           }
           // Policies will already be shown for policy-based victories.

@@ -35,6 +35,24 @@ async function recordAlerts(page: Page): Promise<string[]> {
   return opened;
 }
 
+/**
+ * Logs every text the status line shows, in order, skipping repeats, the empty line and the
+ * placeholder ("---") the game screen opens with.
+ */
+async function recordStatus(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const w = window as unknown as { __status: string[] };
+    w.__status = [];
+    new MutationObserver(() => {
+      const text = document.querySelector("#status-bar-text")?.textContent ?? "";
+      if (text && text !== "---" && text !== w.__status[w.__status.length - 1]) w.__status.push(text);
+    }).observe(document, { subtree: true, childList: true, characterData: true });
+  });
+}
+
+const statusLog = (page: Page): Promise<string[]> =>
+  page.evaluate(() => (window as unknown as { __status: string[] }).__status);
+
 test("a spectator gets the player's error for an unknown lobby", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "one browser is enough");
   await page.goto("/");
@@ -165,6 +183,46 @@ test("a spectator who leaves gets the name cookie back in the JOIN form", async 
   await expect(page.getByText("Disconnected from the lobby.")).toBeVisible();
   await expect(joinName, "after a disconnect").toHaveValue("Ann");
 });
+
+/**
+ * A socket's first packet describes the table as it is, so a spectator who joins or reloads
+ * mid-game is not shown again what has already happened: no policy, tracker or result line and
+ * no vote reveal, only what the table waits for.
+ */
+for (const { name, first, waiting } of [
+  {
+    name: "after an investigation",
+    first: spectatorPacket({
+      state: S.POST_LEGISLATIVE,
+      lastState: S.PP_INVESTIGATE,
+      president: TEN[1],
+      chancellor: TEN[2],
+      targetUser: TEN[5],
+      liberalPolicies: 2,
+      fascistPolicies: 1,
+      lastPolicy: "FASCIST",
+    }),
+    waiting: `Waiting for ${TEN[1]} to end their term.`,
+  },
+  {
+    name: "after a vote",
+    first: spectatorPacket({
+      state: S.LEGISLATIVE_PRESIDENT,
+      president: TEN[1],
+      chancellor: TEN[2],
+      userVotes: Object.fromEntries(TEN.map((player) => [player, true])),
+    }),
+    waiting: `Waiting for ${TEN[1]} to choose a policy to discard.`,
+  },
+]) {
+  test(`a spectator who joins ${name} sees only what the table waits for`, async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "one browser is enough");
+    await recordStatus(page);
+    await openFakeWatch(page, first);
+    await expect(page.locator("#status-bar-text")).toHaveText(waiting, { timeout: 30_000 });
+    expect(await statusLog(page)).toEqual([waiting]);
+  });
+}
 
 test("a spectator joins a running game and never receives a secret", async ({ page, baseURL }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "one browser is enough");
