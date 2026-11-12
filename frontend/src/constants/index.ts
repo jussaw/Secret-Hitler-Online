@@ -1,3 +1,5 @@
+import { serverUrls } from "./serverUrls";
+
 export const LIBERAL = "LIBERAL";
 export const FASCIST = "FASCIST";
 export const HITLER = "HITLER";
@@ -9,12 +11,10 @@ export enum PAGE {
 }
 
 export const DEBUG = import.meta.env.VITE_DEBUG !== undefined;
-export const SERVER_ADDRESS =
-  import.meta.env.VITE_SERVER_ADDRESS || "secret-hitler-online.fly.dev";
-export const SERVER_ADDRESS_HTTP =
-  import.meta.env.VITE_SERVER_ADDRESS_HTTP || "https://" + SERVER_ADDRESS;
-export const WEBSOCKET_HEADER =
-  import.meta.env.VITE_WEBSOCKET_HEADER || "wss://";
+const urls = serverUrls(window.location, import.meta.env);
+export const SERVER_ADDRESS = urls.address;
+export const SERVER_ADDRESS_HTTP = urls.http;
+export const WEBSOCKET_HEADER = urls.websocketHeader;
 
 export const CHECK_LOGIN = "/check-login";
 export const NEW_LOBBY = "/new-lobby";

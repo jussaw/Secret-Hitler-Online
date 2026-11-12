@@ -32,8 +32,8 @@ dependencies {
     implementation 'com.j2html:j2html:1.4.0'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.16.1'
 
-    // PostgresSQL driver
-    implementation 'org.postgresql:postgresql:42.7.1'
+    // SQLite driver for the lobby backup file (DATABASE_PATH)
+    implementation 'org.xerial:sqlite-jdbc:3.53.4.0'
     
     // Apache Commons Lang
     implementation 'org.apache.commons:commons-lang3:3.14.0'
@@ -76,3 +76,10 @@ task runLocal(type: JavaExec) {
 
 task stage(dependsOn: ['build', 'clean', 'jar'])
 build.mustRunAfter clean
+
+// Bundle the built frontend (frontend/dist, from `npm run build`) into the jar's public/.
+processResources {
+    from('../frontend/dist') {
+        into 'public'
+    }
+}

@@ -1,19 +1,4 @@
 services:
-  db:
-    image: postgres:15
-    container_name: sh-postgres
-    environment:
-      POSTGRES_USER: secret
-      POSTGRES_PASSWORD: secret
-      POSTGRES_DB: secrethitler
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U secret -d secrethitler"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
   backend:
     image: gradle:8.6.0-jdk17
     container_name: sh-backend
@@ -21,14 +6,12 @@ services:
     volumes:
       - ./backend:/app/backend
       - gradle-cache:/home/gradle/.gradle
+      - sh-data:/data
     environment:
       DEBUG_MODE: "true"
-      DATABASE_URL: postgres://secret:secret@db:5432/secrethitler
+      DATABASE_PATH: /data/backup.db
       PORT: "4040"
     command: ["bash", "-lc", "./gradlew runLocal"]
-    depends_on:
-      db:
-        condition: service_healthy
     ports:
       - "4040:4040"
 
@@ -38,6 +21,8 @@ services:
     working_dir: /app/frontend
     volumes:
       - ./frontend:/app/frontend
+    environment:
+      BACKEND_URL: http://backend:4040
     command: bash -lc "npm install && npm run dev -- --host"
     depends_on:
       - backend
@@ -46,3 +31,4 @@ services:
 
 volumes:
   gradle-cache: {}
+  sh-data: {}
