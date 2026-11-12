@@ -116,19 +116,30 @@ public final class GameDriver {
         }
     }
 
-    /** The first living player after the president who may be chancellor (not Hitler after 3 fascist policies). */
+    /**
+     * The first living player after the president who may be chancellor. After 3 fascist policies
+     * Hitler is passed over, unless nobody else may be chancellor (late in a small game): then the
+     * fascists win the election.
+     */
     private String nominee(String president) {
         List<Player> players = game.getPlayerList();
         int start = indexOfPlayer(president);
+        String hitler = null;
         for (int step = 1; step < players.size(); step++) {
             Player candidate = players.get((start + step) % players.size());
             String name = candidate.getUsername();
             boolean termLimited = name.equals(game.getLastChancellor())
                     || (name.equals(game.getLastPresident()) && game.getLivingPlayerCount() > 5);
             boolean hitlerWouldWin = candidate.isHitler() && game.getNumFascistPolicies() >= 3;
-            if (candidate.isAlive() && !termLimited && !hitlerWouldWin) {
-                return name;
+            if (candidate.isAlive() && !termLimited) {
+                if (!hitlerWouldWin) {
+                    return name;
+                }
+                hitler = name;
             }
+        }
+        if (hitler != null) {
+            return hitler;
         }
         throw new IllegalStateException("Nobody can be nominated.");
     }
