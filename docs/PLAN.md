@@ -426,8 +426,8 @@ Files: `frontend/src/App.tsx`: `onGameStateChanged` (line 968), the animation qu
 
 Files: new `frontend/src/sound/SoundControl.tsx` and `.css`; the headers at `frontend/src/App.tsx:632` (login), `App.tsx:823` (lobby) and `frontend/src/game/GameScreen.tsx:40` (game); `frontend/e2e/sounds.spec.ts`
 
-- [ ] Speaker button toggles mute; hovering or tapping shows a volume slider
-- [ ] Control fits in the header of every page in every layout (the round table at the five desktop sizes, the stacked phone layout at 360x740 and 412x915, the narrow windows in `NARROW_WINDOWS`) and does not break the no-scroll tests or the phone tests' 44px touch targets
+- [x] Speaker button toggles mute; hovering or tapping shows a volume slider
+- [x] Control fits in the header of every page in every layout (the round table at the five desktop sizes, the stacked phone layout at 360x740 and 412x915, the narrow windows in `NARROW_WINDOWS`) and does not break the no-scroll tests or the phone tests' 44px touch targets
 - [ ] `CLAUDE.md` updated: `frontend/src/sound/` modules and the CC0 credits rule
 
 **Phase 6 acceptance**

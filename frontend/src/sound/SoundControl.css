@@ -1,0 +1,121 @@
+@import '../variables.css';
+
+/*
+ * The speaker button and volume slider, at the right of every page's header (App.css makes the
+ * header position: relative). Positioned absolutely, so the title stays centred and the header
+ * keeps its height. It sits above the prompt overlay (#alert, z-index 75), so it can be used while
+ * a prompt is open, and below the snackbar (100).
+ *
+ * The control is a size container as tall as the header, so 100cqh is the header's height:
+ * - --target is the button's size: as much of the header as fits, up to 44px, and a full 44px
+ *   touch target on touch screens (phones, and tablets held upright, which get the narrow-window
+ *   layout), where the game header can be shorter than that. There the button is top-aligned and
+ *   hangs below the header.
+ * - The icon stays centred on the header whichever way the button fits.
+ */
+.sound-control {
+    --target: min(44px, 100cqh);
+    --icon: clamp(16px, 62cqh, 28px);
+    --top: max(0px, (100cqh - var(--target)) / 2);
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: max(8px, 1vw);
+    width: 44px;
+    container-type: size;
+    z-index: 80;
+}
+
+/* Undo App.css's button look: this is an icon in the header, not a game button. */
+.sound-control .sound-toggle,
+.sound-control .sound-toggle:hover,
+.sound-control .sound-toggle:focus,
+.sound-control .sound-toggle:active {
+    position: absolute;
+    top: var(--top);
+    right: 0;
+    width: var(--target);
+    height: var(--target);
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    box-shadow: none;
+    color: var(--headerTextColor);
+    cursor: pointer;
+}
+
+.sound-control .sound-toggle:focus-visible {
+    outline: 2px solid var(--headerTextColor);
+    outline-offset: -2px;
+}
+
+.sound-control .sound-icon {
+    position: absolute;
+    left: calc(50% - var(--icon) / 2);
+    top: calc(100cqh / 2 - var(--top) - var(--icon) / 2);
+    width: var(--icon);
+    height: var(--icon);
+    opacity: 0.9;
+    pointer-events: none;
+}
+
+.sound-control .sound-toggle:hover .sound-icon,
+.sound-control .sound-toggle:focus-visible .sound-icon {
+    opacity: 1;
+}
+
+/* The slider hangs from the header's bottom edge (over the lower part of a phone's taller button,
+   which needs no tapping while the slider is out). */
+.sound-volume {
+    position: absolute;
+    top: 100cqh;
+    right: 0;
+    display: flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 0 0 8px 8px;
+    background: var(--headerFill);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease-in-out;
+}
+
+.sound-control.open .sound-volume,
+.sound-control:has(:focus-visible) .sound-volume {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+@media (hover: hover) {
+    .sound-control:hover .sound-volume {
+        opacity: 1;
+        pointer-events: auto;
+    }
+}
+
+.sound-volume input {
+    width: 120px;
+    min-width: 0;
+    height: 28px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    accent-color: var(--headerTextColor);
+    cursor: pointer;
+}
+
+/* Touch screens: the same query as the stacked game layout (GameScreen.css, TableSeats.css). */
+@media (max-width: 768px), (aspect-ratio < 5/4) {
+    .sound-control {
+        --target: 44px;
+    }
+
+    .sound-volume input {
+        height: 44px;
+    }
+}

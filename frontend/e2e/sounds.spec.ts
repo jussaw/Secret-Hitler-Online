@@ -2,6 +2,8 @@ import { expect, test, type Page, type WebSocketRoute } from "@playwright/test";
 import type { SoundRecord } from "../src/sound/SoundManager";
 import { LobbyState, type PolicyType, type Role } from "../src/types";
 import { TEN, gamePacket, openFakeGame } from "./fakeGame";
+import { DESKTOP_SIZES, NARROW_WINDOWS, overflowX, overlaps, smallTargets } from "./layout";
+import { settle } from "./lobby";
 
 /** A play() call as the page recorded it, with what was on screen just after it. */
 type Heard = SoundRecord & { t: number; alert: string; eventBar: string; status: string };
@@ -235,4 +237,155 @@ test("each sound waits for its animation", async ({ page, browserName, isMobile 
   expect(executionTurn.alert, "yourTurn to execute").toContain("EXECUTION");
   expect(execution.alert, "execution").toContain("EXECUTION RESULTS");
   expect(defeat.alert, "defeat").toContain("Liberals successfully executed Hitler!");
+});
+
+/** The control's button, its icon and the header title's text, measured on the current page. */
+async function headerFit(page: Page) {
+  return page.evaluate(() => {
+    const box = (el: Element | Range) => {
+      const r = el.getBoundingClientRect();
+      return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+    };
+    const header = document.querySelector("header")!;
+    const control = header.querySelector<HTMLElement>(".sound-control")!;
+    const title = document.createRange();
+    title.selectNodeContents(
+      Array.from(header.childNodes).find((node) => node.nodeType === 3 && node.textContent!.trim())!
+    );
+    const height = header.getBoundingClientRect().height;
+    control.style.display = "none";
+    const heightWithout = header.getBoundingClientRect().height;
+    control.style.display = "";
+    return {
+      header: box(header),
+      button: box(control.querySelector("button")!),
+      icon: box(control.querySelector("svg")!),
+      title: box(title),
+      height,
+      heightWithout,
+    };
+  });
+}
+
+test("the control fits every header", async ({ page, isMobile }) => {
+  test.setTimeout(240_000);
+  const sizes = isMobile ? [page.viewportSize()!] : [...DESKTOP_SIZES, ...NARROW_WINDOWS];
+  const button = page.locator("header .sound-toggle");
+  const volume = page.locator("header .sound-volume");
+  const check = async (where: string) => {
+    for (const size of sizes) {
+      if (!isMobile) await page.setViewportSize(size);
+      const at = `${where} at ${size.width}x${size.height}`;
+      const fit = await headerFit(page);
+      expect(fit.button.left, `button inside the header, ${at}`).toBeGreaterThanOrEqual(fit.header.left);
+      expect(fit.button.right, `button inside the header, ${at}`).toBeLessThanOrEqual(fit.header.right);
+      expect(fit.icon.top, `icon inside the header, ${at}`).toBeGreaterThanOrEqual(fit.header.top - 0.5);
+      expect(fit.icon.bottom, `icon inside the header, ${at}`).toBeLessThanOrEqual(fit.header.bottom + 0.5);
+      expect(overlaps(fit.button, fit.title), `button clear of the title, ${at}`).toBe(false);
+      expect(fit.height, `header height, ${at}`).toBeCloseTo(fit.heightWithout, 1);
+      // Phones and narrow windows (tablets held upright) are touch screens, as in no-scroll.spec.
+      const touch = isMobile || size.width / size.height < 5 / 4;
+      if (touch) expect(await smallTargets(page, "header"), `small targets, ${at}`).toEqual([]);
+
+      // With the slider showing: on screen, and a large target on phones.
+      if (isMobile) await button.tap();
+      else await button.hover();
+      await expect.poll(() => volume.evaluate((el) => getComputedStyle(el).opacity), { message: at }).toBe("1");
+      expect((await overflowX(page)).offscreen, `past the edge with the slider, ${at}`).toEqual([]);
+      if (touch) {
+        expect(await smallTargets(page, ".sound-control"), `small targets in the control, ${at}`).toEqual([]);
+      }
+      if (isMobile) {
+        await page.mouse.click(5, (await page.viewportSize())!.height - 5);
+        await button.tap(); // undo the mute
+        await page.mouse.click(5, (await page.viewportSize())!.height - 5);
+      } else {
+        await page.mouse.move(5, 500);
+      }
+      await expect.poll(() => volume.evaluate((el) => getComputedStyle(el).opacity), { message: at }).toBe("0");
+    }
+  };
+
+  await page.goto("/");
+  await settle(page);
+  await check("login");
+  const game = await openFakeGame(page);
+  await settle(page);
+  await check("lobby");
+  game.send(gamePacket({ president: TEN[1] }));
+  await page.locator(".game-screen").waitFor();
+  await settle(page);
+  await check("game");
+});
+
+test("mute and volume survive a reload", async ({ page, browserName, isMobile }) => {
+  test.skip(browserName !== "chromium" || isMobile, "the desktop project covers the settings");
+  await recordSounds(page);
+  await page.goto("/");
+  const button = page.getByRole("button", { name: "Mute sounds" });
+  const slider = page.getByRole("slider", { name: "Volume" });
+  await slider.focus();
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("ArrowLeft");
+  await expect(slider).toHaveValue("60");
+  await button.click();
+  await expect(button).toHaveAttribute("aria-pressed", "true");
+
+  await page.reload();
+  await expect(button).toHaveAttribute("aria-pressed", "true");
+  await expect(slider).toHaveValue("60");
+  const game = await openFakeGame(page); // its click unlocks audio
+  game.send({ type: "lobby", usernames: TEN.slice(0, 9), icon });
+  game.send({ type: "lobby", usernames: TEN, icon });
+  const [joined] = await heard(page, 1);
+  expect(joined).toMatchObject({ name: "playerJoined", played: false, reason: "muted" });
+});
+
+test("hover and keyboard show the slider on desktop", async ({ page, browserName, isMobile }) => {
+  test.skip(browserName !== "chromium" || isMobile, "hover and Tab are desktop input");
+  await page.goto("/");
+  const button = page.getByRole("button", { name: "Mute sounds" });
+  const slider = page.getByRole("slider", { name: "Volume" });
+  const opacity = () => page.locator(".sound-volume").evaluate((el) => getComputedStyle(el).opacity);
+  expect(await opacity()).toBe("0");
+  await button.hover();
+  await expect.poll(opacity).toBe("1");
+  await page.mouse.move(5, 600);
+  await expect.poll(opacity).toBe("0");
+
+  await page.keyboard.press("Tab");
+  await expect(button).toBeFocused();
+  await expect.poll(opacity).toBe("1");
+  await page.keyboard.press("Tab");
+  await expect(slider).toBeFocused();
+  await expect.poll(opacity).toBe("1");
+  await page.keyboard.press("ArrowRight");
+  await expect(slider).toHaveValue("75");
+  await page.keyboard.press("Shift+Tab");
+  await expect(button).toBeFocused();
+  await page.keyboard.press("Space");
+  await expect(button).toHaveAttribute("aria-pressed", "true");
+});
+
+test("a tap shows the slider on phones", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "tapping is phone input");
+  await page.goto("/");
+  const button = page.getByRole("button", { name: "Mute sounds" });
+  const opacity = () => page.locator(".sound-volume").evaluate((el) => getComputedStyle(el).opacity);
+  expect(await opacity()).toBe("0");
+  await button.tap();
+  await expect(button).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(opacity).toBe("1");
+  await page.getByRole("heading", { name: "JOIN A GAME" }).tap();
+  await expect.poll(opacity).toBe("0");
+});
+
+test("the control stays usable over a prompt", async ({ page, browserName, isMobile }) => {
+  test.skip(browserName !== "chromium" || isMobile, "the desktop project covers the overlay");
+  const game = await openFakeGame(page);
+  game.send(gamePacket());
+  await page.locator("#alert-box.appear-custom-alert").getByRole("button", { name: "OKAY" }).waitFor();
+  const button = page.getByRole("button", { name: "Mute sounds" });
+  await button.click();
+  await expect(button).toHaveAttribute("aria-pressed", "true");
 });

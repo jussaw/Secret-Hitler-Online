@@ -6,6 +6,7 @@ import PlayerPolicyStatus from "../util/PlayerPolicyStatus";
 import "./GameScreen.css";
 import { centreBox } from "./seatPositions";
 import TableSeats from "./TableSeats";
+import SoundControl from "../sound/SoundControl";
 
 export type GameScreenProps = {
   gameState: GameState;
@@ -37,7 +38,10 @@ export default function GameScreen(props: GameScreenProps) {
 
   return (
     <div className="game-screen">
-      <header className="App-header">SECRET-HITLER.ONLINE</header>
+      <header className="App-header">
+        SECRET-HITLER.ONLINE
+        <SoundControl />
+      </header>
 
       <div className="game-table">
         <TableSeats

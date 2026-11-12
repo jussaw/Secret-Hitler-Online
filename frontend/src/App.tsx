@@ -89,6 +89,7 @@ import {
   WSCommandType,
 } from "./types";
 import { sounds, type SoundName } from "./sound/SoundManager";
+import SoundControl from "./sound/SoundControl";
 import { lobbySounds, SOUND_CUES, soundEvents, type Cue } from "./sound/soundEvents";
 
 const EVENT_BAR_FADE_OUT_DURATION = 500;
@@ -645,7 +646,10 @@ class App extends Component<{}, AppState> {
   renderLoginPage() {
     return (
       <div className="App">
-        <header className="App-header">SECRET-HITLER.ONLINE</header>
+        <header className="App-header">
+          SECRET-HITLER.ONLINE
+          <SoundControl />
+        </header>
         <br />
         <div style={{ textAlign: "center" }}>
           {/** TODO: Add reusable announcement component. 
@@ -836,7 +840,10 @@ class App extends Component<{}, AppState> {
       this.state.usernames[0] === this.state.name;
     return (
       <div className="App">
-        <header className="App-header">SECRET-HITLER.ONLINE</header>
+        <header className="App-header">
+          SECRET-HITLER.ONLINE
+          <SoundControl />
+        </header>
 
         <CustomAlert show={this.state.showAlert}>
           {this.state.alertContent}

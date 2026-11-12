@@ -12,6 +12,7 @@ div {
 }
 
 header { /*This is the bar that appears at the top of the game.*/
+    position: relative; /* for the sound control at its right (SoundControl.css) */
     background-color: #E05B2B; /*var(--headerFill);*/
     min-height: 6vh; /*This means 8% of the viewport height.*/
     display: flex;
