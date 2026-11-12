@@ -410,9 +410,9 @@ Files: new `frontend/src/sound/SoundManager.ts`, `frontend/src/sound/SoundManage
 
 Files: new `frontend/src/sound/soundEvents.ts`, `frontend/src/sound/soundEvents.test.ts`
 
-- [ ] Tests first, one per event, using pairs of `GameState` fixtures (types in `frontend/src/types/lobby_state.ts`, built with `frontend/src/game/testGameState.ts`): for example state changes to the vote-result state with a passing vote returns `["votePassed"]`; the election tracker moving returns `["trackerAdvance"]` (`electionTrackerAdvanced` alone stays true until the next nomination); the local player becomes the one who must act returns `["yourTurn"]`
-- [ ] Implement `soundEvents(prev: GameState | undefined, next: GameState, user: string): SoundName[]` as a pure function
-- [ ] Victory versus defeat is decided from the local player's party; spectators get `victory`
+- [x] Tests first, one per event, using pairs of `GameState` fixtures (types in `frontend/src/types/lobby_state.ts`, built with `frontend/src/game/testGameState.ts`): for example state changes to the vote-result state with a passing vote returns `["votePassed"]`; the election tracker moving returns `["trackerAdvance"]` (`electionTrackerAdvanced` alone stays true until the next nomination); the local player becomes the one who must act returns `["yourTurn"]`
+- [x] Implement `soundEvents(prev: GameState | undefined, next: GameState, user: string): SoundName[]` as a pure function
+- [x] Victory versus defeat is decided from the local player's party; a user who is not in `playerOrder` (Phase 7's spectators) hears the public sounds and `victory`, never `yourTurn`
 
 ### Task 6.4: Wire up
 
