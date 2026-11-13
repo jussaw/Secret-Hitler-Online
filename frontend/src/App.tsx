@@ -137,6 +137,8 @@ const COOKIE_NAME = "name";
 const COOKIE_LOBBY = "lobby";
 /** "true" while this browser watches COOKIE_LOBBY as a spectator, so a refresh goes back to it. */
 const COOKIE_SPECTATOR = "spectator";
+/** Under JOIN when the connection to the lobby is lost for good. */
+const DISCONNECTED_ERROR = "Disconnected from the lobby.";
 /** How long a spectator's status line shows what happened, in place of a player's alert. */
 const SPECTATOR_RESULT_MS = 3000;
 
@@ -494,39 +496,34 @@ class App extends Component<{}, AppState> {
       this.failedConnections += 1;
       // A socket that cannot even be built is a lost connection for good.
       if (!this.tryOpenWebSocket(this.state.name, this.state.lobby, this.state.spectator)) {
-        this.disconnectToLogin();
+        this.toLoginPage(DISCONNECTED_ERROR);
       }
     } else if (this.reconnectOnConnectionClosed) {
-      this.disconnectToLogin();
+      this.toLoginPage(DISCONNECTED_ERROR);
     } else {
       // User purposefully closed the connection.
       if (this.gameOver) {
         // Do not reopen if the game is over, since disconnecting is intentional.
       } else {
-        this.setState({
-          page: PAGE.LOGIN,
-          joinName: this.rejoinName(),
-          joinLobby: this.state.lobby,
-          joinError: "",
-          showAlert: false,
-          alertContent: <div />,
-        });
-        this.dropPlayInstead();
-        this.clearAnimationQueue();
+        this.toLoginPage("");
       }
     }
   }
 
-  /** Gives up on the lobby: the login page with the lobby filled in and the disconnected message. */
-  disconnectToLogin() {
-    if (DEBUG) {
-      console.log("Disconnecting from lobby.");
+  /**
+   * Leaves for the login page with the lobby code and the name to rejoin under filled in: stops the
+   * ping, closes the alert and any PLAY INSTEAD prompt, and empties the animation queue.
+   * @param error the message under JOIN ("" for none).
+   */
+  toLoginPage(error: string) {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
     }
     this.setState({
+      page: PAGE.LOGIN,
       joinName: this.rejoinName(),
       joinLobby: this.state.lobby,
-      joinError: "Disconnected from the lobby.",
-      page: PAGE.LOGIN,
+      joinError: error,
       showAlert: false,
       alertContent: <div />,
     });
@@ -766,17 +763,9 @@ class App extends Component<{}, AppState> {
    * If the spectator socket cannot be built, the person lands on the login page with the lobby code.
    */
   onClickWatchInstead() {
-    const lobby = this.state.lobby;
-    if (this.openWatch(lobby)) return;
+    if (this.openWatch(this.state.lobby)) return;
     this.closeSocket();
-    if (this.pingInterval) clearInterval(this.pingInterval);
-    this.setState({
-      page: PAGE.LOGIN,
-      joinName: this.rejoinName(),
-      joinLobby: lobby,
-      joinError: CONNECT_ERROR,
-    });
-    this.clearAnimationQueue();
+    this.toLoginPage(CONNECT_ERROR);
   }
 
   /** PLAY INSTEAD (a spectator in the lobby): opens the prompt for the name to play under. */
@@ -1587,18 +1576,19 @@ class App extends Component<{}, AppState> {
                     this.gameOver = false;
                     this.reconnectOnConnectionClosed = true;
                     this.failedConnections = 0;
-                    const lobby = this.state.lobby;
-                    const opened = this.tryOpenWebSocket(
-                      this.state.name,
-                      lobby,
-                      this.state.spectator
-                    );
-                    this.hideAlertAndFinish();
+                    if (
+                      this.tryOpenWebSocket(
+                        this.state.name,
+                        this.state.lobby,
+                        this.state.spectator
+                      )
+                    ) {
+                      this.hideAlertAndFinish();
+                      this.setState({ page: PAGE.LOBBY });
+                    } else {
+                      this.toLoginPage(CONNECT_ERROR);
+                    }
                     this.setState({
-                      page: opened ? PAGE.LOBBY : PAGE.LOGIN,
-                      joinName: opened ? "" : this.rejoinName(),
-                      joinLobby: opened ? "" : lobby,
-                      joinError: opened ? "" : CONNECT_ERROR,
                       gameState: DEFAULT_GAME_STATE,
                       liberalPolicies: 0,
                       fascistPolicies: 0,
