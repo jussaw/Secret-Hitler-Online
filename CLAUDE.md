@@ -42,7 +42,13 @@ keeps credit to upstream and to the board game's creators.
   refused (`Lobby.isLateForTerm`), so that race never closes their socket (`LobbyTermTimerTest`,
   `TermTimerServerTest`). `SecretHitlerGame` and `CpuPlayer` do not pin a `serialVersionUID`, so a
   new field or non-private method on either would stop older backups loading: game-side state that
-  is not part of the rules belongs in `Lobby`.
+  is not part of the rules belongs in `Lobby`. A player's `/game` query may carry `rejoinKey`, a
+  random key the page keeps for its lifetime (sent to no client and not backed up). A connection
+  that brings the key its name's live connection was opened with takes that connection's place,
+  keeping the seat and portrait, and the old one is closed with 4001 (`CLOSE_REPLACED`). So a page
+  whose network dropped gets back in at once, although the server sees a dead socket close only at
+  its 30 s idle timeout. Without the key (an older client), a live name is refused as before
+  (`RejoinServerTest`).
 - `frontend/`: React 18 and TypeScript 5, built with Vite and tested with Vitest. The entry is
   `src/main.tsx`, with `index.html` at the `frontend/` root. `src/App.tsx` owns the WebSocket, all
   state, the overlays and the login page; prompts live in `src/custom-alert/`. The game
@@ -176,7 +182,12 @@ keeps credit to upstream and to the board game's creators.
   `src/fonts.css`, so the browser tests need network access. The server closes a
   `/game` socket after 30 s with no traffic either way, so the client pings every 20 s
   (`PING_INTERVAL`); `connection.spec.ts` (`desktop`) holds a quiet lobby's socket open for 35 s.
-  Shared helpers are `e2e/lobby.ts` (`waitForPlayers`, `joinGuests`, with `pickLooks` false for
+  A socket that closes is reopened at once, then after each wait in `RECONNECT_DELAYS` (1, 2, 4, 8
+  and 15 s), and only then does the page give up with "Disconnected from the lobby.". A command sent
+  while a reconnect waits is held and sent once the new socket opens. Every close is logged with
+  its code and reason, and the logged URL leaves out the key. `reconnect.spec.ts` (`desktop`) drops
+  a player's network mid-game through Playwright's `routeWebSocket`: once with the server's end
+  left open, and once with no network for 2.5 s. Shared helpers are `e2e/lobby.ts` (`waitForPlayers`, `joinGuests`, with `pickLooks` false for
   guests who stay on the default portrait, `joinLobby`, `pickPortrait`, `longestLineLobby`,
   `lobbyStatusCard`), `e2e/layout.ts` (`wrappedLabels`, `smallFieldText`, `MIN_FIELD_TEXT`) and
   `e2e/soundLog.ts`. `App.css` hides `overflow-x` on `html` and `body`, so horizontal overflow
