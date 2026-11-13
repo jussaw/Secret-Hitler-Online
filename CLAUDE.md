@@ -111,9 +111,9 @@ The Gradle 7.4.2 wrapper does not run on JDKs newer than 17. Java 17 comes from 
 
 Known baseline failures (do not "fix" them while doing unrelated work):
 
-- The dev-build console shows pre-existing React warnings: #4 (missing `key` on login page gifs),
-  #8 (`Player.render` calls `setState`), and #5 (prompts set state from uncleared timers; on
-  React 18 only `ElectionTrackerAlert`'s constructor timer still warns, after a failed election).
+- The dev-build console shows pre-existing React warnings: #8 (`Player.render` calls `setState`)
+  and #5 (prompts set state from uncleared timers; on React 18 only `ElectionTrackerAlert`'s
+  constructor timer still warns, after a failed election).
 - #9: the lobby tags every player except the host as `[Host]`.
 - #10: rejoining within 3 s of a reload is refused as "in a game"; #13: a request right after the
   server starts can 404 because routes are registered after `start()`.
