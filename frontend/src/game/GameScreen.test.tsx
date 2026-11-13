@@ -73,6 +73,22 @@ test("the president ends the term with END TERM", () => {
   expect(props.onEndTerm).toHaveBeenCalledTimes(1);
 });
 
+test("the decks column holds END TERM, the counts box, the draw pile and the discard pile, in that order", () => {
+  renderScreen();
+  // Desktops lay the column out in this order; tall windows and phones place them by CSS.
+  const names = [
+    ["end term", ".end-term"],
+    ["counts", "#pps-container"],
+    ["draw", ".game-deck.draw"],
+    ["discard", ".game-deck.discard"],
+  ] as const;
+  const parts = Array.from(
+    document.querySelector(".game-decks")!.children,
+    (child) => names.find(([, selector]) => child.matches(selector))?.[0] ?? child.outerHTML
+  );
+  expect(parts).toEqual(["end term", "counts", "draw", "discard"]);
+});
+
 test("a spectator sees every player in the roster, none their own, and no END TERM", () => {
   const { container } = render(
     <GameScreen
