@@ -11,7 +11,7 @@ import {
   spectatorPacket,
 } from "./fakeGame";
 import { DESKTOP_SIZES, NARROW_WINDOWS, overlaps } from "./layout";
-import { settle, watchLobby } from "./lobby";
+import { settle, waitForPlayers, watchLobby } from "./lobby";
 import { findSecrets } from "./secrets";
 import { heard, recordSounds } from "./soundLog";
 
@@ -75,10 +75,16 @@ test("a spectator watches a scripted game without prompts", async ({ page }, tes
   const game = await openFakeWatch(page);
 
   // The lobby, read-only.
-  await expect(page.getByText("You are watching. The game starts when the VIP starts it.")).toBeVisible();
+  await expect(page.locator("#lobby-status-text")).toBeVisible();
+  await expect(page.locator("#lobby-status-text")).toHaveText(
+    `You are watching. Waiting for ${TEN[0]} to start the game.`
+  );
   await expect(page.getByRole("button", { name: "LEAVE LOBBY" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "CHANGE ICON" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "PLAY INSTEAD" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "PLAY INSTEAD" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "CHANGE LOOK" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "START GAME" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "WATCH INSTEAD" })).toHaveCount(0);
 
   const [, P, C] = TEN;
   const T = TEN[5];
@@ -178,7 +184,7 @@ test("a spectator who leaves gets the name cookie back in the JOIN form", async 
   await page.getByRole("button", { name: "WATCH" }).click();
   await expect.poll(() => game.urls.length).toBe(sockets + 1);
   game.send(WATCHED_LOBBY);
-  await expect(page.getByText(`Players (${TEN.length}/10)`)).toBeVisible();
+  await waitForPlayers(page, TEN.length);
   game.down(true);
   await expect(page.getByText("Disconnected from the lobby.")).toBeVisible();
   await expect(joinName, "after a disconnect").toHaveValue("Ann");
@@ -258,7 +264,7 @@ test("a held status line from a cleared queue does not cut the next one short", 
   await page.getByRole("button", { name: "WATCH" }).click();
   await expect.poll(() => game.urls.length).toBe(sockets + 1);
   game.send(WATCHED_LOBBY);
-  await expect(page.getByText(`Players (${TEN.length}/10)`)).toBeVisible();
+  await waitForPlayers(page, TEN.length);
 
   // The next policy holds its line 3 s, then the board moves (0.5 s) and the power's event bar
   // shows. The old line's hold ends 1 s in, and must not end this one.

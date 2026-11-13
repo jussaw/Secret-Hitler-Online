@@ -12,12 +12,14 @@ import {
   overlaps,
   pageHeight,
   rowShift,
+  smallFieldText,
   smallTargets,
   trackerReserved,
   withStatus,
+  wrappedLabels,
   type Box,
 } from "./layout";
-import { lobbyCode, settle, startGame, watchLobby } from "./lobby";
+import { lobbyCode, lobbyStatusCard, longestLineLobby, settle, startGame, watchLobby } from "./lobby";
 
 type Size = { width: number; height: number };
 
@@ -427,5 +429,94 @@ test("a spectator's view of 10 players fits every desktop size and narrow window
   } finally {
     sockets.forEach((ws) => ws.close());
     await host.close();
+  }
+});
+
+/** The lobby page's parts, in viewport px. */
+function measureLobby(page: Page) {
+  return page.evaluate(() => {
+    const box = (selector: string) => {
+      const r = document.querySelector(selector)!.getBoundingClientRect();
+      return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+    };
+    return {
+      players: box(".lobby-players"),
+      main: box(".lobby-main"),
+      codeCard: box(".lobby-code-card"),
+      rows: document.querySelectorAll(".lobby-players .roster-row").length,
+      // A name's own text box: a name cut short has more text than box.
+      names: Array.from(document.querySelectorAll(".lobby-players .roster-name-text"), (el) => ({
+        text: (el.textContent ?? "").trim(),
+        scrollWidth: el.scrollWidth,
+        clientWidth: el.clientWidth,
+      })),
+    };
+  });
+}
+
+/**
+ * Every lobby check at one window size. Windows 5:4 or wider put the roster in the column at the
+ * left; narrower ones put it across the top, and are touch screens.
+ */
+async function checkLobby(page: Page, size: Size, viewer: string) {
+  await page.setViewportSize(size);
+  const at = `${size.width}x${size.height} for the ${viewer}`;
+
+  expect(await pageHeight(page), `scrollHeight at ${at}`).toBeLessThanOrEqual(size.height);
+  const overflow = await overflowX(page);
+  expect(overflow.scrollWidth, `scrollWidth at ${at}`).toBeLessThanOrEqual(size.width);
+  expect(overflow.offscreen, `past the edge at ${at}`).toEqual([]);
+
+  const lobby = await measureLobby(page);
+  expect(lobby.rows, `roster rows at ${at}`).toBe(10);
+  // The status card keeps two lines' height, so the longest line does not grow it.
+  const status = await lobbyStatusCard(page);
+  expect(
+    Math.abs(status.height - status.minHeight),
+    `status card ${status.height}px against its min-height ${status.minHeight}px at ${at}`
+  ).toBeLessThanOrEqual(1);
+  expect(await wrappedLabels(page, ".lobby-screen"), `wrapped button labels at ${at}`).toEqual([]);
+  // Twelve-character names fit whole, as they do in the game.
+  for (const name of lobby.names) {
+    expect(name.scrollWidth, `"${name.text}" is cut off at ${at}`).toBeLessThanOrEqual(name.clientWidth + 1);
+  }
+  if (size.width * 4 >= size.height * 5) {
+    expect(Math.abs(lobby.players.left), `roster at the left edge at ${at}`).toBeLessThanOrEqual(0.5);
+    expect(lobby.players.right, `roster left of the main column at ${at}`).toBeLessThanOrEqual(lobby.main.left);
+  } else {
+    expect(lobby.players.bottom, `roster above the code card at ${at}`).toBeLessThanOrEqual(lobby.codeCard.top);
+    expect(await smallTargets(page, ".lobby-screen"), `small touch targets at ${at}`).toEqual([]);
+    expect(await smallFieldText(page, ".lobby-screen"), `small text in text fields at ${at}`).toEqual([]);
+  }
+}
+
+test("the lobby fits every desktop size and narrow window, for the host, a guest and a spectator", async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  test.setTimeout(240_000);
+  // Each viewer has a page (and cookies) of its own, with the project's browser settings.
+  const guest = await browser.newPage();
+  const spectator = await browser.newPage();
+  try {
+    const sockets = await longestLineLobby(baseURL!, { host: page, guest, spectator });
+    try {
+      for (const [viewer, viewerPage] of [
+        ["host", page],
+        ["guest", guest],
+        ["spectator", spectator],
+      ] as const) {
+        await settle(viewerPage);
+        for (const size of [...DESKTOP_SIZES, ...SQUARE_DESKTOPS, ...NARROW_WINDOWS]) {
+          await checkLobby(viewerPage, size, viewer);
+        }
+      }
+    } finally {
+      sockets.forEach((ws) => ws.close());
+    }
+  } finally {
+    await guest.close();
+    await spectator.close();
   }
 });

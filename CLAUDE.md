@@ -26,16 +26,21 @@ keeps credit to upstream and to the board game's creators.
   `GameToJSONConverter.convertForSpectator` sends no role, hand or peek until the game is over.
   Every command from a spectator except `ping` and `get-state` is logged and dropped, and every
   packet, lobby or game, carries `spectatorCount`. `Lobby` pins its `serialVersionUID`, so backups
-  written by earlier releases still load (`DatabaseBackupTest`).
+  written by earlier releases still load (`DatabaseBackupTest`). `Lobby.startNewGame` seats only
+  players with a live connection: a name still inside the 3 s grace window after a disconnect is
+  dropped from `activeUsernames` and `usernameToIcon` (its preferred portrait is kept), so no seat
+  is made for someone who cannot take it, and a start that fails leaves the lobby untouched
+  (`LobbyStartTest`).
 - `frontend/`: React 18 and TypeScript 5, built with Vite and tested with Vitest. The entry is
   `src/main.tsx`, with `index.html` at the `frontend/` root. `src/App.tsx` owns the WebSocket, all
-  state, the overlays, and the login and lobby pages; prompts live in `src/custom-alert/`. The game
+  state, the overlays and the login page; prompts live in `src/custom-alert/`. The game
   page is `src/game/`: `GameScreen` (markup and the three layouts), `PlayerRoster` (a row per player
   in `playerOrder`: portrait, name, office or role, and the vote or busy bubble), `RoundTracker`
   (the four steps of a round, the current one lit, over the status line `#status-bar-text`; its line
   always keeps two lines' height, and `--round-tracker-ems` is the whole card's height in its own
   ems, which the layouts reserve) and `roundStep` (a pure function from the game state and
   `lastState` to the step; `App` queues the step with each status line).
+  `RosterRow` (`src/game/`) draws one row and is shared by `PlayerRoster` and `LobbyRoster`.
   `usePlayerRows` (`src/player/`) is the per-player state the roster rows and the prompts' card
   tiles share. Desktops get the roster as a column at the left, the tracker over the boards, and
   END TERM, the decks and the counts box in a column beside them, on one screen (`.game-table` is a
@@ -59,6 +64,40 @@ keeps credit to upstream and to the board game's creators.
   block, which never reaches those windows. On desktop and in tall windows a twelve-character name
   fits whole, and only a name too wide for its row ends in an ellipsis, with the full name in the
   row's title on hover; the phones' compact rows end any name that does not fit in an ellipsis.
+  The lobby is `src/lobby/`, built like the game page and on the same three layouts: `LobbyScreen`
+  (markup and `LobbyScreen.css`: the header, the roster column, then a code card with the invite
+  link and COPY, a status card kept two lines tall, the buttons by viewer, and a footer with the
+  About and Report a bug links), `LobbyRoster` (a `RosterRow` per player, `Picking a look…` for a
+  player on the default portrait, HOST on the host's row), `lobbyStatus` (a pure function from the
+  usernames, portraits and viewer to the status line; it names who START GAME waits for and says
+  when bots fill the table), `joinError` (`joinErrorMessage`, `CONTACT_ERROR`, `CONNECT_ERROR`: the
+  `/check-login` messages JOIN and PLAY INSTEAD share), `normalizeName` (runs of whitespace made one
+  space, then trimmed: JOIN, CREATE LOBBY and PLAY INSTEAD send every name through it, and each
+  field takes at most `MAX_NAME_LENGTH` characters) and `copyText` (the Clipboard API, with a
+  select-and-copy fallback).
+  `GameScreen.css` lists the lobby's selectors beside the game's for the page, header and roster
+  column, so the roster cannot drift between the lobby and the game; `LobbyScreen.css` holds only
+  what the lobby has, with its own phone-only and tall-window blocks written out as in the game's
+  files. With ten players and the longest status it fits one screen at the same sizes the game
+  does. The buttons: the host gets START GAME (off until every player has picked a look), a player
+  gets CHANGE LOOK and WATCH INSTEAD, a spectator gets PLAY INSTEAD (off, with a note, when the
+  lobby is full), and everyone gets LEAVE LOBBY. The switch between playing and watching is offered
+  in the lobby only, and works by reconnecting: WATCH INSTEAD reopens the socket as a spectator and
+  sets the `spectator` cookie (the `name` cookie stays); PLAY INSTEAD opens `PlayInsteadPrompt`
+  (`src/custom-alert/`) for a name, checks it with `/check-login`, reopens the socket as a player
+  and saves the cookies as JOIN does, and the portrait picker opens unless the server restores the
+  name's remembered portrait. If the server closes that player socket before its first message
+  (the seat went between the check and the join), `seatPending` sends the person back to watching
+  with a snackbar. In `App`, `openSeat`, `openWatch` and `closeSocket` do this, and
+  `tryOpenWebSocket` builds the new socket before it closes the old one, keeping the lobby's players
+  on screen when it reopens to the same lobby. `alertShowCount`, `pickerShownAt` and
+  `playInsteadSession` keep a late reply from touching the wrong prompt: the picker updates only
+  while it is the alert on screen. `animationStep` names the running queue step, and every queue
+  timer (`finishStepAfter`, for the event bar, the board, the vote tally and a held status line,
+  and the fade in `hideAlertAndFinish`) finishes only the step it belongs to, so a timer left from
+  a cleared queue never cuts short the next one's step. A prompt's server-OK listener
+  (`addServerOKListener`) is tied to its step the same way: an OK goes to the first listener whose
+  step is still the current one, and `clearAnimationQueue` drops them all.
   Prompts are a fixed overlay whose box scrolls (`CustomAlert.css`). Sounds are in `src/sound/`:
   `SoundManager` (Web Audio; the `AudioContext` is created in the first trusted gesture, so `play()`
   before it is a silent no-op; volume and mute in `localStorage` under `sounds`; every `play()`
@@ -80,8 +119,16 @@ keeps credit to upstream and to the board game's creators.
   `sounds.spec.ts` and `spectator.spec.ts`), and `phone-360`/`phone-412` (Galaxy S8 and Pixel 7
   emulation, `phone.spec.ts`: the game fits without scrolling, in order, with 44px targets, for
   players and a spectator; at 320x568 it keeps the phone layout and only scrolls down, for both, and
-  `phone-360` also checks the login page and the lobby there; and a phone held sideways gets the
-  phone layout). `tracker.spec.ts` (`desktop`) checks the lit step against the status line.
+  `phone-360` also checks the login page and the lobby there; the lobby tests (the host's, a
+  guest's and a spectator's lobby fit without scrolling, with 44px targets and 16px field text,
+  the roster first, the busy bubble at 320px, and the PLAY INSTEAD prompt with 44px targets, 16px
+  field text and twelve characters at most); and a phone held sideways gets the phone layout).
+  `no-scroll.spec.ts` also has a lobby test, for the host, a guest and a spectator at
+  `DESKTOP_SIZES`, `SQUARE_DESKTOPS` and the `NARROW_WINDOWS`. `lobby-switch.spec.ts` (`desktop`
+  and `phone-360`) plays the seat switch in a real lobby: watching instead and playing instead, a
+  full lobby, a taken name, the host passing on, reloads, the grace window, and a game started
+  right after someone watches instead (both grace-window tests fail when their timing missed the
+  window). `tracker.spec.ts` (`desktop`) checks the lit step against the status line.
   `prompts.spec.ts` runs in `desktop` and both phone projects (`phone-360` also at 320x568); it
   opens every prompt from a scripted game socket (`e2e/fakeGame.ts`). `sounds.spec.ts` runs in every
   project: no sound and no `AudioContext` before the first trusted gesture, each sound in step with
@@ -95,13 +142,15 @@ keeps credit to upstream and to the board game's creators.
   `src/fonts.css`, so the browser tests need network access. The server closes a
   `/game` socket after 30 s with no traffic either way, so the client pings every 20 s
   (`PING_INTERVAL`); `connection.spec.ts` (`desktop`) holds a quiet lobby's socket open for 35 s.
-  Shared helpers are `e2e/lobby.ts`, `e2e/layout.ts` and `e2e/soundLog.ts`. `App.css` hides
-  `overflow-x` on `html` and `body`, so horizontal overflow shows only in `body.scrollWidth`, and
-  `body` scrolls vertically by itself (`pageHeight` measures both). The client talks to its own
-  origin (`src/constants/serverUrls.ts`; `wss:` on `https:` pages) unless `VITE_SERVER_ADDRESS` is
-  set, and the dev server proxies the backend paths to `BACKEND_URL` (default
-  `http://localhost:4040`). `VITE_*` variables live in `.env.development` (dev server only:
-  `VITE_DEBUG`) and `.env.dev` (`--mode dev`), typed in `src/vite-env.d.ts`.
+  Shared helpers are `e2e/lobby.ts` (`waitForPlayers`, `joinGuests`, with `pickLooks` false for
+  guests who stay on the default portrait, `joinLobby`, `pickPortrait`, `longestLineLobby`,
+  `lobbyStatusCard`), `e2e/layout.ts` (`wrappedLabels`, `smallFieldText`, `MIN_FIELD_TEXT`) and
+  `e2e/soundLog.ts`. `App.css` hides `overflow-x` on `html` and `body`, so horizontal overflow
+  shows only in `body.scrollWidth`, and `body` scrolls vertically by itself (`pageHeight` measures
+  both). The client talks to its own origin (`src/constants/serverUrls.ts`; `wss:` on `https:`
+  pages) unless `VITE_SERVER_ADDRESS` is set, and the dev server proxies the backend paths to
+  `BACKEND_URL` (default `http://localhost:4040`). `VITE_*` variables live in `.env.development`
+  (dev server only: `VITE_DEBUG`) and `.env.dev` (`--mode dev`), typed in `src/vite-env.d.ts`.
 - `docs/`: `PLAN.md` (phased plan and progress), `superpowers/specs/` (design),
   `superpowers/plans/` (per-phase step-by-step breakdowns), `images/` (the README's screenshots,
   taken from a scripted seven-player game at 1600x900 and at 412x915 on a phone).
@@ -145,6 +194,10 @@ so mount a volume at `/data`.
   `docs/images/` when the game screen looks different), `DEVELOPMENT.md`, this file, and anything
   else under `docs/` the phase left stale. Commit them on the phase's branch, so the PR merges
   with its docs.
+- Every finding a review raises during a phase (per-task reviews, the whole-branch review, PR
+  review), Minor ones included, is fixed on the phase's branch before its PR merges. Nothing is
+  deferred to a later phase or left as a note. A finding that needs no change gets a stated reason
+  in the review record instead.
 - In a fork `gh` defaults to `upstream`, so pass `--repo jussaw/Secret-Hitler-Online` on every `gh`
   command. Never push to `upstream` or open pull requests against it.
 

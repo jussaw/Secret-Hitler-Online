@@ -27,12 +27,15 @@ For more information, read the [official rulebook here](https://www.secrethitler
 - **A game screen that fits one screen.** The players are listed at the left, each with their office, any role you know and their vote. A round tracker over the boards lights the current step (nomination, election, legislative session, executive action) above the status line.
 - **Phones.** A phone held upright gets one column: the players in two compact columns, the tracker, the decks and the boards. A ten-player game fits without scrolling at common sizes such as 360x740 and 412x915. Phones down to 320px wide keep the same layout, though the page may scroll on them.
 - **Spectators.** Enter a lobby code and press **WATCH** to follow a game without a seat. Spectators see the table and the status lines, but no roles, hands or peeks until the game is over. The server filters those out, so they never reach a spectator's browser. Everyone sees how many people are watching.
+- **A lobby that fits one screen.** It looks like the game screen: the players are listed at the left (ten fit), with the lobby code and invite link, a COPY button and the buttons for your role beside them. The status line says what START GAME is waiting for, such as which players still have to pick a look, and says when CPU players will fill the table.
+- **Switching between playing and watching.** In the lobby, WATCH INSTEAD gives up your seat and follows the game as a spectator, and a spectator's PLAY INSTEAD asks for a name and a look and takes a seat (it is off while the lobby is full). No need to leave and rejoin.
 - **Sound effects** for joining, nominations, votes, policies, presidential powers and the end of the game. The speaker button in the header mutes them and sets the volume, and each browser remembers its own setting. Every clip is CC0, credited in [docs/SOUND-CREDITS.md](docs/SOUND-CREDITS.md).
 - **Lobbies survive a restart.** The server backs up its lobbies to a SQLite file and restores them when it starts.
 - **One image on one port.** The Java server also serves the web page. CI publishes a Docker image for `linux/amd64` and `linux/arm64`.
 - **A current toolchain:** Vite, React 18 and TypeScript 5, with Vitest unit tests and Playwright browser tests on desktop Chrome, Firefox and two emulated phones.
 - **Fixes** for bugs carried over from upstream:
   - The lobby tagged every guest as `[Host]`.
+  - A game started within 3 s of someone leaving or reloading seated a player who could never take the seat, and the game stalled at that seat's first turn. A game now seats only players who are connected.
   - A player who reloaded mid-game was locked out of their seat for 3 s.
   - A request sent right after the server started could get a 404.
   - The console showed React warnings.

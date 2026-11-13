@@ -23,7 +23,7 @@ export default defineConfig({
     {
       name: "phone-412",
       use: { ...devices["Pixel 7"], viewport: { width: 412, height: 915 } },
-      testIgnore: /no-scroll\.spec/,
+      testIgnore: /(no-scroll|lobby-switch)\.spec/,
     },
   ],
   webServer: {
