@@ -95,6 +95,7 @@ import { sounds, type SoundName } from "./sound/SoundManager";
 import SoundControl from "./sound/SoundControl";
 import SpectatorCount from "./spectator/SpectatorCount";
 import { CONTACT_ERROR, joinErrorMessage } from "./lobby/joinError";
+import PlayInsteadPrompt from "./custom-alert/PlayInsteadPrompt";
 import { lobbySounds, SOUND_CUES, soundEvents, type Cue } from "./sound/soundEvents";
 import {
   VICTORY_TEXT,
@@ -260,6 +261,10 @@ class App extends Component<{}, AppState> {
     this.onAnimationFinish = this.onAnimationFinish.bind(this);
     this.onGameStateChanged = this.onGameStateChanged.bind(this);
     this.hideAlertAndFinish = this.hideAlertAndFinish.bind(this);
+    this.onClickWatchInstead = this.onClickWatchInstead.bind(this);
+    this.onClickPlayInstead = this.onClickPlayInstead.bind(this);
+    this.playInstead = this.playInstead.bind(this);
+    this.closePlayInstead = this.closePlayInstead.bind(this);
     this.addAnimationToQueue = this.addAnimationToQueue.bind(this);
     this.clearAnimationQueue = this.clearAnimationQueue.bind(this);
     this.queueAlert = this.queueAlert.bind(this);
@@ -459,6 +464,9 @@ class App extends Component<{}, AppState> {
     return this.state.name || (Cookies.get(COOKIE_NAME) ?? "");
   }
 
+  /** True while the PLAY INSTEAD prompt is up; a game starting closes it. */
+  playInsteadOpen = false;
+
   async onWebSocketMessage(msg: MessageEvent) {
     this.failedConnections = 0;
     let message = JSON.parse(msg.data);
@@ -492,6 +500,8 @@ class App extends Component<{}, AppState> {
         break;
 
       case PACKET_GAME_STATE:
+        // A game starting under an open PLAY INSTEAD prompt: close it and keep watching.
+        this.closePlayInstead();
         if (message !== this.state.gameState) {
           this.onGameStateChanged(message);
         }
@@ -690,6 +700,73 @@ class App extends Component<{}, AppState> {
             "There was an error contacting the server. Please wait and try again.",
         });
       });
+  }
+
+  /**
+   * WATCH INSTEAD (a player in the lobby): reopens the connection as a spectator. The old socket's
+   * onclose is replaced in tryOpenWebSocket, so the login page is not shown. The name cookie stays.
+   */
+  onClickWatchInstead() {
+    const lobby = this.state.lobby;
+    if (!this.tryOpenWebSocket("", lobby, true)) {
+      this.setState({
+        page: PAGE.LOGIN,
+        joinName: this.rejoinName(),
+        joinLobby: lobby,
+        joinError: "There was an error connecting to the server. Please try again.",
+      });
+      return;
+    }
+    Cookies.set(COOKIE_LOBBY, lobby);
+    Cookies.set(COOKIE_SPECTATOR, "true");
+  }
+
+  /** PLAY INSTEAD (a spectator in the lobby): opens the prompt for the name to play under. */
+  onClickPlayInstead() {
+    if (this.playInsteadOpen) return;
+    this.playInsteadOpen = true;
+    this.queueAlert(
+      <PlayInsteadPrompt
+        initialName={Cookies.get(COOKIE_NAME) ?? ""}
+        onContinue={this.playInstead}
+        onCancel={this.closePlayInstead}
+      />,
+      false
+    );
+  }
+
+  /** Closes the PLAY INSTEAD prompt, if it is up. */
+  closePlayInstead() {
+    if (!this.playInsteadOpen) return;
+    this.playInsteadOpen = false;
+    this.hideAlertAndFinish();
+  }
+
+  /**
+   * Checks the name, then reopens the connection as a player.
+   * @return {Promise<string>} "" on success, otherwise the error for the prompt. Whoever fails stays watching.
+   */
+  async playInstead(name: string): Promise<string> {
+    const lobby = this.state.lobby;
+    let response: Response;
+    try {
+      response = await this.tryLogin(name, lobby);
+    } catch {
+      return CONTACT_ERROR;
+    }
+    if (!response.ok) {
+      return joinErrorMessage(response.status, name);
+    }
+    // The prompt closed meanwhile (a game started): keep watching.
+    if (!this.playInsteadOpen) return "";
+    if (!this.tryOpenWebSocket(name, lobby)) {
+      return "There was an error connecting to the server. Please try again.";
+    }
+    Cookies.set(COOKIE_NAME, name, { expires: 7 });
+    Cookies.set(COOKIE_LOBBY, lobby);
+    Cookies.remove(COOKIE_SPECTATOR);
+    this.closePlayInstead();
+    return "";
   }
 
   /**
