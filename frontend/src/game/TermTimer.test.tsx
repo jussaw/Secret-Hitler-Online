@@ -40,6 +40,32 @@ test("a running countdown counts down on its own from the server's time", () => 
   expect(seconds()).toBe("0");
 });
 
+// A page's clock has a fractional part, which the faked timers' clock lacks. These readings are
+// ones where a deadline would come out a hair over the server's time (see useRemaining).
+test.each([
+  { reading: 4595.786694409205, remainingMs: 7_000, shown: 7 },
+  { reading: 28853.158154830566, remainingMs: 10_000, shown: 10 },
+])(
+  "a $remainingMs ms countdown shows $shown from its first frame, with the page's clock at $reading",
+  ({ reading, remainingMs, shown }) => {
+    const timersNow = performance.now.bind(performance);
+    const arrival = timersNow();
+    const pageNow = vi
+      .spyOn(performance, "now")
+      .mockImplementation(() => reading + (timersNow() - arrival));
+    try {
+      show({ remainingMs, paused: false });
+      expect(seconds()).toBe(String(shown));
+      expect(screen.getByRole("timer")).toHaveAccessibleDescription(`${shown} seconds left`);
+      // Then it counts down as usual.
+      act(() => vi.advanceTimersByTime(1_500));
+      expect(seconds()).toBe(String(shown - 1));
+    } finally {
+      pageNow.mockRestore();
+    }
+  }
+);
+
 test("a paused countdown holds its time", () => {
   show({ remainingMs: 6_400, paused: true });
   expect(seconds()).toBe("7");
