@@ -9,7 +9,8 @@ a web adaptation of the Secret Hitler board game. Licence: CC BY-NC-SA 4.0 (`LIC
 keeps credit to upstream and to the board game's creators.
 
 - Remotes: `origin` is the fork (`jussaw/Secret-Hitler-Online`), `upstream` is the original.
-- Default working branch: `development`. `main` is stale and not worked on.
+- Default working branch: `main`. It was recreated from `development` on 2026-11-13 and replaced
+  it, so plans, specs and `docs/PLAN.md` entries written before then say `development`.
 
 ## Layout
 
@@ -177,8 +178,8 @@ The Gradle 7.4.2 wrapper does not run on JDKs newer than 17. Java 17 comes from 
 ## Deploy
 
 CI (`.github/workflows/ci.yml`) runs the backend and frontend tests, the frontend build and the
-browser tests on every pull request into `development`, and keeps the Playwright report and traces
-of a failed browser run as an artifact. On every push to `development` it also
+browser tests on every pull request into `main`, and keeps the Playwright report and traces
+of a failed browser run as an artifact. On every push to `main` it also
 publishes `ghcr.io/jussaw/secret-hitler-online:latest` and `:sha-<short>` for `linux/arm64` and
 `linux/amd64`, once those checks pass.
 A home server runs that image and pulls new `:latest` images once a day. TLS ends at a proxy in
@@ -187,8 +188,8 @@ so mount a volume at `/data`.
 
 ## Workflow
 
-- One branch per phase off an up-to-date `development` (`phase-1-housekeeping`, `phase-2-vite`, …),
-  merged into `development` by pull request on the fork once every box in the phase is ticked.
+- One branch per phase off an up-to-date `main` (`phase-1-housekeeping`, `phase-2-vite`, …),
+  merged into `main` by pull request on the fork once every box in the phase is ticked.
 - At the end of every phase, before its PR is merged, bring the docs up to date with what the
   phase changed. That means `README.md` (what the fork adds, hosting, and the screenshots in
   `docs/images/` when the game screen looks different), `DEVELOPMENT.md`, this file, and anything
@@ -198,7 +199,7 @@ so mount a volume at `/data`.
   review), Minor ones included, is fixed on the phase's branch before its PR merges. Nothing is
   deferred to a later phase or left as a note. A finding that needs no change gets a stated reason
   in the review record instead.
-- The phase's own PR ticks its "PR merged into `development`" box in `docs/PLAN.md`, in its last
+- The phase's own PR ticks its "PR merged into `main`" box in `docs/PLAN.md`, in its last
   commit before the merge, so no follow-up PR is opened just for that tick. Boxes the user owns,
   such as a real game on the deployed build, stay unticked for the user.
 - In a fork `gh` defaults to `upstream`, so pass `--repo jussaw/Secret-Hitler-Online` on every `gh`
