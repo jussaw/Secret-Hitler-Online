@@ -641,7 +641,7 @@ Issue #23: the lobby matches the game screen and fits one screen, says what STAR
 
 - [x] `backend/src/main/java/server/util/Lobby.java`: a game seats only players with a live connection, so nobody inside the 3 s grace window gets a seat they cannot take
 - [x] `frontend/src/game/RosterRow.tsx`: one roster row for the game and the lobby
-- [ ] `frontend/src/lobby/lobbyStatus.ts`: the status line names who START GAME is waiting for and says when bots fill the table
+- [x] `frontend/src/lobby/lobbyStatus.ts`: the status line names who START GAME is waiting for and says when bots fill the table
 - [ ] `frontend/src/lobby/joinError.ts` and `copyText.ts`: JOIN's error messages shared with PLAY INSTEAD; COPY uses the Clipboard API with today's fallback
 - [ ] `frontend/src/lobby/LobbyScreen.tsx`: the lobby page in the game's three layouts, with the game's header, roster rows and cards
 - [ ] `frontend/src/custom-alert/PlayInsteadPrompt.tsx`: the name prompt behind PLAY INSTEAD
