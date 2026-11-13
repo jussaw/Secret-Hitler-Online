@@ -61,7 +61,7 @@ export default function LobbyScreen(props: LobbyScreenProps) {
             <span>PLAYERS</span>
             <span className="lobby-player-count">{`${usernames.length} / ${MAX_PLAYERS}`}</span>
           </div>
-          <LobbyRoster usernames={usernames} icons={icons} user={user} />
+          <LobbyRoster usernames={usernames} icons={icons} user={spectator ? "" : user} />
         </div>
 
         <main className="lobby-main">

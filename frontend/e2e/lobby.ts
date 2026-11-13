@@ -14,16 +14,23 @@ export async function createLobby(page: Page, host: string): Promise<string> {
   return new URL(link).searchParams.get("lobby")!;
 }
 
+/** Waits for the lobby's heading to count `count` players. */
+export async function waitForPlayers(page: Page, count: number): Promise<void> {
+  await expect(page.locator(".lobby-player-count")).toHaveText(`${count} / 10`);
+}
+
 /**
  * Joins `count` extra players to a lobby over the game WebSocket, sending the same messages the
  * browser client sends. Guest i (from 1) is "Long Guest i", twelve characters like the longest
- * name the login form allows, and takes portrait p(i + 1); the host has p1.
+ * name the login form allows, and takes portrait p(i + 1); the host has p1. With `pickLooks`
+ * false the guests send no `select-icon` and stay on the default portrait, still picking.
  * The guests never act, but they ping until closed: callers close the sockets when they are done.
  */
 export async function joinGuests(
   baseURL: string,
   lobby: string,
-  count: number
+  count: number,
+  { pickLooks = true }: { pickLooks?: boolean } = {}
 ): Promise<WebSocket[]> {
   const guests: WebSocket[] = [];
   for (let i = 1; i <= count; i++) {
@@ -40,7 +47,9 @@ export async function joinGuests(
         once: true,
       });
     });
-    ws.send(JSON.stringify({ name, lobby, command: "select-icon", icon: `p${i + 1}` }));
+    if (pickLooks) {
+      ws.send(JSON.stringify({ name, lobby, command: "select-icon", icon: `p${i + 1}` }));
+    }
     const ping = setInterval(() => ws.send(JSON.stringify({ name, lobby, command: "ping" })), PING_MS);
     ws.addEventListener("close", () => clearInterval(ping), { once: true });
     guests.push(ws);
@@ -66,7 +75,7 @@ export async function startGame(
   const watchers: WebSocket[] = [];
   try {
     for (let i = 0; i < spectators; i++) watchers.push(await joinSpectator(baseURL, lobby));
-    await expect(page.getByText(`Players (${guests.length + 1}/10)`)).toBeVisible();
+    await waitForPlayers(page, guests.length + 1);
     await page.getByRole("button", { name: "START GAME" }).click();
     await expect(page.locator(".game-screen")).toBeVisible();
     if (spectators > 0) {

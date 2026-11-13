@@ -9,6 +9,7 @@ import {
   openFakeWatch,
   spectatorPacket,
 } from "./fakeGame";
+import { waitForPlayers } from "./lobby";
 
 test("the vote result keeps ELECTION lit, then the legislative session lights", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "one browser is enough");
@@ -157,7 +158,7 @@ test("RETURN TO LOBBY gives the next game a fresh line and no lit step", async (
   await returnButton.click();
   await expect.poll(() => game.urls.length).toBe(2);
   game.send(lobbyPacket());
-  await page.getByText("Players (10/10)").waitFor();
+  await waitForPlayers(page, 10);
   game.send(gamePacket({ president: TEN[1] }));
   await okay.waitFor();
   expect(await snapshot()).toEqual(opening);

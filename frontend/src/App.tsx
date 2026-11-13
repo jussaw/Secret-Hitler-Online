@@ -1,6 +1,5 @@
 import React, { Component } from "react";
 import "./App.css";
-import "./Lobby.css";
 import "./fonts.css";
 import MaxLengthTextField from "./util/MaxLengthTextField";
 import CustomAlert from "./custom-alert/CustomAlert";
@@ -79,7 +78,7 @@ import VictoryFascistHeader from "./assets/victory-fascist-header.png";
 import VictoryLiberalHeader from "./assets/victory-liberal-header.png";
 import IconSelection from "./custom-alert/IconSelection";
 import { defaultPortrait } from "./assets";
-import Player from "./player/Player";
+import LobbyScreen from "./lobby/LobbyScreen";
 import LoginPageContent from "./LoginPageContent";
 import Cookies from "js-cookie";
 import AnnouncementBox from "./util/AnnouncementBox";
@@ -264,7 +263,6 @@ class App extends Component<{}, AppState> {
     this.onWebSocketClose = this.onWebSocketClose.bind(this);
     this.tryOpenWebSocket = this.tryOpenWebSocket.bind(this);
     this.onClickLeaveLobby = this.onClickLeaveLobby.bind(this);
-    this.onClickCopy = this.onClickCopy.bind(this);
     this.onClickStartGame = this.onClickStartGame.bind(this);
     this.sendWSCommand = this.sendWSCommand.bind(this);
     this.showSnackBar = this.showSnackBar.bind(this);
@@ -952,25 +950,6 @@ class App extends Component<{}, AppState> {
   /////////////////// Lobby Page
   //<editor-fold desc="Lobby Page">
 
-  /**
-   * Renders the playerlist as a sequence of paragraph tags.
-   * Written as "{@literal <p>} - {@code username} {@literal </p>}".
-   */
-  renderPlayerList() {
-    return this.state.usernames.map((name: string, i: number) => {
-      return (
-        <Player
-          key={i}
-          name={i === 0 ? name + " [Host]" : name}
-          showRole={false}
-          icon={this.state.icons[name]}
-          isBusy={this.state.icons[name] === defaultPortrait}
-          highlight={name === this.state.name}
-        />
-      );
-    });
-  }
-
   onClickChangeIcon() {
     this.showChangeIconAlert();
   }
@@ -1003,19 +982,6 @@ class App extends Component<{}, AppState> {
   }
 
   /**
-   * Determines whether the 'Start Game' button in the lobby should be enabled.
-   */
-  shouldStartGameBeEnabled() {
-    // Verify that all players have icons
-    for (let i = 0; i < this.state.usernames.length; i++) {
-      if (this.state.icons[this.state.usernames[i]] === defaultPortrait) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  /**
    * Contacts the server and requests to start the game.
    */
   onClickStartGame() {
@@ -1028,17 +994,6 @@ class App extends Component<{}, AppState> {
     }
     this.websocket?.close();
     this.reconnectOnConnectionClosed = false;
-  }
-
-  onClickCopy() {
-    const text = document.getElementById("linkText");
-    if (text === null) {
-      return;
-    }
-    (text as HTMLTextAreaElement).select();
-    (text as HTMLTextAreaElement).setSelectionRange(0, 999999);
-    document.execCommand("copy");
-    this.showSnackBar("Copied!");
   }
 
   showSnackBar(message: string) {
@@ -1058,119 +1013,29 @@ class App extends Component<{}, AppState> {
   }
 
   renderLobbyPage() {
-    // The first player in the lobby is counted as the VIP.
-    let isVIP =
-      this.state.usernames.length > 0 &&
-      this.state.usernames[0] === this.state.name;
     return (
       <div className="App">
-        <header className="App-header">
-          SECRET-HITLER
-          <SpectatorCount count={this.state.spectatorCount} />
-          <SoundControl />
-        </header>
-
         <CustomAlert show={this.state.showAlert}>
           {this.state.alertContent}
         </CustomAlert>
 
-        <div
-          style={{ textAlign: "left", marginLeft: "20px", marginRight: "20px" }}
-        >
-          <div style={{ display: "flex", flexDirection: "row" }}>
-            <h2>LOBBY CODE: </h2>
-            <h2
-              style={{ marginLeft: "5px", color: "var(--textColorHighlight)" }}
-            >
-              {this.state.lobby}
-            </h2>
-          </div>
-
-          <p style={{ marginBottom: "2px" }}>
-            Copy and share this link to invite other players.
-          </p>
-          <div
-            style={{
-              textAlign: "left",
-              display: "flex",
-              flexDirection: "row",
-              alignItems: "center",
-            }}
-          >
-            <textarea
-              id="linkText"
-              readOnly={true}
-              value={window.location.origin + "/?lobby=" + this.state.lobby}
-            />
-            <button onClick={this.onClickCopy}>COPY</button>
-          </div>
-
-          <div id={"lobby-lower-container"}>
-            <div id={"lobby-player-area-container"}>
-              <div id={"lobby-player-text-choose-container"}>
-                <p id={"lobby-player-count-text"}>
-                  Players ({this.state.usernames.length}/10)
-                </p>
-                {!this.state.spectator && (
-                  <button
-                    id={"lobby-change-icon-button"}
-                    onClick={this.onClickChangeIcon}
-                  >
-                    CHANGE ICON
-                  </button>
-                )}
-              </div>
-              <div id={"lobby-player-container"}>{this.renderPlayerList()}</div>
-            </div>
-
-            <div id={"lobby-button-container"}>
-              {this.state.spectator ? (
-                <p id={"lobby-vip-text"}>
-                  You are watching. The game starts when the VIP starts it.
-                </p>
-              ) : (
-                <>
-                  {!isVIP && (
-                    <p id={"lobby-vip-text"}>Only the VIP can start the game.</p>
-                  )}
-                  <button
-                    onClick={this.onClickStartGame}
-                    disabled={!isVIP || !this.shouldStartGameBeEnabled()}
-                  >
-                    START GAME
-                  </button>
-                </>
-              )}
-              <button onClick={this.onClickLeaveLobby}>LEAVE LOBBY</button>
-            </div>
-            <div id={"lobby-text-container"}>
-              <p id={"lobby-about-text"}>
-                <a
-                  href={
-                    "https://github.com/ShrimpCryptid/Secret-Hitler-Online/blob/main/README.md"
-                  }
-                  target={"_blank"}
-                  rel="noopener noreferrer"
-                >
-                  About this project
-                </a>
-              </p>
-              <br />
-              <p id={"lobby-warning-text"}>
-                You can report bugs on the{" "}
-                <a
-                  href={
-                    "https://github.com/ShrimpCryptid/Secret-Hitler-Online/issues"
-                  }
-                  rel="noopener noreferrer"
-                  target={"_blank"}
-                >
-                  Issues page.
-                </a>
-              </p>
-            </div>
-          </div>
-        </div>
+        <LobbyScreen
+          lobby={this.state.lobby}
+          inviteLink={window.location.origin + "/?lobby=" + this.state.lobby}
+          usernames={this.state.usernames}
+          icons={this.state.icons}
+          user={this.state.name}
+          spectator={this.state.spectator}
+          spectatorCount={this.state.spectatorCount}
+          onStartGame={this.onClickStartGame}
+          onChangeLook={this.onClickChangeIcon}
+          onWatchInstead={this.onClickWatchInstead}
+          onPlayInstead={this.onClickPlayInstead}
+          onLeave={this.onClickLeaveLobby}
+          onCopied={(ok: boolean) =>
+            this.showSnackBar(ok ? "Copied!" : "Could not copy the link.")
+          }
+        />
         <div style={{ textAlign: "center" }}>
           <div id="snackbar">{this.state.snackbarMessage}</div>
         </div>

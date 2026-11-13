@@ -2,7 +2,7 @@ import { expect, test, type Page, type WebSocketRoute } from "@playwright/test";
 import { LobbyState, type PolicyType, type Role } from "../src/types";
 import { TEN, gamePacket, openFakeGame } from "./fakeGame";
 import { DESKTOP_SIZES, NARROW_WINDOWS, overflowX, overlaps, smallTargets } from "./layout";
-import { settle } from "./lobby";
+import { settle, waitForPlayers } from "./lobby";
 import { heard, recordSounds, soundLog } from "./soundLog";
 
 const audioContexts = (page: Page): Promise<number> =>
@@ -48,7 +48,7 @@ test("no sound plays and no AudioContext exists before the first gesture", async
   ws.send(JSON.stringify({ type: "lobby", usernames: TEN.slice(0, 9), icon }));
   ws.send(JSON.stringify({ type: "lobby", usernames: TEN, icon }));
   // The lobby rebuilds the portrait dialog after it renders, so let it render before the game.
-  await page.getByText(`Players (${TEN.length}/10)`).waitFor();
+  await waitForPlayers(page, TEN.length);
   ws.send(JSON.stringify(gamePacket()));
   const okay = page.locator("#alert-box.appear-custom-alert").getByRole("button", { name: "OKAY" });
   await okay.waitFor();
@@ -376,7 +376,7 @@ test("a disconnect during the vote reveal cancels its sound", async ({ page, bro
   const ws = await connected;
   const send = (packet: object) => ws.send(JSON.stringify(packet));
   send({ type: "lobby", usernames: TEN, icon });
-  await page.getByText(`Players (${TEN.length}/10)`).waitFor();
+  await waitForPlayers(page, TEN.length);
   send(gamePacket({ president: TEN[1] }));
   await page.locator("#alert-box.appear-custom-alert").getByRole("button", { name: "OKAY" }).click();
   send(gamePacket({ state: LobbyState.CHANCELLOR_VOTING, president: TEN[1], chancellor: TEN[2] }));

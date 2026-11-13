@@ -32,7 +32,7 @@ test("the login page's banner reads SECRET-HITLER", () => {
   expect(container.querySelector("header")).toHaveTextContent(/^SECRET-HITLER$/);
 });
 
-test("the lobby tags only the first player, the VIP, as [Host]", async () => {
+test("the lobby marks only the first player as HOST", async () => {
   const app = createRef<App>();
   const { container } = render(<App ref={app} />);
   const packet = {
@@ -43,6 +43,7 @@ test("the lobby tags only the first player, the VIP, as [Host]", async () => {
   await act(() =>
     app.current!.onWebSocketMessage(new MessageEvent("message", { data: JSON.stringify(packet) }))
   );
-  const names = [...container.querySelectorAll("#lobby-player-container #player-name")];
-  expect(names.map((name) => name.textContent)).toEqual(["A [Host]", "B", "C"]);
+  const rows = [...container.querySelectorAll(".lobby-players li.roster-row")];
+  expect(rows.map((row) => row.getAttribute("data-player"))).toEqual(["A", "B", "C"]);
+  expect(rows.map((row) => row.querySelector(".roster-detail")?.textContent)).toEqual(["HOST", "", ""]);
 });

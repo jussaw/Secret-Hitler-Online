@@ -11,7 +11,7 @@ import {
   withStatus,
   type Box,
 } from "./layout";
-import { createLobby, joinGuests, settle, startGame, watchLobby } from "./lobby";
+import { createLobby, joinGuests, settle, startGame, waitForPlayers, watchLobby } from "./lobby";
 
 // Runs in the phone projects; each sets its own viewport (360x740 or 412x915). phone-360 also
 // checks the login page, the lobby and the game at NARROW_PHONE (320x568).
@@ -55,7 +55,7 @@ for (const narrow of [false, true]) {
     const link = await page.locator("#linkText").inputValue();
     const guests = await joinGuests(baseURL!, new URL(link).searchParams.get("lobby")!, 9);
     try {
-      await expect(page.getByText("Players (10/10)")).toBeVisible();
+      await waitForPlayers(page, 10);
       await settle(page);
       overflow = await overflowX(page);
       expect(overflow.scrollWidth, "scrollWidth").toBeLessThanOrEqual(width);
@@ -256,8 +256,10 @@ test("a spectator's lobby and game fit the phone", async ({ page, browser, baseU
   const guests = await joinGuests(baseURL!, code, 9);
   try {
     await watchLobby(page, code);
-    await expect(page.getByText("You are watching. The game starts when the VIP starts it.")).toBeVisible();
-    await expect(page.getByText("Players (10/10)")).toBeVisible();
+    await expect(page.locator("#lobby-status-text")).toHaveText(
+      "You are watching. Waiting for Host Player to start the game."
+    );
+    await waitForPlayers(page, 10);
     await settle(page);
     const overflow = await overflowX(page);
     expect(overflow.scrollWidth, "lobby scrollWidth").toBeLessThanOrEqual(width);
@@ -282,7 +284,7 @@ test("a spectator's game keeps the phone layout at 320px", async ({ page, browse
   const guests = await joinGuests(baseURL!, code, 9);
   try {
     await watchLobby(page, code);
-    await expect(page.getByText("Players (10/10)")).toBeVisible();
+    await waitForPlayers(page, 10);
     await host.getByRole("button", { name: "START GAME" }).click();
     await expect(page.locator(".game-screen")).toBeVisible();
     await settle(page);

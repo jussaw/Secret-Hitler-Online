@@ -86,6 +86,11 @@ describe("LobbyScreen", () => {
     expect(document.querySelector(".is-user")).toBeNull();
   });
 
+  it("a spectator with a stale name sees no highlighted row", () => {
+    renderLobby({ user: HOST, spectator: true });
+    expect(document.querySelector(".is-user")).toBeNull();
+  });
+
   it("PLAY INSTEAD is off in a full lobby", () => {
     renderLobby({ user: "", spectator: true });
     expect(button("PLAY INSTEAD")).toBeDisabled();
