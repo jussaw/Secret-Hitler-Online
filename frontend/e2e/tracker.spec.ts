@@ -136,16 +136,23 @@ test("RETURN TO LOBBY gives the next game a fresh line and no lit step", async (
   const game = await openFakeGame(page);
   game.send(gamePacket({ president: TEN[1] }));
   await okay.waitFor();
-  const snapshot = async () => ({ text: await line.textContent(), lit: await current.count() });
+  const snapshot = () =>
+    page.evaluate(() => ({
+      text: document.querySelector("#status-bar-text")?.textContent ?? null,
+      lit: document.querySelectorAll(".round-step[aria-current='step']").length,
+    }));
   const opening = await snapshot();
   await okay.click();
   await expect(current).toHaveText(/NOMINATION/);
   game.send(gamePacket({ state: S.LEGISLATIVE_PRESIDENT, president: TEN[1], chancellor: TEN[2] }));
+  // The vote-result line holds ELECTION lit first.
   await expect(current).toHaveText(/LEGISLATIVE SESSION/, { timeout: 15000 });
   game.send(
     gamePacket({ state: S.FASCIST_VICTORY_POLICY, president: TEN[1], chancellor: TEN[2] }, EVERY_ROLE)
   );
-  await page.getByRole("button", { name: "RETURN TO LOBBY" }).click();
+  const returnButton = page.getByRole("button", { name: "RETURN TO LOBBY" });
+  await returnButton.waitFor({ timeout: 15000 });
+  await returnButton.click();
   await expect.poll(() => game.urls.length).toBe(2);
   game.send(lobbyPacket());
   await page.getByText("Players (10/10)").waitFor();
