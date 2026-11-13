@@ -43,8 +43,8 @@ keeps credit to upstream and to the board game's creators.
   `RosterRow` (`src/game/`) draws one row and is shared by `PlayerRoster` and `LobbyRoster`.
   `usePlayerRows` (`src/player/`) is the per-player state the roster rows and the prompts' card
   tiles share. Desktops get the roster as a column at the left, the tracker over the boards, and
-  END TERM, the decks and the counts box in a column beside them, on one screen (`.game-table` is a
-  size container, and the boards' width comes from its container units). Phones, windows narrower
+  END TERM, the counts box, the draw pile and the discard pile in a column beside them, on one
+  screen (`.game-table` is a size container, and the boards' width comes from its container units). Phones, windows narrower
   than 5:4 and windows under 500px tall get one column from the phone-only query in
   `GameScreen.css` and `PlayerRoster.css`, which is the stacked query
   `(max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px)` less tall windows (written out in
@@ -58,7 +58,8 @@ keeps credit to upstream and to the board game's creators.
   `RoundTracker.css` (the smaller step line) keep the stacked query itself, so tall windows get
   those too, on purpose. Among the stacked windows, those at least 700px wide and narrower than 5:4
   (half-screen desktop windows, upright monitors, tablets held upright) fit one screen instead, with
-  the roster across the top in two columns (three in near-square windows), from a later block,
+  the roster across the top in two columns (three in near-square windows) and the counts box
+  between the draw and discard piles (`order` moves it there), from a later block,
   `(min-width: 700px) and (aspect-ratio < 5/4)`, in `GameScreen.css` alone (`PlayerRoster.css` has
   no tall block). That block holds only what differs from desktop, and no longer undoes the phone
   block, which never reaches those windows. On desktop and in tall windows a twelve-character name
@@ -113,7 +114,9 @@ keeps credit to upstream and to the board game's creators.
   watching. Playwright tests live in `frontend/e2e/`, in four projects: `desktop`
   (`no-scroll.spec.ts`: at `DESKTOP_SIZES` and in the `NARROW_WINDOWS` no scroll, every board at
   least its `BOARD_FLOOR`, the tracker exactly its reserved height and the boards unmoved by the
-  longest status; wide twelve-character names fit there and at `SQUARE_DESKTOPS`; every media query
+  longest status; wide twelve-character names fit there and at `SQUARE_DESKTOPS`; at all three
+  the decks column keeps its order, the counts box above the draw pile on desktops and between
+  the piles in the narrow windows, clear of every pile's cards; every media query
   parses and the phone-only query exists, found by what it matches), `firefox` (the same no-scroll
   tests, since Firefox rounds the layout differently, and the header-fit tests of
   `sounds.spec.ts` and `spectator.spec.ts`), and `phone-360`/`phone-412` (Galaxy S8 and Pixel 7
