@@ -145,13 +145,17 @@ export function smallTargets(page: Page, scope: string): Promise<string[]> {
 }
 
 /**
- * Text fields inside `scope` whose text is smaller than MIN_FIELD_TEXT, as `input#id 13px`. Throws
- * when `scope` holds no text field, so a check that finds none small has measured something.
+ * Text fields inside `scope` (textareas and the inputs that take typed text, not a range slider or
+ * a checkbox) whose text is smaller than MIN_FIELD_TEXT, as `input#id 13px`. Throws when `scope`
+ * holds no text field, so a check that finds none small has measured something.
  */
 export function smallFieldText(page: Page, scope: string): Promise<string[]> {
   return page.evaluate(
     ({ scope, min }) => {
-      const fields = Array.from(document.querySelectorAll(`${scope} input`));
+      const typed = ["text", "search", "url", "tel", "email", "password", "number"];
+      const fields = Array.from(
+        document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(`${scope} input, ${scope} textarea`)
+      ).filter((el) => el instanceof HTMLTextAreaElement || typed.includes(el.type));
       if (fields.length === 0) throw new Error(`no text field in ${scope}`);
       return fields.flatMap((el) => {
         const size = parseFloat(getComputedStyle(el).fontSize);
@@ -165,10 +169,13 @@ export function smallFieldText(page: Page, scope: string): Promise<string[]> {
 /**
  * Button labels inside `scope` that wrap onto more than one line, as `"text" n lines`. Each text
  * node is measured by itself, one rect per line, so a button's icon is never counted as a line.
+ * Throws when `scope` shows no button label, so a check that finds none wrapped has measured
+ * something.
  */
 export function wrappedLabels(page: Page, scope: string): Promise<string[]> {
   return page.evaluate((scope) => {
     const wrapped: string[] = [];
+    let labels = 0;
     for (const button of Array.from(document.querySelectorAll(`${scope} button`))) {
       const r = button.getBoundingClientRect();
       if (r.width === 0 || r.height === 0 || getComputedStyle(button).visibility !== "visible") continue;
@@ -176,12 +183,14 @@ export function wrappedLabels(page: Page, scope: string): Promise<string[]> {
       for (let node = walker.nextNode(); node; node = walker.nextNode()) {
         const text = (node.nodeValue ?? "").trim();
         if (!text) continue;
+        labels++;
         const range = document.createRange();
         range.selectNodeContents(node);
         const lines = range.getClientRects().length;
         if (lines > 1) wrapped.push(`"${text}" ${lines} lines`);
       }
     }
+    if (labels === 0) throw new Error(`no button label in ${scope}`);
     return wrapped;
   }, scope);
 }
