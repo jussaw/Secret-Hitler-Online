@@ -122,7 +122,8 @@ switch costs more than the risk it covers.
   - The boards' column holds the tracker (row 1), centred horizontally on the boards, and the two
     boards stacked below it (row 2).
   - The decks column sits beside the boards and is vertically centred on them. From top to bottom:
-    END TERM, the draw pile, the counts box (`PlayerPolicyStatus`) and the discard pile.
+    END TERM, the counts box (`PlayerPolicyStatus`), the draw pile and the discard pile. (This
+    design had the counts box between the piles; issue #24 moved it above them on desktop.)
   - Board width is `min(available width minus the decks column and its gap, (available height
     minus the tracker's reserved height and gaps) x 1.2946)`, where 1.2946 is two stacked 1683x650
     boards.
@@ -133,7 +134,8 @@ monitors and tablets). Everything fits on one screen:
 - The roster runs across the top in two columns. Turn order reads across each line, then down.
 - The tracker sits directly under the roster. Content is aligned to the top, so spare height
   collects at the bottom of the page, never between the roster and the tracker.
-- The boards and the decks column sit below the tracker, arranged as on desktop.
+- The boards and the decks column sit below the tracker, arranged as on desktop, except that the
+  counts box stays between the draw and discard piles.
 - Text and portrait sizes follow the window's width, not its height, so nothing outgrows the
   width.
 

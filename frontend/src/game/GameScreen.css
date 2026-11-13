@@ -97,10 +97,11 @@
    move the boards.
 
    The decks column is sized from the deck's width w: 1.35w wide and 4.77w + 9px tall (END TERM
-   0.31w + 4px with 5px for its shadow, each pile 1.808w with room for its cards, the counts box
-   0.844w). The deck takes the largest width (up to 150px) at which the column, counted as
-   4.8w + 10px, fits the row and is no taller than the boards beside it, which are
-   (100cqw - gap - 1.35w - 20px) x 0.7724 + 16px tall. */
+   0.31w + 4px with 5px for its shadow, the counts box 0.844w, each pile 1.808w with room for its
+   cards; tall windows put the counts box between the piles, in the same height). The deck takes
+   the largest width (up to 150px) at which the column, counted as 4.8w + 10px, fits the row and
+   is no taller than the boards beside it, which are (100cqw - gap - 1.35w - 20px) x 0.7724 + 16px
+   tall. */
 .game-table {
     --row-gap: 12px;
     --column-gap: 24px;
@@ -156,7 +157,7 @@
     width: var(--board-width);
 }
 
-/* END TERM over the draw pile, then the counts box and the discard pile. */
+/* END TERM over the counts box, then the draw pile and the discard pile, in the markup's order. */
 .game-decks {
     grid-column: 3;
     grid-row: 2;
@@ -176,7 +177,8 @@
 }
 
 /* A full pile's cards stand up to 0.34w above the deck (17 cards, from 9% of its 1.468w height
-   up by 2% each), so each pile keeps that much room above it. */
+   up by 2% each), so each pile keeps that much room above it, clear of the counts box or the pile
+   above. */
 .game-deck {
     padding-top: calc(var(--deck-width) * 0.34);
 }
@@ -301,7 +303,8 @@
     }
 
     /* END TERM centred over the counts box, the draw pile at its left and the discard pile at its
-       right. A full pile's cards stand above its deck, in the empty cells beside END TERM. */
+       right, each placed by its area whatever the markup's order. A full pile's cards stand above
+       its deck, in the empty cells beside END TERM. */
     .game-decks {
         order: 1;
         display: grid;
@@ -364,8 +367,9 @@
 }
 
 /* Tall windows (half-screen windows, upright monitors and tablets, near-square windows): the
-   roster runs across the top, text sized by the window's width, and spare height collects at the
-   bottom of the page. Only what differs from the desktop rules is stated here. */
+   roster runs across the top, text sized by the window's width, spare height collects at the
+   bottom of the page, and the decks column keeps the counts box between the piles. Only what
+   differs from the desktop rules is stated here. */
 @media (min-width: 700px) and (aspect-ratio < 5/4) {
     .game-body,
     .lobby-body {
@@ -427,6 +431,14 @@
     .game-decks .end-term {
         min-width: 44px;
         min-height: 44px;
+    }
+
+    /* The decks column keeps the counts box between the piles: END TERM and the draw pile keep
+       the default order 0, and the counts box and the discard pile follow them in their markup
+       order. The margins are the desktop's, so the column is as tall. */
+    .game-decks #pps-container,
+    .game-decks .game-deck.discard {
+        order: 1;
     }
 }
 

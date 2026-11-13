@@ -78,14 +78,15 @@ export default function GameScreen(props: GameScreenProps) {
             >
               END TERM
             </button>
-            <div className="game-deck draw">
-              <Deck cardCount={props.drawDeckSize} deckType={"DRAW"} />
-            </div>
+            {/* Desktops keep this order; tall windows and phones rearrange it in GameScreen.css. */}
             <PlayerPolicyStatus
               numFascistPolicies={props.fascistPolicies}
               numLiberalPolicies={props.liberalPolicies}
               playerCount={gameState.playerOrder.length}
             />
+            <div className="game-deck draw">
+              <Deck cardCount={props.drawDeckSize} deckType={"DRAW"} />
+            </div>
             <div className="game-deck discard">
               <Deck cardCount={props.discardDeckSize} deckType={"DISCARD"} />
             </div>

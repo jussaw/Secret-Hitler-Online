@@ -65,6 +65,8 @@ async function measureTable(page: Page) {
       endTerm: box(endTerm),
       endTermVisibility: getComputedStyle(endTerm).visibility,
       draw: one(".game-deck.draw #deck-container"),
+      discard: one(".game-deck.discard #deck-container"),
+      countsBox: one(".game-decks #pps-container"),
       // The counts box, and each of its lines.
       counts: [
         fit(document.querySelector("#pps-container")!),
@@ -92,6 +94,27 @@ const moved = (a: Box, b: Box) =>
   );
 
 const centreX = (b: Box) => (b.left + b.right) / 2;
+
+/**
+ * The decks column, top to bottom: on desktops END TERM, the counts box, the draw pile and the
+ * discard pile; tall windows keep the counts box between the piles. No pile's cards reach the
+ * counts box.
+ */
+function checkDecksOrder(table: Awaited<ReturnType<typeof measureTable>>, desktop: boolean, at: string) {
+  const { endTerm, countsBox, draw, discard } = table;
+  if (desktop) {
+    expect(endTerm.bottom, `END TERM above the counts box at ${at}`).toBeLessThanOrEqual(countsBox.top + 1);
+    expect(countsBox.bottom, `the counts box above the draw pile at ${at}`).toBeLessThanOrEqual(draw.top + 1);
+    expect(draw.bottom, `the draw pile above the discard pile at ${at}`).toBeLessThanOrEqual(discard.top + 1);
+  } else {
+    expect(endTerm.bottom, `END TERM above the draw pile at ${at}`).toBeLessThanOrEqual(draw.top + 1);
+    expect(draw.bottom, `the draw pile above the counts box at ${at}`).toBeLessThanOrEqual(countsBox.top + 1);
+    expect(countsBox.bottom, `the counts box above the discard pile at ${at}`).toBeLessThanOrEqual(discard.top + 1);
+  }
+  for (const card of table.deckCards) {
+    expect(overlaps(card, countsBox), `a deck card over the counts box at ${at}`).toBe(false);
+  }
+}
 
 /**
  * Every layout check at one window size. Desktop sizes put the roster at the left of the boards;
@@ -149,7 +172,7 @@ async function checkLayout(
   // The decks.
   expect(overlaps(table.decks, table.boards), `decks over the boards at ${at}`).toBe(false);
   expect(overlaps(table.decks, table.tracker), `decks over the tracker at ${at}`).toBe(false);
-  expect(table.endTerm.bottom, `END TERM above the draw pile at ${at}`).toBeLessThanOrEqual(table.draw.top + 1);
+  checkDecksOrder(table, desktop, at);
   expect(Math.abs(centreX(table.endTerm) - centreX(table.draw)), `END TERM centred on the draw pile at ${at}`).toBeLessThanOrEqual(1);
   for (const card of table.deckCards) {
     expect(overlaps(card, table.boards), `a deck card over the boards at ${at}`).toBe(false);
@@ -300,6 +323,7 @@ test("every name fits beside its role icon, on 16:9 and squarer desktops and in 
       for (const line of table.counts) {
         expect(line.scrollWidth, `"${line.text}" fits the counts box at ${at}`).toBeLessThanOrEqual(line.clientWidth + 1);
       }
+      checkDecksOrder(table, desktop, at);
       if (desktop) {
         expect(table.roster.right, `roster left of the boards at ${at}`).toBeLessThanOrEqual(table.boards.left);
       } else {
