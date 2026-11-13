@@ -143,11 +143,11 @@
   color: var(--playerDisabledTextColor);
 }
 
-/* Compact rows, on phones (the same query as GameScreen.css's phone block, which sets the rows'
-   height): one line of portrait, name, the office as PRES or CHAN, and the vote or busy bubble at
-   the right. The detail line is hidden, so a long name ends in an ellipsis; a visible role keeps
-   its icon after the name. */
-@media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
+/* Compact rows, on phones only (the same query as GameScreen.css's phone block, which sets the
+   rows' height; tall windows keep the full rows above): one line of portrait, name, the office as
+   PRES or CHAN, and the vote or busy bubble at the right. The detail line is hidden, so a long
+   name ends in an ellipsis; a visible role keeps its icon after the name. */
+@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
   .roster-row {
     gap: 0.4em;
     padding: 3px 0.4em 3px 3px;
@@ -177,31 +177,5 @@
 
   .roster-status {
     margin-left: auto;
-  }
-}
-
-/* Tall windows keep the full rows (GameScreen.css's tall-window block, which comes after the phone
-   block and undoes it). */
-@media (min-width: 700px) and (aspect-ratio < 5/4) {
-  .roster-row {
-    gap: 0.6em;
-    padding: 4px 0.6em 4px 4px;
-    border-radius: 10px;
-  }
-
-  .roster-text {
-    flex: 1 1 auto;
-  }
-
-  .roster-detail {
-    display: block;
-  }
-
-  .roster-tag {
-    display: none;
-  }
-
-  .roster-status {
-    margin-left: 0;
   }
 }

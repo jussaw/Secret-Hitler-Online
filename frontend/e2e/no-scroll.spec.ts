@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { makeGameState } from "../src/game/testGameState";
 import { LobbyState, type Role } from "../src/types";
-import { openFakeGame } from "./fakeGame";
+import { gamePacket, openFakeGame } from "./fakeGame";
 import {
   BOARD_FLOOR,
   DESKTOP_SIZES,
@@ -363,6 +363,47 @@ test("windows narrower than 5:4 put the roster above the tracker; 5:4 keeps it a
   } finally {
     guests.forEach((ws) => ws.close());
   }
+});
+
+test("every media query in the page's styles parses, the phone-only query among them", async ({ page }) => {
+  const game = await openFakeGame(page);
+  game.send(gamePacket());
+  await page.locator(".game-screen").waitFor();
+  const queries = await page.evaluate(() => {
+    const found: string[] = [];
+    const collect = (rules: CSSRuleList) => {
+      for (const rule of Array.from(rules)) {
+        if (rule instanceof CSSMediaRule) found.push(rule.media.mediaText);
+        // Grouping rules (@media, @supports, @layer) hold more rules.
+        const inner = (rule as CSSGroupingRule).cssRules;
+        if (inner) collect(inner);
+      }
+    };
+    for (const sheet of Array.from(document.styleSheets)) {
+      try {
+        collect(sheet.cssRules);
+      } catch {
+        // A cross-origin sheet (a font stylesheet) can't be read.
+      }
+    }
+    return Array.from(new Set(found));
+  });
+  expect(queries.length).toBeGreaterThan(0);
+  // A browser serializes a query it can't parse as "not all".
+  expect(queries.filter((text) => text === "not all")).toEqual([]);
+
+  // The phone-only query is the one that matches phones, in either orientation, and not a tall
+  // window. The stacked query also matches the tall window, and App.css's (max-width: 768px) misses
+  // the phone held sideways.
+  const matches = async (size: Size) => {
+    await page.setViewportSize(size);
+    return page.evaluate((texts) => texts.map((text) => matchMedia(text).matches), queries);
+  };
+  const portrait = await matches({ width: 360, height: 740 });
+  const sideways = await matches({ width: 915, height: 412 });
+  const tall = await matches({ width: 960, height: 1080 });
+  const phoneOnly = queries.filter((_, i) => portrait[i] && sideways[i] && !tall[i]);
+  expect(phoneOnly.length, "a query that matches phones but not tall windows").toBeGreaterThan(0);
 });
 
 test("a spectator's view of 10 players fits every desktop size and narrow window", async ({

@@ -39,16 +39,21 @@ keeps credit to upstream and to the board game's creators.
   tiles share. Desktops get the roster as a column at the left, the tracker over the boards, and
   END TERM, the decks and the counts box in a column beside them, on one screen (`.game-table` is a
   size container, and the boards' width comes from its container units). Phones, windows narrower
-  than 5:4 and windows under 500px tall get one column from
-  `@media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px)` in `GameScreen.css` and
-  `PlayerRoster.css`: compact rows about 26px tall in two columns (`PRES` or `CHAN` after the name),
-  the tracker, a decks row with END TERM over the counts box, and the boards at full width. With ten
+  than 5:4 and windows under 500px tall get one column from the phone-only query in
+  `GameScreen.css` and `PlayerRoster.css`, which is the stacked query
+  `(max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px)` less tall windows (written out in
+  those files): compact rows about 26px tall in two columns (`PRES` or `CHAN` after the name), the
+  tracker, a decks row with END TERM over the counts box, and the boards at full width. With ten
   players and the longest status it fits 360x740 and 412x915 without scrolling; a phone held
-  sideways scrolls. `SoundControl.css` gives the header controls 44px targets under the same query.
-  Among those, windows at least 700px wide (half-screen desktop windows, upright monitors, tablets
-  held upright) fit one screen instead, with the roster across the top in two columns (three in
-  near-square windows), from a later block, `(min-width: 700px) and (aspect-ratio < 5/4)`, in the
-  same two files, which undoes the phone block. On desktop and in tall windows a twelve-character
+  sideways scrolls. Phones down to 320px wide are supported (at 320x568 the page may scroll);
+  narrower ones are not. `SoundControl.css` (44px header targets) and `RoundTracker.css` (the
+  smaller step line) keep the stacked query itself, so tall windows get those too, on purpose.
+  Among the stacked windows, those at least 700px wide (half-screen desktop windows, upright
+  monitors, tablets held upright) fit one screen instead, with the roster across the top in two
+  columns (three in near-square windows), from a later block,
+  `(min-width: 700px) and (aspect-ratio < 5/4)`, in the same two files. That block holds only
+  what differs from desktop, and no longer undoes the phone block, which never reaches those
+  windows. On desktop and in tall windows a twelve-character
   name fits whole, and only a name too wide for its row ends in an ellipsis, with the full name in
   the row's title on hover; the phones' compact rows end any name that does not fit in an ellipsis.
   Prompts are a fixed overlay whose box scrolls (`CustomAlert.css`). Sounds are in `src/sound/`:

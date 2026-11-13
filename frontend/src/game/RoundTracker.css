@@ -60,9 +60,11 @@
 }
 
 /* Phones are narrow: smaller steps with tighter pills and gaps keep the line on one line, with room
-   to spare on Linux, whose hinting renders the labels up to a sixth wider than macOS does. The sum
-   above reads this size too. Each arrow sits half the gap, plus half its own width (about 0.2em),
-   left of its step, so it stays centred in the gap. */
+   to spare on Linux, whose hinting renders the labels up to a sixth wider than macOS does. Tall
+   windows share this smaller line on purpose, so the stacked query stays here (the phone-only one
+   in GameScreen.css would leave them out). The sum above reads this size too. Each arrow sits half
+   the gap (0.35em) plus half its own width (0.16-0.18em) left of its step, so it stays centred in
+   the gap. */
 @media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
   :root {
     --round-steps-size: 0.8;
@@ -77,7 +79,7 @@
   }
 
   .round-step + .round-step::before {
-    left: -0.55em;
+    left: -0.52em;
   }
 }
 
