@@ -502,24 +502,23 @@ public class SecretHitlerServer {
      *           {@code name}: a String username. Cannot already exist in the given
      *           lobby, unless the connection brings the {@code rejoinKey} that
      *           name's live connection was opened with.
-     * @effects Closes the websocket session if:
+     * @effects Closes the websocket session with 1002 ({@code StatusCode.PROTOCOL})
+     *          and a reason if:
      *          <p>
-     *          - 400 if the {@code lobby} or {@code name} parameters are missing.
+     *          - the {@code lobby} or {@code name} parameters are missing.
      *          <p>
-     *          - 404 if there is no lobby with the given code
+     *          - there is no lobby with the given code.
      *          <p>
-     *          - 403 the username is invalid (there is already another user
-     *          with that name in the lobby, and this connection does not bring
-     *          its {@code rejoinKey}).
-     *          <p>
-     *          - 488 if the lobby is currently in a game and the user is not
-     *          a rejoining player.
-     *          <p>
-     *          - 489 if the lobby is full and the user is not taking back their
-     *          own seat ({@code Lobby.canRejoin}).
+     *          - the lobby refuses the connection ({@code Lobby.joinRefusal}): there
+     *          is already another user with that name in the lobby, and this
+     *          connection does not bring its {@code rejoinKey}; the lobby is full,
+     *          and the user is not taking back their own seat; or the lobby is in a
+     *          game, and the user is not a rejoining player.
      *          <p>
      *          Otherwise, connects the user to the lobby. A connection that takes
      *          its name's place closes the old one with {@code CLOSE_REPLACED}.
+     *          Connections that arrive at once are checked and added one at a time,
+     *          under the lobby's lock.
      */
     static void onWebsocketConnect(WsConnectContext ctx) {
         if ("true".equals(ctx.queryParam(PARAM_SPECTATOR))) {
@@ -554,35 +553,43 @@ public class SecretHitlerServer {
         if (rejoinKey != null && rejoinKey.isBlank()) {
             rejoinKey = null; // an empty key is no key
         }
-        // The page whose connection holds this name, reconnecting: its old connection is dead, though
-        // the server may not see that for up to the idle timeout (a phone that changed networks).
-        boolean reclaiming = lobby.hasLiveConnectionWithKey(name, rejoinKey);
-        // A player taking back their own seat is refused neither for a full lobby nor for a game.
-        boolean rejoining = reclaiming || lobby.canRejoin(name);
-        if (lobby.hasUserWithName(name) && !reclaiming) { // duplicate names not allowed
-            logger.debug("FAILED (Repeat username)");
-            ctx.session.close(StatusCode.PROTOCOL, "A user with the name " + name + " is already in the lobby.");
-            return;
-        } else if (lobby.isFull() && !rejoining) {
-            logger.debug("FAILED (Lobby is full)");
-            ctx.session.close(StatusCode.PROTOCOL, "The lobby " + code + " is currently full.");
-            return;
-        } else if (lobby.isInGame() && !rejoining) {
-            logger.debug("FAILED (Lobby in game)");
-            ctx.session.close(StatusCode.PROTOCOL, "The lobby " + code + " is currently in a game..");
+        // The check and the add are one step under the lobby's lock. Of two connections arriving at
+        // once for one name or for the last seat, the second is then refused as it would be had it
+        // come later, where between the check and the add it would fail the add's own check (#43).
+        Lobby.JoinRefusal refusal;
+        WsContext replaced = null;
+        synchronized (lobby) {
+            refusal = lobby.joinRefusal(name, rejoinKey);
+            if (refusal == null) {
+                replaced = lobby.addUser(ctx, name, rejoinKey);
+                userToLobby.put(ctx, lobby); // keep track of which lobby this connection is in.
+                if (replaced != null) {
+                    // Forget the old connection first, so its close (whenever it comes) changes nothing.
+                    userToLobby.remove(replaced);
+                }
+            }
+        }
+        if (refusal != null) {
+            logger.debug("FAILED (" + refusal + ")");
+            ctx.session.close(StatusCode.PROTOCOL, refusalReason(refusal, code, name));
             return;
         }
         logger.debug("SUCCESS");
-        WsContext replaced = lobby.addUser(ctx, name, rejoinKey);
-        userToLobby.put(ctx, lobby); // keep track of which lobby this connection is in.
         if (replaced != null) {
-            // Forget the old connection first, so its close (whenever it comes) changes nothing.
-            userToLobby.remove(replaced);
             replaced.session.close(CLOSE_REPLACED, "Replaced by a newer connection under the same name.");
             logger.info("User '" + name + "' in lobby '" + code + "' reconnected in place of their old connection.");
         }
         lobby.updateAllUsers();
         hasLobbyChanged = true;
+    }
+
+    /** The reason a refused player's socket is closed with, for the lobby {@code code}. */
+    private static String refusalReason(Lobby.JoinRefusal refusal, String code, String name) {
+        return switch (refusal) {
+            case NAME_TAKEN -> "A user with the name " + name + " is already in the lobby.";
+            case FULL -> "The lobby " + code + " is currently full.";
+            case IN_GAME -> "The lobby " + code + " is currently in a game..";
+        };
     }
 
     /**

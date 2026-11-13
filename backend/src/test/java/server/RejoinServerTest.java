@@ -6,6 +6,9 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import io.javalin.Javalin;
+import io.javalin.websocket.WsContext;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadInfo;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -13,6 +16,13 @@ import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.After;
@@ -28,14 +38,15 @@ import server.util.Lobby;
  * (#10) and when every seat is taken, while a second live connection with the same name is still
  * refused. A player of the game can also rejoin after the window, as after a server restart. And
  * a page whose network dropped without the server noticing takes its name back from its own dead
- * connection by bringing the same rejoin key (#26), which no other connection can do. Over real
- * sockets.
+ * connection by bringing the same rejoin key (#26), which no other connection can do. Two
+ * connections that arrive at once for one name, or for the last seat, are checked and added one at
+ * a time, so the second gets what it would get had it come later (#43). Over real sockets.
  */
 public class RejoinServerTest {
     private static Javalin app;
     private static int port;
     private final List<String> codes = new ArrayList<>();
-    private final List<TestSocket> sockets = new ArrayList<>();
+    private final List<TestSocket> sockets = new CopyOnWriteArrayList<>(); // connectAtOnce adds from two threads
     private float graceSeconds;
 
     @BeforeClass
@@ -71,7 +82,14 @@ public class RejoinServerTest {
     }
 
     private Lobby lobby(String code) {
-        Lobby lobby = new Lobby();
+        return register(code, new Lobby());
+    }
+
+    private RacingLobby racingLobby(String code) {
+        return register(code, new RacingLobby());
+    }
+
+    private <L extends Lobby> L register(String code, L lobby) {
         SecretHitlerServer.codeToLobby.put(code, lobby);
         codes.add(code);
         return lobby;
@@ -123,27 +141,27 @@ public class RejoinServerTest {
         return players;
     }
 
-    /** Closes the socket, as a reload does, and waits until the server has dropped it. */
-    private static void reload(TestSocket socket, Lobby lobby, String name) throws InterruptedException {
-        socket.close();
+    /** Waits up to 5 s for the condition to hold, and fails with the message if it never does. */
+    private static void awaitTrue(BooleanSupplier condition, Supplier<String> failure) throws InterruptedException {
         long deadline = System.currentTimeMillis() + 5000;
-        while (lobby.hasUserWithName(name)) {
+        while (!condition.getAsBoolean()) {
             if (System.currentTimeMillis() > deadline) {
-                fail(name + "'s socket was still in the lobby after 5 s");
+                fail(failure.get());
             }
             Thread.sleep(10);
         }
     }
 
+    /** Closes the socket, as a reload does, and waits until the server has dropped it. */
+    private static void reload(TestSocket socket, Lobby lobby, String name) throws InterruptedException {
+        socket.close();
+        awaitTrue(() -> !lobby.hasUserWithName(name), () -> name + "'s socket was still in the lobby after 5 s");
+    }
+
     /** Waits until the lobby counts {@code count} users, which it does once a window has passed. */
     private static void awaitUserCount(Lobby lobby, int count) throws InterruptedException {
-        long deadline = System.currentTimeMillis() + 5000;
-        while (lobby.getUserCount() != count) {
-            if (System.currentTimeMillis() > deadline) {
-                fail("the lobby still counted " + lobby.getUserCount() + " users after 5 s, not " + count);
-            }
-            Thread.sleep(10);
-        }
+        awaitTrue(() -> lobby.getUserCount() == count,
+                () -> "the lobby still counted " + lobby.getUserCount() + " users after 5 s, not " + count);
     }
 
     private static List<String> usernames(JSONObject lobbyPacket) {
@@ -389,5 +407,192 @@ public class RejoinServerTest {
         assertEquals("A10's portrait is kept", "p10", packet.getJSONObject("icon").getString("A10"));
         assertEquals(SecretHitlerServer.CLOSE_REPLACED, players.get(9).awaitClose().code);
         assertStaysSeated(lobby, "A10", 10, back);
+    }
+
+    @Test
+    public void anOutsiderIsRefusedByAFullLobbyAndByAGame() throws Exception {
+        String full = "RJAP";
+        lobby(full);
+        players(full, "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10");
+        TestSocket.CloseInfo refused = connect("lobby=" + full + "&name=Zed").awaitClose();
+        assertEquals(1002, refused.code);
+        assertEquals("The lobby " + full + " is currently full.", refused.reason);
+
+        String playing = "RJAQ";
+        lobby(playing);
+        startGame(playing, "Ann", "Bob", "Cat", "Dan", "Eve");
+        refused = connect("lobby=" + playing + "&name=Zed").awaitClose();
+        assertEquals(1002, refused.code);
+        assertEquals("The lobby " + playing + " is currently in a game..", refused.reason);
+    }
+
+    /** How long the first add of a race waits for the second connection: long enough for a slow run. */
+    private static final long RACE_WAIT_MS = 5000;
+
+    /**
+     * A lobby whose next two adds, once armed, race (#43). The first waits until the second
+     * connection reaches its own add, as it does when the server checks both connections before
+     * adding either, or waits for this lobby's lock, as it does when the check and the add are one
+     * step under it. {@code raced} says whether either happened, so a test cannot pass because the
+     * second connection came too late to race.
+     */
+    private static final class RacingLobby extends Lobby {
+        private volatile CountDownLatch adds;
+        private volatile boolean raced;
+
+        void armRace() {
+            raced = false;
+            adds = new CountDownLatch(2);
+        }
+
+        boolean raced() {
+            return raced;
+        }
+
+        @Override // not synchronized: the wait holds this lobby's lock only if the caller does
+        public WsContext addUser(WsContext context, String name, String rejoinKey) {
+            CountDownLatch latch = adds;
+            if (latch != null) {
+                latch.countDown();
+                if (awaitSecondConnection(latch)) {
+                    raced = true;
+                }
+            }
+            return super.addUser(context, name, rejoinKey);
+        }
+
+        private boolean awaitSecondConnection(CountDownLatch latch) {
+            long deadline = System.currentTimeMillis() + RACE_WAIT_MS;
+            while (System.currentTimeMillis() < deadline) {
+                if (latch.getCount() == 0 || isAThreadBlockedOnThisLobby()) {
+                    return true;
+                }
+                try {
+                    Thread.sleep(5);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return false;
+                }
+            }
+            return false;
+        }
+
+        private boolean isAThreadBlockedOnThisLobby() {
+            int lobby = System.identityHashCode(this);
+            for (ThreadInfo thread : ManagementFactory.getThreadMXBean().dumpAllThreads(false, false)) {
+                if (thread.getThreadState() == Thread.State.BLOCKED && thread.getLockInfo() != null
+                        && thread.getLockInfo().getIdentityHashCode() == lobby) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    /** Opens both connections at once and returns them once both handshakes are done. */
+    private List<TestSocket> connectAtOnce(String query1, String query2) throws Exception {
+        CompletableFuture<TestSocket> first = CompletableFuture.supplyAsync(() -> connectUnchecked(query1));
+        CompletableFuture<TestSocket> second = CompletableFuture.supplyAsync(() -> connectUnchecked(query2));
+        return List.of(first.get(10, TimeUnit.SECONDS), second.get(10, TimeUnit.SECONDS));
+    }
+
+    private TestSocket connectUnchecked(String query) {
+        try {
+            return connect(query);
+        } catch (Exception e) {
+            throw new CompletionException(e);
+        }
+    }
+
+    /**
+     * Waits until the server closes one of the two connections, and returns them as {kept, closed}.
+     * Fails if the second connection did not race the first.
+     */
+    private static List<TestSocket> keptAndClosed(RacingLobby lobby, List<TestSocket> pair)
+            throws InterruptedException {
+        awaitTrue(() -> !pair.get(0).isOpen() || !pair.get(1).isOpen(),
+                () -> "both connections were still open after 5 s");
+        assertTrue("the second connection came too late to race the first", lobby.raced());
+        return pair.get(0).isOpen() ? pair : List.of(pair.get(1), pair.get(0));
+    }
+
+    @Test
+    public void twoJoinsUnderOneNameAtOnceTakeOneAndRefuseTheOther() throws Exception {
+        String code = "RJAL";
+        RacingLobby lobby = racingLobby(code);
+        players(code, "Bob");
+
+        lobby.armRace();
+        List<TestSocket> outcome = keptAndClosed(lobby, connectAtOnce(
+                "lobby=" + code + "&name=Ann&rejoinKey=page-one",
+                "lobby=" + code + "&name=Ann&rejoinKey=page-two"));
+
+        TestSocket.CloseInfo refused = outcome.get(1).awaitClose();
+        assertEquals(1002, refused.code);
+        assertEquals("A user with the name Ann is already in the lobby.", refused.reason);
+        assertEquals(List.of("Ann", "Bob"), usernames(outcome.get(0).next("lobby")));
+        assertTrue("the connection taken stays open", outcome.get(0).isOpen());
+        assertEquals(2, lobby.getUserCount());
+    }
+
+    @Test
+    public void twoRejoinsOfOneSeatAtOnceTakeOneAndRefuseTheOther() throws Exception {
+        String code = "RJAM";
+        RacingLobby lobby = racingLobby(code);
+        List<TestSocket> players = startGame(code, "Ann", "Bob", "Cat", "Dan", "Eve");
+        reload(players.get(0), lobby, "Ann");
+
+        // Ann's page and an older client under her name, which brings no key.
+        lobby.armRace();
+        List<TestSocket> outcome = keptAndClosed(lobby, connectAtOnce(
+                "lobby=" + code + "&name=Ann&rejoinKey=" + keyOf("Ann"),
+                "lobby=" + code + "&name=Ann"));
+
+        TestSocket.CloseInfo refused = outcome.get(1).awaitClose();
+        assertEquals(1002, refused.code);
+        assertEquals("A user with the name Ann is already in the lobby.", refused.reason);
+        JSONObject state = outcome.get(0).nextState("CHANCELLOR_NOMINATION");
+        assertTrue(state.getJSONArray("playerOrder").toList().contains("Ann"));
+        assertTrue("the connection taken stays open", outcome.get(0).isOpen());
+        assertTrue(lobby.hasUserWithName("Ann"));
+        assertEquals(5, lobby.getUserCount());
+    }
+
+    /** One page's reconnect and its JOIN, which bring the page's one key: the later takes the seat. */
+    @Test
+    public void twoConnectionsOfOnePageAtOnceLeaveTheLaterInTheSeat() throws Exception {
+        String code = "RJAN";
+        RacingLobby lobby = racingLobby(code);
+        List<TestSocket> players = startGame(code, "Ann", "Bob", "Cat", "Dan", "Eve");
+        reload(players.get(0), lobby, "Ann");
+
+        lobby.armRace();
+        List<TestSocket> outcome = keptAndClosed(lobby, connectAtOnce(
+                "lobby=" + code + "&name=Ann&rejoinKey=" + keyOf("Ann"),
+                "lobby=" + code + "&name=Ann&rejoinKey=" + keyOf("Ann")));
+
+        assertEquals(SecretHitlerServer.CLOSE_REPLACED, outcome.get(1).awaitClose().code);
+        JSONObject state = outcome.get(0).nextState("CHANCELLOR_NOMINATION");
+        assertTrue(state.getJSONArray("playerOrder").toList().contains("Ann"));
+        assertStaysSeated(lobby, "Ann", 5, outcome.get(0));
+    }
+
+    @Test
+    public void twoNamesForTheLastSeatAtOnceTakeOneAndRefuseTheOther() throws Exception {
+        String code = "RJAO";
+        RacingLobby lobby = racingLobby(code);
+        players(code, "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9");
+
+        lobby.armRace();
+        List<TestSocket> outcome = keptAndClosed(lobby, connectAtOnce(
+                "lobby=" + code + "&name=Yan&rejoinKey=" + keyOf("Yan"),
+                "lobby=" + code + "&name=Zed&rejoinKey=" + keyOf("Zed")));
+
+        TestSocket.CloseInfo refused = outcome.get(1).awaitClose();
+        assertEquals(1002, refused.code);
+        assertEquals("The lobby " + code + " is currently full.", refused.reason);
+        assertEquals(10, usernames(outcome.get(0).next("lobby")).size());
+        assertTrue("the connection taken stays open", outcome.get(0).isOpen());
+        assertEquals(10, lobby.getUserCount());
     }
 }

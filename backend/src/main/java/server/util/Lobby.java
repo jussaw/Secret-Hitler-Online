@@ -242,6 +242,44 @@ public class Lobby implements Serializable {
         return activeUsernames.contains(name) && !hasUserWithName(name);
     }
 
+    /** Why the lobby refuses a player's connection under a name ({@code joinRefusal}). */
+    public enum JoinRefusal {
+        /** Another live connection holds the name, and this one does not bring its rejoin key. */
+        NAME_TAKEN,
+        /** Every seat is taken, and the name is not taking back its own. */
+        FULL,
+        /** A game is running, and the name is not one of its players taking back their seat. */
+        IN_GAME
+    }
+
+    /**
+     * Returns why the lobby refuses a player's connection under {@code name} that brings
+     * {@code rejoinKey}, or null if {@code addUser} takes it. A connection that brings the key of
+     * the name's live connection takes that connection's place ({@code hasLiveConnectionWithKey}),
+     * and a player taking back their own seat ({@code canRejoin}) is refused neither for a full
+     * lobby nor for a game. The answer holds until the lobby changes, so a caller that acts on it
+     * holds the lobby's lock until the add (#43).
+     *
+     * @param name      the name of the user.
+     * @param rejoinKey the key the connection brings, or null for none (never empty).
+     * @return the first refusal that applies, in the order {@code NAME_TAKEN}, {@code FULL},
+     *         {@code IN_GAME}, or null.
+     */
+    synchronized public JoinRefusal joinRefusal(String name, String rejoinKey) {
+        // The page whose connection holds this name, reconnecting: its old connection is dead, though
+        // the server may not see that for up to the idle timeout (a phone that changed networks).
+        boolean reclaiming = hasLiveConnectionWithKey(name, rejoinKey);
+        boolean rejoining = reclaiming || canRejoin(name);
+        if (hasUserWithName(name) && !reclaiming) {
+            return JoinRefusal.NAME_TAKEN;
+        } else if (isFull() && !rejoining) {
+            return JoinRefusal.FULL;
+        } else if (isInGame() && !rejoining) {
+            return JoinRefusal.IN_GAME;
+        }
+        return null;
+    }
+
     /**
      * Checks whether the lobby is full.
      * 
@@ -270,11 +308,9 @@ public class Lobby implements Serializable {
      * @param name      the name of the player to be added.
      * @param rejoinKey the key the connection brought, or null for none (never empty).
      * @return the connection whose place was taken, which the caller closes, or null.
-     * @throws IllegalArgumentException if a duplicate websocket is added, if there
-     *                                  is already a websocket with the
-     *                                  given name in the game, if the lobby is
-     *                                  full, if the player has a duplicate name,
-     *                                  or if a new player is added during a game.
+     * @throws IllegalArgumentException if a duplicate websocket is added, or if the
+     *                                  lobby refuses the connection
+     *                                  ({@code joinRefusal} is not null).
      * @modifies this
      * @effects adds the given user to the lobby.
      *          If the game has already started, the player can only join if a
@@ -284,6 +320,10 @@ public class Lobby implements Serializable {
     synchronized public WsContext addUser(WsContext context, String name, String rejoinKey) {
         if (userToUsername.containsKey(context)) {
             throw new IllegalArgumentException("Duplicate websockets cannot be added to a lobby.");
+        }
+        JoinRefusal refusal = joinRefusal(name, rejoinKey);
+        if (refusal != null) {
+            throw new IllegalArgumentException("Cannot add '" + name + "' to the lobby: " + refusal + ".");
         }
         if (hasLiveConnectionWithKey(name, rejoinKey)) {
             WsContext replaced = null;
@@ -312,21 +352,10 @@ public class Lobby implements Serializable {
      * still inside the grace window keeps its place in the lobby; any other takes the last place.
      * That includes a player back in the running game after the window, or after a restore from
      * a backup (which keeps no one in the lobby), so they are counted at once, and listed and
-     * seated when the game ends (#41).
-     *
-     * @throws IllegalArgumentException as {@code addUser}.
+     * seated when the game ends (#41). The caller has checked that the lobby takes the
+     * connection ({@code joinRefusal}).
      */
     private void addNewConnection(WsContext context, String name) {
-        if (isInGame()) {
-            if (!canAddUserDuringGame(name)) { // only a player of this game, with no live connection
-                throw new IllegalArgumentException("Cannot add a new player to a lobby currently in a game.");
-            }
-        } else if (isFull() && !canRejoin(name)) { // a returning player takes back their own seat
-            throw new IllegalArgumentException("Cannot add the player because the lobby is full.");
-        } else if (hasUserWithName(name)) {
-            throw new IllegalArgumentException("Cannot add duplicate names.");
-        }
-
         userToUsername.put(context, name);
         if (!activeUsernames.contains(name)) {
             activeUsernames.add(name);
