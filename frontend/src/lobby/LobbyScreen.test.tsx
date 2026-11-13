@@ -62,6 +62,13 @@ describe("LobbyScreen", () => {
     expect(button("START GAME")).toBeDisabled();
   });
 
+  it("START GAME waits for a player the icons leave out", () => {
+    const withoutOne = icons(TEN);
+    delete withoutOne[lg(4)];
+    renderLobby({ icons: withoutOne });
+    expect(button("START GAME")).toBeDisabled();
+  });
+
   it("START GAME starts the game once every portrait is picked", () => {
     const props = renderLobby();
     expect(button("START GAME")).toBeEnabled();
@@ -84,6 +91,17 @@ describe("LobbyScreen", () => {
     renderLobby({ user: "", spectator: true });
     expect(buttons()).toEqual(["COPY", "PLAY INSTEAD", "LEAVE LOBBY"]);
     expect(document.querySelector(".is-user")).toBeNull();
+  });
+
+  it("the switch buttons carry the icon phones hide, and COPY keeps its own", () => {
+    renderLobby();
+    expect(button("WATCH INSTEAD").querySelector("svg.lobby-switch-icon")).not.toBeNull();
+    expect(button("COPY").querySelector("svg.lobby-button-icon")).not.toBeNull();
+    expect(button("COPY").querySelector(".lobby-switch-icon")).toBeNull();
+    cleanup();
+
+    renderLobby({ user: "", spectator: true, usernames: TEN.slice(0, 9) });
+    expect(button("PLAY INSTEAD").querySelector("svg.lobby-switch-icon")).not.toBeNull();
   });
 
   it("a spectator with a stale name sees no highlighted row", () => {

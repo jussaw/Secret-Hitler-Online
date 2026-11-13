@@ -318,17 +318,20 @@
         padding: 0.3em 0.6em;
     }
 
-    /* The grey buttons share one row, down to 320px wide: the switch icons go. */
+    /* The grey buttons share one row, down to 320px wide: the switch icons go. Each is its label's
+       width plus an equal share of what is left, so WATCH INSTEAD, the longest, gets the most room.
+       Linux draws Germania One wider than macOS; there every label keeps about 15% of its width
+       spare. */
     .lobby-secondary {
         flex-wrap: nowrap;
-        gap: 8px;
+        gap: 6px;
     }
 
     .lobby-secondary button {
-        flex: 1 1 0;
+        flex: 1 1 auto;
         min-width: 0;
-        padding: 0.4em 0.3em;
-        font-size: 1.15em;
+        padding: 0.4em 0.2em;
+        font-size: 1.08em;
     }
 
     .lobby-switch-icon {
@@ -380,5 +383,17 @@
     .lobby-invite {
         flex: 1 1 auto;
         text-align: left;
+    }
+
+    /* Tall windows are touch screens too (END TERM and the sound control are 44px tall here): the
+       field and the buttons are at least 44px tall, and the field's text at least 16px, so iOS
+       Safari does not zoom into it. */
+    .lobby-link-row input {
+        min-height: 44px;
+        font-size: max(16px, 1em);
+    }
+
+    .lobby-main button {
+        min-height: 44px;
     }
 }

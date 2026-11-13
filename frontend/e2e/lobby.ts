@@ -147,6 +147,49 @@ export async function joinSpectator(baseURL: string, lobby: string): Promise<Web
   return ws;
 }
 
+/** Joins `lobby` from the login form as `name`, picks the first free portrait, and waits for the lobby. */
+export async function joinLobby(page: Page, lobby: string, name: string): Promise<void> {
+  await page.goto("/");
+  await page.getByRole("textbox", { name: "Lobby" }).fill(lobby);
+  await page.getByRole("textbox", { name: "Your Name" }).first().fill(name);
+  await page.getByRole("button", { name: "JOIN" }).click();
+  await page.locator("#icon.selectable:not(.disabled)").first().click();
+  await page.getByRole("button", { name: "CONFIRM" }).click();
+  await page.locator("#linkText").waitFor();
+}
+
+/** What a spectator reads in `longestLineLobby`, the longest status line the lobby shows. */
+export const LONGEST_LOBBY_LINE =
+  "You are watching. Waiting for Long Guest 1 and 7 others to pick a look.";
+
+/**
+ * Ten players and the longest status line: `host` creates the lobby as "Host Player" and picks a
+ * look, eight raw guests stay on the default portrait, still picking, and `guest` joins from the
+ * login form as "Long Guest 9" and picks a look; then `spectator` watches. The host and the guest
+ * read the line without its "You are watching. ". Returns the raw guests' sockets, which the
+ * caller closes.
+ */
+export async function longestLineLobby(
+  baseURL: string,
+  { host, guest, spectator }: { host: Page; guest: Page; spectator: Page }
+): Promise<WebSocket[]> {
+  const lobby = await createLobby(host, "Host Player");
+  const guests = await joinGuests(baseURL, lobby, 8, { pickLooks: false });
+  try {
+    await joinLobby(guest, lobby, "Long Guest 9");
+    await watchLobby(spectator, lobby);
+    const playerLine = LONGEST_LOBBY_LINE.replace("You are watching. ", "");
+    for (const page of [host, guest, spectator]) await waitForPlayers(page, 10);
+    await expect(host.locator("#lobby-status-text")).toHaveText(playerLine);
+    await expect(guest.locator("#lobby-status-text")).toHaveText(playerLine);
+    await expect(spectator.locator("#lobby-status-text")).toHaveText(LONGEST_LOBBY_LINE);
+  } catch (error) {
+    guests.forEach((ws) => ws.close());
+    throw error;
+  }
+  return guests;
+}
+
 /** Watches `lobby` from the login form, and waits for its lobby or game page. */
 export async function watchLobby(page: Page, lobby: string): Promise<void> {
   await page.goto("/");
