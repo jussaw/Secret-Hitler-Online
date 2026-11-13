@@ -67,13 +67,13 @@ From `frontend/`:
 ```bash
 npm test              # Vitest in watch mode
 npm test -- --run     # single run
-npm run build         # type-check, then build into dist/
+npm run build         # type-check the app and the browser tests, then build into dist/
 npm run preview       # serve dist/ on port 3000
 ```
 
 ### Browser tests
 
-The Playwright tests build the frontend and the jar, serve them on port 4545 and drive the whole app in desktop Chrome, Firefox and two emulated phones. They need Java 17 active for the Gradle wrapper. From `frontend/`:
+The Playwright tests build the frontend and the jar, serve them on port 4545 and drive the whole app in desktop Chrome, Firefox and two emulated phones. They need Java 17 active for the Gradle wrapper, and network access, because the web fonts come from Google Fonts and a test fails when they do not load. From `frontend/`:
 
 ```bash
 npx playwright install chromium firefox   # once
