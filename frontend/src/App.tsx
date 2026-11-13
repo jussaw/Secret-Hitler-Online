@@ -11,7 +11,8 @@ import { RoundStep, stepForPolicyLine, stepForState } from "./game/roundStep";
 // TODO: replace constants with enums from types
 import {
   PAGE,
-  MAX_FAILED_CONNECTIONS,
+  RECONNECT_DELAYS,
+  PARAM_REJOIN_KEY,
   SERVER_ADDRESS_HTTP,
   NEW_LOBBY,
   CHECK_LOGIN,
@@ -144,6 +145,13 @@ const SEAT_REFUSED = "Could not take a seat. You are still watching.";
 /** How long a spectator's status line shows what happened, in place of a player's alert. */
 const SPECTATOR_RESULT_MS = 3000;
 
+/** A random PARAM_REJOIN_KEY: 128 bits as hex. getRandomValues works on plain http pages too. */
+function newRejoinKey(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 if (DEBUG) {
   console.warn("Running in debug mode.");
 }
@@ -221,7 +229,14 @@ const defaultAppState: AppState = {
 
 class App extends Component<{}, AppState> {
   websocket?: WebSocket = undefined;
+  /** Reconnects tried since the last message; each waits its RECONNECT_DELAYS entry. */
   failedConnections: number = 0;
+  /** A reconnect waiting its turn after a lost socket; this.websocket is undefined meanwhile. */
+  reconnectTimer?: ReturnType<typeof setTimeout> = undefined;
+  /** Commands sent while a reconnect waits, which the new socket sends once it opens. */
+  heldCommands: string[] = [];
+  /** This page's PARAM_REJOIN_KEY, for the lifetime of the page. */
+  readonly rejoinKey = newRejoinKey();
   pingInterval?: ReturnType<typeof setInterval> = undefined;
   reconnectOnConnectionClosed: boolean = true;
   snackbarMessages: number = 0;
@@ -373,15 +388,19 @@ class App extends Component<{}, AppState> {
       console.log("Opening connection with lobby: " + lobby);
       console.log("Failed connections: " + this.failedConnections);
     }
-    let url =
+    // Logged without the rejoin key, so a console log can be shared.
+    const shownUrl =
       WEBSOCKET_HEADER +
       SERVER_ADDRESS +
       WEBSOCKET +
       (spectator ? "?" + PARAM_SPECTATOR + "=true" : "?name=" + encodeURIComponent(name)) +
       "&lobby=" +
       encodeURIComponent(lobby);
+    // A player's socket brings the page's key, so a reconnect can take the name back from a socket
+    // the server has not yet seen die. A spectator has no name to take back.
+    const url = spectator ? shownUrl : shownUrl + "&" + PARAM_REJOIN_KEY + "=" + this.rejoinKey;
     if (DEBUG) {
-      console.trace("TryOpenWebsocket URL: " + url);
+      console.trace("TryOpenWebsocket URL: " + shownUrl);
     }
 
     // Build the new socket first: if that throws, the old one is left as it was.
@@ -394,7 +413,7 @@ class App extends Component<{}, AppState> {
 
     this.closeSocket();
 
-    console.log("Websocket created for " + url);
+    console.log("Websocket created for " + shownUrl);
     this.websocket = ws;
     this.seatPending = false;
     // A new socket has no history, so its first packet plays no sounds (no burst on reconnect).
@@ -424,7 +443,9 @@ class App extends Component<{}, AppState> {
       createLobbyError: "",
     });
     ws.onmessage = (msg) => this.onWebSocketMessage(msg);
-    ws.onclose = () => this.onWebSocketClose();
+    ws.onclose = (event) => {
+      if (ws === this.websocket) this.onWebSocketClose(event);
+    };
 
     // Ping the web server at a set interval.
     if (this.pingInterval) {
@@ -437,8 +458,12 @@ class App extends Component<{}, AppState> {
     return true;
   }
 
-  /** Closes the current socket without the reconnect or leave path of onWebSocketClose. */
+  /**
+   * Closes the current socket without the reconnect or leave path of onWebSocketClose, and drops
+   * a reconnect still waiting, with its held commands.
+   */
   closeSocket() {
+    this.cancelReconnect();
     if (this.websocket) {
       // Clear onClose event to prevent reconnection
       this.websocket.onclose = () => {};
@@ -474,22 +499,22 @@ class App extends Component<{}, AppState> {
 
   /**
    * Called when the websocket closes.
-   * @effects attempts to reopen the websocket connection.
-   *          If the user pressed the "Leave Lobby" button or a maximum number of attempts has been reached
-   *          ({@code MAX_FAILED_CONNECTIONS}), does not reopen the websocket connection and returns the user to the
+   * @param event the close event: its code and reason say why (1006 for a network that dropped,
+   *        1001 for the server's idle timeout, 1002 with the server's reason for a refusal).
+   * @effects attempts to reopen the websocket connection, the first time at once and then after the
+   *          waits in {@code RECONNECT_DELAYS}. If the user pressed the "Leave Lobby" button or every
+   *          attempt has failed, does not reopen the websocket connection and returns the user to the
    *          login screen with a relevant error message.
    */
-  onWebSocketClose() {
+  onWebSocketClose(event?: CloseEvent) {
     // Clear the server ping interval when the socket is closed.
     if (this.pingInterval) {
       clearInterval(this.pingInterval);
     }
 
     console.log(
-      "A websocket closed: " +
-        this.websocket?.url +
-        ". Reopening to current lobby " +
-        this.state.lobby
+      `A websocket closed (code ${event?.code}, reason "${event?.reason ?? ""}") in lobby ` +
+        `${this.state.lobby}, after ${this.failedConnections} failed reconnects.`
     );
 
     if (this.seatPending && this.reconnectOnConnectionClosed) {
@@ -505,16 +530,23 @@ class App extends Component<{}, AppState> {
 
     if (
       this.reconnectOnConnectionClosed &&
-      this.failedConnections < MAX_FAILED_CONNECTIONS
+      this.failedConnections < RECONNECT_DELAYS.length
     ) {
       if (this.failedConnections >= 1) {
         // Only show the error bar if the first attempt has failed.
         this.showSnackBar("Lost connection to the server: retrying...");
       }
+      const delay = RECONNECT_DELAYS[this.failedConnections];
       this.failedConnections += 1;
-      // A socket that cannot even be built is a lost connection for good.
-      if (!this.tryOpenWebSocket(this.state.name, this.state.lobby, this.state.spectator)) {
-        this.toLoginPage(DISCONNECTED_ERROR);
+      if (delay === 0) {
+        this.reconnect();
+      } else {
+        // No socket while the reconnect waits: commands are held for the next one (sendWSCommand).
+        this.websocket = undefined;
+        this.reconnectTimer = setTimeout(() => {
+          this.reconnectTimer = undefined;
+          this.reconnect();
+        }, delay);
       }
     } else if (this.reconnectOnConnectionClosed) {
       this.toLoginPage(DISCONNECTED_ERROR);
@@ -528,15 +560,37 @@ class App extends Component<{}, AppState> {
     }
   }
 
+  /** Reopens the lost socket under the same name, lobby and role, and sends the commands held meanwhile. */
+  reconnect() {
+    const held = this.heldCommands; // tryOpenWebSocket drops them
+    // A socket that cannot even be built is a lost connection for good.
+    if (!this.tryOpenWebSocket(this.state.name, this.state.lobby, this.state.spectator)) {
+      this.toLoginPage(DISCONNECTED_ERROR);
+      return;
+    }
+    held.forEach((payload) => this.sendPayload(payload));
+  }
+
+  /** Drops a reconnect still waiting its turn, and the commands held for it. */
+  cancelReconnect() {
+    if (this.reconnectTimer !== undefined) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = undefined;
+    }
+    this.heldCommands = [];
+  }
+
   /**
    * Leaves for the login page with the lobby code and the name to rejoin under filled in: stops the
-   * ping, closes the alert and any PLAY INSTEAD prompt, and empties the animation queue.
+   * ping and any waiting reconnect, closes the alert and any PLAY INSTEAD prompt, and empties the
+   * animation queue.
    * @param error the message under JOIN ("" for none).
    */
   toLoginPage(error: string) {
     if (this.pingInterval) {
       clearInterval(this.pingInterval);
     }
+    this.cancelReconnect();
     this.setState({
       page: PAGE.LOGIN,
       joinName: this.rejoinName(),
@@ -667,9 +721,19 @@ class App extends Component<{}, AppState> {
     if (DEBUG) {
       console.log(JSON.stringify(data));
     }
+    const payload = JSON.stringify(data);
+    if (this.reconnectTimer !== undefined) {
+      // A reconnect is waiting: a press now (a vote, a nomination) goes once the new socket opens.
+      this.heldCommands.push(payload);
+      return;
+    }
+    this.sendPayload(payload);
+  }
+
+  /** Sends an encoded command on the current socket, once it has opened. */
+  sendPayload(payload: string) {
     const ws = this.websocket;
     if (ws !== undefined) {
-      const payload = JSON.stringify(data);
       // A socket still connecting (a switch or a reconnect in the lobby) throws on send: wait for it.
       // The number, not WebSocket.CONNECTING, so a stand-in socket without the statics works too.
       if (ws.readyState === 0) {
@@ -1037,8 +1101,13 @@ class App extends Component<{}, AppState> {
     if (this.state.spectator) {
       Cookies.remove(COOKIE_SPECTATOR);
     }
-    this.websocket?.close();
     this.reconnectOnConnectionClosed = false;
+    if (this.reconnectTimer !== undefined) {
+      // Waiting to reconnect, there is no socket to close: leave now.
+      this.toLoginPage("");
+      return;
+    }
+    this.websocket?.close();
   }
 
   /** Tells the user whether COPY put the invite link on the clipboard. */
