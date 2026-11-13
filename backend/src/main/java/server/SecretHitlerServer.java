@@ -117,17 +117,13 @@ public class SecretHitlerServer {
         return DEFAULT_PORT_NUMBER;
     }
 
-    public static void main(String[] args) {
-        // On load, check the connected database to see if there's a stored state from
-        // the server.
-        if (ApplicationConfig.DATABASE_PATH == null || ApplicationConfig.DATABASE_PATH.isBlank()) {
-            logger.error("Persistence disabled: no DATABASE_PATH environment variable provided.");
-        }
-        loadDatabaseBackup();
-        removeInactiveLobbies(); // immediately clean in case of redundant lobbies.
-
-        // Only initialize Javalin communication after the database has been queried.
-        Javalin serverApp = Javalin.create(config -> {
+    /**
+     * Builds the server's app, not yet started: the static frontend, CORS in debug mode, and
+     * every route. The routes are registered here, before {@code start}, so the server answers
+     * on all of them as soon as it listens (#13). Package-private for ServerStartupTest.
+     */
+    static Javalin createApp() {
+        return Javalin.create(config -> {
             // Serve the built frontend when it was bundled into the jar (see build.gradle).
             // Javalin refuses to start if a classpath static directory is missing.
             if (SecretHitlerServer.class.getResource("/public/index.html") != null) {
@@ -144,17 +140,28 @@ public class SecretHitlerServer {
                     });
                 });
             }
-        }).start(getHerokuAssignedPort());
+        })
+                .get("/check-login", SecretHitlerServer::checkLogin) // Checks if a login is valid.
+                .get("/new-lobby", SecretHitlerServer::createNewLobby) // Creates and returns the code for a new lobby
+                .get("/ping", SecretHitlerServer::ping)
+                .ws("/game", wsHandler -> {
+                    wsHandler.onConnect(SecretHitlerServer::onWebsocketConnect);
+                    wsHandler.onMessage(SecretHitlerServer::onWebSocketMessage);
+                    wsHandler.onClose(SecretHitlerServer::onWebSocketClose);
+                });
+    }
 
-        serverApp.get("/check-login", SecretHitlerServer::checkLogin); // Checks if a login is valid.
-        serverApp.get("/new-lobby", SecretHitlerServer::createNewLobby); // Creates and returns the code for a new lobby
-        serverApp.get("/ping", SecretHitlerServer::ping);
+    public static void main(String[] args) {
+        // On load, check the connected database to see if there's a stored state from
+        // the server.
+        if (ApplicationConfig.DATABASE_PATH == null || ApplicationConfig.DATABASE_PATH.isBlank()) {
+            logger.error("Persistence disabled: no DATABASE_PATH environment variable provided.");
+        }
+        loadDatabaseBackup();
+        removeInactiveLobbies(); // immediately clean in case of redundant lobbies.
 
-        serverApp.ws("/game", wsHandler -> {
-            wsHandler.onConnect(SecretHitlerServer::onWebsocketConnect);
-            wsHandler.onMessage(SecretHitlerServer::onWebSocketMessage);
-            wsHandler.onClose(SecretHitlerServer::onWebSocketClose);
-        });
+        // Only initialize Javalin communication after the database has been queried.
+        createApp().start(getHerokuAssignedPort());
 
         // Add hook for termination that backs up the lobbies to the database.
         Runtime.getRuntime().addShutdownHook(new Thread() {
