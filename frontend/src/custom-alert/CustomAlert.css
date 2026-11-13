@@ -11,6 +11,12 @@
     z-index: 75;
 }
 
+/* A closed prompt whose fade-out has had its time (CustomAlert sets `hidden`). The display above
+   would otherwise win over the browser's own rule for `hidden`. */
+#alert[hidden] {
+    display: none;
+}
+
 #alert-background {
     position: fixed;
     width: 100%;
