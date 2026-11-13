@@ -161,7 +161,8 @@ keeps credit to upstream and to the board game's creators.
   (dev server only: `VITE_DEBUG`) and `.env.dev` (`--mode dev`), typed in `src/vite-env.d.ts`.
 - `docs/`: `PLAN.md` (phased plan and progress), `superpowers/specs/` (design),
   `superpowers/plans/` (per-phase step-by-step breakdowns), `images/` (the README's screenshots,
-  taken from a scripted seven-player game at 1600x900 and at 412x915 on a phone).
+  taken from a scripted seven-player game at 1600x900 and at 412x915 on a phone), `pr/` (each pull
+  request's before-and-after screenshots, in a folder named for its branch).
 
 ## Commands
 
@@ -197,6 +198,15 @@ so mount a volume at `/data`.
 
 - One branch per phase off an up-to-date `development` (`phase-1-housekeeping`, `phase-2-vite`, …),
   merged into `development` by pull request on the fork once every box in the phase is ticked.
+- Name every worktree for the work it holds (`pin-picker-confirm`, not a generated name such as
+  `game-state-sync-b7a6ea`), and give its branch the same name. Rename a generated or prefixed
+  branch (`claude/…`, `worktree-…`) before the first commit.
+- Every pull request shows before-and-after screenshots of what it changes on screen, in a table
+  near the top of its description: at least one desktop size and one phone size, the same
+  scripted state in both, "before" from `development` and "after" from the branch. Commit the
+  images under `docs/pr/<branch>/` on the branch and link them by raw URL pinned to that commit,
+  so they still show after the branch is deleted. A pull request that changes nothing on screen
+  says so in place of the table.
 - At the end of every phase, before its PR is merged, bring the docs up to date with what the
   phase changed. That means `README.md` (what the fork adds, hosting, and the screenshots in
   `docs/images/` when the game screen looks different), `DEVELOPMENT.md`, this file, and anything
