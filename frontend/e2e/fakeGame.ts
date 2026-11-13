@@ -29,6 +29,8 @@ export type FakeGame = {
   send(packet: object): void;
   /** Every socket the page opened, oldest first. */
   urls: string[];
+  /** Every message the page sent, on any socket, oldest first. */
+  received: Record<string, unknown>[];
 };
 
 /** The lobby packet of the scripted lobby: `names` with portraits chosen. */
@@ -39,17 +41,19 @@ export function lobbyPacket(names: string[] = TEN): object {
 
 /**
  * Creates a lobby of `names` (TEN by default) as names[0] through the login form, with every
- * portrait already chosen, and returns the scripted socket. The client's own messages are ignored.
+ * portrait already chosen, and returns the scripted socket. The client's own messages are
+ * recorded and get no answer.
  */
 export async function openFakeGame(page: Page, names: string[] = TEN): Promise<FakeGame> {
   await page.route("**/new-lobby", (route) => route.fulfill({ body: "FAKE" }));
   const urls: string[] = [];
+  const received: Record<string, unknown>[] = [];
   let latest: WebSocketRoute | undefined;
   let connect!: () => void;
   const connected = new Promise<void>((resolve) => (connect = resolve));
   await page.routeWebSocket(/\/game\?/, (ws) => {
     urls.push(ws.url());
-    ws.onMessage(() => {});
+    ws.onMessage((message) => received.push(JSON.parse(String(message))));
     latest = ws;
     connect();
   });
@@ -60,7 +64,7 @@ export async function openFakeGame(page: Page, names: string[] = TEN): Promise<F
   await connected;
   latest!.send(JSON.stringify(lobbyPacket(names)));
   await waitForPlayers(page, names.length);
-  return { send: (packet) => latest!.send(JSON.stringify(packet)), urls };
+  return { send: (packet) => latest!.send(JSON.stringify(packet)), urls, received };
 }
 
 /**
@@ -282,6 +286,7 @@ export type FakeWatch = FakeGame & {
 export async function openFakeWatch(page: Page, first: object = WATCHED_LOBBY): Promise<FakeWatch> {
   await page.route(/\/check-login\?/, (route) => route.fulfill({ body: "Spectator login valid." }));
   const urls: string[] = [];
+  const received: Record<string, unknown>[] = [];
   let latest: WebSocketRoute | undefined;
   let down = false;
   let connect!: () => void;
@@ -289,7 +294,7 @@ export async function openFakeWatch(page: Page, first: object = WATCHED_LOBBY): 
   await page.routeWebSocket(/\/game\?/, (ws) => {
     urls.push(ws.url());
     if (down) return void ws.close();
-    ws.onMessage(() => {});
+    ws.onMessage((message) => received.push(JSON.parse(String(message))));
     latest = ws;
     connect();
   });
@@ -307,6 +312,7 @@ export async function openFakeWatch(page: Page, first: object = WATCHED_LOBBY): 
   return {
     send: (packet) => latest!.send(JSON.stringify(packet)),
     urls,
+    received,
     down: (on) => {
       down = on;
       if (on) latest?.close();
