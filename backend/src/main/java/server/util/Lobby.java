@@ -167,16 +167,30 @@ public class Lobby implements Serializable {
 
     /**
      * Checks if a user can be added back to the lobby while a game is running.
-     * 
-     * @param name the name of the user to add.
-     * @return true if the user can be added. A user can only be added back if they
-     *         were in the current game but were then
-     *         removed from the lobby.
      *
+     * @param name the name of the user to add.
+     * @return true if the user can be added: they were in the current game and have no live
+     *         connection. That includes a player still inside the grace window after a
+     *         disconnect ({@code PLAYER_TIMEOUT_IN_SEC}), who is still in {@code activeUsernames}.
      */
     synchronized public boolean canAddUserDuringGame(String name) {
-        return (usersInGame.contains(name) && !activeUsernames.contains(name)); // the user was in the game but was
-                                                                                // disconnected.
+        return usersInGame.contains(name) && !hasUserWithName(name);
+    }
+
+    /**
+     * Checks if a user would be taking back their own seat: a player of the running game
+     * ({@code canAddUserDuringGame}), or outside a game a player who disconnected less than
+     * {@code PLAYER_TIMEOUT_IN_SEC} ago. Either way the name has no live connection. Such a user
+     * is not refused because the lobby is full or in a game.
+     *
+     * @param name the name of the user to add.
+     * @return true iff the user can rejoin under this name.
+     */
+    synchronized public boolean canRejoin(String name) {
+        if (isInGame()) {
+            return canAddUserDuringGame(name);
+        }
+        return activeUsernames.contains(name) && !hasUserWithName(name);
     }
 
     /**
@@ -224,7 +238,7 @@ public class Lobby implements Serializable {
                     throw new IllegalArgumentException("Cannot add a new player to a lobby currently in a game.");
                 }
             } else {
-                if (!isFull()) {
+                if (!isFull() || canRejoin(name)) { // a returning player takes back their own seat
                     if (!hasUserWithName(name)) { // This is a new user with a new name, so we add them to the Lobby.
                         userToUsername.put(context, name);
                         if (!activeUsernames.contains(name)) {
