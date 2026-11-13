@@ -405,6 +405,7 @@ test("a spectator's lobby and game fit the phone", async ({ page, browser, baseU
   const guests = await joinGuests(baseURL!, code, 9);
   try {
     await watchLobby(page, code);
+    await expect(page.locator("#lobby-status-text")).toBeVisible();
     await expect(page.locator("#lobby-status-text")).toHaveText(
       "You are watching. Waiting for Host Player to start the game."
     );

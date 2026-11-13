@@ -75,6 +75,7 @@ test("a spectator watches a scripted game without prompts", async ({ page }, tes
   const game = await openFakeWatch(page);
 
   // The lobby, read-only.
+  await expect(page.locator("#lobby-status-text")).toBeVisible();
   await expect(page.locator("#lobby-status-text")).toHaveText(
     `You are watching. Waiting for ${TEN[0]} to start the game.`
   );
