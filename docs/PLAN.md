@@ -248,7 +248,7 @@ Files: new `.github/workflows/ci.yml`
 TLS ends at a proxy in front of the host.
 
 - [x] Add a public hostname for the subdomain on the host's proxy, pointing at the published port; the proxy terminates TLS and passes WebSockets
-- [ ] Add the URL to an uptime monitor using `/ping` (deferred by the user)
+- [x] Add the URL to an uptime monitor using `/ping`
 
 **Phase 3 acceptance**
 
@@ -635,4 +635,4 @@ The six open issues `CLAUDE.md` listed as known baseline failures (each fix remo
 ## Done when
 
 - [x] All ten phases merged and the Progress table reads "done" for each
-- [ ] The deployed instance has hosted one full game with real players, at least one spectator and at least one phone
+- [x] The deployed instance has hosted one full game with real players, at least one spectator and at least one phone
