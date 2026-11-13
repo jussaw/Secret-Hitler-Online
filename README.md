@@ -53,7 +53,7 @@ docker run -d --name secret-hitler -p 8080:8080 -v sh-data:/data ghcr.io/jussaw/
 
 - The container serves plain HTTP on port 8080 (set `PORT` to change it). To play over the internet, put it behind a reverse proxy that terminates TLS and passes WebSocket upgrades through, since the game runs over a WebSocket at `/game`. On an `https:` page the client connects with `wss:`.
 - Lobby backups go to `/data/backup.db` (`DATABASE_PATH`), so mount a volume, or a directory owned by uid 1000, at `/data`.
-- Each push to `main` publishes `:latest` and `:sha-<short>`. For a health check, use `GET /ping`.
+- Each push to `development` publishes `:latest` and `:sha-<short>`. For a health check, use `GET /ping`.
 - To build the image yourself, run `docker build -t secret-hitler-online .` at the repo root.
 
 ## Running locally
