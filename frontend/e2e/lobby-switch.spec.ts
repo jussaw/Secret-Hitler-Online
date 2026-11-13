@@ -234,6 +234,17 @@ test("a game started right after someone watches instead seats only the connecte
     await joinLobby(ann, code, "Ann");
     await waitForPlayers(page, 6);
 
+    // The host's page records whether Ann's seat went (the count dropping to 5 / 10) before the
+    // game screen appeared: a start after her grace window would seat five without the fix too.
+    await page.evaluate(() => {
+      const w = window as unknown as { __seatWentAway: boolean };
+      w.__seatWentAway = false;
+      new MutationObserver(() => {
+        if (document.querySelector(".game-screen")) return;
+        if (document.querySelector(".lobby-player-count")?.textContent === "5 / 10") w.__seatWentAway = true;
+      }).observe(document, { subtree: true, childList: true, characterData: true });
+    });
+
     await ann.getByRole("button", { name: "WATCH INSTEAD" }).click();
     // Ann's spectator socket is open, so her player socket has closed. The server still holds her
     // seat for its grace window: the start below falls inside it.
@@ -244,6 +255,11 @@ test("a game started right after someone watches instead seats only the connecte
     await expect(page.locator(".game-screen")).toBeVisible();
     await expect(page.locator(".game-screen .roster-row")).toHaveCount(5);
     await expect(page.locator('.game-screen .roster-row[data-player="Ann"]')).toHaveCount(0);
+    // Proof that the start fell inside Ann's window: her seat never went from the host's view.
+    expect(
+      await page.evaluate(() => (window as unknown as { __seatWentAway: boolean }).__seatWentAway),
+      "START GAME reached the server after Ann's grace window, so this test proves nothing"
+    ).toBe(false);
   } finally {
     await opened.close();
   }
