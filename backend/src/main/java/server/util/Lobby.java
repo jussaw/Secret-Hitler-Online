@@ -16,6 +16,10 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -58,6 +62,26 @@ public class Lobby implements Serializable {
     private static int MAX_TIMER_SCHEDULING_ATTEMPTS = 2;
     transient private Timer userTimeoutTimer = new Timer();
     transient private Timer cpuTickTimer = new Timer();
+
+    // The END TERM countdown. While the game waits in POST_LEGISLATIVE for a human president to end
+    // their term, it runs on the server for END_TERM_TIMER_IN_SEC and then ends the term itself; the
+    // president may pause and resume it. CPU presidents end their own terms at once, so theirs get
+    // none. It is kept out of the backup: a lobby restored mid-term starts a new countdown with the
+    // first state it sends.
+    public static float END_TERM_TIMER_IN_SEC = 10;
+    // One thread ends the terms of every lobby. It is a daemon, so it never keeps the server up.
+    private static final ScheduledExecutorService TERM_TIMERS = Executors.newSingleThreadScheduledExecutor(task -> {
+        Thread thread = new Thread(task, "end-term-timers");
+        thread.setDaemon(true);
+        return thread;
+    });
+    // The countdown of the term waiting for END TERM, running or paused, if there is one.
+    transient private TermTimer termTimer;
+    // When the running countdown ends its term.
+    transient private ScheduledFuture<?> termTimerEnd;
+    // The countdown that ended the last term, if one did: a command that arrives just after it
+    // about the same term is late (isLateForTerm).
+    transient private TermTimer expiredTermTimer;
 
     static String DEFAULT_ICON = "p_default";
 
@@ -466,6 +490,7 @@ public class Lobby implements Serializable {
         if (isInGame()) {
             message = GameToJSONConverter.convertForSpectator(game);
             message.put(SecretHitlerServer.PARAM_PACKET_TYPE, SecretHitlerServer.PACKET_GAME_STATE);
+            putTermTimer(message);
         } else {
             message = lobbyPacket();
         }
@@ -509,6 +534,7 @@ public class Lobby implements Serializable {
         if (isInGame()) {
             message = GameToJSONConverter.convert(game, userName); // sends the game state
             message.put(SecretHitlerServer.PARAM_PACKET_TYPE, SecretHitlerServer.PACKET_GAME_STATE);
+            putTermTimer(message);
         } else {
             message = lobbyPacket();
         }
@@ -675,6 +701,142 @@ public class Lobby implements Serializable {
             throw new RuntimeException();
         } else {
             return game;
+        }
+    }
+
+    // </editor-fold>
+
+    ////// END TERM Countdown
+    // <editor-fold desc="END TERM Countdown">
+
+    /** The current time in ms, from a clock that never goes back. */
+    private static long nowMs() {
+        return TimeUnit.NANOSECONDS.toMillis(System.nanoTime());
+    }
+
+    /**
+     * Starts the END TERM countdown when the game waits for a human president to end the term,
+     * and drops a countdown whose term is over. Every game packet calls this before it reads the
+     * countdown, so each one shows the countdown of the game it carries.
+     */
+    private void syncTermTimer() {
+        boolean waiting = game != null && game.getState() == GameState.POST_LEGISLATIVE
+                && usersInGame.contains(game.getCurrentPresident());
+        if (termTimer != null && !(waiting && termTimer.isFor(game, game.getRound()))) {
+            stopTermTimer();
+        }
+        if (waiting && termTimer == null) {
+            termTimer = new TermTimer(game, game.getRound(), game.getCurrentPresident(),
+                    (long) (END_TERM_TIMER_IN_SEC * 1000), Lobby::nowMs);
+            scheduleTermEnd();
+        }
+    }
+
+    /** Ends the running countdown's term when its time is up. */
+    private void scheduleTermEnd() {
+        TermTimer timer = termTimer;
+        termTimerEnd = TERM_TIMERS.schedule(() -> endTermOnTime(timer), timer.remainingMs(), TimeUnit.MILLISECONDS);
+    }
+
+    /** Cancels the end of the term, if it is scheduled. */
+    private void cancelTermEnd() {
+        if (termTimerEnd != null) {
+            termTimerEnd.cancel(false);
+            termTimerEnd = null;
+        }
+    }
+
+    private void stopTermTimer() {
+        cancelTermEnd();
+        termTimer = null;
+    }
+
+    /**
+     * Ends {@code timer}'s term, as END TERM would, and sends everyone the new state. Does nothing
+     * if the countdown has been paused or dropped since this was scheduled: the term ended
+     * another way, or another term or game is under way.
+     */
+    private synchronized void endTermOnTime(TermTimer timer) {
+        if (timer != termTimer || timer.isPaused()) {
+            return;
+        }
+        if (timer.remainingMs() > 0) { // woken a little early
+            scheduleTermEnd();
+            return;
+        }
+        termTimerEnd = null;
+        termTimer = null;
+        try {
+            if (game != null && timer.isFor(game, game.getRound()) && game.getState() == GameState.POST_LEGISLATIVE) {
+                game.endPresidentialTerm();
+                expiredTermTimer = timer;
+                logger.info("The END TERM countdown ended " + timer.president + "'s term.");
+                updateAllUsers();
+            }
+        } catch (RuntimeException e) {
+            logger.error("Could not end " + timer.president + "'s term when its countdown ran out.", e);
+        }
+    }
+
+    /**
+     * Pauses the END TERM countdown, which then keeps the term open until the president resumes
+     * it or ends the term. Pausing it again changes nothing.
+     *
+     * @throws IllegalStateException if the game is not waiting for a human president to end the
+     *                               term, so there is no countdown.
+     */
+    synchronized public void pauseTermTimer() {
+        syncTermTimer();
+        if (termTimer == null) {
+            throw new IllegalStateException("There is no END TERM countdown to pause.");
+        }
+        termTimer.pause();
+        cancelTermEnd();
+    }
+
+    /**
+     * Runs a paused END TERM countdown on from the time it had left. Resuming a running countdown
+     * changes nothing.
+     *
+     * @throws IllegalStateException if there is no countdown, as for {@code pauseTermTimer}.
+     */
+    synchronized public void resumeTermTimer() {
+        syncTermTimer();
+        if (termTimer == null) {
+            throw new IllegalStateException("There is no END TERM countdown to resume.");
+        }
+        if (termTimer.isPaused()) {
+            termTimer.resume();
+            scheduleTermEnd();
+        }
+    }
+
+    /**
+     * Whether a command about the term from {@code name} (END TERM, pause or resume) came too
+     * late: the countdown ended {@code name}'s term just before it arrived, and the game has not
+     * since come back to {@code name} at END TERM (as it can after a special election). The
+     * president sent it in good faith, so the server drops it instead of refusing it.
+     */
+    synchronized public boolean isLateForTerm(String name) {
+        TermTimer expired = expiredTermTimer;
+        if (expired == null || game != expired.game || game.getRound() != expired.round + 1
+                || !expired.president.equals(name)) {
+            return false;
+        }
+        return !(game.getState() == GameState.POST_LEGISLATIVE && name.equals(game.getCurrentPresident()));
+    }
+
+    /**
+     * Adds the END TERM countdown to a game packet while there is one: {@code remainingMs}, the
+     * time it has left, and {@code paused}.
+     */
+    private void putTermTimer(JSONObject message) {
+        syncTermTimer();
+        if (termTimer != null) {
+            JSONObject countdown = new JSONObject();
+            countdown.put("remainingMs", termTimer.remainingMs());
+            countdown.put("paused", termTimer.isPaused());
+            message.put(SecretHitlerServer.PARAM_TERM_TIMER, countdown);
         }
     }
 

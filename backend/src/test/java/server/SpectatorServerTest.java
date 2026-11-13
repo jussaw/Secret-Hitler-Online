@@ -177,7 +177,9 @@ public class SpectatorServerTest {
                 command(code, president, "register-special-election").put("target", nominee),
                 command(code, president, "get-investigation").put("target", nominee),
                 command(code, president, "register-peek"),
-                command(code, president, "end-term"));
+                command(code, president, "end-term"),
+                command(code, president, "pause-term-timer"),
+                command(code, president, "resume-term-timer"));
         for (JSONObject attempt : attempts) {
             spectator.send(attempt);
             spectator.send(command(code, null, "ping"));
