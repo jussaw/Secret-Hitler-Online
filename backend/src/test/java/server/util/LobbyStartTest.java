@@ -87,6 +87,24 @@ public class LobbyStartTest {
     }
 
     @Test
+    public void aFailedPortraitCheckLeavesTheLobbyUntouched() {
+        Lobby lobby = new Lobby();
+        List<FakeSocket> players = addPlayers(lobby, 2);
+        FakeSocket picking = FakeSocket.open();
+        lobby.addUser(picking.ctx, "P3"); // connected, still on the default portrait
+        lobby.removeUser(players.get(1).ctx); // P2 is inside the grace window
+        try {
+            lobby.startNewGame();
+            fail("a connected player on the default portrait must stop the start");
+        } catch (RuntimeException expected) {
+            // expected
+        }
+        assertFalse(lobby.isInGame());
+        assertEquals(3, lobby.getUserCount());
+        assertTrue(lobby.canRejoin("P2"));
+    }
+
+    @Test
     public void aPlayerLeftOutCannotTakeASeatInTheGame() {
         Lobby lobby = new Lobby();
         List<FakeSocket> players = addPlayers(lobby, 3);
