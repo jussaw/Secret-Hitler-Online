@@ -605,8 +605,8 @@ class App extends Component<{}, AppState> {
         break;
 
       case PACKET_OK: {
-        // The first listener whose step is still running answers; one whose step is over (its
-        // prompt closed by its own button, or the queue cleared) must not finish a later step.
+        // The first listener whose step is still the current one answers; one from an earlier step
+        // (a later step has started since, or the queue was cleared) must not finish a later step.
         const listener = this.okMessageListeners.find((l) => l.step === this.animationStep);
         listener?.func();
         this.okMessageListeners = []; // clear all listeners.
@@ -1807,10 +1807,10 @@ class App extends Component<{}, AppState> {
   /**
    * Adds a listener to be called when the server returns an 'OK' status.
    * @param func The function to be called.
-   * @effects adds the listener, tied to the running animation step. On the server's next 'OK',
-   *          the first listener whose step is still running is called and every listener is
-   *          cleared: one whose step is over (its prompt closed by its own button, or the queue
-   *          cleared) never runs.
+   * @effects adds the listener, tied to the current animation step. On the server's next 'OK',
+   *          the first listener whose step is still the current one is called and every listener
+   *          is cleared: one from an earlier step (a later step has started since, or the queue
+   *          was cleared) never runs.
    */
   addServerOKListener(func: () => void) {
     this.okMessageListeners.push({ step: this.animationStep, func });
