@@ -1684,7 +1684,6 @@ class App extends Component<{}, AppState> {
     this.setState({ allAnimationsFinished: true });
     this.animationQueue = [];
     this.animationStep += 1; // the running step is over
-
     // A PLAY INSTEAD prompt that was still queued went with it.
     if (!this.playInsteadShown) {
       this.playInsteadOpen = false;
