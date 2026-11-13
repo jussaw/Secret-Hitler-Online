@@ -551,9 +551,12 @@ public class SecretHitlerServer {
 
         Lobby lobby = codeToLobby.get(code);
         String rejoinKey = ctx.queryParam(PARAM_REJOIN_KEY);
+        if (rejoinKey != null && rejoinKey.isBlank()) {
+            rejoinKey = null; // an empty key is no key
+        }
         // The page whose connection holds this name, reconnecting: its old connection is dead, though
         // the server may not see that for up to the idle timeout (a phone that changed networks).
-        boolean reclaiming = lobby.isHeldUnderKey(name, rejoinKey);
+        boolean reclaiming = lobby.hasLiveConnectionWithKey(name, rejoinKey);
         // A player taking back their own seat is refused neither for a full lobby nor for a game.
         boolean rejoining = reclaiming || lobby.canRejoin(name);
         if (lobby.hasUserWithName(name) && !reclaiming) { // duplicate names not allowed
