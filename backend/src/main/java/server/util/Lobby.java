@@ -302,45 +302,33 @@ public class Lobby implements Serializable {
 
     /**
      * Adds a new connection for the name, which has none live: rejoining the running game,
-     * taking back a seat inside the grace window, or taking a free seat in the lobby.
+     * taking back a seat inside the grace window, or taking a free seat in the lobby. A name
+     * still inside the grace window keeps its place in the lobby; any other takes the last place.
+     * That includes a player back in the running game after the window, or after a restore from
+     * a backup (which keeps no one in the lobby), so they are counted at once, and listed and
+     * seated when the game ends (#41).
      *
      * @throws IllegalArgumentException as {@code addUser}.
      */
     private void addNewConnection(WsContext context, String name) {
         if (isInGame()) {
-            if (canAddUserDuringGame(name)) { // This username is in the game but is not currently connected.
-                // allow the user to be connected.
-                userToUsername.put(context, name);
-
-                usernameToIcon.put(name, DEFAULT_ICON); // load default icon
-                // Try setting the player's icon using their previous choice
-                if (usernameToPreferredIcon.containsKey(name)) {
-                    String iconID = usernameToPreferredIcon.get(name);
-                    trySetUserIcon(iconID, context);
-                }
-            } else {
+            if (!canAddUserDuringGame(name)) { // only a player of this game, with no live connection
                 throw new IllegalArgumentException("Cannot add a new player to a lobby currently in a game.");
             }
-        } else {
-            if (!isFull() || canRejoin(name)) { // a returning player takes back their own seat
-                if (!hasUserWithName(name)) { // This is a new user with a new name, so we add them to the Lobby.
-                    userToUsername.put(context, name);
-                    if (!activeUsernames.contains(name)) {
-                        activeUsernames.add(name);
-                    }
-                    // Set icon to default
-                    usernameToIcon.put(name, DEFAULT_ICON);
-                    // Attempt to retrieve previous icon (if it exists)
-                    if (usernameToPreferredIcon.containsKey(name)) {
-                        String iconID = usernameToPreferredIcon.get(name);
-                        trySetUserIcon(iconID, context);
-                    }
-                } else {
-                    throw new IllegalArgumentException("Cannot add duplicate names.");
-                }
-            } else {
-                throw new IllegalArgumentException("Cannot add the player because the lobby is full.");
-            }
+        } else if (isFull() && !canRejoin(name)) { // a returning player takes back their own seat
+            throw new IllegalArgumentException("Cannot add the player because the lobby is full.");
+        } else if (hasUserWithName(name)) {
+            throw new IllegalArgumentException("Cannot add duplicate names.");
+        }
+
+        userToUsername.put(context, name);
+        if (!activeUsernames.contains(name)) {
+            activeUsernames.add(name);
+        }
+        // Start on the default icon, then try the player's previous choice, if they made one.
+        usernameToIcon.put(name, DEFAULT_ICON);
+        if (usernameToPreferredIcon.containsKey(name)) {
+            trySetUserIcon(usernameToPreferredIcon.get(name), context);
         }
     }
 
@@ -393,17 +381,20 @@ public class Lobby implements Serializable {
         }
 
         public void run() {
-            // If the user is still disconnected when the task runs, mark them as inactive
-            // and
-            // remove them from the lobby.
-            if (!userToUsername.values().contains(username) && activeUsernames.contains(username)) {
-                activeUsernames.remove(username);
-                usernameToRejoinKey.remove(username);
+            // Under the lobby's lock, so a rejoin under way as the window ends either finishes
+            // first, and the player is kept, or starts after the removal and adds them back.
+            synchronized (Lobby.this) {
+                // If the user is still disconnected when the task runs, mark them as inactive
+                // and remove them from the lobby.
+                if (!userToUsername.values().contains(username) && activeUsernames.contains(username)) {
+                    activeUsernames.remove(username);
+                    usernameToRejoinKey.remove(username);
 
-                if (usernameToIcon.containsKey(username)) {
-                    usernameToIcon.remove(username); // possible for users to disconnect before choosing icon
+                    if (usernameToIcon.containsKey(username)) {
+                        usernameToIcon.remove(username); // possible for users to disconnect before choosing icon
+                    }
+                    updateAllUsers();
                 }
-                updateAllUsers();
             }
         }
     }
