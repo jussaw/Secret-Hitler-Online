@@ -39,7 +39,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 6. Sounds | `phase-6-sounds` | done |
 | 7. Spectators | `phase-7-spectators` | done |
 | 8. Game screen redesign | `phase-8-game-screen` | in progress |
-| 9. Phase 8 follow-ups | `phase-9-follow-ups` | in progress |
+| 9. Phase 8 follow-ups | `phase-9-follow-ups` | done |
 | 10. Baseline bugs | `phase-10-baseline-bugs` | in progress |
 
 ---
@@ -613,8 +613,8 @@ These are Minor review findings deferred from Phase 8. The breakdown records the
 
 **Phase 9 acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] Every board floor in Phase 8's breakdown holds
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] Every board floor in Phase 8's breakdown holds
 
 ---
 
