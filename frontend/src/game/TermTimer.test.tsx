@@ -76,10 +76,22 @@ test("the president's chip is a button whose icon is what it does", () => {
   expect(document.querySelector(".lucide-play")).not.toBeNull();
 });
 
+test("the time left is the chip's description, so its name stays put", () => {
+  const view = show({ remainingMs: 8_000, paused: false }, true);
+  const button = screen.getByRole("button", { name: "Pause the countdown" });
+  expect(button).toHaveAccessibleDescription("8 seconds left");
+  view.rerender({ remainingMs: 1_000, paused: true });
+  expect(screen.getByRole("button", { name: "Resume the countdown" })).toHaveAccessibleDescription(
+    "1 second left"
+  );
+});
+
 test("everyone else's chip shows the countdown's state, and is no button", () => {
   const view = show({ remainingMs: 8_000, paused: false });
   expect(screen.queryByRole("button")).toBeNull();
-  expect(screen.getByRole("timer", { name: "Time left in the term" })).toBeInTheDocument();
+  expect(screen.getByRole("timer", { name: "Time left in the term" })).toHaveAccessibleDescription(
+    "8 seconds left"
+  );
   expect(document.querySelector(".lucide-timer")).not.toBeNull();
 
   view.rerender({ remainingMs: 8_000, paused: true });

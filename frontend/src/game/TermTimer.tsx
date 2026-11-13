@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Pause, Play, Timer, type LucideIcon } from "lucide-react";
 import type { TermTimerState } from "../types";
 import "./TermTimer.css";
@@ -57,6 +57,14 @@ export default function TermTimer({ timer, canPause, onPause, onResume }: TermTi
   const seconds = secondsLeft(useRemaining(timer));
   const paused = timer.paused;
   const className = "term-timer" + (paused ? " paused" : "");
+  // The time left is the chip's description, read with its name, while the name stays put: a
+  // name that changed every second could be announced every second.
+  const describedBy = useId();
+  const description = (
+    <span id={describedBy} hidden>
+      {seconds === 1 ? "1 second left" : `${seconds} seconds left`}
+    </span>
+  );
   const contents = (Icon: LucideIcon) => (
     <>
       <Icon
@@ -67,6 +75,7 @@ export default function TermTimer({ timer, canPause, onPause, onResume }: TermTi
         focusable="false"
       />
       <span className="term-timer-seconds">{seconds}</span>
+      {description}
     </>
   );
 
@@ -77,6 +86,7 @@ export default function TermTimer({ timer, canPause, onPause, onResume }: TermTi
         type="button"
         className={className}
         aria-label={label}
+        aria-describedby={describedBy}
         title={label}
         onClick={paused ? onResume : onPause}
       >
@@ -86,7 +96,7 @@ export default function TermTimer({ timer, canPause, onPause, onResume }: TermTi
   }
   const label = paused ? "The countdown to the end of the term is paused" : "Time left in the term";
   return (
-    <div className={className} role="timer" aria-label={label} title={label}>
+    <div className={className} role="timer" aria-label={label} aria-describedby={describedBy} title={label}>
       {contents(paused ? Pause : Timer)}
     </div>
   );
