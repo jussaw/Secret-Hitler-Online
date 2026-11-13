@@ -38,6 +38,7 @@ For more information, read the [official rulebook here](https://www.secrethitler
   - The lobby tagged every guest as `[Host]`.
   - A game started within 3 s of someone leaving or reloading seated a player who could never take the seat, and the game stalled at that seat's first turn. A game now seats only players who are connected.
   - A player who reloaded mid-game was locked out of their seat for 3 s.
+  - A player whose network dropped for a moment (a phone changing networks, say) was sent to the login page and could not rejoin for about 30 s, because the server still held their dead connection. The page now gets straight back into its seat. It keeps retrying for about 30 s while the network is gone, and notices within 10 s a connection that died without a word, as on a phone waking up.
   - A request sent right after the server started could get a 404.
   - A closed prompt could leave an empty black box on screen until a reload, mostly in Firefox, over the board and in the way of END TERM. A closed prompt is now taken off the page once its fade-out ends.
   - The console showed React warnings.

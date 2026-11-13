@@ -179,7 +179,7 @@ test("a spectator who leaves gets the name cookie back in the JOIN form", async 
   await expect(page.getByRole("button", { name: "WATCH" })).toBeVisible();
   await expect(joinName, "after LEAVE LOBBY").toHaveValue("Ann");
 
-  // The same after the server goes away and every reconnect fails.
+  // The same after the server restarts without the lobby and refuses the reconnect.
   const sockets = game.urls.length;
   await page.getByRole("button", { name: "WATCH" }).click();
   await expect.poll(() => game.urls.length).toBe(sockets + 1);
@@ -256,7 +256,7 @@ test("a held status line from a cleared queue does not cut the next one short", 
   await expect(status).toHaveText("A fascist policy was enacted.");
   await page.clock.runFor(1600); // 2 s into the line's 3 s hold
 
-  // The server goes away: the client gives up and clears its queue. WATCH again at once.
+  // The server restarts without the lobby: the client gives up and clears its queue. WATCH again.
   game.down(true);
   await expect(page.getByText("Disconnected from the lobby.")).toBeVisible();
   game.down(false);

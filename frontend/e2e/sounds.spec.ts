@@ -1,6 +1,6 @@
 import { expect, test, type Page, type WebSocketRoute } from "@playwright/test";
 import { LobbyState, type PolicyType, type Role } from "../src/types";
-import { TEN, gamePacket, openFakeGame } from "./fakeGame";
+import { LOBBY_GONE, TEN, answerPings, gamePacket, openFakeGame } from "./fakeGame";
 import { DESKTOP_SIZES, NARROW_WINDOWS, overflowX, overlaps, smallTargets } from "./layout";
 import { settle, waitForPlayers } from "./lobby";
 import { heard, recordSounds, soundLog } from "./soundLog";
@@ -33,7 +33,7 @@ test("no sound plays and no AudioContext exists before the first gesture", async
   let connect!: (ws: WebSocketRoute) => void;
   const connected = new Promise<WebSocketRoute>((resolve) => (connect = resolve));
   await page.routeWebSocket(/\/game\?/, (ws) => {
-    ws.onMessage(() => {});
+    answerPings(ws);
     connect(ws);
   });
 
@@ -357,17 +357,17 @@ test("a disconnect during the vote reveal cancels its sound", async ({ page, bro
   test.skip(browserName !== "chromium" || isMobile, "the desktop project covers the wiring");
   await recordSounds(page);
   // The page's clock is paused through the reveal below, so the 2 s before its tally sound do not
-  // depend on how fast this machine refuses five reconnects.
+  // depend on how fast this machine refuses the reconnect.
   await page.clock.install();
   await page.route("**/new-lobby", (route) => route.fulfill({ body: "FAKE" }));
   let refuse = false;
   let connect!: (ws: WebSocketRoute) => void;
   const connected = new Promise<WebSocketRoute>((resolve) => (connect = resolve));
   await page.routeWebSocket(/\/game\?/, (ws) => {
-    // The server is gone: every reconnect fails, each after half a second, as on a busy machine
-    // (five of them outlast the 2 s before the tally).
-    if (refuse) return void setTimeout(() => ws.close(), 500);
-    ws.onMessage(() => {});
+    // The server has restarted without the lobby: it refuses the reconnect, after half a second,
+    // as on a busy machine (longer than the 2 s before the tally would be, on the page's own clock).
+    if (refuse) return void setTimeout(() => ws.close(LOBBY_GONE), 500);
+    answerPings(ws);
     connect(ws);
   });
   await page.goto("/");
@@ -388,8 +388,8 @@ test("a disconnect during the vote reveal cancels its sound", async ({ page, bro
   send(gamePacket({ state: LobbyState.LEGISLATIVE_PRESIDENT, president: TEN[1], chancellor: TEN[2], userVotes: passed }));
   await page.clock.runFor(400); // the status line fades to its new text
   await expect(page.locator("#status-bar-text")).toHaveText("Tallying votes...");
-  // The reveal is running and its result sound is 2 s away. The server goes away now: after five
-  // failed reconnects the client returns to the login page and clears its animation queue.
+  // The reveal is running and its result sound is 2 s away. The server goes away now: its reconnect
+  // refused outright, the client returns to the login page and clears its animation queue.
   refuse = true;
   ws.close();
   await expect(page.getByText("Disconnected from the lobby.")).toBeVisible();

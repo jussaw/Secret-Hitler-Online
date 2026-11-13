@@ -33,6 +33,22 @@ export type FakeGame = {
   received: Record<string, unknown>[];
 };
 
+/**
+ * Answers the page's pings with pongs, as the server does, and gives its other messages no answer.
+ * The page drops a socket that leaves a ping unanswered for REPLY_TIMEOUT.
+ * @param record when given, every message the page sends is added to it.
+ */
+export function answerPings(ws: WebSocketRoute, record?: Record<string, unknown>[]): void {
+  ws.onMessage((message) => {
+    const data = JSON.parse(String(message));
+    record?.push(data);
+    if (data.command === "ping") ws.send(JSON.stringify({ type: "pong" }));
+  });
+}
+
+/** The close code and reason the server refuses a socket for a lobby it no longer has. */
+export const LOBBY_GONE = { code: 1002, reason: "The lobby 'FAKE' does not exist." };
+
 /** The lobby packet of the scripted lobby: `names` with portraits chosen. */
 export function lobbyPacket(names: string[] = TEN): object {
   const icon = Object.fromEntries(names.map((name, i) => [name, `p${i + 1}`]));
@@ -42,7 +58,7 @@ export function lobbyPacket(names: string[] = TEN): object {
 /**
  * Creates a lobby of `names` (TEN by default) as names[0] through the login form, with every
  * portrait already chosen, and returns the scripted socket. The client's own messages are
- * recorded and get no answer.
+ * recorded and get no answer, but for its pings, which are answered.
  */
 export async function openFakeGame(page: Page, names: string[] = TEN): Promise<FakeGame> {
   await page.route("**/new-lobby", (route) => route.fulfill({ body: "FAKE" }));
@@ -53,7 +69,7 @@ export async function openFakeGame(page: Page, names: string[] = TEN): Promise<F
   const connected = new Promise<void>((resolve) => (connect = resolve));
   await page.routeWebSocket(/\/game\?/, (ws) => {
     urls.push(ws.url());
-    ws.onMessage((message) => received.push(JSON.parse(String(message))));
+    answerPings(ws, received);
     latest = ws;
     connect();
   });
@@ -274,7 +290,10 @@ export const PROMPTS: { name: string; packets: object[]; button: string }[] = [
 export const WATCHED_LOBBY = { ...lobbyPacket(), spectatorCount: 1 };
 
 export type FakeWatch = FakeGame & {
-  /** While down, the server closes the open socket and every new one at once. */
+  /**
+   * While down, the server has restarted without the lobby: it closes the open socket, and refuses
+   * every new one as LOBBY_GONE, so the page gives up at once.
+   */
   down(on: boolean): void;
 };
 
@@ -293,8 +312,8 @@ export async function openFakeWatch(page: Page, first: object = WATCHED_LOBBY): 
   const connected = new Promise<void>((resolve) => (connect = resolve));
   await page.routeWebSocket(/\/game\?/, (ws) => {
     urls.push(ws.url());
-    if (down) return void ws.close();
-    ws.onMessage((message) => received.push(JSON.parse(String(message))));
+    if (down) return void ws.close(LOBBY_GONE);
+    answerPings(ws, received);
     latest = ws;
     connect();
   });
