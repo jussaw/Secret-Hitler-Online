@@ -372,8 +372,9 @@
     }
 
     /* The countdown sits at END TERM's right, centred on the button (less its shadow's room), in
-       the empty cell above the discard pile. That pile's cards reach it only with eleven or more
-       cards, which takes vetoes late in a game, and then the countdown stays on top of them. */
+       the empty cell above the discard pile. That pile's cards reach it only with ten or more
+       cards: a game holds at most 8 at END TERM, or 11 after vetoes late in the game. Then the
+       countdown stays on top, over the top 3px of the pile at most. */
     .term-timer-anchor {
         left: calc(100% + 10px);
         right: auto;

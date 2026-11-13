@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { LobbyState, type GameState, type TermTimerState } from "../src/types";
 import { openTable, play } from "./driveGame";
 import { TEN, gamePacket, openFakeGame, openFakeWatch, spectatorPacket } from "./fakeGame";
@@ -22,14 +22,18 @@ import { settle, watchLobby } from "./lobby";
 
 const [USER, OTHER] = TEN;
 
+/** The most discards a game holds at END TERM without vetoes, and the most with them. */
+const MOST_DISCARDS = 8;
+const MOST_DISCARDS_AFTER_VETOES = 11;
+
 /** The game at END TERM with `president` in office, and the countdown as the server sends it. */
 const endTerm = (termTimer: TermTimerState | undefined, president = USER): Partial<GameState> => ({
   state: LobbyState.POST_LEGISLATIVE,
   president,
   chancellor: TEN[2],
-  // A game holds at most 8 discards at END TERM without late vetoes: 10 is more than that.
+  // The most discards a game holds at END TERM, unless the late game had vetoes.
   drawSize: 5,
-  discardSize: 10,
+  discardSize: MOST_DISCARDS,
   termTimer,
 });
 
@@ -39,6 +43,9 @@ const RUNNING = { remainingMs: 10_000, paused: false };
 async function hideAlerts(page: Page) {
   await page.addStyleTag({ content: "#alert { display: none !important; }" });
 }
+
+/** The seconds a countdown chip shows (its description, hidden, also holds them). */
+const shown = (chip: Locator) => chip.locator(".term-timer-seconds");
 
 /** The commands the page has sent. */
 const commands = (sent: Record<string, unknown>[]) => sent.map((message) => message.command);
@@ -52,24 +59,24 @@ test("the president pauses and resumes the countdown, and END TERM flashes only 
 
   const endTermButton = page.getByRole("button", { name: "END TERM" });
   const pause = page.getByRole("button", { name: "Pause the countdown" });
-  await expect(pause).toHaveText(/^(10|9)$/);
-  await expect(pause, "the page counts down").toHaveText("8", { timeout: 4_000 });
+  await expect(shown(pause)).toHaveText(/^(10|9)$/);
+  await expect(shown(pause), "the page counts down").toHaveText("8", { timeout: 4_000 });
   await expect(endTermButton).toHaveCSS("animation-name", "end-term-flash");
 
   await pause.click();
   await expect.poll(() => commands(game.received)).toContain("pause-term-timer");
   game.send(gamePacket(endTerm({ remainingMs: 7_400, paused: true })));
   const resume = page.getByRole("button", { name: "Resume the countdown" });
-  await expect(resume).toHaveText("8");
+  await expect(shown(resume)).toHaveText("8");
   await expect(endTermButton).toHaveCSS("animation-name", "none");
   await page.waitForTimeout(1_500);
-  await expect(resume, "a paused countdown holds its time").toHaveText("8");
+  await expect(shown(resume), "a paused countdown holds its time").toHaveText("8");
 
   await resume.click();
   await expect.poll(() => commands(game.received)).toContain("resume-term-timer");
   game.send(gamePacket(endTerm({ remainingMs: 7_400, paused: false })));
   await expect(endTermButton).toHaveCSS("animation-name", "end-term-flash");
-  await expect(pause).toHaveText("7", { timeout: 2_000 });
+  await expect(shown(pause)).toHaveText("7", { timeout: 2_000 });
 
   // The term ends: the countdown goes, and END TERM stops flashing.
   game.send(gamePacket({ president: OTHER }));
@@ -84,14 +91,15 @@ test("a player who is not president sees the countdown and END TERM flashing, an
   await hideAlerts(page);
   game.send(gamePacket(endTerm(RUNNING, OTHER)));
 
-  await expect(page.getByRole("timer", { name: "Time left in the term" })).toHaveText(/^(10|9)$/);
+  await expect(shown(page.getByRole("timer", { name: "Time left in the term" }))).toHaveText(/^(10|9)$/);
   await expect(page.getByRole("button", { name: /countdown/ })).toHaveCount(0);
   const endTermButton = page.getByRole("button", { name: "END TERM" });
   await expect(endTermButton).toBeDisabled();
   await expect(endTermButton).toHaveCSS("animation-name", "end-term-flash");
 
   game.send(gamePacket(endTerm({ remainingMs: 2_500, paused: true }, OTHER)));
-  await expect(page.getByRole("timer", { name: "The countdown to the end of the term is paused" })).toHaveText("3");
+  const paused = page.getByRole("timer", { name: "The countdown to the end of the term is paused" });
+  await expect(shown(paused)).toHaveText("3");
   await expect(endTermButton).toHaveCSS("animation-name", "none");
 });
 
@@ -102,7 +110,9 @@ test("a spectator sees the countdown, and whether it is paused, beside the hidde
   await expect(page.getByRole("timer", { name: "Time left in the term" })).toBeVisible();
   await expect(page.locator(".game-decks .end-term")).toHaveCSS("visibility", "hidden");
   watch.send(spectatorPacket(endTerm({ remainingMs: 4_100, paused: true }, OTHER)));
-  await expect(page.getByRole("timer", { name: "The countdown to the end of the term is paused" })).toHaveText("5");
+  await expect(
+    shown(page.getByRole("timer", { name: "The countdown to the end of the term is paused" }))
+  ).toHaveText("5");
   await expect(page.getByRole("button", { name: /countdown/ })).toHaveCount(0);
   expect(commands(watch.received).filter((c) => c !== "ping" && c !== "get-state")).toEqual([]);
 });
@@ -215,8 +225,7 @@ for (const who of ["the president", "a spectator"] as const) {
     }
     await page.locator(".term-timer").waitFor();
     await settle(page);
-    // The discard pile shows its cards once the page has animated them in.
-    await expect(page.locator(".game-deck.discard #deck-policy.deck-final-show")).toHaveCount(10, { timeout: 10_000 });
+    await discardsShown(page, MOST_DISCARDS);
 
     const viewport = page.viewportSize()!;
     for (const { sizes, placement, touch } of layouts(testInfo.project.name, viewport)) {
@@ -224,6 +233,44 @@ for (const who of ["the president", "a spectator"] as const) {
     }
   });
 }
+
+/** Waits until the discard pile shows `count` cards, once the page has animated them in. */
+async function discardsShown(page: Page, count: number) {
+  const cards = page.locator(".game-deck.discard #deck-policy.deck-final-show");
+  await expect(cards).toHaveCount(count, { timeout: 10_000 });
+}
+
+/**
+ * After vetoes late in a game, the discard pile can hold up to 11 cards at END TERM, and with the
+ * phones' largest decks its top cards then reach the countdown at END TERM's right. The countdown
+ * stays on top of them, over no more than their top 3px.
+ */
+test("on a phone, the countdown stays on top of a discard pile grown by vetoes", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === "desktop", "phones put the countdown above the discard pile");
+  const game = await openFakeGame(page);
+  game.send(gamePacket({ ...endTerm({ remainingMs: 10_000, paused: true }), discardSize: MOST_DISCARDS_AFTER_VETOES }));
+  await page.locator(".term-timer").waitFor();
+  await settle(page);
+  await discardsShown(page, MOST_DISCARDS_AFTER_VETOES);
+
+  const viewport = page.viewportSize()!;
+  for (const size of [viewport, { width: viewport.height, height: viewport.width }]) {
+    await page.setViewportSize(size);
+    const at = `${size.width}x${size.height}`;
+    const parts = await measure(page);
+    const timer = parts.timer!;
+    for (const card of parts.deckCards.filter((c) => overlaps(timer, c))) {
+      expect(timer.bottom - card.top, `how far a card reaches under the countdown at ${at}`).toBeLessThanOrEqual(3);
+      const x = (Math.max(timer.left, card.left) + Math.min(timer.right, card.right)) / 2;
+      const y = (card.top + timer.bottom) / 2;
+      const onTop = await page.evaluate(
+        ([x, y]) => !!document.elementFromPoint(x, y)?.closest(".term-timer"),
+        [x, y]
+      );
+      expect(onTop, `the countdown on top of the cards at ${at}`).toBe(true);
+    }
+  }
+});
 
 test("the server ends a term that nobody ends when its countdown runs out", async ({ page, baseURL }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "one browser is enough");
