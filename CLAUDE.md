@@ -30,7 +30,19 @@ keeps credit to upstream and to the board game's creators.
   players with a live connection: a name still inside the 3 s grace window after a disconnect is
   dropped from `activeUsernames` and `usernameToIcon` (its preferred portrait is kept), so no seat
   is made for someone who cannot take it, and a start that fails leaves the lobby untouched
-  (`LobbyStartTest`).
+  (`LobbyStartTest`). While a game waits in `POST_LEGISLATIVE` for a human president, `Lobby` runs
+  the END TERM countdown (`TermTimer`, `END_TERM_TIMER_IN_SEC`, 10 s): it starts with the first
+  game packet that shows END TERM, and at zero it ends the term as END TERM would (one daemon
+  thread keeps time for every lobby and hands each end to a pooled thread, so a lobby busy sending
+  delays no other). The president's `pause-term-timer` and `resume-term-timer` pause it and
+  run it on from the time left; every game packet carries `termTimer` (`remainingMs` and `paused`)
+  while there is one. CPU presidents get none, since they end their own terms. It is transient, so
+  a lobby restored from a backup starts a fresh countdown with its first packet. An END TERM, pause
+  or resume from the president whose term the countdown has just ended is dropped instead of
+  refused (`Lobby.isLateForTerm`), so that race never closes their socket (`LobbyTermTimerTest`,
+  `TermTimerServerTest`). `SecretHitlerGame` and `CpuPlayer` do not pin a `serialVersionUID`, so a
+  new field or non-private method on either would stop older backups loading: game-side state that
+  is not part of the rules belongs in `Lobby`.
 - `frontend/`: React 18 and TypeScript 5, built with Vite and tested with Vitest. The entry is
   `src/main.tsx`, with `index.html` at the `frontend/` root. `src/App.tsx` owns the WebSocket, all
   state, the overlays and the login page; prompts live in `src/custom-alert/`. The game
@@ -39,7 +51,14 @@ keeps credit to upstream and to the board game's creators.
   (the four steps of a round, the current one lit, over the status line `#status-bar-text`; its line
   always keeps two lines' height, and `--round-tracker-ems` is the whole card's height in its own
   ems, which the layouts reserve) and `roundStep` (a pure function from the game state and
-  `lastState` to the step; `App` queues the step with each status line).
+  `lastState` to the step; `App` queues the step with each status line). `TermTimer` is the END
+  TERM countdown: an icon and the seconds left, counted down on the page from each packet's
+  `remainingMs`. It is the president's pause and resume button, and shows everyone else (spectators
+  too) whether it is paused; the seconds left are its accessible description, so its name stays
+  put. `GameScreen` puts it in `.end-term-slot` with END TERM, which flashes
+  (an outline, held steady with reduced motion) while the countdown runs. It stands just above END
+  TERM on desktop and in tall windows, in the room the table keeps there beside the tracker, and
+  at its right on phones, so it moves nothing.
   `RosterRow` (`src/game/`) draws one row and is shared by `PlayerRoster` and `LobbyRoster`.
   `usePlayerRows` (`src/player/`) is the per-player state the roster rows and the prompts' card
   tiles share. Desktops get the roster as a column at the left, the tracker over the boards, and
@@ -135,6 +154,13 @@ keeps credit to upstream and to the board game's creators.
   full lobby, a taken name, the host passing on, reloads, the grace window, and a game started
   right after someone watches instead (both grace-window tests fail when their timing missed the
   window). `tracker.spec.ts` (`desktop`) checks the lit step against the status line.
+  `term-timer.spec.ts` (`desktop` and both phone projects) plays the END TERM countdown from a
+  scripted socket for the president (pause and resume), another player and a spectator, checks it
+  stands beside END TERM at every tested size and on a phone held sideways, clear of the rest of
+  the table (with 8 discards, the most a game holds at END TERM without vetoes) and moving
+  nothing, checks on phones that it stays on top of the 11 discards vetoes can leave, and
+  (`desktop`) lets the server end a real game's term after 10 s.
+  The scripted sockets record what the page sends (`received`).
   `prompts.spec.ts` runs in `desktop` and both phone projects (`phone-360` also at 320x568); it
   opens every prompt from a scripted game socket (`e2e/fakeGame.ts`), and checks that the portrait
   picker's label and CONFIRM are in view without scrolling, on a phone held sideways too, while its
@@ -240,7 +266,7 @@ documents the file's name (`readme`, `development`, `claude`).
 - No new art (the header's speaker icons and the spectator count's eye come from the Lucide icon
   pack). Sound clips are CC0 only and listed in `docs/SOUND-CREDITS.md`.
 - The WebSocket protocol stays backward compatible for players; spectator support only adds
-  fields and a query parameter.
+  fields and a query parameter, and the END TERM countdown only adds `termTimer` and two commands.
 - Deploys go through the host's deploy tooling, never `docker compose up` from a checkout.
 - This repo is public. Never write details of the personal infrastructure it runs on into files,
   commit messages, PR or issue text, or code comments: machine and host names, the hardware, other

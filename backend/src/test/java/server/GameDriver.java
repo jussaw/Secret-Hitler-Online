@@ -58,6 +58,22 @@ public final class GameDriver {
     }
 
     /**
+     * Plays {@code game} with the same moves until it is in {@code state}. A new game's first
+     * election fails, so it waits for END TERM ({@code POST_LEGISLATIVE}) after two moves.
+     *
+     * @throws IllegalStateException if the game ends first.
+     */
+    public static void playUntil(SecretHitlerGame game, GameState state) {
+        GameDriver driver = new GameDriver(game);
+        for (int actions = 0; game.getState() != state; actions++) {
+            if (actions == MAX_ACTIONS || finished(game)) {
+                throw new IllegalStateException("The game never reached " + state + ".");
+            }
+            driver.act();
+        }
+    }
+
+    /**
      * A policy victory only shows in {@code hasGameFinished()} once {@code getState()} has
      * noticed it, so this asks for the state first. {@code onStep} sees the game before that.
      */

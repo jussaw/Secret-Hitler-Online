@@ -24,6 +24,17 @@ export type PlayerState = {
   investigated: boolean;
 };
 
+/**
+ * The END TERM countdown, which the server runs while the game waits for a human president to end
+ * the term, and ends the term at zero.
+ */
+export type TermTimerState = {
+  /** The time it had left when the server sent the packet, in ms. */
+  remainingMs: number;
+  /** The president has paused it: the term stays open, and the time stays put. */
+  paused: boolean;
+};
+
 export type GameState = {
   state: LobbyState;
   lastState: LobbyState;
@@ -51,6 +62,8 @@ export type GameState = {
   lastPolicy: string;
   vetoOccurred: boolean;
   peek?: PolicyType[];
+  /** Only while there is an END TERM countdown (POST_LEGISLATIVE, with a human president). */
+  termTimer?: TermTimerState;
 
   usernames?: string[];
   /** Maps from usernames to icon keys */

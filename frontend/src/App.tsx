@@ -1942,6 +1942,8 @@ class App extends Component<{}, AppState> {
           onEndTerm={() => {
             this.sendWSCommand({ command: WSCommandType.END_TERM });
           }}
+          onPauseTerm={() => this.sendWSCommand({ command: WSCommandType.PAUSE_TERM_TIMER })}
+          onResumeTerm={() => this.sendWSCommand({ command: WSCommandType.RESUME_TERM_TIMER })}
         />
 
         <div>

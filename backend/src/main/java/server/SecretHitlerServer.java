@@ -75,6 +75,11 @@ public class SecretHitlerServer {
     public static final String COMMAND_REGISTER_PEEK = "register-peek";
 
     public static final String COMMAND_END_TERM = "end-term";
+    // The president pauses and resumes the END TERM countdown.
+    public static final String COMMAND_PAUSE_TERM_TIMER = "pause-term-timer";
+    public static final String COMMAND_RESUME_TERM_TIMER = "resume-term-timer";
+    // In game packets while there is an END TERM countdown: {"remainingMs": ms left, "paused": boolean}.
+    public static final String PARAM_TERM_TIMER = "termTimer";
 
     private static final String CODE_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTWXYZ"; // u,v characters can look ambiguous
     private static final int CODE_LENGTH = 4;
@@ -760,8 +765,24 @@ public class SecretHitlerServer {
                         break;
 
                     case COMMAND_END_TERM:
+                    case COMMAND_PAUSE_TERM_TIMER:
+                    case COMMAND_RESUME_TERM_TIMER:
+                        String command = message.getString(PARAM_COMMAND);
+                        if (lobby.isLateForTerm(name)) {
+                            // The countdown ended this president's term while the command was on its way.
+                            logger.info(logMessage + " DROPPED (the END TERM countdown ended the term first)");
+                            sendOKMessage = false;
+                            updateUsers = false;
+                            break;
+                        }
                         verifyIsPresident(name, lobby);
-                        lobby.game().endPresidentialTerm();
+                        if (command.equals(COMMAND_END_TERM)) {
+                            lobby.game().endPresidentialTerm();
+                        } else if (command.equals(COMMAND_PAUSE_TERM_TIMER)) {
+                            lobby.pauseTermTimer();
+                        } else {
+                            lobby.resumeTermTimer();
+                        }
                         break;
 
                     case COMMAND_SELECT_ICON:

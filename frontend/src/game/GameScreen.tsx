@@ -6,6 +6,7 @@ import "./GameScreen.css";
 import PlayerRoster from "./PlayerRoster";
 import RoundTracker from "./RoundTracker";
 import { RoundStep } from "./roundStep";
+import TermTimer from "./TermTimer";
 import SoundControl from "../sound/SoundControl";
 import SpectatorCount from "../spectator/SpectatorCount";
 
@@ -28,6 +29,9 @@ export type GameScreenProps = {
   /** How many spectators are watching, shown in the header when above zero. */
   spectatorCount: number;
   onEndTerm: () => void;
+  /** The president pauses or resumes the END TERM countdown. */
+  onPauseTerm: () => void;
+  onResumeTerm: () => void;
 };
 
 /**
@@ -37,9 +41,11 @@ export type GameScreenProps = {
 export default function GameScreen(props: GameScreenProps) {
   const { gameState, user } = props;
   // Only the president can end their term, once the legislative session is over.
-  const canEndTerm =
-    gameState.state === LobbyState.POST_LEGISLATIVE &&
-    gameState.president === user;
+  const atEndTerm = gameState.state === LobbyState.POST_LEGISLATIVE;
+  const canEndTerm = atEndTerm && !props.spectator && gameState.president === user;
+  // The server's countdown to the end of the term. END TERM flashes while it runs.
+  const termTimer = atEndTerm ? gameState.termTimer : undefined;
+  const counting = !!termTimer && !termTimer.paused;
 
   return (
     <div className="game-screen">
@@ -70,14 +76,27 @@ export default function GameScreen(props: GameScreenProps) {
           </div>
 
           <div className="game-decks">
-            <button
-              className="end-term"
-              disabled={!canEndTerm}
-              onClick={props.onEndTerm}
-              style={props.spectator ? { visibility: "hidden" } : undefined}
-            >
-              END TERM
-            </button>
+            {/* END TERM, with the countdown placed beside it (GameScreen.css). */}
+            <div className="end-term-slot">
+              <button
+                className={"end-term" + (counting ? " counting" : "")}
+                disabled={!canEndTerm}
+                onClick={props.onEndTerm}
+                style={props.spectator ? { visibility: "hidden" } : undefined}
+              >
+                END TERM
+              </button>
+              {termTimer && (
+                <div className="term-timer-anchor">
+                  <TermTimer
+                    timer={termTimer}
+                    canPause={canEndTerm}
+                    onPause={props.onPauseTerm}
+                    onResume={props.onResumeTerm}
+                  />
+                </div>
+              )}
+            </div>
             {/* Desktops keep this order; tall windows and phones rearrange it in GameScreen.css. */}
             <PlayerPolicyStatus
               numFascistPolicies={props.fascistPolicies}
