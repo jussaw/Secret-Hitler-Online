@@ -603,7 +603,7 @@ These are Minor review findings deferred from Phase 8. The breakdown records the
 - [x] `frontend/src/game/GameScreen.css` and `PlayerRoster.css`: the tall-window blocks restate base values to undo the phone block; note at the base rules that their values are restated there, or move to a phone-only query
 - [x] `frontend/e2e/phone.spec.ts`: no check that rows keep their place when a PRES/CHAN tag appears (`rowShift` fills `.roster-detail`, which phones hide)
 - [x] `frontend/e2e/prompts.spec.ts`: add an upright short viewport (the project's width x 600) beside the sideways one for the scrolled-prompt test
-- [ ] Phones under 360 px: below about 257 px (about 273 px on Linux) the tracker's steps wrap and the card grows past its reserved height; decide whether to support or test narrower phones
+- [x] Phones under 360 px: below about 257 px (about 273 px on Linux) the tracker's steps wrap and the card grows past its reserved height; decide whether to support or test narrower phones. Decided: supported down to 320px wide (tested at 320x568, where the page may scroll); narrower phones are out of scope.
 - [x] `frontend/src/game/RoundTracker.css`: the smaller phone step line uses the shared stacked-layout query, so tall windows get it too; decide whether tall windows keep it or get their own step size. Decided: tall windows keep the phone's step line (the stacked query, on purpose).
 - [x] `frontend/src/game/RoundTracker.css`: the phone block's comment says the arrow's half-width is "about 0.2em"; it is 0.16–0.18em
 - [ ] `CLAUDE.md`: it says `--round-tracker-ems` keeps two lines' height; it is the whole card's height in its ems

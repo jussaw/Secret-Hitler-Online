@@ -45,8 +45,10 @@ keeps credit to upstream and to the board game's creators.
   those files): compact rows about 26px tall in two columns (`PRES` or `CHAN` after the name), the
   tracker, a decks row with END TERM over the counts box, and the boards at full width. With ten
   players and the longest status it fits 360x740 and 412x915 without scrolling; a phone held
-  sideways scrolls. `SoundControl.css` (44px header targets) and `RoundTracker.css` (the
-  smaller step line) keep the stacked query itself, so tall windows get those too, on purpose.
+  sideways scrolls. The layout holds down to 320px wide, tested at 320x568, where the page may
+  scroll; narrower phones are out of scope. `SoundControl.css` (44px header targets) and
+  `RoundTracker.css` (the smaller step line) keep the stacked query itself, so tall windows get
+  those too, on purpose.
   Among the stacked windows, those at least 700px wide (half-screen desktop windows, upright
   monitors, tablets held upright) fit one screen instead, with the roster across the top in two
   columns (three in near-square windows), from a later block,
@@ -74,7 +76,8 @@ keeps credit to upstream and to the board game's creators.
   same no-scroll tests, since Firefox rounds the layout differently, and the header-fit tests of
   `sounds.spec.ts` and `spectator.spec.ts`), and `phone-360`/`phone-412` (Galaxy S8 and Pixel 7
   emulation, `phone.spec.ts`: the game fits without scrolling, in order, with 44px targets, for
-  players and a spectator, and a phone held sideways gets the phone layout). `tracker.spec.ts`
+  players and a spectator, a 320x568 phone keeps the phone layout and only scrolls down, and a
+  phone held sideways gets the phone layout). `tracker.spec.ts`
   (`desktop`) checks the lit step against the status line. `prompts.spec.ts` runs in `desktop` and
   both phone projects; it opens every prompt from a scripted game socket (`e2e/fakeGame.ts`).
   `sounds.spec.ts` runs in every project: no sound and no `AudioContext` before the first trusted

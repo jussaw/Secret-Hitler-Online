@@ -93,16 +93,21 @@ const centreX = (b: Box) => (b.left + b.right) / 2;
 
 /**
  * Every check of the phone's game page: one column of the roster, the tracker, the decks row and
- * the boards, with no scroll in either direction, even with the longest status.
+ * the boards, with no scroll in either direction, even with the longest status. With `scroll`, the
+ * page may scroll down (but never sideways), and every other check still holds.
  */
 async function checkGame(
   page: Page,
-  { players, spectator = false }: { players: number; spectator?: boolean }
+  {
+    players,
+    spectator = false,
+    scroll = false,
+  }: { players: number; spectator?: boolean; scroll?: boolean }
 ) {
   const { width, height } = page.viewportSize()!;
 
   // The page.
-  expect(await pageHeight(page), "scrollHeight").toBeLessThanOrEqual(height);
+  if (!scroll) expect(await pageHeight(page), "scrollHeight").toBeLessThanOrEqual(height);
   const overflow = await overflowX(page);
   expect(overflow.scrollWidth, "scrollWidth").toBeLessThanOrEqual(width);
   expect(overflow.offscreen, "past the edge").toEqual([]);
@@ -177,7 +182,9 @@ async function checkGame(
     `step line's natural width ${steps.natural}px against ${steps.available}px available`
   ).toBeLessThanOrEqual(steps.available * 0.88);
   const long = await withStatus(page, LONG_STATUS);
-  expect(long.height, "scrollHeight with the longest status").toBeLessThanOrEqual(height);
+  if (!scroll) {
+    expect(long.height, "scrollHeight with the longest status").toBeLessThanOrEqual(height);
+  }
   expect(
     Math.abs(long.tracker.bottom - long.tracker.top - game.trackerReserved),
     `tracker height with the longest status against its reserved ${game.trackerReserved}px`
@@ -195,6 +202,19 @@ for (const players of [5, 10]) {
     }
   });
 }
+
+test("a 320px phone keeps the phone layout, and only scrolls down", async ({ page, baseURL }) => {
+  test.skip(test.info().project.name !== "phone-360", "one phone project is enough");
+  const guests = await startGame(page, baseURL!, 10);
+  try {
+    await settle(page);
+    await page.setViewportSize({ width: 320, height: 568 });
+    await settle(page);
+    await checkGame(page, { players: 10, scroll: true });
+  } finally {
+    guests.forEach((ws) => ws.close());
+  }
+});
 
 test("a phone held sideways gets the phone layout", async ({ page, baseURL }) => {
   const guests = await startGame(page, baseURL!, 10);
