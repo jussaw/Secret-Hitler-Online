@@ -110,6 +110,15 @@ describe("PlayerRoster", () => {
     });
   });
 
+  test("the name has a box of its own before the role icon, and the row's title is the full name", () => {
+    const { row } = renderRoster(withRoles(), "Ben");
+    const name = row("Cat").querySelector(".roster-name")!;
+    expect(row("Cat").getAttribute("title")).toBe("Cat");
+    expect(name.querySelector(".roster-name-text")!.textContent).toBe("Cat");
+    // The icon follows the text, so it stays visible when a name too long to fit is cut short.
+    expect(Array.from(name.children, (child) => child.className)).toEqual(["roster-name-text", "roster-role-icon"]);
+  });
+
   test("every row reserves one detail line", () => {
     const { container } = renderRoster(makeGameState(NAMES), "Ann");
     container.querySelectorAll("li.roster-row").forEach((r) => {

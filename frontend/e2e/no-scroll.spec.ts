@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
-import { LobbyState } from "../src/types";
-import { EVERY_ROLE, TEN, gamePacket, openFakeGame } from "./fakeGame";
+import { makeGameState } from "../src/game/testGameState";
+import { LobbyState, type Role } from "../src/types";
+import { openFakeGame } from "./fakeGame";
 import {
   BOARD_FLOOR,
   DESKTOP_SIZES,
@@ -44,7 +45,21 @@ function measureTable(page: Page) {
       roster: one(".game-body > .roster"),
       rows: Array.from(document.querySelectorAll(".roster-row"), box),
       userRows: document.querySelectorAll(".roster-row.is-user").length,
-      names: Array.from(document.querySelectorAll(".roster-name"), fit),
+      // A name's own text box: a name cut short has more text than box.
+      names: Array.from(document.querySelectorAll(".roster-name-text"), fit),
+      // Where each row's name, its role icon and its vote slot sit.
+      nameBoxes: Array.from(document.querySelectorAll(".roster-row"), (row) => {
+        const icon = row.querySelector(".roster-role-icon");
+        return {
+          player: row.getAttribute("data-player") ?? "",
+          title: row.getAttribute("title") ?? "",
+          row: box(row),
+          name: box(row.querySelector(".roster-name")!),
+          text: box(row.querySelector(".roster-name-text")!),
+          icon: icon ? box(icon) : null,
+          slot: box(row.querySelector(".roster-status")!),
+        };
+      }),
       tracker: one(".game-table > .round-tracker"),
       trackerReserved,
       status,
@@ -180,23 +195,30 @@ async function checkLayout(
   // A label filling in moves no row and not the boards.
   expect(await rowShift(page), `a filled label moves a row at ${at}`).toBeLessThanOrEqual(0.5);
 
-  // What was measured is the final layout, not one still animating from the last size.
+  // What was measured is the final layout, not one still animating from the last size. The card
+  // is as wide as its line, so when a new line arrives in the live game meanwhile, measure again
+  // until two measurements 500ms apart show the same line, then compare them exactly.
+  let before = table;
   await page.waitForTimeout(500);
-  const later = await measureTable(page);
-  if (later.status === table.status) {
-    expect(later.tracker, `the tracker settles at ${at}`).toEqual(table.tracker);
-  } else {
-    // A new line arrived in the live game. The card is as wide as its line, so only its width
-    // may change: it stays where it was.
-    expect(later.tracker.top, `the tracker's top settles at ${at}`).toBe(table.tracker.top);
-    expect(later.tracker.bottom, `the tracker's bottom settles at ${at}`).toBe(table.tracker.bottom);
-    expect(
-      Math.abs(centreX(later.tracker) - centreX(table.tracker)),
-      `the tracker's centre settles at ${at} ("${table.status}" became "${later.status}")`
-    ).toBeLessThanOrEqual(0.5);
+  let later = await measureTable(page);
+  for (let tries = 0; later.status !== before.status && tries < 10; tries++) {
+    before = later;
+    await page.waitForTimeout(500);
+    later = await measureTable(page);
   }
+  expect(later.status, `the status line settles at ${at}`).toBe(before.status);
+  expect(later.tracker, `the tracker settles at ${at}`).toEqual(before.tracker);
   expect(later.boards, `the boards settle at ${at}`).toEqual(table.boards);
   expect(later.endTerm, `END TERM settles at ${at}`).toEqual(table.endTerm);
+  if (before !== table) {
+    // The tracker checks above measured the earlier line's card; the new line's card holds them too.
+    expect(
+      Math.abs(later.tracker.bottom - later.tracker.top - later.trackerReserved),
+      `the new line's tracker height at ${at}`
+    ).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(centreX(later.tracker) - centreX(later.boards)), `the new line's tracker centred at ${at}`).toBeLessThanOrEqual(1);
+    expect(later.tracker.bottom, `the new line's tracker above the boards at ${at}`).toBeLessThanOrEqual(later.boards.top + 1);
+  }
 
   // Tall windows are touch screens; a spectator's hidden END TERM is no target.
   if (!desktop) {
@@ -231,23 +253,44 @@ for (const players of [5, 7, 10]) {
   });
 }
 
+/**
+ * Twelve characters each, the longest the login form allows. Names in capitals and in wide mixed
+ * case must fit whole wherever the game is shown. Twelve Ws cannot fit at 12px or more, so that
+ * name is cut short inside its own box.
+ */
+const WIDE_NAMES = [
+  "WOLFGANG MAX",
+  "ALEXANDRA MW",
+  "Wilma Wombat",
+  "MARGARET ANN",
+  "Long Guest 4",
+  "Long Guest 5",
+  "Long Guest 6",
+  "Long Guest 7",
+  "Long Guest 8",
+];
+const TOO_WIDE = "WWWWWWWWWWWW";
+
 test("every name fits beside its role icon, on 16:9 and squarer desktops and in narrow windows", async ({
   page,
 }) => {
   // A scripted game at its end, when everyone sees every role, with two players in office and one
   // executed: every name has its icon, and every kind of detail line shows. Settling hides the
   // victory screen.
-  const game = await openFakeGame(page);
-  game.send(
-    gamePacket(
-      { state: LobbyState.FASCIST_VICTORY_POLICY, president: TEN[3], chancellor: TEN[6] },
-      EVERY_ROLE,
-      [TEN[8]]
-    )
-  );
+  const names = [...WIDE_NAMES, TOO_WIDE];
+  const game = await openFakeGame(page, names);
+  const state = makeGameState(names, {
+    state: LobbyState.FASCIST_VICTORY_POLICY,
+    president: names[3],
+    chancellor: names[6],
+  });
+  const roles = ["FASCIST", "HITLER", "LIBERAL", "FASCIST", "LIBERAL"] as Role[];
+  names.forEach((name, i) => (state.players[name].id = roles[i % roles.length]));
+  state.players[names[7]].alive = false;
+  game.send({ type: "game", ...state });
   await page.locator(".game-screen").waitFor();
   await settle(page);
-  expect(await page.locator(".roster-name .roster-role-icon").count(), "role icons").toBe(TEN.length);
+  expect(await page.locator(".roster-name .roster-role-icon").count(), "role icons").toBe(names.length);
 
   for (const [sizes, desktop] of [
     [DESKTOP_SIZES, true],
@@ -263,8 +306,20 @@ test("every name fits beside its role icon, on 16:9 and squarer desktops and in 
       expect(overflow.offscreen, `past the edge at ${at}`).toEqual([]);
 
       const table = await measureTable(page);
-      for (const name of table.names) {
+      for (const name of table.names.filter((n) => n.text !== TOO_WIDE)) {
         expect(name.scrollWidth, `"${name.text}" is cut off at ${at}`).toBeLessThanOrEqual(name.clientWidth + 1);
+      }
+      // Every name, cut short or not, its icon included, stays inside its row and clear of the
+      // vote slot, and the row's title holds the whole name.
+      for (const row of table.nameBoxes) {
+        const of = `"${row.player}" at ${at}`;
+        expect(row.title, `the title of ${of}`).toBe(row.player);
+        expect(row.icon, `the role icon of ${of}`).not.toBeNull();
+        for (const [part, b] of [["name", row.name], ["text", row.text], ["icon", row.icon!]] as const) {
+          expect(b.right, `${part} right of ${of}, against its vote slot`).toBeLessThanOrEqual(row.slot.left);
+          expect(b.left, `${part} left of ${of}, against its row`).toBeGreaterThanOrEqual(row.row.left);
+        }
+        expect(row.icon!.left, `the role icon after the name of ${of}`).toBeGreaterThanOrEqual(row.text.right);
       }
       for (const line of table.counts) {
         expect(line.scrollWidth, `"${line.text}" fits the counts box at ${at}`).toBeLessThanOrEqual(line.clientWidth + 1);
@@ -280,6 +335,19 @@ test("every name fits beside its role icon, on 16:9 and squarer desktops and in 
       ).toBeLessThanOrEqual(0.5);
     }
   }
+
+  // At the smallest desktop size twelve Ws really are cut short, so the checks above held for a
+  // name that does not fit.
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const tooWide = (await measureTable(page)).names.find((n) => n.text === TOO_WIDE)!;
+  expect(tooWide.scrollWidth, "twelve Ws at 1280x720 are cut short").toBeGreaterThan(tooWide.clientWidth + 1);
+  // Its box clips the text with an ellipsis, so none of it paints past the box.
+  const clip = await page.evaluate((name) => {
+    const text = document.querySelector(`.roster-row[data-player="${name}"] .roster-name-text`)!;
+    const style = getComputedStyle(text);
+    return { overflow: style.overflowX, ellipsis: style.textOverflow };
+  }, TOO_WIDE);
+  expect(clip, "how twelve Ws are cut short").toEqual({ overflow: "hidden", ellipsis: "ellipsis" });
 
   // The executed player's line is as readable as their greyed name.
   const executed = await page.evaluate(() => {

@@ -50,14 +50,14 @@ function RosterRow({ row }: { row: PlayerRow }) {
 
   const className = "roster-row" + (row.isUser ? " is-user" : "") + (disabled ? " is-disabled" : "");
   return (
-    <li className={className} data-player={row.name}>
+    <li className={className} data-player={row.name} title={row.name}>
       <span className="roster-portrait">
         <img className="roster-card" src={PlayerBase} alt="" />
         <img className="roster-face" src={portraits[row.icon]} alt={portraitsAltText[row.icon]} />
       </span>
       <span className="roster-text">
         <span className="roster-name">
-          {row.name}
+          <span className="roster-name-text">{row.name}</span>
           {row.role !== undefined && (
             <img className="roster-role-icon" src={ROLE_ICONS[row.role]} alt={ROLE_WORDS[row.role]} />
           )}

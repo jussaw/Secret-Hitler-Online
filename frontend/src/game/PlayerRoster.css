@@ -74,6 +74,16 @@
   white-space: nowrap;
 }
 
+/* The layouts size the text so any realistic twelve-character name fits. A name too wide even so
+   is cut short with an ellipsis inside its own box, never under the vote slot, and the role icon
+   after it stays; the row's title holds the full name. */
+.roster-name-text {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .roster-role-icon {
   flex: none;
   height: 1.1em;

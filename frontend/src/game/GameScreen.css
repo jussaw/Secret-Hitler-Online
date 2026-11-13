@@ -32,9 +32,10 @@
     --roster-gap: 6px;
     /* Text follows the window's height, but never outgrows the row's room. A row spends 1.8em on
        its two gaps and right padding (PlayerRoster.css) and at least 3em on the vote slot, and a
-       twelve-character name with its role icon takes up to about 8.42em: 13.6em leaves a little
-       over all of that. */
-    --roster-font: clamp(12px, min(1.8vh, var(--row-room) / 13.6), 20px);
+       twelve-character name in capitals with its role icon takes up to about 10.5em ("WOLFGANG
+       MAX"): 15.6em leaves a little over all of that, and at the narrowest column (260px) still
+       gives 12px text. */
+    --roster-font: clamp(12px, min(1.8vh, var(--row-room) / 15.6), 20px);
     box-sizing: border-box;
     min-height: 0;
     padding: 8px;
@@ -52,10 +53,10 @@
     max-height: var(--portrait-max);
 }
 
-/* The vote slot takes what the gaps and an 8.8em name leave, from 3em up to the mockup's 4.3em,
-   so the ja/nein pill (2.68:1) is as large as the row allows. */
+/* The vote slot takes what the gaps and a 10.8em name leave, from 3em up to the mockup's 4.3em,
+   so the ja/nein pill (2.68:1) grows only where the names have their room. */
 .game-body .roster-status {
-    width: clamp(3em, var(--row-room) - 10.6em, 4.3em);
+    width: clamp(3em, var(--row-room) - 12.6em, 4.3em);
 }
 
 /* The table: the tracker over the boards, and the decks column one gap to the right of the
