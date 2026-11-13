@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { ROUND_STEPS, RoundStep } from "./roundStep";
 import "./RoundTracker.css";
 
@@ -28,16 +28,21 @@ function stateOf(index: number, current: number): "done" | "current" | "later" {
 /** The four steps of a round with the current one lit, and the status line under them. */
 export default function RoundTracker(props: { step: RoundStep | null; text: string }) {
   const { step, text } = props;
-  const [shown, setShown] = useState(text);
+  const [shown, setShown] = useState({ text, step });
+  const latestStep = useRef(step);
+  latestStep.current = step;
 
-  // When the text changes, the old text fades out (`.hide`) for FADE_MS, then the new text replaces it.
+  // When the text changes, the old line and its step stay (the line fades with `.fading`) for FADE_MS,
+  // then both are replaced together. A step change with the same text applies at once.
   useEffect(() => {
-    if (text === shown) return;
-    const timer = setTimeout(() => setShown(text), FADE_MS);
+    if (text === shown.text) return;
+    const timer = setTimeout(() => setShown({ text, step: latestStep.current }), FADE_MS);
     return () => clearTimeout(timer);
-  }, [text, shown]);
+  }, [text, shown.text]);
 
-  const current = step === null ? -1 : ROUND_STEPS.indexOf(step);
+  const fading = shown.text !== text;
+  const litStep = fading ? shown.step : step;
+  const current = litStep === null ? -1 : ROUND_STEPS.indexOf(litStep);
 
   return (
     <section className="round-tracker" aria-label="Round">
@@ -55,8 +60,8 @@ export default function RoundTracker(props: { step: RoundStep | null; text: stri
           );
         })}
       </ol>
-      <p id="status-bar-text" className={`round-line${shown !== text ? " hide" : ""}`}>
-        {highlightWords(shown)}
+      <p id="status-bar-text" className={`round-line${fading ? " fading" : ""}`}>
+        {highlightWords(shown.text)}
       </p>
     </section>
   );

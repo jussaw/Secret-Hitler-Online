@@ -83,8 +83,8 @@
   animation: round-show 0.25s;
 }
 
-.round-line.hide {
-  animation: round-hide 0.25s ease-in-out;
+.round-line.fading {
+  animation: round-hide 0.25s ease-in-out forwards;
 }
 
 .round-highlight {

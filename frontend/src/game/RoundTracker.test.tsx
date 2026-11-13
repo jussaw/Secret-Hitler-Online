@@ -56,12 +56,12 @@ describe("RoundTracker line", () => {
     const line = () => container.querySelector("#status-bar-text")!;
     rerender(<RoundTracker step={null} text="New line" />);
     expect(line().textContent).toBe("Old line");
-    expect(line().classList.contains("hide")).toBe(true);
+    expect(line().classList.contains("fading")).toBe(true);
     act(() => {
       vi.advanceTimersByTime(250);
     });
     expect(line().textContent).toBe("New line");
-    expect(line().classList.contains("hide")).toBe(false);
+    expect(line().classList.contains("fading")).toBe(false);
   });
 
   test("a text change during the fade shows only the latest text", () => {
@@ -80,5 +80,22 @@ describe("RoundTracker line", () => {
       vi.advanceTimersByTime(100);
     });
     expect(line().textContent).toBe("C");
+  });
+
+  test("the old step stays lit during the fade, then moves with the new line", () => {
+    const { container, rerender } = render(<RoundTracker step={RoundStep.ELECTION} text="Old line" />);
+    const lit = () => container.querySelector(".round-step.current")!.textContent;
+    rerender(<RoundTracker step={RoundStep.LEGISLATIVE} text="New line" />);
+    expect(lit()).toBe(ROUND_STEPS[1]);
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    expect(lit()).toBe(ROUND_STEPS[2]);
+  });
+
+  test("a step change with the same text applies at once", () => {
+    const { container, rerender } = render(<RoundTracker step={RoundStep.ELECTION} text="Same" />);
+    rerender(<RoundTracker step={RoundStep.LEGISLATIVE} text="Same" />);
+    expect(container.querySelector(".round-step.current")!.textContent).toBe(ROUND_STEPS[2]);
   });
 });
