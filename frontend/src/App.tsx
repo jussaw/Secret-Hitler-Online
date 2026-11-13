@@ -313,9 +313,9 @@ class App extends Component<{}, AppState> {
       SERVER_ADDRESS_HTTP +
         CHECK_LOGIN +
         "?name=" +
-        encodeURI(name) +
+        encodeURIComponent(name) +
         "&lobby=" +
-        encodeURI(lobby)
+        encodeURIComponent(lobby)
     );
   }
 
@@ -326,7 +326,13 @@ class App extends Component<{}, AppState> {
    */
   async tryWatchLogin(lobby: string) {
     return await fetch(
-      SERVER_ADDRESS_HTTP + CHECK_LOGIN + "?lobby=" + encodeURI(lobby) + "&" + PARAM_SPECTATOR + "=true"
+      SERVER_ADDRESS_HTTP +
+        CHECK_LOGIN +
+        "?lobby=" +
+        encodeURIComponent(lobby) +
+        "&" +
+        PARAM_SPECTATOR +
+        "=true"
     );
   }
 

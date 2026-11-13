@@ -47,3 +47,19 @@ test("the lobby marks only the first player as HOST", async () => {
   expect(rows.map((row) => row.getAttribute("data-player"))).toEqual(["A", "B", "C"]);
   expect(rows.map((row) => row.querySelector(".roster-detail")?.textContent)).toEqual(["HOST", "", ""]);
 });
+
+test("the login checks send the name and lobby as whole query values", async () => {
+  const app = createRef<App>();
+  render(<App ref={app} />);
+  await app.current!.tryLogin("A&B #1+?=", "HB&A");
+  await app.current!.tryWatchLogin("HB#A");
+  const checks = vi
+    .mocked(fetch)
+    .mock.calls.map(([url]) => new URL(String(url), "http://host"))
+    .filter((url) => url.pathname.endsWith("/check-login"));
+  expect(checks).toHaveLength(2);
+  expect(checks[0].searchParams.get("name")).toBe("A&B #1+?=");
+  expect(checks[0].searchParams.get("lobby")).toBe("HB&A");
+  expect(checks[1].searchParams.get("lobby")).toBe("HB#A");
+  expect(checks[1].searchParams.get("spectator")).toBe("true");
+});
