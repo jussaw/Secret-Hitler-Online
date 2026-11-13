@@ -47,7 +47,11 @@ export function stepForState(
         default:
           return RoundStep.LEGISLATIVE;
       }
-    default:
+    case LobbyState.SETUP:
+    case LobbyState.LIBERAL_VICTORY_POLICY:
+    case LobbyState.LIBERAL_VICTORY_EXECUTION:
+    case LobbyState.FASCIST_VICTORY_POLICY:
+    case LobbyState.FASCIST_VICTORY_ELECTION:
       return null;
   }
 }
@@ -56,5 +60,7 @@ export function stepForState(
 export function stepForPolicyLine(
   game: Pick<GameState, "electionTrackerAdvanced">,
 ): RoundStep {
-  return game.electionTrackerAdvanced ? RoundStep.ELECTION : RoundStep.LEGISLATIVE;
+  return game.electionTrackerAdvanced
+    ? RoundStep.ELECTION
+    : RoundStep.LEGISLATIVE;
 }

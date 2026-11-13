@@ -56,6 +56,30 @@ describe("stepForState", () => {
   ])("maps %s to null", (state) => {
     expect(stepForState({ state, lastState: S.CHANCELLOR_VOTING })).toBeNull();
   });
+
+  it.each(
+    [
+      S.CHANCELLOR_NOMINATION,
+      S.CHANCELLOR_VOTING,
+      S.LEGISLATIVE_PRESIDENT,
+      S.LEGISLATIVE_CHANCELLOR,
+      S.LEGISLATIVE_PRESIDENT_VETO,
+      S.PP_PEEK,
+      S.PP_INVESTIGATE,
+      S.PP_EXECUTION,
+      S.PP_ELECTION,
+      S.SETUP,
+      S.FASCIST_VICTORY_ELECTION,
+    ].flatMap((state) =>
+      [S.PP_EXECUTION, S.CHANCELLOR_VOTING, S.LEGISLATIVE_CHANCELLOR].map(
+        (lastState) => [state, lastState],
+      ),
+    ),
+  )("%s ignores lastState %s outside POST_LEGISLATIVE", (state, lastState) => {
+    expect(stepForState({ state, lastState })).toBe(
+      stepForState({ state, lastState: S.SETUP }),
+    );
+  });
 });
 
 describe("stepForPolicyLine", () => {
