@@ -274,6 +274,12 @@ the column, and its labels never wrap. END TERM keeps its current behaviour: it 
 president in `POST_LEGISLATIVE`, and it is hidden for spectators but keeps its place. A full draw
 pile's cards stand above the deck, as now, so the gap above the draw pile leaves room for them.
 
+Issue #28 added the END TERM countdown: while the server's 10 s countdown runs, END TERM flashes
+(an outline, so it keeps its size and colours), and a chip with the seconds left stands just above
+it on desktop and in tall windows (in the room beside the tracker) and at its right on phones (in
+the empty cell above the discard pile). For the president the chip is the pause and resume button;
+everyone else, spectators included, sees whether it is paused. It moves nothing.
+
 ### Banner
 
 `SECRET-HITLER` replaces `SECRET-HITLER.ONLINE` in `App.tsx` (the login and lobby headers) and
