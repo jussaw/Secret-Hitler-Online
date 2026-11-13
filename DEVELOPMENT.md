@@ -24,7 +24,7 @@ cd ../backend && ./gradlew jar                  # bundles frontend/dist into the
 PORT=4040 java -jar build/libs/secret-hitler-online.jar
 ```
 
-The Docker image does the same in three stages: `docker build -t secret-hitler-online .` at the repo root, then `docker run -p 8080:8080 -v sh-data:/data secret-hitler-online`. CI publishes it as `ghcr.io/jussaw/secret-hitler-online` on every push to `development`.
+The Docker image does the same in three stages: `docker build -t secret-hitler-online .` at the repo root, then `docker run -p 8080:8080 -v sh-data:/data secret-hitler-online`. CI publishes it as `ghcr.io/jussaw/secret-hitler-online` on every push to `main`.
 
 ## Running the backend and the frontend
 
