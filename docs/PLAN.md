@@ -650,11 +650,11 @@ Issue #23: the lobby matches the game screen and fits one screen, says what STAR
 - [x] `frontend/e2e/no-scroll.spec.ts` and `phone.spec.ts`: the lobby fits every tested window with ten players and the longest line, for the host, a guest and a spectator
 - [x] `frontend/e2e/lobby-switch.spec.ts`: the switch both ways, a full lobby, a taken name, the host passing on, reloads, and a game started right after a switch
 - [x] `CLAUDE.md` and `README.md` describe the lobby and the switch
-- [ ] The pull request shows the lobby before and after, on desktop and on a phone, and closes #23
+- [x] The pull request shows the lobby before and after, on desktop and on a phone, and closes #23
 
 **Phase 11 acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
 - [ ] PR merged into `development`
 - [ ] The user plays one real lobby on the deployed build, on a desktop and on a phone: switches each way, sees the status line name the player still picking, and starts a game
 
