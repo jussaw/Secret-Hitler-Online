@@ -233,6 +233,14 @@ class App extends Component<{}, AppState> {
   soundTimers: ReturnType<typeof setTimeout>[] = [];
   /** The end of a held status line (queueStatusMessage), which advances the animation queue. */
   holdTimers: ReturnType<typeof setTimeout>[] = [];
+  /** True from PLAY INSTEAD being pressed until its prompt closes; a game starting closes it. */
+  playInsteadOpen = false;
+  /** True while the PLAY INSTEAD prompt is on screen (not just queued). */
+  playInsteadShown = false;
+  /** The queued step that shows the prompt, so a prompt closed before it shows can be dropped. */
+  playInsteadStep?: () => void = undefined;
+  /** Counts the alerts shown, so a late fade timer does not blank a newer alert. */
+  alertShowCount = 0;
 
   // noinspection DuplicatedCode
   constructor(props: any) {
@@ -265,6 +273,9 @@ class App extends Component<{}, AppState> {
     this.onClickPlayInstead = this.onClickPlayInstead.bind(this);
     this.playInstead = this.playInstead.bind(this);
     this.closePlayInstead = this.closePlayInstead.bind(this);
+    this.dropPlayInstead = this.dropPlayInstead.bind(this);
+    this.openSeat = this.openSeat.bind(this);
+    this.openWatch = this.openWatch.bind(this);
     this.addAnimationToQueue = this.addAnimationToQueue.bind(this);
     this.clearAnimationQueue = this.clearAnimationQueue.bind(this);
     this.queueAlert = this.queueAlert.bind(this);
@@ -351,6 +362,14 @@ class App extends Component<{}, AppState> {
       console.trace("TryOpenWebsocket URL: " + url);
     }
 
+    // Build the new socket first: if that throws, the old one is left as it was.
+    let ws: WebSocket;
+    try {
+      ws = new WebSocket(url);
+    } catch {
+      return false;
+    }
+
     // Close existing websocket
     if (this.websocket) {
       // Clear onClose event to prevent reconnection
@@ -359,46 +378,64 @@ class App extends Component<{}, AppState> {
       this.websocket = undefined;
     }
 
-    let ws = new WebSocket(url);
-    if (ws.OPEN) {
-      console.log("Websocket opened successfully to " + url);
-      this.websocket = ws;
-      // A new socket has no history, so its first packet plays no sounds (no burst on reconnect).
-      this.soundState = undefined;
-      this.lobbyUsers = undefined;
-      this.reconnectOnConnectionClosed = true;
-      // Only move the player to the lobby page if they were logging in.
-      // This is to prevent the bug where players flash in/out of the lobby page
-      // at random points in the game.
-      if (this.state.page === PAGE.LOGIN) {
-        this.setState({ page: PAGE.LOBBY });
-      }
-      this.setState({
-        name: name,
-        lobby: lobby,
-        spectator: spectator,
-        usernames: [],
-        joinName: "",
-        joinLobby: "",
-        joinError: "",
-        createLobbyName: "",
-        createLobbyError: "",
-      });
-      ws.onmessage = (msg) => this.onWebSocketMessage(msg);
-      ws.onclose = () => this.onWebSocketClose();
-
-      // Ping the web server at a set interval.
-      if (this.pingInterval) {
-        clearInterval(this.pingInterval);
-      }
-      this.pingInterval = setInterval(() => {
-        this.sendWSCommand({ command: WSCommandType.PING });
-      }, PING_INTERVAL);
-
-      return true;
-    } else {
-      return false;
+    console.log("Websocket opened successfully to " + url);
+    this.websocket = ws;
+    // A new socket has no history, so its first packet plays no sounds (no burst on reconnect).
+    this.soundState = undefined;
+    this.lobbyUsers = undefined;
+    this.reconnectOnConnectionClosed = true;
+    // Only move the player to the lobby page if they were logging in.
+    // This is to prevent the bug where players flash in/out of the lobby page
+    // at random points in the game.
+    if (this.state.page === PAGE.LOGIN) {
+      this.setState({ page: PAGE.LOBBY });
     }
+    this.setState({
+      name: name,
+      lobby: lobby,
+      spectator: spectator,
+      usernames: [],
+      joinName: "",
+      joinLobby: "",
+      joinError: "",
+      createLobbyName: "",
+      createLobbyError: "",
+    });
+    ws.onmessage = (msg) => this.onWebSocketMessage(msg);
+    ws.onclose = () => this.onWebSocketClose();
+
+    // Ping the web server at a set interval.
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+    }
+    this.pingInterval = setInterval(() => {
+      this.sendWSCommand({ command: WSCommandType.PING });
+    }, PING_INTERVAL);
+
+    return true;
+  }
+
+  /**
+   * Opens a player's socket and remembers the login (name for 7 days, lobby), as every join does.
+   * @return {boolean} whether the socket opened.
+   */
+  openSeat(name: string, lobby: string): boolean {
+    if (!this.tryOpenWebSocket(name, lobby)) return false;
+    Cookies.set(COOKIE_NAME, name, { expires: 7 });
+    Cookies.set(COOKIE_LOBBY, lobby);
+    Cookies.remove(COOKIE_SPECTATOR);
+    return true;
+  }
+
+  /**
+   * Opens a spectator's socket and remembers it (COOKIE_SPECTATOR); the name cookie stays.
+   * @return {boolean} whether the socket opened.
+   */
+  openWatch(lobby: string): boolean {
+    if (!this.tryOpenWebSocket("", lobby, true)) return false;
+    Cookies.set(COOKIE_LOBBY, lobby);
+    Cookies.set(COOKIE_SPECTATOR, "true");
+    return true;
   }
 
   /**
@@ -441,7 +478,10 @@ class App extends Component<{}, AppState> {
         joinLobby: this.state.lobby,
         joinError: "Disconnected from the lobby.",
         page: PAGE.LOGIN,
+        showAlert: false,
+        alertContent: <div />,
       });
+      this.dropPlayInstead();
       this.clearAnimationQueue();
     } else {
       // User purposefully closed the connection.
@@ -453,7 +493,10 @@ class App extends Component<{}, AppState> {
           joinName: this.rejoinName(),
           joinLobby: this.state.lobby,
           joinError: "",
+          showAlert: false,
+          alertContent: <div />,
         });
+        this.dropPlayInstead();
         this.clearAnimationQueue();
       }
     }
@@ -463,9 +506,6 @@ class App extends Component<{}, AppState> {
   rejoinName(): string {
     return this.state.name || (Cookies.get(COOKIE_NAME) ?? "");
   }
-
-  /** True while the PLAY INSTEAD prompt is up; a game starting closes it. */
-  playInsteadOpen = false;
 
   async onWebSocketMessage(msg: MessageEvent) {
     this.failedConnections = 0;
@@ -646,16 +686,8 @@ class App extends Component<{}, AppState> {
           this.setState({ joinError: joinErrorMessage(response.status, name) });
         } else {
           // Username and lobby were verified. Try to open websocket.
-          if (!this.tryOpenWebSocket(name, lobby)) {
-            this.setState({
-              joinError:
-                CONNECT_ERROR,
-            });
-          } else {
-            // Save the username and lobby login
-            Cookies.set(COOKIE_NAME, name, { expires: 7 });
-            Cookies.set(COOKIE_LOBBY, lobby);
-            Cookies.remove(COOKIE_SPECTATOR);
+          if (!this.openSeat(name, lobby)) {
+            this.setState({ joinError: CONNECT_ERROR });
           }
         }
       })
@@ -681,17 +713,10 @@ class App extends Component<{}, AppState> {
           Cookies.remove(COOKIE_SPECTATOR);
           this.setState({
             joinError:
-              response.status === 404
-                ? "The lobby could not be found."
-                : CONNECT_ERROR,
+              response.status === 404 ? "The lobby could not be found." : CONNECT_ERROR,
           });
-        } else if (!this.tryOpenWebSocket("", lobby, true)) {
-          this.setState({
-            joinError: CONNECT_ERROR,
-          });
-        } else {
-          Cookies.set(COOKIE_LOBBY, lobby);
-          Cookies.set(COOKIE_SPECTATOR, "true");
+        } else if (!this.openWatch(lobby)) {
+          this.setState({ joinError: CONNECT_ERROR });
         }
       })
       .catch(() => {
@@ -705,41 +730,67 @@ class App extends Component<{}, AppState> {
   /**
    * WATCH INSTEAD (a player in the lobby): reopens the connection as a spectator. The old socket's
    * onclose is replaced in tryOpenWebSocket, so the login page is not shown. The name cookie stays.
+   * If the spectator socket cannot be built, the person lands on the login page with the lobby code.
    */
   onClickWatchInstead() {
     const lobby = this.state.lobby;
-    if (!this.tryOpenWebSocket("", lobby, true)) {
-      this.setState({
-        page: PAGE.LOGIN,
-        joinName: this.rejoinName(),
-        joinLobby: lobby,
-        joinError: CONNECT_ERROR,
-      });
-      return;
+    if (this.openWatch(lobby)) return;
+    if (this.websocket) {
+      this.websocket.onclose = () => {};
+      this.websocket.close();
+      this.websocket = undefined;
     }
-    Cookies.set(COOKIE_LOBBY, lobby);
-    Cookies.set(COOKIE_SPECTATOR, "true");
+    if (this.pingInterval) clearInterval(this.pingInterval);
+    this.setState({
+      page: PAGE.LOGIN,
+      joinName: this.rejoinName(),
+      joinLobby: lobby,
+      joinError: CONNECT_ERROR,
+    });
+    this.clearAnimationQueue();
   }
 
   /** PLAY INSTEAD (a spectator in the lobby): opens the prompt for the name to play under. */
   onClickPlayInstead() {
     if (this.playInsteadOpen) return;
     this.playInsteadOpen = true;
-    this.queueAlert(
-      <PlayInsteadPrompt
-        initialName={Cookies.get(COOKIE_NAME) ?? ""}
-        onContinue={this.playInstead}
-        onCancel={this.closePlayInstead}
-      />,
-      false
-    );
+    const show = () => {
+      this.playInsteadStep = undefined;
+      this.playInsteadShown = true;
+      this.alertShowCount += 1;
+      this.setState({
+        showAlert: true,
+        alertContent: (
+          <PlayInsteadPrompt
+            initialName={Cookies.get(COOKIE_NAME) ?? ""}
+            onContinue={this.playInstead}
+            onCancel={() => this.closePlayInstead()}
+          />
+        ),
+      });
+    };
+    this.playInsteadStep = show;
+    this.addAnimationToQueue(show);
   }
 
-  /** Closes the PLAY INSTEAD prompt, if it is up. */
-  closePlayInstead() {
+  /**
+   * Closes the PLAY INSTEAD prompt, if it is open.
+   * @param delayExit whether the animation queue waits for the prompt's fade-out.
+   */
+  closePlayInstead(delayExit = true) {
     if (!this.playInsteadOpen) return;
+    const shown = this.playInsteadShown;
+    this.dropPlayInstead();
+    if (shown) this.hideAlertAndFinish(delayExit);
+  }
+
+  /** Forgets the prompt without touching the alert box: a queued prompt is removed from the queue. */
+  dropPlayInstead() {
     this.playInsteadOpen = false;
-    this.hideAlertAndFinish();
+    this.playInsteadShown = false;
+    const step = this.playInsteadStep;
+    this.playInsteadStep = undefined;
+    if (step) this.animationQueue = this.animationQueue.filter((queued) => queued !== step);
   }
 
   /**
@@ -748,24 +799,19 @@ class App extends Component<{}, AppState> {
    */
   async playInstead(name: string): Promise<string> {
     const lobby = this.state.lobby;
-    let response: Response;
+    let response: Response | undefined;
     try {
       response = await this.tryLogin(name, lobby);
     } catch {
-      return CONTACT_ERROR;
+      // handled below
     }
-    if (!response.ok) {
-      return joinErrorMessage(response.status, name);
-    }
-    // The prompt closed meanwhile (a game started): keep watching.
+    // The prompt closed meanwhile (CANCEL, or a game started): keep watching, show nothing.
     if (!this.playInsteadOpen) return "";
-    if (!this.tryOpenWebSocket(name, lobby)) {
-      return CONNECT_ERROR;
-    }
-    Cookies.set(COOKIE_NAME, name, { expires: 7 });
-    Cookies.set(COOKIE_LOBBY, lobby);
-    Cookies.remove(COOKIE_SPECTATOR);
-    this.closePlayInstead();
+    if (response === undefined) return CONTACT_ERROR;
+    if (!response.ok) return joinErrorMessage(response.status, name);
+    if (!this.openSeat(name, lobby)) return CONNECT_ERROR;
+    // Free the alert slot at once: the new socket's lobby packet may queue the portrait picker.
+    this.closePlayInstead(false);
     return "";
   }
 
@@ -780,31 +826,17 @@ class App extends Component<{}, AppState> {
       .then((response) => {
         if (response.ok) {
           response.text().then((lobbyCode) => {
-            if (!this.tryOpenWebSocket(name, lobbyCode)) {
+            if (!this.openSeat(name, lobbyCode)) {
               // if the connection failed
-              this.setState({
-                createLobbyError:
-                  CONNECT_ERROR,
-              });
-            } else {
-              // Save the username and lobby login
-              Cookies.set(COOKIE_NAME, name, { expires: 7 });
-              Cookies.set(COOKIE_LOBBY, lobbyCode);
-              Cookies.remove(COOKIE_SPECTATOR);
+              this.setState({ createLobbyError: CONNECT_ERROR });
             }
           });
         } else {
-          this.setState({
-            createLobbyError:
-              CONNECT_ERROR,
-          });
+          this.setState({ createLobbyError: CONNECT_ERROR });
         }
       })
       .catch(() => {
-        this.setState({
-          createLobbyError:
-            CONNECT_ERROR,
-        });
+        this.setState({ createLobbyError: CONNECT_ERROR });
       });
   };
 
@@ -948,8 +980,13 @@ class App extends Component<{}, AppState> {
   }
 
   showChangeIconAlert() {
-    this.queueAlert(<div />, false); // false here prevents dialog from closing when server confirms selection
-    this.updateChangeIconAlert();
+    // Not closed when the server confirms a selection. The picker is built when the step runs, so a
+    // queued one can never surface as an empty box.
+    this.addAnimationToQueue(() => {
+      this.alertShowCount += 1;
+      this.setState({ showAlert: true });
+      this.updateChangeIconAlert();
+    });
   }
 
   /**
@@ -1717,6 +1754,11 @@ class App extends Component<{}, AppState> {
     this.allAnimationsFinished = true;
     this.setState({ allAnimationsFinished: true });
     this.animationQueue = [];
+    // A PLAY INSTEAD prompt that was still queued went with it.
+    if (!this.playInsteadShown) {
+      this.playInsteadOpen = false;
+      this.playInsteadStep = undefined;
+    }
     // Sounds still in the queue go with it; so does a vote tally that has not sounded yet.
     this.soundTimers.forEach(clearTimeout);
     this.soundTimers = [];
@@ -1829,7 +1871,10 @@ class App extends Component<{}, AppState> {
   hideAlertAndFinish(delayExit = true) {
     this.setState({ showAlert: false });
     if (delayExit) {
+      const shownAt = this.alertShowCount;
       setTimeout(() => {
+        // Another alert was shown during the fade (the queue had been cleared): it owns the box.
+        if (this.alertShowCount !== shownAt) return;
         this.setState({ alertContent: <div /> }); // reset the alert box contents
         this.onAnimationFinish();
       }, CUSTOM_ALERT_FADE_DURATION);
@@ -1872,6 +1917,7 @@ class App extends Component<{}, AppState> {
    */
   queueAlert(content: React.JSX.Element, closeOnOK = true) {
     this.addAnimationToQueue(() => {
+      this.alertShowCount += 1;
       this.setState({
         alertContent: content,
         showAlert: true,
