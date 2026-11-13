@@ -99,7 +99,10 @@ keeps credit to upstream and to the board game's creators.
   a cleared queue never cuts short the next one's step. A prompt's server-OK listener
   (`addServerOKListener`) is tied to its step the same way: an OK goes to the first listener whose
   step is still the current one, and `clearAnimationQueue` drops them all.
-  Prompts are a fixed overlay whose box scrolls (`CustomAlert.css`). Sounds are in `src/sound/`:
+  Prompts are a fixed overlay whose box scrolls (`CustomAlert.css`), except the portrait picker
+  (`IconSelection`): its box is a column with CONFIRM pinned at the foot, and only the grid of
+  portraits scrolls (`IconSelection.css`, keyed on `ButtonPrompt`'s `className`).
+  Sounds are in `src/sound/`:
   `SoundManager` (Web Audio; the `AudioContext` is created in the first trusted gesture, so `play()`
   before it is a silent no-op; volume and mute in `localStorage` under `sounds`; every `play()`
   dispatches a `sound-play` event, which tests record), `soundEvents` (a pure function from the
@@ -133,7 +136,9 @@ keeps credit to upstream and to the board game's creators.
   right after someone watches instead (both grace-window tests fail when their timing missed the
   window). `tracker.spec.ts` (`desktop`) checks the lit step against the status line.
   `prompts.spec.ts` runs in `desktop` and both phone projects (`phone-360` also at 320x568); it
-  opens every prompt from a scripted game socket (`e2e/fakeGame.ts`). `sounds.spec.ts` runs in every
+  opens every prompt from a scripted game socket (`e2e/fakeGame.ts`), and checks that the portrait
+  picker's label and CONFIRM are in view without scrolling, on a phone held sideways too, while its
+  grid scrolls to the last portrait. `sounds.spec.ts` runs in every
   project: no sound and no `AudioContext` before the first trusted gesture, each sound in step with
   its animation, and the header control's fit, touch targets, keyboard use and saved settings.
   `spectator.spec.ts` plays a scripted game to a spectator (no prompt before the victory screen, the
