@@ -3,6 +3,7 @@ package server.util;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -65,6 +66,24 @@ public class LobbyStartTest {
         lobby.removeUser(late.ctx);
         lobby.startNewGame(); // threw "Not all players have selected icons." before the fix
         assertFalse(lobby.getUserNames().contains("P3"));
+        assertTrue(lobby.isInGame());
+    }
+
+    @Test
+    public void aFailedStartDuringAGameLeavesTheLobbyUntouched() {
+        Lobby lobby = new Lobby();
+        List<FakeSocket> players = addPlayers(lobby, 5);
+        lobby.startNewGame();
+        lobby.removeUser(players.get(1).ctx); // P2 is inside the grace window
+        int before = lobby.getUserCount();
+        try {
+            lobby.startNewGame();
+            fail("starting during a game must throw");
+        } catch (RuntimeException expected) {
+            // expected
+        }
+        assertEquals(before, lobby.getUserCount());
+        assertEquals(5, lobby.getUserCount());
     }
 
     @Test

@@ -597,6 +597,10 @@ public class Lobby implements Serializable {
      *          icon. They find the lobby in a game when they return and can watch it.
      */
     synchronized public void startNewGame() {
+        if (isInGame()) {
+            throw new RuntimeException("Cannot start a new game while a game is in progress.");
+        }
+
         // Seat only players with a live connection.
         Set<String> connected = new HashSet<>(userToUsername.values());
         for (String username : new ArrayList<>(activeUsernames)) {
@@ -608,8 +612,6 @@ public class Lobby implements Serializable {
 
         if (activeUsernames.size() > SecretHitlerGame.MAX_PLAYERS) {
             throw new RuntimeException("Too many users to start a game.");
-        } else if (isInGame()) {
-            throw new RuntimeException("Cannot start a new game while a game is in progress.");
         }
 
         // Check that all players have (non-default) icons set.
