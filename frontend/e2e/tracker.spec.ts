@@ -131,7 +131,6 @@ test("ELECTION stays lit under the victory screen when Hitler is elected", async
 test("RETURN TO LOBBY gives the next game a fresh line and no lit step", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "one browser is enough");
   const current = page.locator(".round-step[aria-current='step']");
-  const line = page.locator("#status-bar-text");
   const okay = page.getByRole("button", { name: "OKAY" });
   const game = await openFakeGame(page);
   game.send(gamePacket({ president: TEN[1] }));
