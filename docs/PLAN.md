@@ -627,7 +627,7 @@ The six open issues listed as known baseline failures in `CLAUDE.md`. Each is fi
 - [ ] #8: `Player.render` no longer calls `setState`
 - [x] #9: the lobby tags only the host as `[Host]`
 - [x] #10: a player who reloads can take back their seat within the 3 s grace window, in a game or a full lobby
-- [ ] #13: the routes and the `/game` WebSocket are registered before the server starts
+- [x] #13: the routes and the `/game` WebSocket are registered before the server starts
 - [ ] PR merged into `development`
 
 ---
