@@ -32,9 +32,10 @@ keeps credit to upstream and to the board game's creators.
   state, the overlays, and the login and lobby pages; prompts live in `src/custom-alert/`. The game
   page is `src/game/`: `GameScreen` (markup and the three layouts), `PlayerRoster` (a row per player
   in `playerOrder`: portrait, name, office or role, and the vote or busy bubble), `RoundTracker`
-  (the four steps of a round, the current one lit, over the status line `#status-bar-text`; it
-  always keeps two lines' height, `--round-tracker-ems`) and `roundStep` (a pure function from the
-  game state and `lastState` to the step; `App` queues the step with each status line).
+  (the four steps of a round, the current one lit, over the status line `#status-bar-text`; its line
+  always keeps two lines' height, and `--round-tracker-ems` is the whole card's height in its own
+  ems, which the layouts reserve) and `roundStep` (a pure function from the game state and
+  `lastState` to the step; `App` queues the step with each status line).
   `usePlayerRows` (`src/player/`) is the per-player state the roster rows and the prompts' card
   tiles share. Desktops get the roster as a column at the left, the tracker over the boards, and
   END TERM, the decks and the counts box in a column beside them, on one screen (`.game-table` is a

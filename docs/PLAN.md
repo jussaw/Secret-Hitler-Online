@@ -606,7 +606,7 @@ These are Minor review findings deferred from Phase 8. The breakdown records the
 - [x] Phones under 360 px: below about 257 px (about 273 px on Linux) the tracker's steps wrap and the card grows past its reserved height; decide whether to support or test narrower phones. Decided: supported down to 320px wide (tested at 320x568, where the page may scroll); narrower phones are out of scope.
 - [x] `frontend/src/game/RoundTracker.css`: the smaller phone step line uses the shared stacked-layout query, so tall windows get it too; decide whether tall windows keep it or get their own step size. Decided: tall windows keep the phone's step line (the stacked query, on purpose).
 - [x] `frontend/src/game/RoundTracker.css`: the phone block's comment says the arrow's half-width is "about 0.2em"; it is 0.16–0.18em
-- [ ] `CLAUDE.md`: it says `--round-tracker-ems` keeps two lines' height; it is the whole card's height in its ems
+- [x] `CLAUDE.md`: it says `--round-tracker-ems` keeps two lines' height; it is the whole card's height in its ems
 - [x] Tooling: the e2e files are outside `tsconfig.json`'s `include`, so `npm run build` does not type-check them; Vitest prints a "jsdom was created N times" notice
 
 **Known limits.** With Linux-drawn fonts, the longest status takes a third line at 335px and 363–364px wide, so the tracker grows by a line there (about 14px at 335px, 16px at 363–364px); at 381–383px the step line keeps under 12% to spare but does not wrap. None of these is a common phone width, and each was measured in the Playwright Linux image (Galaxy S8 emulation).
