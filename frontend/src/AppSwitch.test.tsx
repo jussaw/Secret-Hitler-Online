@@ -1,4 +1,4 @@
-import { act, render } from "@testing-library/react";
+import { act, fireEvent, render, within } from "@testing-library/react";
 import Cookies from "js-cookie";
 import React, { createRef } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
@@ -12,6 +12,8 @@ import {
 } from "./constants";
 import { makeGameState } from "./game/testGameState";
 import { CONNECT_ERROR, CONTACT_ERROR } from "./lobby/joinError";
+import ButtonPrompt from "./custom-alert/ButtonPrompt";
+import { LobbyState, Role } from "./types";
 import IconSelection from "./custom-alert/IconSelection";
 import PlayInsteadPrompt from "./custom-alert/PlayInsteadPrompt";
 import { defaultPortrait } from "./assets";
@@ -90,6 +92,7 @@ async function playerInLobby() {
 
 async function spectatorInLobby() {
   Cookies.set("name", "Sam");
+  Cookies.set("spectator", "true");
   const ref = createRef<App>();
   render(<App ref={ref} />);
   const app = ref.current!;
@@ -172,7 +175,7 @@ test("a taken name keeps the spectator watching", async () => {
   expect(app.state.spectator).toBe(true);
   expect(app.state.showAlert).toBe(true);
   expect(app.playInsteadOpen).toBe(true);
-  expect(Cookies.get("spectator")).toBeUndefined();
+  expect(Cookies.get("spectator")).toBe("true");
   expect(Cookies.get("lobby")).toBeUndefined();
 });
 
@@ -192,10 +195,7 @@ test("a game starting closes the prompt", async () => {
   const app = await spectatorInLobby();
   act(() => app.onClickPlayInstead());
   expect(app.playInsteadOpen).toBe(true);
-  await deliver(app, {
-    ...makeGameState(["Ann", "Ben", "Cat", "Dan", "Eve"]),
-    [PARAM_PACKET_TYPE]: PACKET_GAME_STATE,
-  });
+  await deliver(app, gameStatePacket());
   expect(app.state.showAlert).toBe(false);
   expect(app.playInsteadOpen).toBe(false);
 });
@@ -204,10 +204,7 @@ test("a check that returns after the game started opens no player socket", async
   const app = await spectatorInLobby();
   act(() => app.onClickPlayInstead());
   const pending = app.playInstead("Sam");
-  await deliver(app, {
-    ...makeGameState(["Ann", "Ben", "Cat", "Dan", "Eve"]),
-    [PARAM_PACKET_TYPE]: PACKET_GAME_STATE,
-  });
+  await deliver(app, gameStatePacket());
   const before = FakeSocket.instances.length;
   await act(async () => {
     expect(await pending).toBe("");
@@ -298,7 +295,9 @@ test("PLAY INSTEAD that cannot open a socket keeps the spectator watching", asyn
   expect(result).toBe(CONNECT_ERROR);
   expect(FakeSocket.instances[0].closed).toBe(false);
   expect(app.state.spectator).toBe(true);
-  expect(Cookies.get("spectator")).toBeUndefined();
+  expect(app.state.showAlert).toBe(true);
+  expect(app.playInsteadOpen).toBe(true);
+  expect(Cookies.get("spectator")).toBe("true");
   expect(Cookies.get("lobby")).toBeUndefined();
 });
 
@@ -332,4 +331,106 @@ test("CANCEL, PLAY INSTEAD and a game start within a second leave no prompt", as
   });
   expect(app.playInsteadOpen).toBe(false);
   expect(app.state.showAlert).toBe(false);
+});
+
+function deferredCheck() {
+  let release: (status: number) => void = () => {};
+  const promise = new Promise<Response>((resolve) => {
+    release = (status) => resolve(new Response(null, { status }));
+  });
+  vi.stubGlobal("fetch", vi.fn(() => promise));
+  return release;
+}
+
+test("a reopened prompt starts fresh, even after a check was cut off by CANCEL", async () => {
+  vi.useFakeTimers();
+  const app = await spectatorInLobby();
+  act(() => app.onClickPlayInstead());
+  const release = deferredCheck();
+  const box = () => within(document.getElementById("alert-box")!);
+  fireEvent.change(box().getByRole("textbox"), { target: { value: "Zed" } });
+  fireEvent.click(box().getByRole("button", { name: "CONTINUE" }));
+  fireEvent.click(box().getByRole("button", { name: "CANCEL" }));
+  await act(async () => {
+    release(200);
+  });
+  await act(async () => {
+    vi.advanceTimersByTime(600);
+  });
+  act(() => app.onClickPlayInstead());
+  await act(async () => {
+    vi.advanceTimersByTime(600);
+  });
+  expect(box().getByRole("textbox")).toHaveValue("Sam");
+  expect(box().getByRole("button", { name: "CONTINUE" })).toBeEnabled();
+});
+
+test("a check begun under a cancelled prompt seats no one under the reopened one", async () => {
+  vi.useFakeTimers();
+  const app = await spectatorInLobby();
+  act(() => app.onClickPlayInstead());
+  const release = deferredCheck();
+  const first = app.playInstead("Zed");
+  act(() => app.closePlayInstead());
+  await act(async () => {
+    vi.advanceTimersByTime(1500);
+  });
+  act(() => app.onClickPlayInstead());
+  const before = FakeSocket.instances.length;
+  await act(async () => {
+    release(200);
+    expect(await first).toBe("");
+  });
+  expect(FakeSocket.instances.length).toBe(before);
+  expect(app.state.spectator).toBe(true);
+  expect(app.playInsteadOpen).toBe(true);
+});
+
+test("a reconnect that cannot build a socket ends on the login page", async () => {
+  const app = await playerInLobby();
+  FakeSocket.failNext = true;
+  act(() => FakeSocket.instances[0].onclose?.());
+  expect(app.state.page).toBe("login");
+  expect(app.state.joinLobby).toBe("HBIA");
+  expect(app.state.joinError).toBe("Disconnected from the lobby.");
+});
+
+const victoryPacket = () => {
+  const names = ["Ann", "Ben", "Cat", "Dan", "Eve"];
+  const state = makeGameState(names, { state: LobbyState.LIBERAL_VICTORY_POLICY });
+  names.forEach((name, i) => {
+    state.players[name].id = i === 0 ? Role.HITLER : i === 1 ? Role.FASCIST : Role.LIBERAL;
+  });
+  return { ...state, [PARAM_PACKET_TYPE]: PACKET_GAME_STATE };
+};
+
+test("a fade timer from an earlier alert does not blank the victory screen", async () => {
+  vi.useFakeTimers();
+  const app = await playerInLobby();
+  act(() => {
+    app.clearAnimationQueue();
+    app.hideAlertAndFinish();
+  });
+  await deliver(app, victoryPacket());
+  await act(async () => {
+    vi.advanceTimersByTime(1500);
+  });
+  expect(app.state.showAlert).toBe(true);
+  expect((app.state.alertContent as React.ReactElement).type).toBe(ButtonPrompt);
+});
+
+test("RETURN TO LOBBY that cannot build a socket goes to the login page with the lobby", async () => {
+  vi.useFakeTimers();
+  const app = await playerInLobby();
+  await deliver(app, victoryPacket());
+  await act(async () => {
+    vi.advanceTimersByTime(5000);
+  });
+  const prompt = app.state.alertContent as React.ReactElement<{ buttonOnClick: () => void }>;
+  expect(prompt.type).toBe(ButtonPrompt);
+  FakeSocket.failNext = true;
+  act(() => prompt.props.buttonOnClick());
+  expect(app.state.page).toBe("login");
+  expect(app.state.joinLobby).toBe("HBIA");
+  expect(app.state.joinError).toBe(CONNECT_ERROR);
 });

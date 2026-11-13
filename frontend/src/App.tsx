@@ -239,6 +239,8 @@ class App extends Component<{}, AppState> {
   playInsteadShown = false;
   /** The queued step that shows the prompt, so a prompt closed before it shows can be dropped. */
   playInsteadStep?: () => void = undefined;
+  /** Counts the PLAY INSTEAD openings, so a check that began under an earlier prompt does nothing. */
+  playInsteadSession = 0;
   /** Counts the alerts shown, so a late fade timer does not blank a newer alert. */
   alertShowCount = 0;
 
@@ -273,6 +275,7 @@ class App extends Component<{}, AppState> {
     this.onClickPlayInstead = this.onClickPlayInstead.bind(this);
     this.playInstead = this.playInstead.bind(this);
     this.closePlayInstead = this.closePlayInstead.bind(this);
+    this.closeSocket = this.closeSocket.bind(this);
     this.dropPlayInstead = this.dropPlayInstead.bind(this);
     this.openSeat = this.openSeat.bind(this);
     this.openWatch = this.openWatch.bind(this);
@@ -370,13 +373,7 @@ class App extends Component<{}, AppState> {
       return false;
     }
 
-    // Close existing websocket
-    if (this.websocket) {
-      // Clear onClose event to prevent reconnection
-      this.websocket.onclose = () => {};
-      this.websocket.close();
-      this.websocket = undefined;
-    }
+    this.closeSocket();
 
     console.log("Websocket opened successfully to " + url);
     this.websocket = ws;
@@ -413,6 +410,16 @@ class App extends Component<{}, AppState> {
     }, PING_INTERVAL);
 
     return true;
+  }
+
+  /** Closes the current socket without the reconnect or leave path of onWebSocketClose. */
+  closeSocket() {
+    if (this.websocket) {
+      // Clear onClose event to prevent reconnection
+      this.websocket.onclose = () => {};
+      this.websocket.close();
+      this.websocket = undefined;
+    }
   }
 
   /**
@@ -468,21 +475,12 @@ class App extends Component<{}, AppState> {
         this.showSnackBar("Lost connection to the server: retrying...");
       }
       this.failedConnections += 1;
-      this.tryOpenWebSocket(this.state.name, this.state.lobby, this.state.spectator);
-    } else if (this.reconnectOnConnectionClosed) {
-      if (DEBUG) {
-        console.log("Disconnecting from lobby.");
+      // A socket that cannot even be built is a lost connection for good.
+      if (!this.tryOpenWebSocket(this.state.name, this.state.lobby, this.state.spectator)) {
+        this.disconnectToLogin();
       }
-      this.setState({
-        joinName: this.rejoinName(),
-        joinLobby: this.state.lobby,
-        joinError: "Disconnected from the lobby.",
-        page: PAGE.LOGIN,
-        showAlert: false,
-        alertContent: <div />,
-      });
-      this.dropPlayInstead();
-      this.clearAnimationQueue();
+    } else if (this.reconnectOnConnectionClosed) {
+      this.disconnectToLogin();
     } else {
       // User purposefully closed the connection.
       if (this.gameOver) {
@@ -500,6 +498,23 @@ class App extends Component<{}, AppState> {
         this.clearAnimationQueue();
       }
     }
+  }
+
+  /** Gives up on the lobby: the login page with the lobby filled in and the disconnected message. */
+  disconnectToLogin() {
+    if (DEBUG) {
+      console.log("Disconnecting from lobby.");
+    }
+    this.setState({
+      joinName: this.rejoinName(),
+      joinLobby: this.state.lobby,
+      joinError: "Disconnected from the lobby.",
+      page: PAGE.LOGIN,
+      showAlert: false,
+      alertContent: <div />,
+    });
+    this.dropPlayInstead();
+    this.clearAnimationQueue();
   }
 
   /** The JOIN form's name after leaving: the player's, or for a spectator (who has none) the saved one. */
@@ -720,10 +735,7 @@ class App extends Component<{}, AppState> {
         }
       })
       .catch(() => {
-        this.setState({
-          joinError:
-            "There was an error contacting the server. Please wait and try again.",
-        });
+        this.setState({ joinError: CONTACT_ERROR });
       });
   }
 
@@ -735,11 +747,7 @@ class App extends Component<{}, AppState> {
   onClickWatchInstead() {
     const lobby = this.state.lobby;
     if (this.openWatch(lobby)) return;
-    if (this.websocket) {
-      this.websocket.onclose = () => {};
-      this.websocket.close();
-      this.websocket = undefined;
-    }
+    this.closeSocket();
     if (this.pingInterval) clearInterval(this.pingInterval);
     this.setState({
       page: PAGE.LOGIN,
@@ -754,6 +762,7 @@ class App extends Component<{}, AppState> {
   onClickPlayInstead() {
     if (this.playInsteadOpen) return;
     this.playInsteadOpen = true;
+    this.playInsteadSession += 1;
     const show = () => {
       this.playInsteadStep = undefined;
       this.playInsteadShown = true;
@@ -762,6 +771,7 @@ class App extends Component<{}, AppState> {
         showAlert: true,
         alertContent: (
           <PlayInsteadPrompt
+            key={this.alertShowCount}
             initialName={Cookies.get(COOKIE_NAME) ?? ""}
             onContinue={this.playInstead}
             onCancel={() => this.closePlayInstead()}
@@ -799,6 +809,7 @@ class App extends Component<{}, AppState> {
    */
   async playInstead(name: string): Promise<string> {
     const lobby = this.state.lobby;
+    const session = this.playInsteadSession;
     let response: Response | undefined;
     try {
       response = await this.tryLogin(name, lobby);
@@ -806,7 +817,7 @@ class App extends Component<{}, AppState> {
       // handled below
     }
     // The prompt closed meanwhile (CANCEL, or a game started): keep watching, show nothing.
-    if (!this.playInsteadOpen) return "";
+    if (!this.playInsteadOpen || session !== this.playInsteadSession) return "";
     if (response === undefined) return CONTACT_ERROR;
     if (!response.ok) return joinErrorMessage(response.status, name);
     if (!this.openSeat(name, lobby)) return CONNECT_ERROR;
@@ -1653,6 +1664,7 @@ class App extends Component<{}, AppState> {
           }
           this.queueSounds(soundNames, "end");
           this.addAnimationToQueue(() => {
+            this.alertShowCount += 1;
             this.setState({
               alertContent: (
                 <ButtonPrompt
@@ -1677,7 +1689,19 @@ class App extends Component<{}, AppState> {
                   buttonOnClick={() => {
                     this.gameOver = false;
                     this.reconnectOnConnectionClosed = true;
-                    this.tryOpenWebSocket(this.state.name, this.state.lobby, this.state.spectator);
+                    if (
+                      !this.tryOpenWebSocket(this.state.name, this.state.lobby, this.state.spectator)
+                    ) {
+                      this.setState({
+                        page: PAGE.LOGIN,
+                        joinName: this.rejoinName(),
+                        joinLobby: this.state.lobby,
+                        joinError: CONNECT_ERROR,
+                        gameState: DEFAULT_GAME_STATE,
+                      });
+                      this.hideAlertAndFinish();
+                      return;
+                    }
                     this.hideAlertAndFinish();
                     this.setState({
                       page: PAGE.LOBBY,
