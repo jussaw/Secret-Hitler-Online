@@ -30,7 +30,13 @@ keeps credit to upstream and to the board game's creators.
   players with a live connection: a name still inside the 3 s grace window after a disconnect is
   dropped from `activeUsernames` and `usernameToIcon` (its preferred portrait is kept), so no seat
   is made for someone who cannot take it, and a start that fails leaves the lobby untouched
-  (`LobbyStartTest`). While a game waits in `POST_LEGISLATIVE` for a human president, `Lobby` runs
+  (`LobbyStartTest`). A player who rejoins a running game after that window, or after a restore
+  from a backup (`activeUsernames` is transient, so a restored lobby has no one in it), goes back
+  at the end of `activeUsernames`: the lobby counts them at once, and lists and seats them when
+  the game ends. So a host back after the window is host no longer, and after a restore the first
+  player back is the host. One back inside the window keeps their place, and the removal at the
+  window's end takes the lobby's lock, so it never undoes a rejoin under way (`LobbyRejoinTest`).
+  While a game waits in `POST_LEGISLATIVE` for a human president, `Lobby` runs
   the END TERM countdown (`TermTimer`, `END_TERM_TIMER_IN_SEC`, 10 s): it starts with the first
   game packet that shows END TERM, and at zero it ends the term as END TERM would (one daemon
   thread keeps time for every lobby and hands each end to a pooled thread, so a lobby busy sending
