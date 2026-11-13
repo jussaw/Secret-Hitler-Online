@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
 import { LobbyState } from "../types";
 import GameScreen, { GameScreenProps } from "./GameScreen";
+import { RoundStep } from "./roundStep";
 import { makeGameState } from "./testGameState";
 
 const NAMES = ["Alice", "Bob", "Carol", "Dave", "Erin"];
@@ -38,8 +39,15 @@ test("shows every player in the roster, the user's own row marked, and the statu
   }
   // The tracker wraps "president" and "chancellor" in spans, so read the line's whole text.
   expect(document.getElementById("status-bar-text")).toHaveTextContent(
-    "Waiting for president to nominate a chancellor."
+    /^Waiting for president to nominate a chancellor\.$/
   );
+});
+
+test("statusStep lights its step in the tracker", () => {
+  renderScreen({ statusStep: RoundStep.LEGISLATIVE });
+  const lit = document.querySelectorAll('.round-step[aria-current="step"]');
+  expect(lit).toHaveLength(1);
+  expect(lit[0]).toHaveTextContent("LEGISLATIVE SESSION");
 });
 
 test("END TERM is disabled outside the post-legislative phase", () => {
