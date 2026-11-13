@@ -92,8 +92,10 @@ keeps credit to upstream and to the board game's creators.
   `tryOpenWebSocket` builds the new socket before it closes the old one, keeping the lobby's players
   on screen when it reopens to the same lobby. `alertShowCount`, `pickerShownAt` and
   `playInsteadSession` keep a late reply from touching the wrong prompt: the picker updates only
-  while it is the alert on screen, and `animationStep` names the running queue step, so an alert's
-  fade finishes only its own step.
+  while it is the alert on screen. `animationStep` names the running queue step, and every queue
+  timer (`finishStepAfter`, for the event bar, the board, the vote tally and a held status line,
+  and the fade in `hideAlertAndFinish`) finishes only the step it belongs to, so a timer left from
+  a cleared queue never cuts short the next one's step.
   Prompts are a fixed overlay whose box scrolls (`CustomAlert.css`). Sounds are in `src/sound/`:
   `SoundManager` (Web Audio; the `AudioContext` is created in the first trusted gesture, so `play()`
   before it is a silent no-op; volume and mute in `localStorage` under `sounds`; every `play()`
