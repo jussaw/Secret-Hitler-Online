@@ -389,17 +389,22 @@ class App extends Component<{}, AppState> {
     this.soundState = undefined;
     this.lobbyUsers = undefined;
     this.reconnectOnConnectionClosed = true;
+    // A switch or a reconnect within the lobby on screen keeps its players until the first packet,
+    // so the page never shows an empty lobby; the login page and RETURN TO LOBBY start empty.
+    const sameLobby = this.state.page === PAGE.LOBBY && lobby === this.state.lobby;
     // Only move the player to the lobby page if they were logging in.
     // This is to prevent the bug where players flash in/out of the lobby page
     // at random points in the game.
     if (this.state.page === PAGE.LOGIN) {
       this.setState({ page: PAGE.LOBBY });
     }
+    if (!sameLobby) {
+      this.setState({ usernames: [] });
+    }
     this.setState({
       name: name,
       lobby: lobby,
       spectator: spectator,
-      usernames: [],
       joinName: "",
       joinLobby: "",
       joinError: "",

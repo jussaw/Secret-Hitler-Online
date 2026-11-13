@@ -133,6 +133,28 @@ test("WATCH INSTEAD opens a spectator socket and remembers it", async () => {
   expect(app.state.page).toBe("lobby");
 });
 
+const playerCount = () => document.querySelector(".lobby-player-count")?.textContent;
+
+test("WATCH INSTEAD keeps the lobby's players on screen until the first packet", async () => {
+  const app = await playerInLobby();
+  expect(playerCount()).toBe("2 / 10");
+  act(() => app.onClickWatchInstead());
+  expect(app.state.spectator).toBe(true);
+  expect(playerCount()).toBe("2 / 10");
+  expect(document.querySelectorAll(".lobby-players li.roster-row")).toHaveLength(2);
+});
+
+test("PLAY INSTEAD keeps the lobby's players on screen until the first packet", async () => {
+  const app = await spectatorInLobby();
+  act(() => app.onClickPlayInstead());
+  await act(async () => {
+    expect(await app.playInstead("Sam")).toBe("");
+  });
+  expect(app.state.spectator).toBe(false);
+  expect(playerCount()).toBe("2 / 10");
+  expect(document.querySelectorAll(".lobby-players li.roster-row")).toHaveLength(2);
+});
+
 test("the old socket closing stays in the lobby", async () => {
   const app = await playerInLobby();
   act(() => app.onClickWatchInstead());
@@ -459,6 +481,20 @@ test("RETURN TO LOBBY that cannot build a socket goes to the login page with the
   expect(app.state.joinError).toBe(CONNECT_ERROR);
   expect(app.state.statusBarText).toBe("---");
   expect(app.state.statusStep).toBeNull();
+});
+
+test("RETURN TO LOBBY starts from an empty lobby until the first packet", async () => {
+  vi.useFakeTimers();
+  const app = await playerInLobby();
+  await deliver(app, victoryPacket());
+  await act(async () => {
+    vi.advanceTimersByTime(5000);
+  });
+  const prompt = app.state.alertContent as React.ReactElement<{ buttonOnClick: () => void }>;
+  expect(prompt.type).toBe(ButtonPrompt);
+  act(() => prompt.props.buttonOnClick());
+  expect(app.state.page).toBe("lobby");
+  expect(app.state.usernames).toEqual([]);
 });
 
 test("a join after giving up still retries a socket that closes before its first message", async () => {
