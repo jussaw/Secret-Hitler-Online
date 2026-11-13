@@ -144,6 +144,31 @@ async function checkGame(
     Math.abs(game.tracker.bottom - game.tracker.top - game.trackerReserved),
     `tracker height against its reserved ${game.trackerReserved}px`
   ).toBeLessThanOrEqual(0.5);
+  // The step line stays on one line with 12% to spare, so a font that renders a little wider (as on
+  // Linux) cannot wrap it. Its natural width is the sum of its steps and their margins.
+  const steps = await page.evaluate(() => {
+    const tracker = document.querySelector(".game-table > .round-tracker") as HTMLElement;
+    const list = tracker.querySelector(".round-steps") as HTMLElement;
+    const style = getComputedStyle(tracker);
+    const parent = tracker.parentElement as HTMLElement;
+    const parentStyle = getComputedStyle(parent);
+    const available =
+      parent.clientWidth -
+      parseFloat(parentStyle.paddingLeft) -
+      parseFloat(parentStyle.paddingRight) -
+      parseFloat(style.paddingLeft) -
+      parseFloat(style.paddingRight);
+    let natural = 0;
+    list.querySelectorAll(".round-step").forEach((li) => {
+      natural += li.getBoundingClientRect().width + parseFloat(getComputedStyle(li).marginLeft);
+    });
+    return { natural, available, listHeight: list.getBoundingClientRect().height };
+  });
+  console.log(`step line natural ${steps.natural}px of ${steps.available}px`);
+  expect(
+    steps.natural,
+    `step line's natural width ${steps.natural}px against ${steps.available}px available`
+  ).toBeLessThanOrEqual(steps.available * 0.88);
   const long = await withStatus(page, LONG_STATUS);
   expect(long.height, "scrollHeight with the longest status").toBeLessThanOrEqual(height);
   expect(

@@ -600,7 +600,7 @@ These are Minor review findings deferred from Phase 8. Break them down when the 
 - [ ] `frontend/src/game/GameScreen.css` and `PlayerRoster.css`: the tall-window blocks restate base values to undo the phone block; note at the base rules that their values are restated there, or move to a phone-only query
 - [ ] `frontend/e2e/phone.spec.ts`: no check that rows keep their place when a PRES/CHAN tag appears (`rowShift` fills `.roster-detail`, which phones hide)
 - [ ] `frontend/e2e/prompts.spec.ts`: add an upright short viewport (the project's width x 600) beside the sideways one for the scrolled-prompt test
-- [ ] Phones under 360 px: below about 356 px the tracker's steps wrap and the card grows past its reserved height; decide whether to support or test narrower phones
+- [ ] Phones under 360 px: below about 282 px the tracker's steps wrap and the card grows past its reserved height; decide whether to support or test narrower phones
 - [ ] `CLAUDE.md`: it says `--round-tracker-ems` keeps two lines' height; it is the whole card's height in its ems
 - [ ] Tooling: the e2e files are outside `tsconfig.json`'s `include`, so `npm run build` does not type-check them; Vitest prints a "jsdom was created N times" notice
 
