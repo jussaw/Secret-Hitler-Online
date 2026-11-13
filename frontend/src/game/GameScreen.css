@@ -15,9 +15,11 @@
     line-height: 1.15;
 }
 
-/* Desktop: the roster is a column at the left and the table takes the rest. */
+/* Desktop: the roster is a column at the left and the table takes the rest. At 16:9 the table's
+   height, not its width, limits the boards, so a column a quarter of the window wide costs them
+   nothing; squarer windows give some of the boards' width to the roster's text. */
 .game-body {
-    --roster-width: clamp(260px, 20vw, 380px);
+    --roster-width: clamp(300px, 25vw, 480px);
     /* The portrait is at most a fifth of the column's width. */
     --portrait-max: calc(var(--roster-width) * 0.2);
     /* A row's room beside the largest portrait: less the column's 8px padding each side and the
@@ -31,11 +33,12 @@
 .game-body > .roster {
     --roster-gap: 6px;
     /* Text follows the window's height, but never outgrows the row's room. A row spends 1.8em on
-       its two gaps and right padding (PlayerRoster.css) and at least 3em on the vote slot, and a
-       twelve-character name in capitals with its role icon takes up to about 10.5em ("WOLFGANG
-       MAX"): 15.6em leaves a little over all of that, and at the narrowest column (260px) still
-       gives 12px text. */
-    --roster-font: clamp(12px, min(1.8vh, var(--row-room) / 15.6), 20px);
+       its two gaps and right padding (PlayerRoster.css) and at least 3.2em on the vote slot, and a
+       twelve-character name in capitals with its 1.3em role icon takes up to about 10.7em
+       ("WOLFGANG MAX"): 16em leaves a little over all of that, and at the narrowest column (300px)
+       still gives 13.75px text. 2.4vh keeps ten rows' text and vote slot inside their rows down
+       to the 500px-tall windows that get the phone layout. */
+    --roster-font: clamp(12px, min(2.4vh, var(--row-room) / 16), 24px);
     box-sizing: border-box;
     min-height: 0;
     padding: 8px;
@@ -53,10 +56,20 @@
     max-height: var(--portrait-max);
 }
 
-/* The vote slot takes what the gaps and a 10.8em name leave, from 3em up to the mockup's 4.3em,
+/* The role icon and the office or role line are larger than in the other layouts (the phone block
+   puts PlayerRoster.css's sizes back). */
+.game-body .roster-role-icon {
+    height: 1.3em;
+}
+
+.game-body .roster-detail {
+    font-size: 0.85em;
+}
+
+/* The vote slot takes what the gaps and an 11em name leave, from 3.2em up to the mockup's 4.3em,
    so the ja/nein pill (2.68:1) grows only where the names have their room. */
 .game-body .roster-status {
-    width: clamp(3em, var(--row-room) - 12.6em, 4.3em);
+    width: clamp(3.2em, var(--row-room) - 12.8em, 4.3em);
 }
 
 /* The table: the tracker over the boards, and the decks column one gap to the right of the
@@ -223,6 +236,15 @@
     .game-body .roster-status {
         width: 2.7em;
         height: 1.6em;
+    }
+
+    /* PlayerRoster.css's sizes, for these rows and the tall windows' rows. */
+    .game-body .roster-role-icon {
+        height: 1.1em;
+    }
+
+    .game-body .roster-detail {
+        font-size: 0.8em;
     }
 
     /* The tracker, the decks row and the boards, top to bottom. Its line's text is sized so the
