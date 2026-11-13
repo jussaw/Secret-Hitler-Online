@@ -1,45 +1,17 @@
 @import '../variables.css';
 
-/* The lobby takes the game page's three layouts (GameScreen.css): the roster column at the left on
-   desktop, across the top in tall windows, and first in one column on phones. The roster's rows
-   are the game's (PlayerRoster.css), sized here as GameScreen.css sizes them under .game-body. */
-.lobby-screen {
-    display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
-    height: 100dvh;
-    text-align: center;
-}
+/* The lobby takes the game page's three layouts: the roster column at the left on desktop, across
+   the top in tall windows, and first in one column on phones. The page, its header, the column
+   (its width and band) and the roster's rows and their sizes are GameScreen.css's, which lists the
+   lobby's selectors beside the game's (.lobby-screen, .lobby-body, .lobby-players), so the roster
+   stays put when the game starts. This file holds what only the lobby has. */
 
-/* The game's slim header (.game-screen > header, GameScreen.css). */
-.lobby-screen > header {
-    min-height: 0;
-    padding: 0.4vh 0;
-    font-size: clamp(18px, 3.4vh, 40px);
-    line-height: 1.15;
-}
-
-/* Desktop: the game's roster column at the left, and the rest centred beside it. */
-.lobby-body {
-    --roster-width: clamp(300px, 25vw, 480px);
-    /* The portrait is at most a fifth of the column's width. */
-    --portrait-max: calc(var(--roster-width) * 0.2);
-    /* A row's room beside the largest portrait: less the column's 8px padding each side and the
-       row's 4px on the left. */
-    --row-room: calc(var(--roster-width) - 20px - var(--portrait-max));
-    display: grid;
-    grid-template-columns: var(--roster-width) minmax(0, 1fr);
-    min-height: 0;
-}
-
-/* The roster column, on the game's darker band: the heading, then the rows. */
+/* The roster column: the heading, then the rows, on the game's darker band (GameScreen.css). */
 .lobby-players {
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
     gap: 6px;
-    box-sizing: border-box;
     min-height: 0;
-    padding: 8px;
-    background: rgba(0, 0, 0, 0.2);
 }
 
 .lobby-players-head {
@@ -52,30 +24,6 @@
     line-height: 1.2;
     letter-spacing: 0.06em;
     color: #b9ab9f;
-}
-
-/* The game's rule (GameScreen.css): text follows the window's height but never outgrows the row's
-   room. */
-.lobby-players > .roster {
-    --roster-gap: 6px;
-    --roster-font: clamp(12px, min(2.4vh, var(--row-room) / 16), 24px);
-    min-height: 0;
-    gap: var(--roster-gap);
-}
-
-/* Ten rows share the column's height below the heading. Fewer rows stop at 1.5 times a
-   ten-player row, at the top. */
-.lobby-players .roster-row {
-    flex: 1 1 0;
-    max-height: calc((100% - 9 * var(--roster-gap)) * 0.15);
-}
-
-.lobby-players .roster-portrait {
-    max-height: var(--portrait-max);
-}
-
-.lobby-players .roster-detail {
-    font-size: 0.85em;
 }
 
 /* The cards, the buttons and the footer, centred both ways. Auto margins centre the stack, and
@@ -306,48 +254,14 @@
    card, the status, the buttons and the footer. The query is GameScreen.css's phone-only one. The
    page is as tall as its column and scrolls if it must; sizes follow the window's width. */
 @media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
-    .lobby-screen {
-        display: block;
-        height: auto;
-    }
-
-    .lobby-body {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        padding: 8px 6px 16px;
-    }
-
     .lobby-players {
         grid-template-rows: auto auto;
         gap: 4px;
-        padding: 5px;
-        border-radius: 10px;
     }
 
     .lobby-players-head {
         padding: 0 3px;
         font-size: clamp(13px, 4vw, 18px);
-    }
-
-    /* Two columns of rows about 26px tall: five lines for ten players. */
-    .lobby-players > .roster {
-        --roster-font: clamp(10.5px, 2.9vw, 15px);
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        grid-auto-rows: max(26px, 2.45em);
-        gap: 4px 5px;
-    }
-
-    .lobby-players .roster-row,
-    .lobby-players .roster-portrait {
-        max-height: none;
-    }
-
-    /* The busy bubble (1.51:1) fills the slot's height. */
-    .lobby-players .roster-status {
-        width: 2.7em;
-        height: 1.6em;
     }
 
     .lobby-main {
@@ -431,40 +345,13 @@
    runs across the top in the game's tall rows, and the rest follows at the top of the page, the
    code beside the link. Only what differs from the desktop rules is stated here. */
 @media (min-width: 700px) and (aspect-ratio < 5/4) {
-    .lobby-body {
-        grid-template-columns: minmax(0, 1fr);
-        grid-template-rows: auto minmax(0, 1fr);
-    }
-
     .lobby-players {
         grid-template-rows: auto auto;
         gap: 4px;
-        padding: 6px 8px;
     }
 
     .lobby-players-head {
         font-size: clamp(14px, 1.7vw, 20px);
-    }
-
-    .lobby-players > .roster {
-        --roster-font: clamp(12px, 1.5vw, 18px);
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        grid-auto-rows: calc(var(--roster-font) * 3);
-        gap: 4px 6px;
-    }
-
-    .lobby-players .roster-row,
-    .lobby-players .roster-portrait {
-        max-height: none;
-    }
-
-    .lobby-players .roster-status {
-        width: 3em;
-    }
-
-    .lobby-players .roster-detail {
-        font-size: 0.8em;
     }
 
     .lobby-main {
@@ -493,12 +380,5 @@
     .lobby-invite {
         flex: 1 1 auto;
         text-align: left;
-    }
-}
-
-/* Near-square windows are short of height, so three players share each line of the roster. */
-@media (min-width: 700px) and (aspect-ratio < 5/4) and (aspect-ratio >= 1/1) {
-    .lobby-players > .roster {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }

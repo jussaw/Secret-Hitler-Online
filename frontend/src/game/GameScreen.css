@@ -1,14 +1,18 @@
 @import '../variables.css';
 
-/* The whole game page fits the window: a slim header, then the roster and the table. */
-.game-screen {
+/* The whole game page fits the window: a slim header, then the roster and the table. The lobby
+   (LobbyScreen.css) shares the page, its header and the roster column through the selector lists
+   here, so the roster stays put when the game starts. */
+.game-screen,
+.lobby-screen {
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
     height: 100dvh;
     text-align: center;
 }
 
-.game-screen > header {
+.game-screen > header,
+.lobby-screen > header {
     min-height: 0;
     padding: 0.4vh 0;
     font-size: clamp(18px, 3.4vh, 40px);
@@ -17,8 +21,10 @@
 
 /* Desktop: the roster is a column at the left and the table takes the rest. At 16:9 the table's
    height, not its width, limits the boards, so a column a quarter of the window wide costs them
-   nothing; squarer windows give some of the boards' width to the roster's text. */
-.game-body {
+   nothing; squarer windows give some of the boards' width to the roster's text. In the lobby the
+   main column takes the table's place. */
+.game-body,
+.lobby-body {
     --roster-width: clamp(300px, 25vw, 480px);
     /* The portrait is at most a fifth of the column's width. */
     --portrait-max: calc(var(--roster-width) * 0.2);
@@ -30,7 +36,17 @@
     min-height: 0;
 }
 
-.game-body > .roster {
+/* The column's darker band: the roster itself in the game; in the lobby, the roster and its heading
+   (.lobby-players, LobbyScreen.css). --row-room allows for its 8px padding. */
+.game-body > .roster,
+.lobby-players {
+    box-sizing: border-box;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.game-body > .roster,
+.lobby-players > .roster {
     --roster-gap: 6px;
     /* Text follows the window's height, but never outgrows the row's room. A row spends 1.8em on
        its two gaps and right padding (PlayerRoster.css) and at least 3.2em on the vote slot, and a
@@ -39,20 +55,20 @@
        still gives 13.75px text. 2.4vh keeps ten rows' text and vote slot inside their rows down
        to the 500px-tall windows that get the phone layout. */
     --roster-font: clamp(12px, min(2.4vh, var(--row-room) / 16), 24px);
-    box-sizing: border-box;
     min-height: 0;
-    padding: 8px;
     gap: var(--roster-gap);
-    background: rgba(0, 0, 0, 0.2);
 }
 
-/* Ten rows share the column's height. Fewer rows stop at 1.5 times a ten-player row, at the top. */
-.game-body .roster-row {
+/* Ten rows share the roster's height (in the lobby, the list's height under its heading). Fewer
+   rows stop at 1.5 times a ten-player row, at the top. */
+.game-body .roster-row,
+.lobby-players .roster-row {
     flex: 1 1 0;
     max-height: calc((100% - 9 * var(--roster-gap)) * 0.15);
 }
 
-.game-body .roster-portrait {
+.game-body .roster-portrait,
+.lobby-players .roster-portrait {
     max-height: var(--portrait-max);
 }
 
@@ -62,13 +78,16 @@
     height: 1.3em;
 }
 
-.game-body .roster-detail {
+.game-body .roster-detail,
+.lobby-players .roster-detail {
     font-size: 0.85em;
 }
 
 /* The vote slot takes what the gaps and an 11em name leave, from 3.2em up to the mockup's 4.3em,
-   so the ja/nein pill (2.68:1) grows only where the names have their room. */
-.game-body .roster-status {
+   so the ja/nein pill (2.68:1) grows only where the names have their room. The lobby's busy
+   bubble gets the same slot, so a name whole in the lobby stays whole in the game. */
+.game-body .roster-status,
+.lobby-players .roster-status {
     width: clamp(3.2em, var(--row-room) - 12.8em, 4.3em);
 }
 
@@ -208,12 +227,14 @@
    about 245px (267px on Linux) the tracker's steps wrap. On Linux the longest status also takes a
    third line at 335px and 363-364px (docs/PLAN.md, Phase 9, Known limits). */
 @media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
-    .game-screen {
+    .game-screen,
+    .lobby-screen {
         display: block;
         height: auto;
     }
 
-    .game-body {
+    .game-body,
+    .lobby-body {
         display: flex;
         flex-direction: column;
         gap: 8px;
@@ -221,23 +242,31 @@
     }
 
     /* Two columns of rows about 26px tall: five lines for ten players. */
-    .game-body > .roster {
+    .game-body > .roster,
+    .lobby-players > .roster {
         --roster-font: clamp(10.5px, 2.9vw, 15px);
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         grid-auto-rows: max(26px, 2.45em);
         gap: 4px 5px;
+    }
+
+    .game-body > .roster,
+    .lobby-players {
         padding: 5px;
         border-radius: 10px;
     }
 
     .game-body .roster-row,
-    .game-body .roster-portrait {
+    .game-body .roster-portrait,
+    .lobby-players .roster-row,
+    .lobby-players .roster-portrait {
         max-height: none;
     }
 
     /* The ja/nein pill (2.68:1) fills the slot's width; the busy bubble (1.51:1) its height. */
-    .game-body .roster-status {
+    .game-body .roster-status,
+    .lobby-players .roster-status {
         width: 2.7em;
         height: 1.6em;
     }
@@ -247,7 +276,8 @@
         height: 1.1em;
     }
 
-    .game-body .roster-detail {
+    .game-body .roster-detail,
+    .lobby-players .roster-detail {
         font-size: 0.8em;
     }
 
@@ -337,26 +367,35 @@
    roster runs across the top, text sized by the window's width, and spare height collects at the
    bottom of the page. Only what differs from the desktop rules is stated here. */
 @media (min-width: 700px) and (aspect-ratio < 5/4) {
-    .game-body {
+    .game-body,
+    .lobby-body {
         grid-template-columns: minmax(0, 1fr);
         grid-template-rows: auto minmax(0, 1fr);
     }
 
-    .game-body > .roster {
+    .game-body > .roster,
+    .lobby-players > .roster {
         --roster-font: clamp(12px, 1.5vw, 18px);
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         grid-auto-rows: calc(var(--roster-font) * 3);
         gap: 4px 6px;
+    }
+
+    .game-body > .roster,
+    .lobby-players {
         padding: 6px 8px;
     }
 
     .game-body .roster-row,
-    .game-body .roster-portrait {
+    .game-body .roster-portrait,
+    .lobby-players .roster-row,
+    .lobby-players .roster-portrait {
         max-height: none;
     }
 
-    .game-body .roster-status {
+    .game-body .roster-status,
+    .lobby-players .roster-status {
         width: 3em;
     }
 
@@ -365,7 +404,8 @@
         height: 1.1em;
     }
 
-    .game-body .roster-detail {
+    .game-body .roster-detail,
+    .lobby-players .roster-detail {
         font-size: 0.8em;
     }
 
@@ -392,7 +432,8 @@
 
 /* Near-square windows are short of height, so three players share each line of the roster. */
 @media (min-width: 700px) and (aspect-ratio < 5/4) and (aspect-ratio >= 1/1) {
-    .game-body > .roster {
+    .game-body > .roster,
+    .lobby-players > .roster {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }

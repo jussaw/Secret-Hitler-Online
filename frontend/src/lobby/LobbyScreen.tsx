@@ -6,6 +6,9 @@ import SpectatorCount from "../spectator/SpectatorCount";
 import { copyText } from "./copyText";
 import LobbyRoster from "./LobbyRoster";
 import { isPicking, lobbyStatus } from "./lobbyStatus";
+// The page, its header and the roster column are the game's (GameScreen.css lists the lobby's
+// selectors beside its own).
+import "../game/GameScreen.css";
 import "./LobbyScreen.css";
 
 export type LobbyScreenProps = {
