@@ -123,7 +123,16 @@ keeps credit to upstream and to the board game's creators.
   and the fade in `hideAlertAndFinish`) finishes only the step it belongs to, so a timer left from
   a cleared queue never cuts short the next one's step. A prompt's server-OK listener
   (`addServerOKListener`) is tied to its step the same way: an OK goes to the first listener whose
-  step is still the current one, and `clearAnimationQueue` drops them all.
+  step is still the current one, and `clearAnimationQueue` drops them all. A lost socket is reopened
+  at once, then after each wait in `RECONNECT_DELAYS` (1, 2, 4, 8 and 15 s). The page gives up with
+  "Disconnected from the lobby." when the last attempt fails, or at once when the server refuses a
+  socket outright (1002 before its first message: the lobby is gone, full, or playing without this
+  name). The server must answer a new socket or a ping within `REPLY_TIMEOUT` (10 s), or
+  `onNoReply` drops the socket as dead, and a page coming back into view pings at once. While
+  `reconnecting`, a press in a game waits in `pendingCommands` until the server takes a new socket
+  (its first message), and a press in the lobby with no socket shows the retrying snackbar instead.
+  Every close is logged with the time, its code and reason and the page's visibility, without the
+  URL's key.
   Prompts are a fixed overlay whose box scrolls (`CustomAlert.css`), except the portrait picker
   (`IconSelection`): its box is a column with CONFIRM pinned at the foot, and only the grid of
   portraits scrolls (`IconSelection.css`, keyed on `ButtonPrompt`'s `className`).
@@ -182,20 +191,20 @@ keeps credit to upstream and to the board game's creators.
   `src/fonts.css`, so the browser tests need network access. The server closes a
   `/game` socket after 30 s with no traffic either way, so the client pings every 20 s
   (`PING_INTERVAL`); `connection.spec.ts` (`desktop`) holds a quiet lobby's socket open for 35 s.
-  A socket that closes is reopened at once, then after each wait in `RECONNECT_DELAYS` (1, 2, 4, 8
-  and 15 s), and only then does the page give up with "Disconnected from the lobby.". A command sent
-  while a reconnect waits is held and sent once the new socket opens. Every close is logged with
-  its code and reason, and the logged URL leaves out the key. `reconnect.spec.ts` (`desktop`) drops
-  a player's network mid-game through Playwright's `routeWebSocket`: once with the server's end
-  left open, and once with no network for 2.5 s. Shared helpers are `e2e/lobby.ts` (`waitForPlayers`, `joinGuests`, with `pickLooks` false for
-  guests who stay on the default portrait, `joinLobby`, `pickPortrait`, `longestLineLobby`,
-  `lobbyStatusCard`), `e2e/layout.ts` (`wrappedLabels`, `smallFieldText`, `MIN_FIELD_TEXT`) and
-  `e2e/soundLog.ts`. `App.css` hides `overflow-x` on `html` and `body`, so horizontal overflow
-  shows only in `body.scrollWidth`, and `body` scrolls vertically by itself (`pageHeight` measures
-  both). The client talks to its own origin (`src/constants/serverUrls.ts`; `wss:` on `https:`
-  pages) unless `VITE_SERVER_ADDRESS` is set, and the dev server proxies the backend paths to
-  `BACKEND_URL` (default `http://localhost:4040`). `VITE_*` variables live in `.env.development`
-  (dev server only: `VITE_DEBUG`) and `.env.dev` (`--mode dev`), typed in `src/vite-env.d.ts`.
+  `reconnect.spec.ts` (`desktop`) cuts a player's connection mid-game through Playwright's
+  `routeWebSocket`: with the browser noticing and the server's end left open, with no network for
+  2.5 s, and with neither end noticing. Each time, the server replaces the dead socket. The scripted
+  sockets of `e2e/fakeGame.ts` answer pings (`answerPings`), and `FakeWatch.down` refuses new
+  sockets as `LOBBY_GONE`, so the page gives up at once. Shared helpers are `e2e/lobby.ts`
+  (`waitForPlayers`, `joinGuests`, with `pickLooks` false for guests who stay on the default
+  portrait, `joinLobby`, `pickPortrait`, `longestLineLobby`, `lobbyStatusCard`), `e2e/layout.ts`
+  (`wrappedLabels`, `smallFieldText`, `MIN_FIELD_TEXT`) and `e2e/soundLog.ts`. `App.css` hides
+  `overflow-x` on `html` and `body`, so horizontal overflow shows only in `body.scrollWidth`, and
+  `body` scrolls vertically by itself (`pageHeight` measures both). The client talks to its own
+  origin (`src/constants/serverUrls.ts`; `wss:` on `https:` pages) unless `VITE_SERVER_ADDRESS` is
+  set, and the dev server proxies the backend paths to `BACKEND_URL` (default
+  `http://localhost:4040`). `VITE_*` variables live in `.env.development` (dev server only:
+  `VITE_DEBUG`) and `.env.dev` (`--mode dev`), typed in `src/vite-env.d.ts`.
 - `docs/`: `PLAN.md` (phased plan and progress), `superpowers/specs/` (design),
   `superpowers/plans/` (per-phase step-by-step breakdowns), `images/` (the README's screenshots,
   taken from a scripted seven-player game at 1600x900 and at 412x915 on a phone), `pr/` (each pull
