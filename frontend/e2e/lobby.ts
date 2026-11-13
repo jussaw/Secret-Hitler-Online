@@ -33,26 +33,31 @@ export async function joinGuests(
   { pickLooks = true }: { pickLooks?: boolean } = {}
 ): Promise<WebSocket[]> {
   const guests: WebSocket[] = [];
-  for (let i = 1; i <= count; i++) {
-    const name = `Long Guest ${i}`;
-    const url = new URL("/game", baseURL);
-    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-    url.searchParams.set("lobby", lobby);
-    url.searchParams.set("name", name);
+  try {
+    for (let i = 1; i <= count; i++) {
+      const name = `Long Guest ${i}`;
+      const url = new URL("/game", baseURL);
+      url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+      url.searchParams.set("lobby", lobby);
+      url.searchParams.set("name", name);
 
-    const ws = new WebSocket(url);
-    await new Promise<void>((resolve, reject) => {
-      ws.addEventListener("open", () => resolve(), { once: true });
-      ws.addEventListener("error", () => reject(new Error(`${name} could not connect`)), {
-        once: true,
+      const ws = new WebSocket(url);
+      await new Promise<void>((resolve, reject) => {
+        ws.addEventListener("open", () => resolve(), { once: true });
+        ws.addEventListener("error", () => reject(new Error(`${name} could not connect`)), {
+          once: true,
+        });
       });
-    });
-    if (pickLooks) {
-      ws.send(JSON.stringify({ name, lobby, command: "select-icon", icon: `p${i + 1}` }));
+      if (pickLooks) {
+        ws.send(JSON.stringify({ name, lobby, command: "select-icon", icon: `p${i + 1}` }));
+      }
+      const ping = setInterval(() => ws.send(JSON.stringify({ name, lobby, command: "ping" })), PING_MS);
+      ws.addEventListener("close", () => clearInterval(ping), { once: true });
+      guests.push(ws);
     }
-    const ping = setInterval(() => ws.send(JSON.stringify({ name, lobby, command: "ping" })), PING_MS);
-    ws.addEventListener("close", () => clearInterval(ping), { once: true });
-    guests.push(ws);
+  } catch (error) {
+    guests.forEach((ws) => ws.close()); // a failed join must not leave the earlier guests pinging
+    throw error;
   }
   return guests;
 }
