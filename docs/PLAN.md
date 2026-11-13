@@ -40,7 +40,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 7. Spectators | `phase-7-spectators` | done |
 | 8. Game screen redesign | `phase-8-game-screen` | in progress |
 | 9. Phase 8 follow-ups | `phase-9-follow-ups` | done |
-| 10. Baseline bugs | `phase-10-baseline-bugs` | in progress |
+| 10. Baseline bugs | `fix/issue-N`, one per issue | done |
 
 ---
 
@@ -620,7 +620,7 @@ These are Minor review findings deferred from Phase 8. The breakdown records the
 
 ## Phase 10: Baseline bugs
 
-The six open issues listed as known baseline failures in `CLAUDE.md`. Each is fixed test first on its own branch and lands here as one commit with its box ticked.
+The six open issues `CLAUDE.md` listed as known baseline failures (each fix removed its entry, and the list is gone). Each is fixed test first on its own branch and lands here as one commit with its box ticked.
 
 - [x] #4: the login page's gifs get a stable `key`
 - [x] #5: the prompts clear their timers on unmount, and `ElectionTrackerAlert` and `InvestigationAlert` start theirs in `componentDidMount`
@@ -628,7 +628,7 @@ The six open issues listed as known baseline failures in `CLAUDE.md`. Each is fi
 - [x] #9: the lobby tags only the host as `[Host]`
 - [x] #10: a player who reloads can take back their seat within the 3 s grace window, in a game or a full lobby
 - [x] #13: the routes and the `/game` WebSocket are registered before the server starts
-- [ ] PR merged into `development`
+- [x] PRs merged into `development`: each fix merged by its own PR from `fix/issue-N` (#32, #33, #34, #35, #37, #38), so no `phase-10-baseline-bugs` branch was made
 
 ---
 
