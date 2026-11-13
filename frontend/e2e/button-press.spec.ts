@@ -8,7 +8,9 @@ import { waitForPrompt } from "./lobby";
 // and a press anywhere on what is drawn reaches it (issue #29), held as long as a person holds a
 // click: at the face's top edge, where a press once moved the button out from under the pointer,
 // and in the shadow, which once took no presses. Phones are left out: a phone's touch adjustment
-// moves a tap onto a nearby button, so they never missed.
+// moves a tap onto a nearby button, so they never missed. A button that eased into its size or
+// place as a page appeared would also slide out from under a press made where it was measured,
+// which Firefox did (issue #59).
 
 /** How long each press is held: about as long as a person holds a click. */
 const HOLD_MS = 150;
@@ -44,11 +46,35 @@ async function recordClicks(page: Page): Promise<() => Promise<(string | null)[]
 }
 
 /**
+ * Starts recording each transition a button starts on its size or place, as "label: property".
+ * Colours are left out: the label's and the face's ease on purpose, as when a button is hovered.
+ */
+async function recordButtonEases(page: Page): Promise<() => Promise<string[]>> {
+  await page.evaluate(() => {
+    const eases: string[] = [];
+    (globalThis as unknown as { buttonEases: typeof eases }).buttonEases = eases;
+    document.addEventListener(
+      "transitionrun",
+      (event) => {
+        const button = (event.target as Element).closest("button");
+        if (!button || event.propertyName.endsWith("color")) return;
+        const label = button.getAttribute("aria-label") ?? button.textContent?.trim();
+        eases.push(`${label}: ${event.propertyName}`);
+      },
+      true
+    );
+  });
+  return () => page.evaluate(() => (globalThis as unknown as { buttonEases: string[] }).buttonEases);
+}
+
+/**
  * Where `button` is drawn, in viewport px, down its centre line: the face from its box's top, and
  * the shadow as the first run of rows in the shadow's colour below that. Read from a screenshot, so
  * it is what a person sees whatever draws it.
  */
 async function whereDrawn(page: Page, button: Locator): Promise<{ x: number; face: Rows; shadow: Rows }> {
+  // A deck's image sets its height, and so where the decks column, END TERM included, is centred.
+  await page.waitForFunction(() => Array.from(document.images).every((img) => img.complete));
   const box = (await button.boundingBox())!;
   const x = Math.floor(box.x + box.width / 2);
   const clip = { x, y: Math.floor(box.y), width: 1, height: Math.ceil(box.height) + SHADOW_SEARCH_PX };
@@ -99,19 +125,7 @@ async function openVeto(page: Page) {
 test("no button eases into its size or place as the game page appears", async ({ page }) => {
   const game = await openFakeGame(page);
   await page.addStyleTag({ content: "#alert { display: none !important; }" });
-  await page.evaluate(() => {
-    const eased: string[] = [];
-    (globalThis as unknown as { eased: typeof eased }).eased = eased;
-    document.addEventListener(
-      "transitionrun",
-      (event) => {
-        const button = (event.target as Element).closest("button");
-        const name = button?.getAttribute("aria-label") ?? button?.textContent?.trim();
-        if (button) eased.push(`${name}: ${event.propertyName}`);
-      },
-      true
-    );
-  });
+  const eases = await recordButtonEases(page);
   // END TERM, the president's countdown and the header's speaker all take their size from a
   // container.
   game.send(
@@ -125,7 +139,7 @@ test("no button eases into its size or place as the game page appears", async ({
   await expect(page.getByRole("button", { name: "Resume the countdown" })).toBeVisible();
   // Two frames: the restyle against the containers comes with the first layout.
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-  expect(await page.evaluate(() => (globalThis as unknown as { eased: string[] }).eased)).toEqual([]);
+  expect(await eases()).toEqual([]);
 });
 
 test("END TERM takes a held press anywhere it is drawn", async ({ page }) => {
