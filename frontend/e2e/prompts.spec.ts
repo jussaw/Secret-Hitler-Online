@@ -46,6 +46,9 @@ for (const prompt of PROMPTS) {
 
 test("a prompt that opens while the page is scrolled is on screen", async ({ page, isMobile }) => {
   test.skip(!isMobile, "only phones scroll the game page");
+  // The game fits a phone held upright, so this one is held sideways, where the page scrolls.
+  const { width, height } = page.viewportSize()!;
+  await page.setViewportSize({ width: height, height: width });
   const game = await openFakeGame(page);
   game.send(gamePacket({ state: LobbyState.CHANCELLOR_NOMINATION, president: TEN[1], electionTracker: 1 }));
   await page.locator(".game-screen").waitFor();

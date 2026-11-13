@@ -570,14 +570,14 @@ Files: `frontend/src/game/GameScreen.tsx`, `GameScreen.css`, `GameScreen.test.ts
 
 Files: `frontend/src/game/GameScreen.css`, `frontend/src/game/PlayerRoster.css`, `frontend/e2e/phone.spec.ts`, `CLAUDE.md`
 
-- [ ] Browser tests first: no scroll at 360x740 and 412x915 with ten players and the longest status, the order, END TERM over the counts box, touch targets, a sideways phone, the spectator view
-- [ ] Compact roster and the phone column
-- [ ] `CLAUDE.md` updated: the game page's files, layouts, breakpoints and tests
+- [x] Browser tests first: no scroll at 360x740 and 412x915 with ten players and the longest status, the order, END TERM over the counts box, touch targets, a sideways phone, the spectator view
+- [x] Compact roster and the phone column
+- [x] `CLAUDE.md` updated: the game page's files, layouts, breakpoints and tests
 
 **Phase 8 acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] Every board floor in the breakdown's Global Constraints holds
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] Every board floor in the breakdown's Global Constraints holds
 - [ ] One real game on the deployed build, on a desktop and on a phone, shows every row state: office, busy, votes, roles, executed, victory
 - [ ] PR merged into `development` and deployed
 
