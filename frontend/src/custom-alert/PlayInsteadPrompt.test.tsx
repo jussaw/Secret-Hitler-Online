@@ -73,10 +73,11 @@ describe("PlayInsteadPrompt", () => {
 
   test("an error shows in the prompt", async () => {
     const message = "There is already a user with the name 'Sam' in the lobby.";
-    setup("Sam", vi.fn().mockResolvedValue(message));
+    // A slow check: the error line is on screen (empty) from the start, so wait for its text.
+    setup("Sam", vi.fn(() => new Promise<string>((r) => setTimeout(() => r(message), 30))));
     fireEvent.click(button("CONTINUE"));
-    const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(message);
+    const alert = await screen.findByText(message);
+    expect(alert).toBe(screen.getByRole("alert"));
     expect(alert).toHaveClass("prompt-error");
     expect(button("CONTINUE")).toBeEnabled();
   });
@@ -88,7 +89,7 @@ describe("PlayInsteadPrompt", () => {
       .mockResolvedValueOnce("");
     setup("Sam", onContinue);
     fireEvent.click(button("CONTINUE"));
-    expect(await screen.findByRole("alert")).toHaveTextContent(CONTACT_ERROR);
+    expect(await screen.findByText(CONTACT_ERROR)).toBe(screen.getByRole("alert"));
     expect(button("CONTINUE")).toBeEnabled();
     fireEvent.click(button("CONTINUE"));
     expect(onContinue).toHaveBeenCalledTimes(2);
