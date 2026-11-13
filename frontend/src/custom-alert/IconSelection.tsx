@@ -106,21 +106,19 @@ class IconSelection extends Component<IconSelectionProps> {
 
   render() {
     return (
+      // The grid is the only part that scrolls, with CONFIRM pinned below it (IconSelection.css).
       <ButtonPrompt
+        className={"icon-picker"}
         label={"PLAYER LOOK"}
-        renderHeader={() => {
-          return (
-            <>
-              <p>Choose a look, then press confirm.</p>
-              {this.getIconButtonHML(selectablePortraits)}
-            </>
-          );
-        }}
+        renderHeader={() => <p>Choose a look, then press confirm.</p>}
+        renderFooter={() => null}
         buttonDisabled={
           this.props.playerToIcon[this.props.user] === defaultPortrait
         }
         buttonOnClick={this.onConfirmButtonClick}
-      ></ButtonPrompt>
+      >
+        {this.getIconButtonHML(selectablePortraits)}
+      </ButtonPrompt>
     );
   }
 }
