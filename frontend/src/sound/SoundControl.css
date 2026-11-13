@@ -126,8 +126,9 @@
     cursor: pointer;
 }
 
-/* Touch screens: phones (held upright or sideways) and windows narrower than 5:4, which
-   GameScreen.css and PlayerRoster.css lay out for touch with this same query. */
+/* Touch screens: phones (held upright or sideways) and windows narrower than 5:4. RoundTracker.css
+   shares this stacked query; GameScreen.css and PlayerRoster.css use the phone-only query, which
+   is this one less the tall windows. */
 @media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
     .sound-control {
         --target: 44px;

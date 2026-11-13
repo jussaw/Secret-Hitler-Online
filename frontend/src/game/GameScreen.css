@@ -199,12 +199,14 @@
 
 /* Phones only: one column of the compact roster (PlayerRoster.css), the tracker, the decks row and
    the boards at full width. The query is the stacked one (SoundControl.css and RoundTracker.css
-   use it) less the tall windows below, which have their own block. The page is as tall as its
-   column and scrolls if it must, so the table is only an inline-size container (for the boards'
-   width), nothing reads 100cqh, and sizes follow the window's width. Phones down to 320px wide
-   are supported (phone.spec.ts). Narrower ones are out of scope: at 296px and below (313px on
-   Linux) the longest status takes a third line, and below about 245px (267px on Linux) the
-   tracker's steps wrap. */
+   use it) less the tall windows below, which have their own block. Its nested `not` and `or` and
+   the range syntax the minifier turns it into parse in Vite's build target (Safari and iOS 16.4
+   and newer). The page is as tall as its column and scrolls if it must, so the table is only an
+   inline-size container (for the boards' width), nothing reads 100cqh, and sizes follow the
+   window's width. Phones down to 320px wide are supported (phone.spec.ts). Narrower ones are out
+   of scope: at 296px and below (313px on Linux) the longest status takes a third line, and below
+   about 245px (267px on Linux) the tracker's steps wrap. On Linux the longest status also takes a
+   third line at 335px and 363-364px (docs/PLAN.md, Phase 9, Known limits). */
 @media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
     .game-screen {
         display: block;

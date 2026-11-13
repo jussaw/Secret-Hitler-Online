@@ -66,7 +66,8 @@
    the gap (0.35em) plus half its own width (0.16-0.18em) left of its step, so it stays centred in
    the gap. Phones down to 320px wide are supported (phone.spec.ts). Narrower ones are out of
    scope: at 296px and below (313px on Linux) the longest status takes a third line, and below
-   about 245px (267px on Linux) the steps wrap. */
+   about 245px (267px on Linux) the steps wrap. On Linux the longest status also takes a third
+   line at 335px and 363-364px (docs/PLAN.md, Phase 9, Known limits). */
 @media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
   :root {
     --round-steps-size: 0.8;
