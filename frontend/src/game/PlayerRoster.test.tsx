@@ -119,6 +119,25 @@ describe("PlayerRoster", () => {
     expect(Array.from(name.children, (child) => child.className)).toEqual(["roster-name-text", "roster-role-icon"]);
   });
 
+  test("an office outranks EXECUTED on the detail line", () => {
+    const game = makeGameState(NAMES, { chancellor: "Cat" });
+    game.players.Cat.alive = false;
+    const { row } = renderRoster(game, "Ann");
+    expect(row("Cat").classList.contains("is-disabled")).toBe(true);
+    const detail = row("Cat").querySelector(".roster-detail")!;
+    expect(detail.textContent).toBe("CHANCELLOR");
+    expect(detail.classList.contains("office")).toBe(true);
+  });
+
+  test("a visible role icon still shows on a darkened row", () => {
+    const game = withRoles();
+    game.players.Cat.alive = false; // Hitler, seen by the fascist Ben
+    const { row } = renderRoster(game, "Ben");
+    expect(row("Cat").classList.contains("is-disabled")).toBe(true);
+    expect(row("Cat").querySelector('img.roster-role-icon[alt="Hitler"]')).not.toBeNull();
+    expect(row("Cat").querySelector(".roster-detail")!.textContent).toBe("EXECUTED");
+  });
+
   test("every row reserves one detail line", () => {
     const { container } = renderRoster(makeGameState(NAMES), "Ann");
     container.querySelectorAll("li.roster-row").forEach((r) => {

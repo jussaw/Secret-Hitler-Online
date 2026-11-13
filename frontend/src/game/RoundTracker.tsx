@@ -3,12 +3,12 @@ import { ROUND_STEPS, RoundStep } from "./roundStep";
 import "./RoundTracker.css";
 
 const FADE_MS = 250;
-const HIGHLIGHT = /\b(president|chancellor)\b/i;
+const HIGHLIGHT = /\b(president|chancellor)\b/gi;
 
 /** Splits a status line so each whole word "president"/"chancellor" is wrapped in a highlight span. */
 function highlightWords(text: string) {
   // With a capture group, split puts the matches at the odd indices.
-  return text.split(new RegExp(HIGHLIGHT.source, "gi")).map((part, i) =>
+  return text.split(HIGHLIGHT).map((part, i) =>
     i % 2 === 1 ? (
       <span key={i} className="round-highlight">
         {part}
@@ -31,6 +31,10 @@ export default function RoundTracker(props: { step: RoundStep | null; text: stri
   const [shown, setShown] = useState({ text, step });
   const latestStep = useRef(step);
   latestStep.current = step;
+
+  // While no fade runs, `shown.step` follows `step`, so a later fade holds the step that was
+  // actually lit.
+  if (text === shown.text && shown.step !== step) setShown({ text: shown.text, step });
 
   // When the text changes, the old line and its step stay (the line fades with `.fading`) for FADE_MS,
   // then both are replaced together. A step change with the same text applies at once.

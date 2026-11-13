@@ -56,6 +56,26 @@ describe("stepForState", () => {
   ])("maps %s to null", (state) => {
     expect(stepForState({ state, lastState: S.CHANCELLOR_VOTING })).toBeNull();
   });
+
+  it("maps a state outside the enum to null", () => {
+    expect(
+      stepForState({ state: "BOGUS" as LobbyState, lastState: S.SETUP }),
+    ).toBeNull();
+  });
+
+  it.each(
+    Object.values(S)
+      .filter((s) => s !== S.POST_LEGISLATIVE)
+      .flatMap((state) =>
+        [S.PP_EXECUTION, S.CHANCELLOR_VOTING, S.LEGISLATIVE_CHANCELLOR].map(
+          (lastState) => [state, lastState],
+        ),
+      ),
+  )("%s ignores lastState %s outside POST_LEGISLATIVE", (state, lastState) => {
+    expect(stepForState({ state, lastState })).toBe(
+      stepForState({ state, lastState: S.SETUP }),
+    );
+  });
 });
 
 describe("stepForPolicyLine", () => {

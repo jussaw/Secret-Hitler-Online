@@ -41,12 +41,45 @@ describe("busy", () => {
     const rows = rowsOf({ user: "Ben", gameState: game, showBusy: false });
     expect(rows.some((r) => r.busy)).toBe(false);
   });
+  test("busy is false, not undefined, when showBusy is omitted", () => {
+    rowsOf({ user: "Ben", gameState: game }).forEach((r) => expect(r.busy).toBe(false));
+  });
+  test(
+    "in the vote, the user is left out with includeUser off and the rest who have not voted are busy",
+    () => {
+      const voting = makeGameState(NAMES, {
+        state: LobbyState.CHANCELLOR_VOTING,
+        userVotes: { Ann: true },
+      });
+      const rows = rowsOf({ user: "Ben", gameState: voting, showBusy: true, includeUser: false });
+      expect(rows.map((r) => r.name)).toEqual(["Ann", "Cat", "Dan", "Eve"]);
+      expect(rows.filter((r) => r.busy).map((r) => r.name)).toEqual(["Cat", "Dan", "Eve"]);
+    }
+  );
+  test("in the vote, only the shown players can be busy", () => {
+    const voting = makeGameState(NAMES, { state: LobbyState.CHANCELLOR_VOTING });
+    const rows = rowsOf({
+      user: "Ann",
+      gameState: voting,
+      showBusy: true,
+      players: ["Cat", "Dan"],
+    });
+    expect(rows.filter((r) => r.busy).map((r) => r.name)).toEqual(["Cat", "Dan"]);
+  });
+  test("a dead president is not busy", () => {
+    const dead = makeGameState(NAMES);
+    dead.players.Ann.alive = false;
+    const rows = rowsOf({ user: "Ben", gameState: dead, showBusy: true });
+    expect(rows.some((r) => r.busy)).toBe(false);
+  });
 });
 
 describe("role", () => {
   test("a liberal sees only their own role", () => {
-    const rows = rowsOf({ user: "Dan", gameState: withRoles() });
-    expect(rows.filter((r) => r.role !== undefined).map((r) => r.name)).toEqual(NAMES);
+    const game = makeGameState(NAMES);
+    game.players.Dan.id = Role.LIBERAL;
+    const rows = rowsOf({ user: "Dan", gameState: game });
+    expect(rows.filter((r) => r.role !== undefined).map((r) => r.name)).toEqual(["Dan"]);
   });
   test("a fascist sees fascists and Hitler, not liberals", () => {
     const rows = rowsOf({ user: "Ben", gameState: withRoles() });

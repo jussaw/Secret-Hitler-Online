@@ -1180,7 +1180,13 @@ class App extends Component<{}, AppState> {
           }
           this.queueSounds(soundNames, "tracker");
           if (spectator) {
-            if (!catchingUp) this.queueStatusMessage(trackerText(newState), stepForState(newState), SPECTATOR_RESULT_MS);
+            if (!catchingUp) {
+              this.queueStatusMessage(
+                trackerText(newState),
+                stepForState(newState),
+                SPECTATOR_RESULT_MS
+              );
+            }
           } else {
             this.queueAlert(
               <ElectionTrackerAlert
@@ -1201,7 +1207,13 @@ class App extends Component<{}, AppState> {
         // Show an alert with the new policy
         this.queueSounds(soundNames, "policy");
         if (spectator) {
-          if (!catchingUp) this.queueStatusMessage(policyText(newState), stepForPolicyLine(newState), SPECTATOR_RESULT_MS);
+          if (!catchingUp) {
+            this.queueStatusMessage(
+              policyText(newState),
+              stepForPolicyLine(newState),
+              SPECTATOR_RESULT_MS
+            );
+          }
         } else {
           this.queueAlert(
             <PolicyEnactedAlert
@@ -1581,6 +1593,8 @@ class App extends Component<{}, AppState> {
                       electionTracker: 0,
                       drawDeckSize: 17,
                       discardDeckSize: 0,
+                      statusBarText: "---",
+                      statusStep: null,
                     });
                   }}
                 >

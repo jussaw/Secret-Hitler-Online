@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // ES2021 for String.replaceAll, used in sounds.spec.ts.
+    "lib": ["DOM", "DOM.Iterable", "ES2021"],
+    // Replaces the base list instead of merging with it: keeps vite/client (e2e imports
+    // src/sound/SoundManager.ts, which uses import.meta.glob) and adds node.
+    "types": ["node", "vite/client"]
+  },
+  "include": ["e2e", "playwright.config.ts"]
+}

@@ -25,7 +25,7 @@
 
 Each phase lists its tasks, the files they touch, and acceptance checks. Phases 2 to 7 depend on the code shape left by the phase before, so the step-by-step breakdown (exact code and test bodies) for a phase is written to `docs/superpowers/plans/` when that phase starts, and linked from its heading here. This file is the source of truth for what is done.
 
-Every phase ends with a **Start Phase N** block. A phase is not finished until that block is done, so work flows straight from one phase into the next. Its boxes are ticked in the first commit on the new phase's branch, because the previous phase's PR is already merged by then. Phase 8 ends with **Done when** instead.
+Every phase ends with a **Start Phase N** block. A phase is not finished until that block is done, so work flows straight from one phase into the next. Its boxes are ticked in the first commit on the new phase's branch, because the previous phase's PR is already merged by then. Phases 8 and 9 end without a Start block, since Phases 9 and 10 were added after they were planned, and Phase 10 ends with **Done when** instead.
 
 ## Progress
 
@@ -39,7 +39,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 6. Sounds | `phase-6-sounds` | done |
 | 7. Spectators | `phase-7-spectators` | done |
 | 8. Game screen redesign | `phase-8-game-screen` | in progress |
-| 9. Phase 8 follow-ups | — | not started |
+| 9. Phase 8 follow-ups | `phase-9-follow-ups` | done |
 | 10. Baseline bugs | `phase-10-baseline-bugs` | in progress |
 
 ---
@@ -587,24 +587,34 @@ Files: `frontend/src/game/GameScreen.css`, `frontend/src/game/PlayerRoster.css`,
 
 ## Phase 9: Phase 8 follow-ups
 
-These are Minor review findings deferred from Phase 8. Break them down when the phase starts.
+Breakdown: [`docs/superpowers/plans/2026-11-12-phase-9-follow-ups.md`](superpowers/plans/2026-11-12-phase-9-follow-ups.md) · Spec: [`docs/superpowers/specs/2026-11-12-game-screen-redesign-design.md`](superpowers/specs/2026-11-12-game-screen-redesign-design.md)
 
-- [ ] `frontend/src/game/roundStep.ts`: list the five no-step states explicitly instead of `default`, so TypeScript checks the switch is exhaustive; wrap the over-long `stepForPolicyLine` line; add a test that `lastState` is ignored outside `POST_LEGISLATIVE`
-- [ ] `frontend/src/player/usePlayerRows.ts`: `busy` is typed `boolean` but is `undefined` when `showBusy` is omitted (coerce or default it); the voting-state busy loop indexes `getPlayerOrder()` by `playerOrder.length` and throws with `includeUser: false` (iterate the order directly); a dead president counts as busy in nomination; remove the double blank line
-- [ ] `frontend/src/player/usePlayerRows.test.tsx`: the test "a liberal sees only their own role" asserts that a liberal sees all five roles (the fixture sets every id); rename it or set only the user's id
-- [ ] `frontend/src/game/PlayerRoster.css`: the Fascist/Hitler role word uses `#e8604a`, not a palette colour; derive it from the palette (e.g. `--textColorHighlight`) or name it in `variables.css`, distinct from the `#f08a5d` office orange
-- [ ] `frontend/src/game/PlayerRoster.test.tsx`: add tests that an office outranks `EXECUTED` on the detail line, and that a visible role icon shows on a darkened row
-- [ ] `frontend/src/game/RoundTracker.tsx`: build the highlight regex once; add tests for an empty line, an all-caps `PRESIDENT`, and the first render having no fade class; a step-only change (same text) leaves `shown.step` stale, so a text change right after briefly re-lights the older step during the fade
-- [ ] `frontend/src/game/GameScreen.test.tsx`: make the status assertion exact (`toHaveTextContent(/^…$/)`); add a test that `statusStep` reaches the tracker's `aria-current`
-- [ ] `frontend/src/App.tsx`: RETURN TO LOBBY resets the boards but not `statusBarText` or `statusStep`, so the next game opens with the last game's line and lit step; reset both; wrap the over-long election-tracker line
-- [ ] `frontend/e2e/tracker.spec.ts`: add a case that ELECTION stays lit under the victory screen (voting, then `FASCIST_VICTORY_ELECTION`)
-- [ ] `frontend/src/game/GameScreen.css` and `PlayerRoster.css`: the tall-window blocks restate base values to undo the phone block; note at the base rules that their values are restated there, or move to a phone-only query
-- [ ] `frontend/e2e/phone.spec.ts`: no check that rows keep their place when a PRES/CHAN tag appears (`rowShift` fills `.roster-detail`, which phones hide)
-- [ ] `frontend/e2e/prompts.spec.ts`: add an upright short viewport (the project's width x 600) beside the sideways one for the scrolled-prompt test
-- [ ] Phones under 360 px: below about 257 px (about 273 px on Linux) the tracker's steps wrap and the card grows past its reserved height; decide whether to support or test narrower phones
-- [ ] `frontend/src/game/RoundTracker.css`: the smaller phone step line uses the shared stacked-layout query, so tall windows get it too; decide whether tall windows keep it or get their own step size
-- [ ] `CLAUDE.md`: it says `--round-tracker-ems` keeps two lines' height; it is the whole card's height in its ems
-- [ ] Tooling: the e2e files are outside `tsconfig.json`'s `include`, so `npm run build` does not type-check them; Vitest prints a "jsdom was created N times" notice
+These are Minor review findings deferred from Phase 8. The breakdown records the decisions taken when the phase started.
+
+- [x] `frontend/src/game/roundStep.ts`: list the five no-step states explicitly instead of `default`, so TypeScript checks the switch is exhaustive; wrap the over-long `stepForPolicyLine` line; add a test that `lastState` is ignored outside `POST_LEGISLATIVE`
+- [x] `frontend/src/player/usePlayerRows.ts`: `busy` is typed `boolean` but is `undefined` when `showBusy` is omitted (coerce or default it); the voting-state busy loop indexes `getPlayerOrder()` by `playerOrder.length` and throws with `includeUser: false` (iterate the order directly); a dead president counts as busy in nomination; remove the double blank line
+- [x] `frontend/src/player/usePlayerRows.test.tsx`: the test "a liberal sees only their own role" asserts that a liberal sees all five roles (the fixture sets every id); rename it or set only the user's id
+- [x] `frontend/src/game/PlayerRoster.css`: the Fascist/Hitler role word uses `#e8604a`, not a palette colour; derive it from the palette (e.g. `--textColorHighlight`) or name it in `variables.css`, distinct from the `#f08a5d` office orange
+- [x] `frontend/src/game/PlayerRoster.test.tsx`: add tests that an office outranks `EXECUTED` on the detail line, and that a visible role icon shows on a darkened row
+- [x] `frontend/src/game/RoundTracker.tsx`: build the highlight regex once; add tests for an empty line, an all-caps `PRESIDENT`, and the first render having no fade class; a step-only change (same text) leaves `shown.step` stale, so a text change right after briefly re-lights the older step during the fade
+- [x] `frontend/src/game/GameScreen.test.tsx`: make the status assertion exact (`toHaveTextContent(/^…$/)`); add a test that `statusStep` reaches the tracker's `aria-current`
+- [x] `frontend/src/App.tsx`: RETURN TO LOBBY resets the boards but not `statusBarText` or `statusStep`, so the next game opens with the last game's line and lit step; reset both; wrap the over-long election-tracker line
+- [x] `frontend/e2e/tracker.spec.ts`: add a case that ELECTION stays lit under the victory screen (voting, then `FASCIST_VICTORY_ELECTION`)
+- [x] `frontend/src/game/GameScreen.css` and `PlayerRoster.css`: the tall-window blocks restate base values to undo the phone block; note at the base rules that their values are restated there, or move to a phone-only query
+- [x] `frontend/e2e/phone.spec.ts`: no check that rows keep their place when a PRES/CHAN tag appears (`rowShift` fills `.roster-detail`, which phones hide)
+- [x] `frontend/e2e/prompts.spec.ts`: add an upright short viewport (the project's width x 600) beside the sideways one for the scrolled-prompt test
+- [x] Phones under 360 px: below about 257 px (about 273 px on Linux) the tracker's steps wrap and the card grows past its reserved height; decide whether to support or test narrower phones. Decided: supported down to 320px wide (tested at 320x568, where the page may scroll); narrower phones are out of scope.
+- [x] `frontend/src/game/RoundTracker.css`: the smaller phone step line uses the shared stacked-layout query, so tall windows get it too; decide whether tall windows keep it or get their own step size. Decided: tall windows keep the phone's step line (the stacked query, on purpose).
+- [x] `frontend/src/game/RoundTracker.css`: the phone block's comment says the arrow's half-width is "about 0.2em"; it is 0.16–0.18em
+- [x] `CLAUDE.md`: it says `--round-tracker-ems` keeps two lines' height; it is the whole card's height in its ems
+- [x] Tooling: the e2e files are outside `tsconfig.json`'s `include`, so `npm run build` does not type-check them; Vitest prints a "jsdom was created N times" notice
+
+**Known limits.** With Linux-drawn fonts, the longest status takes a third line at 335px and 363–364px wide, so the tracker grows by a line there (about 14px at 335px, 16px at 363–364px); at 381–383px the step line keeps under 12% to spare but does not wrap. None of these is a common phone width, and each was measured in the Playwright Linux image (Galaxy S8 emulation).
+
+**Phase 9 acceptance**
+
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] Every board floor in Phase 8's breakdown holds
 
 ---
 
@@ -624,5 +634,5 @@ The six open issues listed as known baseline failures in `CLAUDE.md`. Each is fi
 
 ## Done when
 
-- [ ] All eight phases merged and the Progress table reads "done" for each
+- [ ] All ten phases merged and the Progress table reads "done" for each
 - [ ] The deployed instance has hosted one full game with real players, at least one spectator and at least one phone

@@ -1,6 +1,14 @@
 import { expect, test } from "@playwright/test";
 import { LobbyState as S } from "../src/types";
-import { TEN, openFakeWatch, spectatorPacket } from "./fakeGame";
+import {
+  EVERY_ROLE,
+  TEN,
+  gamePacket,
+  lobbyPacket,
+  openFakeGame,
+  openFakeWatch,
+  spectatorPacket,
+} from "./fakeGame";
 
 test("the vote result keeps ELECTION lit, then the legislative session lights", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "one browser is enough");
@@ -86,4 +94,71 @@ test("the old line fades visibly and keeps its step until the new line lands", a
     expect(s.visibility).toBe("visible");
     expect(s.step).toMatch(/ELECTION/);
   }
+});
+
+test("ELECTION stays lit under the victory screen when Hitler is elected", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "one browser is enough");
+  const current = page.locator(".round-step[aria-current='step']");
+  const watch = await openFakeWatch(
+    page,
+    spectatorPacket({
+      state: S.CHANCELLOR_VOTING,
+      lastState: S.CHANCELLOR_NOMINATION,
+      president: TEN[2],
+      chancellor: TEN[1],
+      fascistPolicies: 3,
+    })
+  );
+  await expect(current).toHaveText(/ELECTION/);
+  watch.send({
+    ...gamePacket(
+      {
+        state: S.FASCIST_VICTORY_ELECTION,
+        lastState: S.CHANCELLOR_VOTING,
+        president: TEN[2],
+        chancellor: TEN[1],
+        fascistPolicies: 3,
+        userVotes: Object.fromEntries(TEN.map((name) => [name, true])),
+      },
+      EVERY_ROLE
+    ),
+    spectatorCount: 1,
+  });
+  await page.getByRole("button", { name: "RETURN TO LOBBY" }).waitFor({ timeout: 15000 });
+  await expect(current).toHaveText(/ELECTION/);
+});
+
+test("RETURN TO LOBBY gives the next game a fresh line and no lit step", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "one browser is enough");
+  const current = page.locator(".round-step[aria-current='step']");
+  const okay = page.getByRole("button", { name: "OKAY" });
+  const game = await openFakeGame(page);
+  game.send(gamePacket({ president: TEN[1] }));
+  await okay.waitFor();
+  const snapshot = () =>
+    page.evaluate(() => ({
+      text: document.querySelector("#status-bar-text")?.textContent ?? null,
+      lit: document.querySelectorAll(".round-step[aria-current='step']").length,
+    }));
+  const opening = await snapshot();
+  await okay.click();
+  await expect(current).toHaveText(/NOMINATION/);
+  game.send(gamePacket({ state: S.LEGISLATIVE_PRESIDENT, president: TEN[1], chancellor: TEN[2] }));
+  // The vote-result line holds ELECTION lit first.
+  await expect(current).toHaveText(/LEGISLATIVE SESSION/, { timeout: 15000 });
+  game.send(
+    gamePacket(
+      { state: S.FASCIST_VICTORY_POLICY, president: TEN[1], chancellor: TEN[2] },
+      EVERY_ROLE
+    )
+  );
+  const returnButton = page.getByRole("button", { name: "RETURN TO LOBBY" });
+  await returnButton.waitFor({ timeout: 15000 });
+  await returnButton.click();
+  await expect.poll(() => game.urls.length).toBe(2);
+  game.send(lobbyPacket());
+  await page.getByText("Players (10/10)").waitFor();
+  game.send(gamePacket({ president: TEN[1] }));
+  await okay.waitFor();
+  expect(await snapshot()).toEqual(opening);
 });

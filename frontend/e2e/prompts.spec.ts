@@ -1,14 +1,15 @@
 import { expect, test } from "@playwright/test";
 import { LobbyState } from "../src/types";
 import { PROMPTS, TEN, gamePacket, openFakeGame } from "./fakeGame";
-import { DESKTOP_SIZES, overflowX, smallTargets } from "./layout";
+import { DESKTOP_SIZES, NARROW_PHONE, overflowX, smallTargets } from "./layout";
 
-// Runs in every project. Phones: no horizontal overflow, the prompt on screen and near-full width,
-// large touch targets. Desktop, at all five sizes: the prompt never makes the page scroll, and its
+// Runs in desktop and the phone projects. Phones, at the project's size (phone-360 also at
+// NARROW_PHONE, 320x568): no horizontal overflow, the prompt on screen and near-full width, large
+// touch targets. Desktop, at all five sizes: the prompt never makes the page scroll, and its
 // button can always be reached.
 
 for (const prompt of PROMPTS) {
-  test(`the ${prompt.name} prompt fits`, async ({ page, isMobile }) => {
+  test(`the ${prompt.name} prompt fits`, async ({ page, isMobile }, testInfo) => {
     const game = await openFakeGame(page);
     prompt.packets.forEach((packet) => game.send(packet));
     const alertBox = page.locator("#alert-box.appear-custom-alert");
@@ -16,7 +17,8 @@ for (const prompt of PROMPTS) {
     await button.waitFor({ timeout: 15_000 });
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
 
-    const sizes = isMobile ? [page.viewportSize()!] : DESKTOP_SIZES;
+    const phones = testInfo.project.name === "phone-360" ? [NARROW_PHONE] : [];
+    const sizes = isMobile ? [page.viewportSize()!, ...phones] : DESKTOP_SIZES;
     for (const size of sizes) {
       await page.setViewportSize(size);
       const at = `${size.width}x${size.height}`;
@@ -44,21 +46,30 @@ for (const prompt of PROMPTS) {
   });
 }
 
-test("a prompt that opens while the page is scrolled is on screen", async ({ page, isMobile }) => {
-  test.skip(!isMobile, "only phones scroll the game page");
-  // The game fits a phone held upright, so this one is held sideways, where the page scrolls.
-  const { width, height } = page.viewportSize()!;
-  await page.setViewportSize({ width: height, height: width });
-  const game = await openFakeGame(page);
-  game.send(gamePacket({ state: LobbyState.CHANCELLOR_NOMINATION, president: TEN[1], electionTracker: 1 }));
-  await page.locator(".game-screen").waitFor();
-  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-  expect(await page.evaluate(() => window.scrollY), "the game page scrolls").toBeGreaterThan(0);
+const SHORT_SHAPES = [
+  { name: "sideways", shape: (w: number, h: number) => ({ width: h, height: w }) },
+  { name: "upright and short", shape: (w: number) => ({ width: w, height: 600 }) },
+];
 
-  game.send(PROMPTS.find((p) => p.name === "vote")!.packets[0]);
-  const alertBox = page.locator("#alert-box.appear-custom-alert");
-  await alertBox.getByRole("button", { name: "CONFIRM" }).waitFor();
-  const box = (await alertBox.boundingBox())!;
-  expect(box.y, "box top").toBeGreaterThanOrEqual(0);
-  expect(box.y + box.height, "box bottom").toBeLessThanOrEqual(page.viewportSize()!.height);
-});
+for (const { name, shape } of SHORT_SHAPES) {
+  test(`a prompt that opens while the page is scrolled is on screen, ${name}`, async ({ page, isMobile }) => {
+    test.skip(!isMobile, "only phones scroll the game page");
+    // The game fits a phone held upright, so this one is shortened, where the page scrolls.
+    const { width, height } = page.viewportSize()!;
+    await page.setViewportSize(shape(width, height));
+    const game = await openFakeGame(page);
+    game.send(
+      gamePacket({ state: LobbyState.CHANCELLOR_NOMINATION, president: TEN[1], electionTracker: 1 })
+    );
+    await page.locator(".game-screen").waitFor();
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    expect(await page.evaluate(() => window.scrollY), "the game page scrolls").toBeGreaterThan(0);
+
+    game.send(PROMPTS.find((p) => p.name === "vote")!.packets[0]);
+    const alertBox = page.locator("#alert-box.appear-custom-alert");
+    await alertBox.getByRole("button", { name: "CONFIRM" }).waitFor();
+    const box = (await alertBox.boundingBox())!;
+    expect(box.y, "box top").toBeGreaterThanOrEqual(0);
+    expect(box.y + box.height, "box bottom").toBeLessThanOrEqual(page.viewportSize()!.height);
+  });
+}

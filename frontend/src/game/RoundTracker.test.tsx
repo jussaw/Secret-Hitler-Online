@@ -98,4 +98,35 @@ describe("RoundTracker line", () => {
     rerender(<RoundTracker step={RoundStep.LEGISLATIVE} text="Same" />);
     expect(container.querySelector(".round-step.current")!.textContent).toBe(ROUND_STEPS[2]);
   });
+
+  test("the first render does not fade", () => {
+    const { container } = render(<RoundTracker step={null} text="First" />);
+    const line = container.querySelector("#status-bar-text")!;
+    expect(line.textContent).toBe("First");
+    expect(line.classList.contains("fading")).toBe(false);
+  });
+
+  test("an empty line renders an empty paragraph", () => {
+    const { container } = render(<RoundTracker step={null} text="" />);
+    expect(container.querySelector("#status-bar-text")!.textContent).toBe("");
+    expect(container.querySelector(".round-highlight")).toBeNull();
+  });
+
+  test("highlights an all-caps PRESIDENT", () => {
+    const { container } = render(<RoundTracker step={null} text="WAITING FOR THE PRESIDENT." />);
+    const words = [...container.querySelectorAll(".round-highlight")].map((s) => s.textContent);
+    expect(words).toEqual(["PRESIDENT"]);
+  });
+
+  test("after a step-only change, a fade keeps the step that was lit", () => {
+    const { container, rerender } = render(<RoundTracker step={RoundStep.ELECTION} text="Same" />);
+    const lit = () => container.querySelector(".round-step.current")!.textContent;
+    rerender(<RoundTracker step={RoundStep.LEGISLATIVE} text="Same" />);
+    rerender(<RoundTracker step={RoundStep.EXECUTIVE} text="New" />);
+    expect(lit()).toBe(RoundStep.LEGISLATIVE);
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    expect(lit()).toBe(RoundStep.EXECUTIVE);
+  });
 });

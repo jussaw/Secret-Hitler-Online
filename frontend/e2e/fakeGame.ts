@@ -24,7 +24,17 @@ const ALL_ROLES: Record<string, Role> = Object.fromEntries(
   TEN.map((name) => [name, name === G1 ? HITLER : [USER, G2, G3].includes(name) ? FASCIST : LIBERAL])
 );
 
-export type FakeGame = { send(packet: object): void };
+export type FakeGame = {
+  send(packet: object): void;
+  /** Every socket the page opened, oldest first. */
+  urls: string[];
+};
+
+/** The lobby packet of the scripted lobby: `names` with portraits chosen. */
+export function lobbyPacket(names: string[] = TEN): object {
+  const icon = Object.fromEntries(names.map((name, i) => [name, `p${i + 1}`]));
+  return { type: "lobby", usernames: names, icon };
+}
 
 /**
  * Creates a lobby of `names` (TEN by default) as names[0] through the login form, with every
@@ -32,21 +42,24 @@ export type FakeGame = { send(packet: object): void };
  */
 export async function openFakeGame(page: Page, names: string[] = TEN): Promise<FakeGame> {
   await page.route("**/new-lobby", (route) => route.fulfill({ body: "FAKE" }));
-  let connect!: (ws: WebSocketRoute) => void;
-  const connected = new Promise<WebSocketRoute>((resolve) => (connect = resolve));
+  const urls: string[] = [];
+  let latest: WebSocketRoute | undefined;
+  let connect!: () => void;
+  const connected = new Promise<void>((resolve) => (connect = resolve));
   await page.routeWebSocket(/\/game\?/, (ws) => {
+    urls.push(ws.url());
     ws.onMessage(() => {});
-    connect(ws);
+    latest = ws;
+    connect();
   });
 
   await page.goto("/");
   await page.getByRole("textbox", { name: "Your Name" }).last().fill(names[0]);
   await page.getByRole("button", { name: "CREATE LOBBY" }).click();
-  const ws = await connected;
-  const icon = Object.fromEntries(names.map((name, i) => [name, `p${i + 1}`]));
-  ws.send(JSON.stringify({ type: "lobby", usernames: names, icon }));
+  await connected;
+  latest!.send(JSON.stringify(lobbyPacket(names)));
   await page.getByText(`Players (${names.length}/10)`).waitFor();
-  return { send: (packet) => ws.send(JSON.stringify(packet)) };
+  return { send: (packet) => latest!.send(JSON.stringify(packet)), urls };
 }
 
 /**
@@ -253,16 +266,9 @@ export const PROMPTS: { name: string; packets: object[]; button: string }[] = [
 ];
 
 /** The lobby packet a spectator of the scripted lobby gets: TEN with portraits, one spectator. */
-export const WATCHED_LOBBY = {
-  type: "lobby",
-  usernames: TEN,
-  icon: Object.fromEntries(TEN.map((name, i) => [name, `p${i + 1}`])),
-  spectatorCount: 1,
-};
+export const WATCHED_LOBBY = { ...lobbyPacket(), spectatorCount: 1 };
 
 export type FakeWatch = FakeGame & {
-  /** Every socket the page opened, oldest first, so a test can check each was a spectator's. */
-  urls: string[];
   /** While down, the server closes the open socket and every new one at once. */
   down(on: boolean): void;
 };

@@ -9,6 +9,8 @@
     --textColorOnDark: #bbbbbb;
     --textColorHighlight: var(--headerFill);
     --textColorLiberal: #5a9ba6;
+    /* The Fascist/Hitler role word, kept apart from the #f08a5d office orange. */
+    --textColorFascist: #e8604a;
     --textColorWhite: #ffffff;
     --textShadowed: #141414;
     --buttonFill: var(--headerFill);

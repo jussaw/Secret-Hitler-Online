@@ -6,7 +6,7 @@
 	"scripts": {
 		"dev": "vite",
 		"dev:server": "vite --mode dev",
-		"build": "tsc --noEmit && vite build",
+		"build": "tsc --noEmit && tsc --noEmit -p tsconfig.e2e.json && vite build",
 		"preview": "vite preview",
 		"test": "vitest",
 		"e2e": "playwright test"

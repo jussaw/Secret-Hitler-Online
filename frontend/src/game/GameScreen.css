@@ -56,8 +56,8 @@
     max-height: var(--portrait-max);
 }
 
-/* The role icon and the office or role line are larger than in the other layouts (the phone block
-   puts PlayerRoster.css's sizes back). */
+/* The role icon and the office or role line are larger than in the other layouts (the phone and
+   tall-window blocks put PlayerRoster.css's sizes back). */
 .game-body .roster-role-icon {
     height: 1.3em;
 }
@@ -197,13 +197,17 @@
     font-size: calc(var(--deck-width) * 0.15);
 }
 
-/* Phones, windows narrower than 5:4 and windows under 500px tall: one column of the compact roster
-   (PlayerRoster.css), the tracker, the decks row and the boards at full width. The page is as tall
-   as its column and scrolls if it must, so the table is only an inline-size container (for the
-   boards' width), nothing reads 100cqh, and sizes follow the window's width. Tall windows (the
-   block after this one) override all of it; SoundControl.css and PlayerRoster.css use the same
-   query. */
-@media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
+/* Phones only: one column of the compact roster (PlayerRoster.css), the tracker, the decks row and
+   the boards at full width. The query is the stacked one (SoundControl.css and RoundTracker.css
+   use it) less the tall windows below, which have their own block. Its nested `not` and `or` and
+   the range syntax the minifier turns it into parse in Vite's build target (Safari and iOS 16.4
+   and newer). The page is as tall as its column and scrolls if it must, so the table is only an
+   inline-size container (for the boards' width), nothing reads 100cqh, and sizes follow the
+   window's width. Phones down to 320px wide are supported (phone.spec.ts). Narrower ones are out
+   of scope: at 296px and below (313px on Linux) the longest status takes a third line, and below
+   about 245px (267px on Linux) the tracker's steps wrap. On Linux the longest status also takes a
+   third line at 335px and 363-364px (docs/PLAN.md, Phase 9, Known limits). */
+@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
     .game-screen {
         display: block;
         height: auto;
@@ -238,7 +242,7 @@
         height: 1.6em;
     }
 
-    /* PlayerRoster.css's sizes, for these rows and the tall windows' rows. */
+    /* PlayerRoster.css's sizes, which the desktop rules above enlarge. */
     .game-body .roster-role-icon {
         height: 1.1em;
     }
@@ -249,9 +253,10 @@
 
     /* The tracker, the decks row and the boards, top to bottom. Its line's text is sized so the
        longest status takes at most the two lines the card keeps for it at 360px wide, and its
-       steps fit one line. */
+       steps fit one line. Below 323px wide it stops at 10px, which still holds both at 320px,
+       on Linux too (10.5px gave the longest status a third line there). */
     .game-table {
-        --tracker-font: clamp(10.5px, 3.1vw, 16px);
+        --tracker-font: clamp(10px, 3.1vw, 16px);
         --deck-width: clamp(48px, 14vw, 72px);
         container-type: inline-size;
         display: flex;
@@ -330,19 +335,11 @@
 
 /* Tall windows (half-screen windows, upright monitors and tablets, near-square windows): the
    roster runs across the top, text sized by the window's width, and spare height collects at the
-   bottom of the page. This block also undoes the phone block above, which these windows match. */
+   bottom of the page. Only what differs from the desktop rules is stated here. */
 @media (min-width: 700px) and (aspect-ratio < 5/4) {
-    .game-screen {
-        display: grid;
-        height: 100dvh;
-    }
-
     .game-body {
-        display: grid;
         grid-template-columns: minmax(0, 1fr);
         grid-template-rows: auto minmax(0, 1fr);
-        gap: 0;
-        padding: 0;
     }
 
     .game-body > .roster {
@@ -352,7 +349,6 @@
         grid-auto-rows: calc(var(--roster-font) * 3);
         gap: 4px 6px;
         padding: 6px 8px;
-        border-radius: 0;
     }
 
     .game-body .roster-row,
@@ -362,7 +358,15 @@
 
     .game-body .roster-status {
         width: 3em;
-        height: 2.2em;
+    }
+
+    /* PlayerRoster.css's sizes, which the desktop rules enlarge. */
+    .game-body .roster-role-icon {
+        height: 1.1em;
+    }
+
+    .game-body .roster-detail {
+        font-size: 0.8em;
     }
 
     /* END TERM is at least 44px tall here, so a narrow column is up to 4.49w + 50px tall. */
@@ -376,62 +380,13 @@
             ((100cqw - var(--column-gap) - 20px) * 0.7724 + 6px) / (4.8 + 1.35 * 0.7724),
             ((100cqw - var(--column-gap) - 20px) * 0.7724 - 34px) / (4.49 + 1.35 * 0.7724)
         );
-        container-type: size;
-        display: grid;
         align-content: start;
-        gap: var(--row-gap) 0;
         padding: 8px;
-    }
-
-    .game-table > .round-tracker {
-        align-self: auto;
-        max-width: calc(var(--board-width) + 20px);
-    }
-
-    .game-decks {
-        order: 0;
-        display: flex;
-        gap: 0;
-        width: var(--decks-width);
-        margin: 0 0 0 var(--column-gap);
     }
 
     .game-decks .end-term {
         min-width: 44px;
         min-height: 44px;
-        padding: calc(var(--deck-width) * 0.06) calc(var(--deck-width) * 0.13);
-        font-size: calc(var(--deck-width) * 0.19);
-    }
-
-    .game-deck {
-        padding-top: calc(var(--deck-width) * 0.34);
-    }
-
-    .game-decks #pps-container {
-        margin: calc(var(--deck-width) * 0.08) 0 0;
-        padding: calc(var(--deck-width) * 0.07);
-    }
-
-    .game-decks #pps-text {
-        font-size: calc(var(--deck-width) * 0.11);
-    }
-
-    .game-decks #pps-icon {
-        width: calc(var(--deck-width) * 0.17);
-        height: calc(var(--deck-width) * 0.17);
-    }
-
-    .game-decks #pps-icon-number {
-        font-size: calc(var(--deck-width) * 0.15);
-    }
-
-    .game-boards {
-        order: 0;
-        align-self: center;
-    }
-
-    .game-boards #board {
-        width: var(--board-width);
     }
 }
 

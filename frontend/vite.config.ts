@@ -20,6 +20,8 @@ export default defineConfig({
   test: {
     // Playwright owns e2e/*.spec.ts.
     include: ["src/**/*.test.{ts,tsx}"],
+    // One jsdom per worker, with each file still isolated in its own vm context.
+    pool: "vmThreads",
     environment: "jsdom",
     setupFiles: ["./src/setupTests.ts"],
   },

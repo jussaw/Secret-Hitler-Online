@@ -32,25 +32,33 @@ keeps credit to upstream and to the board game's creators.
   state, the overlays, and the login and lobby pages; prompts live in `src/custom-alert/`. The game
   page is `src/game/`: `GameScreen` (markup and the three layouts), `PlayerRoster` (a row per player
   in `playerOrder`: portrait, name, office or role, and the vote or busy bubble), `RoundTracker`
-  (the four steps of a round, the current one lit, over the status line `#status-bar-text`; it
-  always keeps two lines' height, `--round-tracker-ems`) and `roundStep` (a pure function from the
-  game state and `lastState` to the step; `App` queues the step with each status line).
+  (the four steps of a round, the current one lit, over the status line `#status-bar-text`; its line
+  always keeps two lines' height, and `--round-tracker-ems` is the whole card's height in its own
+  ems, which the layouts reserve) and `roundStep` (a pure function from the game state and
+  `lastState` to the step; `App` queues the step with each status line).
   `usePlayerRows` (`src/player/`) is the per-player state the roster rows and the prompts' card
   tiles share. Desktops get the roster as a column at the left, the tracker over the boards, and
   END TERM, the decks and the counts box in a column beside them, on one screen (`.game-table` is a
   size container, and the boards' width comes from its container units). Phones, windows narrower
-  than 5:4 and windows under 500px tall get one column from
-  `@media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px)` in `GameScreen.css` and
-  `PlayerRoster.css`: compact rows about 26px tall in two columns (`PRES` or `CHAN` after the name),
-  the tracker, a decks row with END TERM over the counts box, and the boards at full width. With ten
+  than 5:4 and windows under 500px tall get one column from the phone-only query in
+  `GameScreen.css` and `PlayerRoster.css`, which is the stacked query
+  `(max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px)` less tall windows (written out in
+  those files): compact rows about 26px tall in two columns (`PRES` or `CHAN` after the name), the
+  tracker, a decks row with END TERM over the counts box, and the boards at full width. With ten
   players and the longest status it fits 360x740 and 412x915 without scrolling; a phone held
-  sideways scrolls. `SoundControl.css` gives the header controls 44px targets under the same query.
-  Among those, windows at least 700px wide (half-screen desktop windows, upright monitors, tablets
-  held upright) fit one screen instead, with the roster across the top in two columns (three in
-  near-square windows), from a later block, `(min-width: 700px) and (aspect-ratio < 5/4)`, in the
-  same two files, which undoes the phone block. On desktop and in tall windows a twelve-character
-  name fits whole, and only a name too wide for its row ends in an ellipsis, with the full name in
-  the row's title on hover; the phones' compact rows end any name that does not fit in an ellipsis.
+  sideways scrolls. The phone layout holds down to 320px wide, where the page may scroll: the login
+  page, the lobby, every prompt and the game are tested at 320x568 (narrower phones are out of
+  scope); with Linux-drawn fonts the longest status still takes a third line at a few untested
+  widths (see `docs/PLAN.md`, Phase 9). `SoundControl.css` (44px header targets) and
+  `RoundTracker.css` (the smaller step line) keep the stacked query itself, so tall windows get
+  those too, on purpose. Among the stacked windows, those at least 700px wide and narrower than 5:4
+  (half-screen desktop windows, upright monitors, tablets held upright) fit one screen instead, with
+  the roster across the top in two columns (three in near-square windows), from a later block,
+  `(min-width: 700px) and (aspect-ratio < 5/4)`, in `GameScreen.css` alone (`PlayerRoster.css` has
+  no tall block). That block holds only what differs from desktop, and no longer undoes the phone
+  block, which never reaches those windows. On desktop and in tall windows a twelve-character name
+  fits whole, and only a name too wide for its row ends in an ellipsis, with the full name in the
+  row's title on hover; the phones' compact rows end any name that does not fit in an ellipsis.
   Prompts are a fixed overlay whose box scrolls (`CustomAlert.css`). Sounds are in `src/sound/`:
   `SoundManager` (Web Audio; the `AudioContext` is created in the first trusted gesture, so `play()`
   before it is a silent no-op; volume and mute in `localStorage` under `sounds`; every `play()`
@@ -66,25 +74,30 @@ keeps credit to upstream and to the board game's creators.
   watching. Playwright tests live in `frontend/e2e/`, in four projects: `desktop`
   (`no-scroll.spec.ts`: at `DESKTOP_SIZES` and in the `NARROW_WINDOWS` no scroll, every board at
   least its `BOARD_FLOOR`, the tracker exactly its reserved height and the boards unmoved by the
-  longest status; wide twelve-character names fit there and at `SQUARE_DESKTOPS`), `firefox` (the
-  same no-scroll tests, since Firefox rounds the layout differently, and the header-fit tests of
+  longest status; wide twelve-character names fit there and at `SQUARE_DESKTOPS`; every media query
+  parses and the phone-only query exists, found by what it matches), `firefox` (the same no-scroll
+  tests, since Firefox rounds the layout differently, and the header-fit tests of
   `sounds.spec.ts` and `spectator.spec.ts`), and `phone-360`/`phone-412` (Galaxy S8 and Pixel 7
   emulation, `phone.spec.ts`: the game fits without scrolling, in order, with 44px targets, for
-  players and a spectator, and a phone held sideways gets the phone layout). `tracker.spec.ts`
-  (`desktop`) checks the lit step against the status line. `prompts.spec.ts` runs in `desktop` and
-  both phone projects; it opens every prompt from a scripted game socket (`e2e/fakeGame.ts`).
-  `sounds.spec.ts` runs in every project: no sound and no `AudioContext` before the first trusted
-  gesture, each sound in step with its animation, and the header control's fit, touch targets,
-  keyboard use and saved settings. `spectator.spec.ts` plays a scripted game to a spectator (no
-  prompt before the victory screen, the status lines, the sounds), plays a real game whose spectator
-  frames it scans for secrets (`e2e/driveGame.ts` seats raw-socket players; `e2e/secrets.ts` mirrors
-  the backend's list), and checks the count fits every header. `startGame` (`e2e/lobby.ts`) joins
-  one raw spectator by default, and the no-scroll and phone tests also measure a spectator's view.
-  The server closes a `/game` socket after 30 s with no traffic either way, so the client pings
-  every 20 s (`PING_INTERVAL`); `connection.spec.ts` (`desktop`) holds a quiet lobby's socket open
-  for 35 s. Shared helpers are `e2e/lobby.ts`, `e2e/layout.ts` and `e2e/soundLog.ts`. `App.css`
-  hides `overflow-x` on `html` and `body`, so horizontal overflow shows only in `body.scrollWidth`,
-  and `body` scrolls vertically by itself (`pageHeight` measures both). The client talks to its own
+  players and a spectator; at 320x568 it keeps the phone layout and only scrolls down, for both, and
+  `phone-360` also checks the login page and the lobby there; and a phone held sideways gets the
+  phone layout). `tracker.spec.ts` (`desktop`) checks the lit step against the status line.
+  `prompts.spec.ts` runs in `desktop` and both phone projects (`phone-360` also at 320x568); it
+  opens every prompt from a scripted game socket (`e2e/fakeGame.ts`). `sounds.spec.ts` runs in every
+  project: no sound and no `AudioContext` before the first trusted gesture, each sound in step with
+  its animation, and the header control's fit, touch targets, keyboard use and saved settings.
+  `spectator.spec.ts` plays a scripted game to a spectator (no prompt before the victory screen, the
+  status lines, the sounds), plays a real game whose spectator frames it scans for secrets
+  (`e2e/driveGame.ts` seats raw-socket players; `e2e/secrets.ts` mirrors the backend's list), and
+  checks the count fits every header. `startGame` (`e2e/lobby.ts`) joins one raw spectator by
+  default, and the no-scroll and phone tests also measure a spectator's view. `settle`
+  (`e2e/lobby.ts`) fails when the web fonts do not load; they come from Google Fonts through
+  `src/fonts.css`, so the browser tests need network access. The server closes a
+  `/game` socket after 30 s with no traffic either way, so the client pings every 20 s
+  (`PING_INTERVAL`); `connection.spec.ts` (`desktop`) holds a quiet lobby's socket open for 35 s.
+  Shared helpers are `e2e/lobby.ts`, `e2e/layout.ts` and `e2e/soundLog.ts`. `App.css` hides
+  `overflow-x` on `html` and `body`, so horizontal overflow shows only in `body.scrollWidth`, and
+  `body` scrolls vertically by itself (`pageHeight` measures both). The client talks to its own
   origin (`src/constants/serverUrls.ts`; `wss:` on `https:` pages) unless `VITE_SERVER_ADDRESS` is
   set, and the dev server proxies the backend paths to `BACKEND_URL` (default
   `http://localhost:4040`). `VITE_*` variables live in `.env.development` (dev server only:
@@ -105,7 +118,7 @@ The Gradle 7.4.2 wrapper does not run on JDKs newer than 17. Java 17 comes from 
 | Frontend tests (single run) | `cd frontend && npm test -- --run` |
 | Browser tests (build the frontend and the jar, serve them on `localhost:4545`; Java 17 active) | `cd frontend && npx playwright install chromium firefox && npm run e2e` (one project: `-- --project=phone-360`) |
 | Backend build (tests + fat jar at `backend/build/libs/secret-hitler-online.jar`) | `cd backend && ./gradlew build` |
-| Frontend production build (type-check, then `frontend/dist/`) | `cd frontend && npm run build` |
+| Frontend production build (type-checks the app and the browser tests, then writes `frontend/dist/`) | `cd frontend && npm run build` |
 | Whole app on one port (after the frontend build) | `cd backend && ./gradlew jar && java -jar build/libs/secret-hitler-online.jar` |
 | Image (repo root) | `docker build -t secret-hitler-online .` |
 
