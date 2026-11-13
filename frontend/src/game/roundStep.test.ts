@@ -57,6 +57,12 @@ describe("stepForState", () => {
     expect(stepForState({ state, lastState: S.CHANCELLOR_VOTING })).toBeNull();
   });
 
+  it("maps a state outside the enum to null", () => {
+    expect(
+      stepForState({ state: "BOGUS" as LobbyState, lastState: S.SETUP }),
+    ).toBeNull();
+  });
+
   it.each(
     [
       S.CHANCELLOR_NOMINATION,

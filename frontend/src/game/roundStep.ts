@@ -18,7 +18,7 @@ export const ROUND_STEPS: readonly RoundStep[] = [
 
 /**
  * The step a status line lights for this state; null keeps the previous step
- * (SETUP, victory states).
+ * (SETUP, victory states, and any state the client does not know).
  */
 export function stepForState(
   game: Pick<GameState, "state" | "lastState">,
@@ -56,6 +56,12 @@ export function stepForState(
     case LobbyState.LIBERAL_VICTORY_EXECUTION:
     case LobbyState.FASCIST_VICTORY_POLICY:
     case LobbyState.FASCIST_VICTORY_ELECTION:
+      return null;
+    default:
+      // Every state has a case above, so a state added without one fails to
+      // compile here; at run time, a state the client does not know keeps
+      // the previous step.
+      game.state satisfies never;
       return null;
   }
 }
