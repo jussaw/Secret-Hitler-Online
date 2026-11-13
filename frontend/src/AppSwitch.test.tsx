@@ -6,6 +6,7 @@ import App from "./App";
 import {
   PACKET_GAME_STATE,
   PACKET_LOBBY,
+  PACKET_OK,
   PARAM_ICON,
   PARAM_PACKET_TYPE,
   PARAM_USERNAMES,
@@ -749,4 +750,64 @@ test("a held status line cut off by a cleared queue does not finish the next que
     vi.advanceTimersByTime(200); // t = 3.6 s
   });
   expect(app.state.statusBarText).toBe("next");
+});
+
+const okPacket = { [PARAM_PACKET_TYPE]: PACKET_OK };
+
+test("a closeOnOK prompt closes on its own OK", async () => {
+  const app = await playerInLobby();
+  act(() => app.queueAlert(<div />));
+  expect(app.state.showAlert).toBe(true);
+  await deliver(app, okPacket);
+  expect(app.state.showAlert).toBe(false);
+  expect(app.allAnimationsFinished).toBe(true);
+});
+
+test("an OK goes to the prompt on screen, past a listener whose prompt closed by its own button", async () => {
+  const app = await playerInLobby();
+  // Like the election tracker alert: closeOnOK, but the player closed it, so no OK came.
+  act(() => app.queueAlert(<div />));
+  act(() => app.hideAlertAndFinish(false));
+  act(() => app.queueAlert(<span />)); // the next closeOnOK prompt, a vote say
+  expect(app.state.showAlert).toBe(true);
+  await deliver(app, okPacket);
+  expect(app.state.showAlert).toBe(false);
+});
+
+test("an OK listener from before a lost connection does not close the next lobby's picker", async () => {
+  const app = await playerInLobby();
+  act(() => app.queueAlert(<div />)); // a closeOnOK prompt on screen
+  for (let i = 0; i < 20 && app.state.page !== "login"; i++) {
+    act(() => FakeSocket.instances[FakeSocket.instances.length - 1].onclose?.());
+  }
+  expect(app.state.page).toBe("login");
+  await act(async () => {
+    app.setState({ joinName: "Ann", joinLobby: "HBIA" });
+  });
+  await act(async () => {
+    app.onClickJoin();
+  });
+  await deliver(app, lobbyPacket);
+  act(() => app.onClickChangeIcon());
+  expect((app.state.alertContent as React.ReactElement).type).toBe(IconSelection);
+  const seat = FakeSocket.instances[FakeSocket.instances.length - 1];
+  fireEvent.click(document.querySelector("#icon-container #icon.selectable:not(.disabled):not(.selected)")!);
+  expect(seat.send).toHaveBeenCalledTimes(1);
+  expect(JSON.parse(seat.send.mock.calls[0][0])).toMatchObject({ command: "select-icon" });
+  await deliver(app, okPacket);
+  expect(app.state.showAlert).toBe(true);
+  expect((app.state.alertContent as React.ReactElement).type).toBe(IconSelection);
+});
+
+test("an OK listener whose prompt closed by its own button does not close the picker", async () => {
+  const app = await playerInLobby();
+  // Like a policy alert closed by its own button: closeOnOK, but no OK came and no queue was cleared.
+  act(() => app.queueAlert(<div />));
+  act(() => app.hideAlertAndFinish(false));
+  act(() => app.onClickChangeIcon());
+  expect((app.state.alertContent as React.ReactElement).type).toBe(IconSelection);
+  fireEvent.click(document.querySelector("#icon-container #icon.selectable:not(.disabled):not(.selected)")!);
+  await deliver(app, okPacket);
+  expect(app.state.showAlert).toBe(true);
+  expect((app.state.alertContent as React.ReactElement).type).toBe(IconSelection);
 });

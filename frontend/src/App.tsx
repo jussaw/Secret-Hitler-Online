@@ -228,7 +228,8 @@ class App extends Component<{}, AppState> {
   animationQueue: (() => void)[] = [];
   /** Bumped when an animation step starts and when the queue is cleared: names the running step. */
   animationStep = 0;
-  okMessageListeners: (() => void)[] = [];
+  /** What to do on the server's next OK, each with the animationStep it was added in. */
+  okMessageListeners: { step: number; func: () => void }[] = [];
   allAnimationsFinished: boolean = true;
   gameOver: boolean = false;
   /** The last game state this socket delivered, the lobby (SETUP), or none yet: see soundEvents. */
@@ -603,13 +604,14 @@ class App extends Component<{}, AppState> {
         });
         break;
 
-      case PACKET_OK: // Traverse all listeners and call the functions.
-        let i = 0;
-        for (i; i < this.okMessageListeners.length && i < 1; i++) {
-          this.okMessageListeners[i]();
-        }
+      case PACKET_OK: {
+        // The first listener whose step is still running answers; one whose step is over (its
+        // prompt closed by its own button, or the queue cleared) must not finish a later step.
+        const listener = this.okMessageListeners.find((l) => l.step === this.animationStep);
+        listener?.func();
         this.okMessageListeners = []; // clear all listeners.
         break;
+      }
 
       case PACKET_INVESTIGATION:
         // Trigger investigation screen when the server responds.
@@ -1690,6 +1692,7 @@ class App extends Component<{}, AppState> {
     this.setState({ allAnimationsFinished: true });
     this.animationQueue = [];
     this.animationStep += 1; // the running step is over
+    this.okMessageListeners = []; // and so is any prompt waiting for the server's OK
     // A PLAY INSTEAD prompt that was still queued went with it.
     if (!this.playInsteadShown) {
       this.playInsteadOpen = false;
@@ -1804,11 +1807,13 @@ class App extends Component<{}, AppState> {
   /**
    * Adds a listener to be called when the server returns an 'OK' status.
    * @param func The function to be called.
-   * @effects adds the listener to the queue of functions. When the server returns an 'OK' status, all of the
-   *          listeners will be called and then cleared from the queue.
+   * @effects adds the listener, tied to the running animation step. On the server's next 'OK',
+   *          the first listener whose step is still running is called and every listener is
+   *          cleared: one whose step is over (its prompt closed by its own button, or the queue
+   *          cleared) never runs.
    */
   addServerOKListener(func: () => void) {
-    this.okMessageListeners.push(func);
+    this.okMessageListeners.push({ step: this.animationStep, func });
   }
 
   /**
