@@ -128,6 +128,36 @@ for (const narrow of [false, true]) {
       await spectator.close();
     }
   });
+
+  test(`the PLAY INSTEAD prompt fits ${phone}`, async ({ page, browser }) => {
+    if (narrow) await narrowPhone(page);
+    const { width } = page.viewportSize()!;
+    // The host plays in a page of its own (with the project's phone settings); this phone watches.
+    const host = await browser.newPage();
+    try {
+      await watchLobby(page, await createLobby(host, "Host Player"));
+      await page.getByRole("button", { name: "PLAY INSTEAD" }).click();
+      const field = page.getByRole("textbox", { name: "Your name" });
+      await expect(field).toBeVisible();
+      // Measure the prompt as it rests, after its entrance animation and with the web fonts.
+      await page.waitForFunction(() =>
+        document.getElementById("alert-box")!.getAnimations().every((a) => a.playState === "finished")
+      );
+      await page.evaluate(() => document.fonts.ready.then(() => undefined));
+      expect(await smallTargets(page, "#alert-box"), "small targets in the prompt").toEqual([]);
+      expect(await smallFieldText(page, "#alert-box"), "small text in the name field").toEqual([]);
+      const overflow = await overflowX(page);
+      expect(overflow.scrollWidth, "scrollWidth").toBeLessThanOrEqual(width);
+      expect(overflow.offscreen, "past the edge").toEqual([]);
+
+      // The field takes twelve characters at most; jsdom does not apply maxLength to typing.
+      await field.fill("");
+      await field.pressSequentially("ABCDEFGHIJKLM");
+      await expect(field).toHaveValue("ABCDEFGHIJKL");
+    } finally {
+      await host.close();
+    }
+  });
 }
 
 test("phones put the roster first", async ({ page, baseURL }) => {
