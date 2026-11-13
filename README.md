@@ -31,6 +31,11 @@ For more information, read the [official rulebook here](https://www.secrethitler
 - **Lobbies survive a restart.** The server backs up its lobbies to a SQLite file and restores them when it starts.
 - **One image on one port.** The Java server also serves the web page. CI publishes a Docker image for `linux/amd64` and `linux/arm64`.
 - **A current toolchain:** Vite, React 18 and TypeScript 5, with Vitest unit tests and Playwright browser tests on desktop Chrome, Firefox and two emulated phones.
+- **Fixes** for bugs carried over from upstream:
+  - The lobby tagged every guest as `[Host]`.
+  - A player who reloaded mid-game was locked out of their seat for 3 s.
+  - A request sent right after the server started could get a 404.
+  - The console showed React warnings.
 - **Removed:** Google Analytics, the Twitter share button, and upstream's Firebase and Fly.io deployment config. All 20 player portraits are available without sharing on Twitter.
 
 The plan behind these changes, phase by phase, is in [docs/PLAN.md](docs/PLAN.md).
