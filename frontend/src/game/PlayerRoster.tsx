@@ -1,13 +1,12 @@
-import PlayerBase from "../assets/player-base.png";
 import IconFascist from "../assets/player-icon-fascist.png";
 import IconHitler from "../assets/player-icon-hitler.png";
 import IconLiberal from "../assets/player-icon-liberal.png";
 import IconBusy from "../assets/player-icon-busy.png";
 import YesVote from "../assets/player-icon-ja.png";
 import NoVote from "../assets/player-icon-nein.png";
-import portraits, { portraitsAltText } from "../assets";
 import { GameState, Role } from "../types";
 import { DISABLE_EXECUTED_PLAYERS, PlayerRow, usePlayerRows } from "../player/usePlayerRows";
+import RosterRow, { RosterRowProps } from "./RosterRow";
 import "./PlayerRoster.css";
 
 const ROLE_WORDS: Record<string, string> = {
@@ -30,10 +29,10 @@ const ROLE_CLASSES: Record<string, string> = {
 
 const TAGS: Record<PlayerRow["office"], string> = { PRESIDENT: "PRES", CHANCELLOR: "CHAN", "": "" };
 
-function RosterRow({ row }: { row: PlayerRow }) {
+function toRowProps(row: PlayerRow): RosterRowProps {
   const disabled = row.disabledText !== "";
   const roleWord = row.role !== undefined ? ROLE_WORDS[row.role] : undefined;
-  const text = row.office || row.disabledText || roleWord || "";
+  const detail = row.office || row.disabledText || roleWord || "";
   // The role's colour applies only when the role word itself is what the line shows.
   const detailClass = row.office
     ? "office"
@@ -48,26 +47,17 @@ function RosterRow({ row }: { row: PlayerRow }) {
     status = <img className="roster-busy" src={IconBusy} alt="busy" />;
   }
 
-  const className = "roster-row" + (row.isUser ? " is-user" : "") + (disabled ? " is-disabled" : "");
-  return (
-    <li className={className} data-player={row.name} title={row.name}>
-      <span className="roster-portrait">
-        <img className="roster-card" src={PlayerBase} alt="" />
-        <img className="roster-face" src={portraits[row.icon]} alt={portraitsAltText[row.icon]} />
-      </span>
-      <span className="roster-text">
-        <span className="roster-name">
-          <span className="roster-name-text">{row.name}</span>
-          {row.role !== undefined && (
-            <img className="roster-role-icon" src={ROLE_ICONS[row.role]} alt={ROLE_WORDS[row.role]} />
-          )}
-        </span>
-        <span className={"roster-detail" + (detailClass ? " " + detailClass : "")}>{text}</span>
-      </span>
-      <span className="roster-tag">{TAGS[row.office]}</span>
-      <span className="roster-status">{status}</span>
-    </li>
-  );
+  return {
+    name: row.name,
+    icon: row.icon,
+    isUser: row.isUser,
+    disabled,
+    detail,
+    detailClass,
+    tag: TAGS[row.office],
+    roleIcon: row.role !== undefined ? { src: ROLE_ICONS[row.role], alt: ROLE_WORDS[row.role] } : undefined,
+    status,
+  };
 }
 
 /** One row per player in playerOrder: portrait, name, office or role, and the vote or busy bubble. */
@@ -87,7 +77,7 @@ export default function PlayerRoster(props: {
   return (
     <ol className="roster" aria-label="Players">
       {rows.map((row) => (
-        <RosterRow key={row.name} row={row} />
+        <RosterRow key={row.name} {...toRowProps(row)} />
       ))}
     </ol>
   );
