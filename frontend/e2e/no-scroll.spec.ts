@@ -1,9 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
+import { LobbyState } from "../src/types";
+import { EVERY_ROLE, TEN, gamePacket, openFakeGame } from "./fakeGame";
 import {
   BOARD_FLOOR,
   DESKTOP_SIZES,
   LONG_STATUS,
   NARROW_WINDOWS,
+  SQUARE_DESKTOPS,
   overflowX,
   overlaps,
   pageHeight,
@@ -23,27 +26,48 @@ function measureTable(page: Page) {
       return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
     };
     const one = (selector: string) => box(document.querySelector(selector)!);
+    const fit = (el: Element) => ({
+      text: (el.textContent ?? "").trim(),
+      scrollWidth: el.scrollWidth,
+      clientWidth: el.clientWidth,
+    });
     const endTerm = document.querySelector(".game-decks .end-term")!;
+    const status = document.querySelector("#status-bar-text")!.textContent ?? "";
+    // The height the table keeps for the tracker, read from a probe that takes it.
+    const table = document.querySelector(".game-table")!;
+    const probe = document.createElement("div");
+    probe.style.cssText = "position: absolute; visibility: hidden; height: var(--tracker-height);";
+    table.appendChild(probe);
+    const trackerReserved = probe.getBoundingClientRect().height;
+    probe.remove();
     return {
       roster: one(".game-body > .roster"),
       rows: Array.from(document.querySelectorAll(".roster-row"), box),
       userRows: document.querySelectorAll(".roster-row.is-user").length,
-      names: Array.from(document.querySelectorAll(".roster-name"), (el) => ({
-        text: el.textContent ?? "",
-        scrollWidth: el.scrollWidth,
-        clientWidth: el.clientWidth,
-      })),
+      names: Array.from(document.querySelectorAll(".roster-name"), fit),
       tracker: one(".game-table > .round-tracker"),
+      trackerReserved,
+      status,
       boards: one("#board-container"),
       boardWidth: document.querySelector("#board")!.getBoundingClientRect().width,
       decks: one(".game-decks"),
       endTerm: box(endTerm),
       endTermVisibility: getComputedStyle(endTerm).visibility,
       draw: one(".game-deck.draw #deck-container"),
+      // The counts box, and each of its lines.
+      counts: [
+        fit(document.querySelector("#pps-container")!),
+        ...Array.from(document.querySelectorAll("#pps-container > *"), fit),
+      ],
       // Cards still in a pile (hidden ones fade out to the left).
       deckCards: Array.from(document.querySelectorAll(".game-decks #deck-policy.deck-final-show"), box),
     };
   });
+}
+
+/** Waits for a status line in words, in place of the "---" the page starts with. */
+async function statusUp(page: Page) {
+  await expect(page.locator("#status-bar-text"), "the status line").toHaveText(/[a-z]/i);
 }
 
 /** The furthest any edge of `b` lies from the same edge of `a`, in px. */
@@ -123,7 +147,11 @@ async function checkLayout(
     expect(table.tracker.top - table.roster.bottom, `gap under the roster at ${at}`).toBeLessThanOrEqual(24);
   }
 
-  // The tracker.
+  // The tracker, exactly as tall as the room the table keeps for it.
+  expect(
+    Math.abs(table.tracker.bottom - table.tracker.top - table.trackerReserved),
+    `tracker height against its reserved ${table.trackerReserved}px at ${at}`
+  ).toBeLessThanOrEqual(0.5);
   expect(Math.abs(centreX(table.tracker) - centreX(table.boards)), `tracker centred on the boards at ${at}`).toBeLessThanOrEqual(1);
   expect(table.tracker.bottom, `tracker above the boards at ${at}`).toBeLessThanOrEqual(table.boards.top + 1);
 
@@ -135,6 +163,9 @@ async function checkLayout(
   for (const card of table.deckCards) {
     expect(overlaps(card, table.boards), `a deck card over the boards at ${at}`).toBe(false);
     expect(overlaps(card, table.endTerm), `a deck card over END TERM at ${at}`).toBe(false);
+  }
+  for (const line of table.counts) {
+    expect(line.scrollWidth, `"${line.text}" fits the counts box at ${at}`).toBeLessThanOrEqual(line.clientWidth + 1);
   }
   if (spectator) {
     expect(table.endTermVisibility, `a spectator's END TERM at ${at}`).toBe("hidden");
@@ -152,7 +183,18 @@ async function checkLayout(
   // What was measured is the final layout, not one still animating from the last size.
   await page.waitForTimeout(500);
   const later = await measureTable(page);
-  expect(later.tracker, `the tracker settles at ${at}`).toEqual(table.tracker);
+  if (later.status === table.status) {
+    expect(later.tracker, `the tracker settles at ${at}`).toEqual(table.tracker);
+  } else {
+    // A new line arrived in the live game. The card is as wide as its line, so only its width
+    // may change: it stays where it was.
+    expect(later.tracker.top, `the tracker's top settles at ${at}`).toBe(table.tracker.top);
+    expect(later.tracker.bottom, `the tracker's bottom settles at ${at}`).toBe(table.tracker.bottom);
+    expect(
+      Math.abs(centreX(later.tracker) - centreX(table.tracker)),
+      `the tracker's centre settles at ${at} ("${table.status}" became "${later.status}")`
+    ).toBeLessThanOrEqual(0.5);
+  }
   expect(later.boards, `the boards settle at ${at}`).toEqual(table.boards);
   expect(later.endTerm, `END TERM settles at ${at}`).toEqual(table.endTerm);
 
@@ -188,6 +230,70 @@ for (const players of [5, 7, 10]) {
     }
   });
 }
+
+test("every name fits beside its role icon, on 16:9 and squarer desktops and in narrow windows", async ({
+  page,
+}) => {
+  // A scripted game at its end, when everyone sees every role, with two players in office and one
+  // executed: every name has its icon, and every kind of detail line shows. Settling hides the
+  // victory screen.
+  const game = await openFakeGame(page);
+  game.send(
+    gamePacket(
+      { state: LobbyState.FASCIST_VICTORY_POLICY, president: TEN[3], chancellor: TEN[6] },
+      EVERY_ROLE,
+      [TEN[8]]
+    )
+  );
+  await page.locator(".game-screen").waitFor();
+  await settle(page);
+  expect(await page.locator(".roster-name .roster-role-icon").count(), "role icons").toBe(TEN.length);
+
+  for (const [sizes, desktop] of [
+    [DESKTOP_SIZES, true],
+    [SQUARE_DESKTOPS, true],
+    [NARROW_WINDOWS, false],
+  ] as const) {
+    for (const size of sizes) {
+      await page.setViewportSize(size);
+      const at = `${size.width}x${size.height}`;
+      expect(await pageHeight(page), `scrollHeight at ${at}`).toBeLessThanOrEqual(size.height);
+      const overflow = await overflowX(page);
+      expect(overflow.scrollWidth, `scrollWidth at ${at}`).toBeLessThanOrEqual(size.width);
+      expect(overflow.offscreen, `past the edge at ${at}`).toEqual([]);
+
+      const table = await measureTable(page);
+      for (const name of table.names) {
+        expect(name.scrollWidth, `"${name.text}" is cut off at ${at}`).toBeLessThanOrEqual(name.clientWidth + 1);
+      }
+      for (const line of table.counts) {
+        expect(line.scrollWidth, `"${line.text}" fits the counts box at ${at}`).toBeLessThanOrEqual(line.clientWidth + 1);
+      }
+      if (desktop) {
+        expect(table.roster.right, `roster left of the boards at ${at}`).toBeLessThanOrEqual(table.boards.left);
+      } else {
+        expect(table.roster.bottom, `roster above the tracker at ${at}`).toBeLessThanOrEqual(table.tracker.top + 1);
+      }
+      expect(
+        Math.abs(table.tracker.bottom - table.tracker.top - table.trackerReserved),
+        `tracker height against its reserved ${table.trackerReserved}px at ${at}`
+      ).toBeLessThanOrEqual(0.5);
+    }
+  }
+
+  // The executed player's line is as readable as their greyed name.
+  const executed = await page.evaluate(() => {
+    const row = document.querySelector(".roster-row.is-disabled")!;
+    const detail = row.querySelector(".roster-detail")!;
+    return {
+      text: detail.textContent,
+      colour: getComputedStyle(detail).color,
+      name: getComputedStyle(row.querySelector(".roster-name")!).color,
+    };
+  });
+  expect(executed.text).toBe("EXECUTED");
+  expect(executed.colour, "the EXECUTED line's colour").toBe(executed.name);
+});
 
 test("windows narrower than 5:4 put the roster above the tracker; 5:4 keeps it at the left", async ({
   page,
@@ -230,6 +336,7 @@ test("a spectator's view of 10 players fits every desktop size and narrow window
     await watchLobby(page, await lobbyCode(host));
     await expect(page.locator(".game-screen .spectator-count")).toHaveText("1");
     await settle(page);
+    await statusUp(page);
     const options = { players: 10, spectator: true };
     for (const size of DESKTOP_SIZES) await checkLayout(page, size, { ...options, desktop: true });
     for (const size of NARROW_WINDOWS) await checkLayout(page, size, { ...options, desktop: false });

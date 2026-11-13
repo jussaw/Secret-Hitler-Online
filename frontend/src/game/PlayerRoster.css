@@ -86,6 +86,7 @@
   line-height: 1.2;
   font-size: 0.8em;
   white-space: nowrap;
+  color: var(--textColorOnDark);
 }
 
 .roster-detail.office {
@@ -127,6 +128,7 @@
   filter: brightness(35%);
 }
 
-.roster-row.is-disabled .roster-name {
+.roster-row.is-disabled .roster-name,
+.roster-row.is-disabled .roster-detail {
   color: var(--playerDisabledTextColor);
 }

@@ -16,7 +16,7 @@ export type { PlayerDisplayProps } from "./usePlayerRows";
  * Builds one card tile per displayed player, in display order, on top of usePlayerRows, and
  * handles selection. PlayerDisplay lays the tiles out in rows.
  */
-export function usePlayerTiles(inputProps: PlayerDisplayProps): JSX.Element[] {
+function usePlayerTiles(inputProps: PlayerDisplayProps): JSX.Element[] {
   const props = withDefaultProps(inputProps);
   const rows = usePlayerRows(inputProps);
 

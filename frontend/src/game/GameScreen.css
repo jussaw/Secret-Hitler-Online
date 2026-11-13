@@ -18,6 +18,11 @@
 /* Desktop: the roster is a column at the left and the table takes the rest. */
 .game-body {
     --roster-width: clamp(260px, 20vw, 380px);
+    /* The portrait is at most a fifth of the column's width. */
+    --portrait-max: calc(var(--roster-width) * 0.2);
+    /* A row's room beside the largest portrait: less the column's 8px padding each side and the
+       row's 4px on the left. */
+    --row-room: calc(var(--roster-width) - 20px - var(--portrait-max));
     display: grid;
     grid-template-columns: var(--roster-width) minmax(0, 1fr);
     min-height: 0;
@@ -25,10 +30,11 @@
 
 .game-body > .roster {
     --roster-gap: 6px;
-    /* Text follows the window's height, but a twelve-character name (about 8.4em with a role
-       icon) still fits beside the largest portrait the column allows (a quarter of its width), the
-       vote slot and the row's gaps (4.2em). */
-    --roster-font: clamp(12px, min(1.8vh, (var(--roster-width) * 0.75 - 20px) / 12.6), 20px);
+    /* Text follows the window's height, but never outgrows the row's room. A row spends 1.8em on
+       its two gaps and right padding (PlayerRoster.css) and at least 3em on the vote slot, and a
+       twelve-character name with its role icon takes up to about 8.42em: 13.6em leaves a little
+       over all of that. */
+    --roster-font: clamp(12px, min(1.8vh, var(--row-room) / 13.6), 20px);
     box-sizing: border-box;
     min-height: 0;
     padding: 8px;
@@ -43,78 +49,88 @@
 }
 
 .game-body .roster-portrait {
-    max-height: calc(var(--roster-width) * 0.25);
+    max-height: var(--portrait-max);
 }
 
-/* A wider slot shows the ja/nein pill (2.68:1) larger. */
+/* The vote slot takes what the gaps and an 8.8em name leave, from 3em up to the mockup's 4.3em,
+   so the ja/nein pill (2.68:1) is as large as the row allows. */
 .game-body .roster-status {
-    width: 3em;
+    width: clamp(3em, var(--row-room) - 10.6em, 4.3em);
 }
 
-/* The table: the tracker over the boards (one column), and the decks column beside the boards.
-   Its sizes come from the table's own size, so no status line or label can move the boards. */
+/* The table: the tracker over the boards, and the decks column one gap to the right of the
+   boards. The boards and decks are centred together, with spare width split between the outer
+   columns. Sizes come from the table's own size (100cqw, 100cqh), so no status line or label can
+   move the boards.
+
+   The decks column is sized from the deck's width w: 1.35w wide and 4.77w + 9px tall (END TERM
+   0.31w + 4px with 5px for its shadow, each pile 1.808w with room for its cards, the counts box
+   0.844w). The deck takes the largest width (up to 150px) at which the column, counted as
+   4.8w + 10px, fits the row and is no taller than the boards beside it, which are
+   (100cqw - gap - 1.35w - 20px) x 0.7724 + 16px tall. */
 .game-table {
     --row-gap: 12px;
     --column-gap: 24px;
     --tracker-font: clamp(12px, 1.9vh, 22px);
-    /* The tracker's steps and its two reserved lines of text take 5.46em (RoundTracker.css). */
-    --tracker-height: calc(var(--tracker-font) * 5.46);
+    /* RoundTracker.css keeps the card this many of its ems tall, whatever its line holds. */
+    --tracker-height: calc(var(--tracker-font) * var(--round-tracker-ems));
     /* What the row of boards and decks may take: the table less the tracker and the gap under it. */
     --boards-height: calc(100cqh - var(--tracker-height) - var(--row-gap));
-    container-type: size;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: auto auto;
-    align-content: center;
-    gap: var(--row-gap) var(--column-gap);
-    padding: 12px;
-    min-width: 0;
-    min-height: 0;
-}
-
-.game-table > .round-tracker {
-    --round-font-size: var(--tracker-font);
-    grid-column: 1;
-    grid-row: 1;
-    justify-self: center;
-    margin: 0;
-}
-
-/* The boards' column is a container of its own, so 100cqw below is the width the decks leave. */
-.game-boards {
-    grid-column: 1;
-    grid-row: 2;
-    align-self: center;
-    container-type: inline-size;
-    display: flex;
-    justify-content: center;
-}
-
-/* Two stacked 1683x650 boards with 4px margins are (width - 20px) / 1.2946 + 16px tall. */
-.game-boards #board {
-    display: block;
-    min-width: 0;
-    max-width: none;
-    width: min(100cqw - 20px, (var(--boards-height) - 16px) * 1.2946);
-}
-
-/* END TERM over the draw pile, then the counts box and the discard pile, all sized from the
-   deck's width w. The column is 1.35w wide and 4.77w + 9px tall: END TERM 0.31w + 4px with 5px
-   for its shadow, each pile 1.808w with room for its cards, the counts box 0.844w. The deck takes
-   the largest width (up to 150px) at which the column, counted as 4.8w + 10px, fits the boards'
-   row and is no taller than the boards beside it, which are (100cqw - gap - 1.35w - 20px) x 0.7724
-   + 16px tall. */
-.game-decks {
     --deck-width: min(
         150px,
         (var(--boards-height) - 10px) / 4.8,
         ((100cqw - var(--column-gap) - 20px) * 0.7724 + 6px) / (4.8 + 1.35 * 0.7724)
     );
+    --decks-width: calc(var(--deck-width) * 1.35);
+    /* Two stacked 1683x650 boards with 4px margins are (width - 20px) / 1.2946 + 16px tall. */
+    --board-width: min(
+        100cqw - var(--decks-width) - var(--column-gap) - 20px,
+        (var(--boards-height) - 16px) * 1.2946
+    );
+    container-type: size;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-content: center;
+    gap: var(--row-gap) 0;
+    padding: 12px;
+    min-width: 0;
+    min-height: 0;
+}
+
+/* Never wider than the boards, so the status line cannot widen their column. */
+.game-table > .round-tracker {
+    --round-font-size: var(--tracker-font);
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: center;
+    max-width: calc(var(--board-width) + 20px);
+    margin: 0;
+}
+
+.game-boards {
     grid-column: 2;
     grid-row: 2;
     align-self: center;
+    display: flex;
+    justify-content: center;
+}
+
+.game-boards #board {
+    display: block;
+    min-width: 0;
+    max-width: none;
+    width: var(--board-width);
+}
+
+/* END TERM over the draw pile, then the counts box and the discard pile. */
+.game-decks {
+    grid-column: 3;
+    grid-row: 2;
+    align-self: center;
     box-sizing: border-box;
-    width: calc(var(--deck-width) * 1.35);
+    width: var(--decks-width);
+    margin-left: var(--column-gap);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -190,15 +206,14 @@
         max-height: none;
     }
 
-    .game-table {
-        --column-gap: 12px;
-        --tracker-font: clamp(12px, 1.5vw, 20px);
-        align-content: start;
-        padding: 8px;
+    .game-body .roster-status {
+        width: 3em;
     }
 
     /* END TERM is at least 44px tall here, so a narrow column is up to 4.49w + 50px tall. */
-    .game-decks {
+    .game-table {
+        --column-gap: 12px;
+        --tracker-font: clamp(12px, 1.5vw, 20px);
         --deck-width: min(
             140px,
             (var(--boards-height) - 10px) / 4.8,
@@ -206,6 +221,8 @@
             ((100cqw - var(--column-gap) - 20px) * 0.7724 + 6px) / (4.8 + 1.35 * 0.7724),
             ((100cqw - var(--column-gap) - 20px) * 0.7724 - 34px) / (4.49 + 1.35 * 0.7724)
         );
+        align-content: start;
+        padding: 8px;
     }
 
     .game-decks .end-term {

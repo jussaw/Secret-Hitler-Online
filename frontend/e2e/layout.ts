@@ -9,6 +9,18 @@ export const DESKTOP_SIZES = [
 ];
 
 /**
+ * Desktop windows squarer than 16:9 (5:4, 4:3 and 16:10 screens), where the roster column's width,
+ * not the window's height, sets the size of the roster's text.
+ */
+export const SQUARE_DESKTOPS = [
+  { width: 1280, height: 1024 },
+  { width: 1280, height: 960 },
+  { width: 1440, height: 900 },
+  { width: 1600, height: 1280 },
+  { width: 1680, height: 1050 },
+];
+
+/**
  * Windows narrower than 5:4 and at least 700px wide (half-screen desktop windows, upright monitors
  * and tablets, and near-square windows): the roster runs across the top, above the tracker, and
  * the game fits one screen.

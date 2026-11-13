@@ -1,6 +1,18 @@
 @import "../variables.css";
 
-/* The layouts size the card: set --round-font-size on .round-tracker (or its container). */
+/* The card's height in its own ems, whatever its line holds: its padding (0.6 + 0.7), the steps
+   line (1.5 of the steps' size) with its margin (0.5 of it), and the two lines always reserved for
+   the status (2.4 of the line's size). Layouts that keep room for the card read
+   --round-tracker-ems (GameScreen.css), so keep it the sum of the values below. */
+:root {
+  --round-steps-size: 0.88;
+  --round-line-size: 1.15;
+  --round-tracker-ems: calc(
+    0.6 + 0.7 + var(--round-steps-size) * (1.5 + 0.5) + var(--round-line-size) * 2.4
+  );
+}
+
+/* The layouts size the card: set --round-font-size on .round-tracker. */
 .round-tracker {
   --round-font-size: 1.1rem;
   box-sizing: border-box;
@@ -24,7 +36,7 @@
   padding: 0;
   list-style: none;
   font-family: var(--headerFont);
-  font-size: 1em;
+  font-size: calc(var(--round-steps-size) * 1em);
   line-height: 1.2;
 }
 
@@ -64,7 +76,7 @@
   margin: 0;
   font-family: var(--textFont);
   font-weight: bold;
-  font-size: 0.9em;
+  font-size: calc(var(--round-line-size) * 1em);
   line-height: 1.2;
   min-height: 2.4em;
   color: #ffffff;
