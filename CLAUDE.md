@@ -60,7 +60,11 @@ keeps credit to upstream and to the board game's creators.
   keeping the seat and portrait, and the old one is closed with 4001 (`CLOSE_REPLACED`). So a page
   whose network dropped gets back in at once, although the server sees a dead socket close only at
   its 30 s idle timeout. Without the key (an older client), a live name is refused as before
-  (`RejoinServerTest`).
+  (`RejoinServerTest`). `Lobby.joinRefusal` is the one rule for who may join under a name, and
+  `Lobby.addUser` enforces it too. `onWebsocketConnect` asks it and adds the connection in one
+  step under the lobby's lock, so of two connections arriving at once for one name or for the
+  last seat, the second is refused with 1002 and the reason it would get had it arrived later,
+  not failed with 1011 by the add (`RejoinServerTest`).
 - `frontend/`: React 18 and TypeScript 5, built with Vite and tested with Vitest. The entry is
   `src/main.tsx`, with `index.html` at the `frontend/` root. `src/App.tsx` owns the WebSocket, all
   state, the overlays and the login page; prompts live in `src/custom-alert/`. The game
