@@ -112,7 +112,7 @@ The Gradle 7.4.2 wrapper does not run on JDKs newer than 17. Java 17 comes from 
 | Frontend tests (single run) | `cd frontend && npm test -- --run` |
 | Browser tests (build the frontend and the jar, serve them on `localhost:4545`; Java 17 active) | `cd frontend && npx playwright install chromium firefox && npm run e2e` (one project: `-- --project=phone-360`) |
 | Backend build (tests + fat jar at `backend/build/libs/secret-hitler-online.jar`) | `cd backend && ./gradlew build` |
-| Frontend production build (type-check, then `frontend/dist/`) | `cd frontend && npm run build` |
+| Frontend production build (type-checks the app and the browser tests, then writes `frontend/dist/`) | `cd frontend && npm run build` |
 | Whole app on one port (after the frontend build) | `cd backend && ./gradlew jar && java -jar build/libs/secret-hitler-online.jar` |
 | Image (repo root) | `docker build -t secret-hitler-online .` |
 
