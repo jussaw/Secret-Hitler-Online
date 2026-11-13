@@ -145,6 +145,10 @@ so mount a volume at `/data`.
   `docs/images/` when the game screen looks different), `DEVELOPMENT.md`, this file, and anything
   else under `docs/` the phase left stale. Commit them on the phase's branch, so the PR merges
   with its docs.
+- Every finding a review raises during a phase (per-task reviews, the whole-branch review, PR
+  review), Minor ones included, is fixed on the phase's branch before its PR merges. Nothing is
+  deferred to a later phase or left as a note. A finding that needs no change gets a stated reason
+  in the review record instead.
 - In a fork `gh` defaults to `upstream`, so pass `--repo jussaw/Secret-Hitler-Online` on every `gh`
   command. Never push to `upstream` or open pull requests against it.
 
