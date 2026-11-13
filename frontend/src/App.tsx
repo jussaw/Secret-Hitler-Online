@@ -667,8 +667,16 @@ class App extends Component<{}, AppState> {
     if (DEBUG) {
       console.log(JSON.stringify(data));
     }
-    if (this.websocket !== undefined) {
-      this.websocket.send(JSON.stringify(data));
+    const ws = this.websocket;
+    if (ws !== undefined) {
+      const payload = JSON.stringify(data);
+      // A socket still connecting (a switch or a reconnect in the lobby) throws on send: wait for it.
+      // The number, not WebSocket.CONNECTING, so a stand-in socket without the statics works too.
+      if (ws.readyState === 0) {
+        ws.addEventListener("open", () => ws.send(payload), { once: true });
+      } else {
+        ws.send(payload);
+      }
     } else {
       this.showSnackBar(
         "Could not connect to the server. Try refreshing the page if this happens again."

@@ -22,17 +22,35 @@ import { defaultPortrait } from "./assets";
 class FakeSocket {
   static instances: FakeSocket[] = [];
   static failNext = false;
+  /** When true, new sockets start CONNECTING (readyState 0) and throw on send until open(). */
+  static connecting = false;
   OPEN = 1;
   closed = false;
+  readyState?: number = undefined;
   onclose: (() => void) | null = null;
   onmessage: ((msg: MessageEvent) => void) | null = null;
-  send = vi.fn();
+  openListeners: (() => void)[] = [];
+  send = vi.fn((_data: string) => {
+    if (this.readyState === 0) throw new DOMException("Still in CONNECTING state.", "InvalidStateError");
+  });
   constructor(public url: string) {
     if (FakeSocket.failNext) {
       FakeSocket.failNext = false;
       throw new Error("cannot open");
     }
+    if (FakeSocket.connecting) this.readyState = 0;
     FakeSocket.instances.push(this);
+  }
+  addEventListener(type: string, listener: () => void, options?: { once?: boolean }) {
+    expect(type).toBe("open");
+    expect(options?.once).toBe(true);
+    this.openListeners.push(listener);
+  }
+  open() {
+    this.readyState = 1;
+    const listeners = this.openListeners;
+    this.openListeners = [];
+    listeners.forEach((listener) => listener());
   }
   close() {
     this.closed = true;
@@ -45,6 +63,7 @@ let checkRejects = false;
 beforeEach(() => {
   FakeSocket.instances = [];
   FakeSocket.failNext = false;
+  FakeSocket.connecting = false;
   checkStatus = 200;
   checkRejects = false;
   vi.stubGlobal("WebSocket", FakeSocket);
@@ -645,3 +664,23 @@ test("CREATE LOBBY joins under the normalized name", async () => {
   expect(new URL(lastUrl(), "http://host").searchParams.get("name")).toBe("Sam Lee");
   expect(Cookies.get("name")).toBe("Sam Lee");
 });
+
+test("START GAME on a socket still connecting is sent once it opens", async () => {
+  const app = await playerInLobby();
+  FakeSocket.connecting = true;
+  // A reconnect in the lobby keeps the players on screen, so START GAME stays on.
+  act(() => FakeSocket.instances[0].onclose?.());
+  const retry = FakeSocket.instances[FakeSocket.instances.length - 1];
+  expect(retry.readyState).toBe(0);
+  expect(document.querySelector(".lobby-start")).toBeEnabled();
+  expect(() => act(() => app.onClickStartGame())).not.toThrow();
+  expect(retry.send).not.toHaveBeenCalled();
+  act(() => retry.open());
+  expect(retry.send).toHaveBeenCalledTimes(1);
+  expect(JSON.parse(retry.send.mock.calls[0][0])).toMatchObject({
+    command: "start-game",
+    name: "Ann",
+    lobby: "HBIA",
+  });
+});
+
