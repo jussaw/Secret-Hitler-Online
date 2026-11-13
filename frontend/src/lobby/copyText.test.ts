@@ -68,6 +68,16 @@ describe("copyText", () => {
     expect(execCommand).toHaveBeenCalledWith("copy");
   });
 
+  it("falls back when the clipboard object has no writeText", async () => {
+    const execCommand = vi.fn(() => true);
+    setClipboard({});
+    document.execCommand = execCommand;
+    const field = makeField();
+    expect(await copyText("hello", field)).toBe(true);
+    expect(field.select).toHaveBeenCalled();
+    expect(execCommand).toHaveBeenCalledWith("copy");
+  });
+
   it("returns false when there is no field to fall back on", async () => {
     const execCommand = vi.fn(() => true);
     setClipboard(undefined);

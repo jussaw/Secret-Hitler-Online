@@ -4,6 +4,10 @@
 export const CONTACT_ERROR =
   "There was an error contacting the server. Please wait and try again.";
 
+/** Shown when the server answered but the connection could not be made. */
+export const CONNECT_ERROR =
+  "There was an error connecting to the server. Please try again.";
+
 /** The message for a failed /check-login response; `name` is the name that was tried. */
 export function joinErrorMessage(status: number, name: string): string {
   switch (status) {
@@ -16,6 +20,6 @@ export function joinErrorMessage(status: number, name: string): string {
     case 489:
       return "The lobby is currently full.";
     default:
-      return "There was an error connecting to the server. Please try again.";
+      return CONNECT_ERROR;
   }
 }

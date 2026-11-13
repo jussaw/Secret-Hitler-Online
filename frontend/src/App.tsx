@@ -94,7 +94,7 @@ import {
 import { sounds, type SoundName } from "./sound/SoundManager";
 import SoundControl from "./sound/SoundControl";
 import SpectatorCount from "./spectator/SpectatorCount";
-import { CONTACT_ERROR, joinErrorMessage } from "./lobby/joinError";
+import { CONNECT_ERROR, CONTACT_ERROR, joinErrorMessage } from "./lobby/joinError";
 import PlayInsteadPrompt from "./custom-alert/PlayInsteadPrompt";
 import { lobbySounds, SOUND_CUES, soundEvents, type Cue } from "./sound/soundEvents";
 import {
@@ -649,7 +649,7 @@ class App extends Component<{}, AppState> {
           if (!this.tryOpenWebSocket(name, lobby)) {
             this.setState({
               joinError:
-                "There was an error connecting to the server. Please try again.",
+                CONNECT_ERROR,
             });
           } else {
             // Save the username and lobby login
@@ -683,11 +683,11 @@ class App extends Component<{}, AppState> {
             joinError:
               response.status === 404
                 ? "The lobby could not be found."
-                : "There was an error connecting to the server. Please try again.",
+                : CONNECT_ERROR,
           });
         } else if (!this.tryOpenWebSocket("", lobby, true)) {
           this.setState({
-            joinError: "There was an error connecting to the server. Please try again.",
+            joinError: CONNECT_ERROR,
           });
         } else {
           Cookies.set(COOKIE_LOBBY, lobby);
@@ -713,7 +713,7 @@ class App extends Component<{}, AppState> {
         page: PAGE.LOGIN,
         joinName: this.rejoinName(),
         joinLobby: lobby,
-        joinError: "There was an error connecting to the server. Please try again.",
+        joinError: CONNECT_ERROR,
       });
       return;
     }
@@ -760,7 +760,7 @@ class App extends Component<{}, AppState> {
     // The prompt closed meanwhile (a game started): keep watching.
     if (!this.playInsteadOpen) return "";
     if (!this.tryOpenWebSocket(name, lobby)) {
-      return "There was an error connecting to the server. Please try again.";
+      return CONNECT_ERROR;
     }
     Cookies.set(COOKIE_NAME, name, { expires: 7 });
     Cookies.set(COOKIE_LOBBY, lobby);
@@ -784,7 +784,7 @@ class App extends Component<{}, AppState> {
               // if the connection failed
               this.setState({
                 createLobbyError:
-                  "There was an error connecting to the server. Please try again.",
+                  CONNECT_ERROR,
               });
             } else {
               // Save the username and lobby login
@@ -796,14 +796,14 @@ class App extends Component<{}, AppState> {
         } else {
           this.setState({
             createLobbyError:
-              "There was an error connecting to the server. Please try again.",
+              CONNECT_ERROR,
           });
         }
       })
       .catch(() => {
         this.setState({
           createLobbyError:
-            "There was an error connecting to the server. Please try again.",
+            CONNECT_ERROR,
         });
       });
   };
