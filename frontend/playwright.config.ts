@@ -16,19 +16,20 @@ export default defineConfig({
   projects: [
     // The game page at the five desktop sizes and in the narrow windows.
     { name: "desktop", use: devices["Desktop Chrome"], testIgnore: /phone\.spec/ },
-    // Firefox lays out the game page and the header control with its own rounding, and could leave
-    // a closed prompt's box on screen.
+    // Firefox lays out the game page and the header control with its own rounding, could leave
+    // a closed prompt's box on screen, and hit-tests a held press itself.
     {
       name: "firefox",
       use: devices["Desktop Firefox"],
-      testMatch: /(no-scroll|sounds|spectator|prompt-close)\.spec/,
+      testMatch: /(no-scroll|sounds|spectator|prompt-close|button-press)\.spec/,
     },
-    // Phones in portrait, emulated with touch and their own pixel ratio.
-    { name: "phone-360", use: devices["Galaxy S8"], testIgnore: /no-scroll\.spec/ },
+    // Phones in portrait, emulated with touch and their own pixel ratio. Held mouse presses
+    // (button-press) are a desktop matter.
+    { name: "phone-360", use: devices["Galaxy S8"], testIgnore: /(no-scroll|button-press)\.spec/ },
     {
       name: "phone-412",
       use: { ...devices["Pixel 7"], viewport: { width: 412, height: 915 } },
-      testIgnore: /(no-scroll|lobby-switch)\.spec/,
+      testIgnore: /(no-scroll|lobby-switch|button-press)\.spec/,
     },
   ],
   webServer: {

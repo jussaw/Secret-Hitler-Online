@@ -1,7 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { LobbyState } from "../src/types";
 import { TEN, gamePacket, openFakeGame } from "./fakeGame";
-import { pickPortrait } from "./lobby";
+import { addPngDecoder, type PngDecoder } from "./layout";
+import { pickPortrait, waitForPrompt } from "./lobby";
 
 // Runs in every project, Firefox included. Firefox could leave a closed prompt's empty box on
 // screen until a reload, over the board and taking its presses (issue #27). Each kind of close is
@@ -51,20 +52,11 @@ async function overlayShare(page: Page, rect: Rect): Promise<number> {
   await show();
   await paused.evaluate((animations) => animations.forEach((a) => a.play()));
   await paused.dispose();
+  await addPngDecoder(page);
   return page.evaluate(
     async ([a, b]) => {
-      const pixels = async (data: string) => {
-        const img = new Image();
-        img.src = `data:image/png;base64,${data}`;
-        await img.decode();
-        const canvas = document.createElement("canvas");
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const context = canvas.getContext("2d")!;
-        context.drawImage(img, 0, 0);
-        return context.getImageData(0, 0, img.width, img.height).data;
-      };
-      const [pa, pb] = await Promise.all([pixels(a), pixels(b)]);
+      const { decodePng } = globalThis as unknown as PngDecoder;
+      const [pa, pb] = (await Promise.all([decodePng(a), decodePng(b)])).map((image) => image.data);
       let changed = 0;
       for (let i = 0; i < pa.length; i += 4) {
         const red = Math.abs(pa[i] - pb[i]);
@@ -85,15 +77,8 @@ async function overlayShare(page: Page, rect: Rect): Promise<number> {
  */
 async function openBox(page: Page): Promise<Rect> {
   await page.addStyleTag({ content: "#event-bar { display: none !important; }" });
-  const box = page.locator("#alert-box.appear-custom-alert");
-  await box.waitFor();
-  await page.waitForFunction(() =>
-    document
-      .getElementById("alert")!
-      .getAnimations({ subtree: true })
-      .every((a) => a.playState === "finished")
-  );
-  const rect = (await box.boundingBox())!;
+  await waitForPrompt(page);
+  const rect = (await page.locator("#alert-box").boundingBox())!;
   expect(await overlayShare(page, rect), "the open prompt is drawn").toBeGreaterThan(0.9);
   return rect;
 }
@@ -157,6 +142,36 @@ test("after the policy alert closes, END TERM takes the president's press", asyn
   await expectGone(page, rect);
   await page.getByRole("button", { name: "END TERM" }).click();
   await expect.poll(() => game.received.filter((m) => m.command === "end-term").length).toBe(1);
+});
+
+test("END TERM takes a press 300 ms after the policy alert's OKAY, while the alert fades out", async ({
+  page,
+  hasTouch,
+}) => {
+  const game = await openFakeGame(page);
+  game.send(
+    gamePacket({
+      state: LobbyState.POST_LEGISLATIVE,
+      lastState: LobbyState.LEGISLATIVE_CHANCELLOR,
+      chancellor: TEN[1],
+      liberalPolicies: 1,
+      lastPolicy: "LIBERAL",
+    })
+  );
+  await waitForPrompt(page);
+  const endTerm = page.getByRole("button", { name: "END TERM" });
+  await expect(endTerm).toBeEnabled();
+  const box = (await endTerm.boundingBox())!;
+  await page.locator("#alert-box").getByRole("button", { name: "OKAY" }).click();
+  await page.waitForTimeout(300);
+  // A press at a point, as a person's: Playwright's own click would wait for the overlay to go.
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  if (hasTouch) await page.touchscreen.tap(x, y);
+  else await page.mouse.click(x, y);
+  await expect
+    .poll(() => game.received.filter((m) => m.command === "end-term").length, { timeout: 2_000 })
+    .toBe(1);
 });
 
 test("the portrait picker is gone once CONFIRM closes it in the lobby", async ({ page }) => {

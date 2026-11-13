@@ -17,6 +17,13 @@
     display: none;
 }
 
+/* A closing prompt lets presses through to the page while it fades out: the dimmed background
+   stays drawn for its whole second, and the box for half of it. */
+#alert.disappear-custom-alert,
+#alert.disappear-custom-alert * {
+    pointer-events: none;
+}
+
 #alert-background {
     position: fixed;
     width: 100%;

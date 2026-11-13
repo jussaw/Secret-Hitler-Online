@@ -41,6 +41,7 @@ For more information, read the [official rulebook here](https://www.secrethitler
   - A player whose network dropped for a moment (a phone changing networks, say) was sent to the login page and could not rejoin for about 30 s, because the server still held their dead connection. The page now gets straight back into its seat. It keeps retrying for about 30 s while the network is gone, and notices within 10 s a connection that died without a word, as on a phone waking up.
   - A request sent right after the server started could get a 404.
   - A closed prompt could leave an empty black box on screen until a reload, mostly in Firefox, over the board and in the way of END TERM. A closed prompt is now taken off the page once its fade-out ends.
+  - Presses on buttons sometimes did nothing. A click on a button's shadow missed it, and so did a click near its top, because a press moved the button down out from under the pointer. For a second after a prompt closed, its fading overlay also swallowed every press, such as the president's END TERM right after the policy alert's OKAY. Every drawn part of a button now takes the press, a held press stays on its button, and a closing prompt lets presses through.
   - The console showed React warnings.
 - **Removed:** Google Analytics, the Twitter share button, and upstream's Firebase and Fly.io deployment config. All 20 player portraits are available without sharing on Twitter.
 

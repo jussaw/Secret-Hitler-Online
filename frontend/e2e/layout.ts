@@ -88,6 +88,32 @@ export const overlaps = (a: Box, b: Box) =>
   a.top < b.bottom - TOUCHING &&
   b.top < a.bottom - TOUCHING;
 
+/** What `addPngDecoder` puts on the page's `globalThis`. */
+export type PngDecoder = { decodePng: (base64: string) => Promise<ImageData> };
+
+/**
+ * Gives the page `decodePng`, which turns a base64 PNG (a screenshot) into canvas pixels, for page
+ * functions that scan or compare screenshots. Call it before each one, since a navigation drops it.
+ */
+export async function addPngDecoder(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const decoder: PngDecoder = {
+      decodePng: async (base64) => {
+        const img = new Image();
+        img.src = `data:image/png;base64,${base64}`;
+        await img.decode();
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const context = canvas.getContext("2d")!;
+        context.drawImage(img, 0, 0);
+        return context.getImageData(0, 0, img.width, img.height);
+      },
+    };
+    Object.assign(globalThis, decoder);
+  });
+}
+
 /**
  * How far the page scrolls vertically. `body` scrolls by itself (App.css hides its overflow-x, so
  * its overflow-y is auto), so a page that fits the window can still grow `body`.

@@ -140,7 +140,21 @@ keeps credit to upstream and to the board game's creators.
   `ALERT_FADE_OUT_MS` (1 s, which `hideAlertAndFinish` also waits) it sets `hidden` on `#alert`
   (`display: none`). So a closed prompt is never drawn and never takes a press, however the browser
   left its animations (Firefox could leave the empty box up until a reload, issue #27), and an
-  overlay that was never shown starts hidden, with no fade-out when a page opens.
+  overlay that was never shown starts hidden, with no fade-out when a page opens. While it fades
+  out, `#alert` and everything in it take no pointer events, so a press goes through to the page
+  (issue #29). Every button but the header's speaker shares `App.css`'s look: `::before` draws the
+  face and, below it, the shadow (`--button-depth`, 5px), both inside the button's box, so a press
+  anywhere on what is drawn reaches the button. A press moves the face and the label down onto the
+  shadow by moving the box's transparent border (`--button-border`, 2px) from its foot to its top,
+  in one step: browsers round each border width down to whole pixels, so widths on their way would
+  shrink the box, while the two widths swapped keep it as it is. The box never moves, so a held
+  press stays on the button, and buttons are top-aligned, so a press moves no button beside it.
+  Variants set `--button-face` and `--button-shadow` (the lobby's grey buttons, the countdown chip,
+  whose depth is whole pixels where the browser has `round()`). A bottom margin `--button-depth`
+  smaller keeps the shadow out of the layout, as when it was drawn outside the box; END TERM, with
+  no margin, gives its shadow the 5px it kept below itself. A 44px minimum is the face's:
+  `calc(44px + var(--button-depth))`. END TERM stands above the piles' cards, and its countdown
+  flash is drawn round the face.
   Sounds are in `src/sound/`:
   `SoundManager` (Web Audio; the `AudioContext` is created in the first trusted gesture, so `play()`
   before it is a silent no-op; volume and mute in `localStorage` under `sounds`; every `play()`
@@ -161,11 +175,12 @@ keeps credit to upstream and to the board game's creators.
   the piles in the narrow windows, clear of every pile's cards; every media query
   parses and the phone-only query exists, found by what it matches), `firefox` (the same no-scroll
   tests, since Firefox rounds the layout differently, the header-fit tests of `sounds.spec.ts` and
-  `spectator.spec.ts`, and `prompt-close.spec.ts`), and `phone-360`/`phone-412` (Galaxy S8 and
-  Pixel 7 emulation, `phone.spec.ts`: the game fits without scrolling, in order, with 44px targets, for
-  players and a spectator; at 320x568 it keeps the phone layout and only scrolls down, for both, and
-  `phone-360` also checks the login page and the lobby there; the lobby tests (the host's, a
-  guest's and a spectator's lobby fit without scrolling, with 44px targets and 16px field text,
+  `spectator.spec.ts`, `prompt-close.spec.ts` and `button-press.spec.ts`), and
+  `phone-360`/`phone-412` (Galaxy S8 and Pixel 7 emulation, `phone.spec.ts`: the game fits without
+  scrolling, in order, with 44px targets, for players and a spectator; at 320x568 it keeps the
+  phone layout and only scrolls down, for both, and `phone-360` also checks the login page and the
+  lobby there; the lobby tests (the host's, a guest's and a spectator's lobby fit without
+  scrolling, with 44px targets and 16px field text,
   the roster first, the busy bubble at 320px, and the PLAY INSTEAD prompt with 44px targets, 16px
   field text and twelve characters at most); and a phone held sideways gets the phone layout).
   `no-scroll.spec.ts` also has a lobby test, for the host, a guest and a spectator at
@@ -188,7 +203,12 @@ keeps credit to upstream and to the board game's creators.
   alert's OKAY, a vote closed by the server's OK, the policy alert (then END TERM, which must take
   the press) and the portrait picker in the lobby, the overlay stops being drawn within the
   fade-out (a screenshot with it against one without), stays gone, and lets presses through to the
-  page. `sounds.spec.ts` runs in every
+  page; END TERM also takes a press (a tap on phones) 300 ms after the policy alert's OKAY, while
+  the alert fades out. `button-press.spec.ts` (`desktop` and `firefox`; a phone's touch adjustment
+  never missed) holds mouse presses for 150 ms on END TERM and on the veto prompt's REJECT, 1px
+  and 3px below the top edge and 2px into the shadow and at its foot (the shadow found by its
+  colour in a screenshot), and checks that each click reaches the button and that, in no frame of
+  a held press, REJECT's box or ACCEPT's beside it moves. `sounds.spec.ts` runs in every
   project: no sound and no `AudioContext` before the first trusted gesture, each sound in step with
   its animation, and the header control's fit, touch targets, keyboard use and saved settings.
   `spectator.spec.ts` plays a scripted game to a spectator (no prompt before the victory screen, the
@@ -206,8 +226,9 @@ keeps credit to upstream and to the board game's creators.
   sockets of `e2e/fakeGame.ts` answer pings (`answerPings`), and `FakeWatch.down` refuses new
   sockets as `LOBBY_GONE`, so the page gives up at once. Shared helpers are `e2e/lobby.ts`
   (`waitForPlayers`, `joinGuests`, with `pickLooks` false for guests who stay on the default
-  portrait, `joinLobby`, `pickPortrait`, `longestLineLobby`, `lobbyStatusCard`), `e2e/layout.ts`
-  (`wrappedLabels`, `smallFieldText`, `MIN_FIELD_TEXT`) and `e2e/soundLog.ts`. `App.css` hides
+  portrait, `joinLobby`, `pickPortrait`, `longestLineLobby`, `lobbyStatusCard`, `waitForPrompt`),
+  `e2e/layout.ts` (`wrappedLabels`, `smallFieldText`, `MIN_FIELD_TEXT`, and `addPngDecoder` for
+  page functions that read screenshots) and `e2e/soundLog.ts`. `App.css` hides
   `overflow-x` on `html` and `body`, so horizontal overflow shows only in `body.scrollWidth`, and
   `body` scrolls vertically by itself (`pageHeight` measures both). The client talks to its own
   origin (`src/constants/serverUrls.ts`; `wss:` on `https:` pages) unless `VITE_SERVER_ADDRESS` is

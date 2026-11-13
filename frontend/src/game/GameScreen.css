@@ -180,8 +180,11 @@
     align-items: center;
 }
 
+/* The shadow at the foot of the box takes presses (App.css), so END TERM stands over a tall pile's
+   cards, which come later in the page. */
 .game-decks .end-term {
-    margin: 0 0 5px; /* room for the button's shadow */
+    z-index: 1;
+    margin: 0;
     padding: calc(var(--deck-width) * 0.06) calc(var(--deck-width) * 0.13);
     font-size: calc(var(--deck-width) * 0.19);
 }
@@ -201,11 +204,17 @@
 }
 
 /* While the countdown runs, END TERM flashes: its outline fades in and out, so its colours and
-   size stay put. With reduced motion the outline stays lit instead. */
+   size stay put. With reduced motion the outline stays lit instead. The button's own outline
+   colour is animated, and the face draws the outline in it, round the face alone. */
 .game-decks .end-term.counting {
-    outline: 3px solid var(--selectionHover);
-    outline-offset: 2px;
+    outline-color: var(--selectionHover);
     animation: end-term-flash 0.5s ease-in-out infinite alternate;
+}
+
+.game-decks .end-term.counting::before {
+    outline: 3px solid;
+    outline-color: inherit;
+    outline-offset: 2px;
 }
 
 @keyframes end-term-flash {
@@ -366,12 +375,12 @@
 
     .game-decks .end-term {
         min-width: 44px;
-        min-height: 44px;
+        min-height: calc(44px + var(--button-depth));
         padding: 6px 18px;
         font-size: 20px;
     }
 
-    /* The countdown sits at END TERM's right, centred on the button (less its shadow's room), in
+    /* The countdown sits at END TERM's right, centred on its face (the box less the shadow), in
        the empty cell above the discard pile. That pile's cards reach it only with ten or more
        cards: a game holds at most 8 at END TERM, or 11 after vetoes late in the game. Then the
        countdown stays on top, over the top 3px of the pile at most. */
@@ -379,14 +388,14 @@
         left: calc(100% + 10px);
         right: auto;
         top: 0;
-        bottom: 5px;
+        bottom: 5px; /* END TERM's shadow, its --button-depth */
         align-items: center;
     }
 
     .end-term-slot .term-timer {
         --term-timer-font: 20px;
         min-width: 44px;
-        min-height: 44px;
+        min-height: calc(44px + var(--button-depth, 0px));
     }
 
     .game-deck {
@@ -478,7 +487,8 @@
         font-size: 0.8em;
     }
 
-    /* END TERM is at least 44px tall here, so a narrow column is up to 4.49w + 50px tall. */
+    /* END TERM is at least 49px tall here (a 44px face over its 5px shadow), so a narrow column is
+       up to 4.49w + 50px tall. */
     .game-table {
         --column-gap: 12px;
         --tracker-font: clamp(12px, 1.5vw, 20px);
@@ -496,7 +506,7 @@
     .game-decks .end-term,
     .end-term-slot .term-timer {
         min-width: 44px;
-        min-height: 44px;
+        min-height: calc(44px + var(--button-depth, 0px));
     }
 
     /* The decks column keeps the counts box between the piles: END TERM and the draw pile keep

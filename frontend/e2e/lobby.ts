@@ -121,6 +121,17 @@ export async function settle(page: Page): Promise<void> {
   await page.waitForFunction(() => Array.from(document.images).every((img) => img.complete));
 }
 
+/** Waits for a prompt to open and for every animation of the prompt overlay to finish. */
+export async function waitForPrompt(page: Page): Promise<void> {
+  await page.locator("#alert-box.appear-custom-alert").waitFor();
+  await page.waitForFunction(() =>
+    document
+      .getElementById("alert")!
+      .getAnimations({ subtree: true })
+      .every((a) => a.playState === "finished")
+  );
+}
+
 /** The web fonts the layouts are measured in (fonts.css), as `font` shorthands. */
 const WEB_FONTS = ['16px "Germania One"', "500 16px Montserrat", "bold 16px Montserrat"];
 
