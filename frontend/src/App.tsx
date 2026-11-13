@@ -159,7 +159,6 @@ type AppState = {
   /** Watching without a seat: name is "", and no prompt is ever queued. */
   spectator: boolean;
   spectatorCount: number;
-  lobbyFromURL: boolean;
   usernames: string[];
   icons: { [key: string]: string };
   gameState: GameState;
@@ -194,7 +193,6 @@ const defaultAppState: AppState = {
   lobby: "AAAAAA",
   spectator: false,
   spectatorCount: 0,
-  lobbyFromURL: false,
   usernames: [],
   icons: {},
   gameState: DEFAULT_GAME_STATE,
@@ -240,11 +238,13 @@ class App extends Component<{}, AppState> {
 
     let name = Cookies.get(COOKIE_NAME) ? Cookies.get(COOKIE_NAME) : "";
     let lobby = Cookies.get(COOKIE_LOBBY) ? Cookies.get(COOKIE_LOBBY) : "";
+    // A lobby link (?lobby=CODE) fills the Lobby field in place of the saved lobby.
+    const linked = new URLSearchParams(window.location.search).get("lobby");
 
     this.state = {
       ...defaultAppState,
       joinName: name || "",
-      joinLobby: lobby || "",
+      joinLobby: linked !== null ? linked.toUpperCase().substring(0, 4) : lobby || "",
       createLobbyName: name || "",
     };
 
@@ -1897,16 +1897,6 @@ class App extends Component<{}, AppState> {
   //</editor-fold>
 
   render() {
-    // Check URL params. If joining from a lobby link, open the lobby with the given code.
-    let url = window.location.search;
-    let lobby = new URLSearchParams(url).get("lobby");
-    if (lobby !== null && !this.state.lobbyFromURL) {
-      this.setState({
-        joinLobby: lobby.toUpperCase().substr(0, 4),
-        lobbyFromURL: true,
-      });
-    }
-
     let page_render;
     switch (this.state.page) {
       case PAGE.LOBBY:

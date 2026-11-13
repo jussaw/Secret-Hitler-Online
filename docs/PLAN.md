@@ -624,7 +624,7 @@ The six open issues listed as known baseline failures in `CLAUDE.md`. Each is fi
 
 - [x] #4: the login page's gifs get a stable `key`
 - [ ] #5: the prompts clear their timers on unmount, and `ElectionTrackerAlert` starts its timer in `componentDidMount`
-- [ ] #8: `Player.render` no longer calls `setState`
+- [x] #8: `Player`, `EventBar` and `App` no longer call `setState` in `render`
 - [x] #9: the lobby tags only the host as `[Host]`
 - [x] #10: a player who reloads can take back their seat within the 3 s grace window, in a game or a full lobby
 - [x] #13: the routes and the `/game` WebSocket are registered before the server starts

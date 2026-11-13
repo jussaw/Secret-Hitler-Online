@@ -34,6 +34,18 @@ class Player extends Component {
     }
 
     /**
+     * Clears {@code initialState} the first time the player is busy and {@code initialVoteState} the
+     * first time their vote is shown. Until then the icon keeps "player-icon-default" (hidden, no
+     * animation), so a tile that was never busy or never voted does not play the fade-out.
+     */
+    static getDerivedStateFromProps(props, state) {
+        return {
+            initialState: state.initialState && !props.isBusy,
+            initialVoteState: state.initialVoteState && !props.showVote,
+        };
+    }
+
+    /**
      * Gets the relevant icon for the Player based on {@code this.props.role}
      * @return {image} the image source for either the liberal, fascist, or hitler icons.
      */
@@ -134,14 +146,6 @@ class Player extends Component {
 
     render() {
         // noinspection HtmlUnknownAttribute
-        if (this.state.initialState && this.props.isBusy) {
-            this.setState({initialState: false});
-        }
-
-        if (this.props.showVote && this.state.initialVoteState) {
-            this.setState({initialVoteState: false});
-        }
-
         let identity_components;
         // Conditionally rendered so information is not visible in Inspector view
         if (this.props.showRole) {
