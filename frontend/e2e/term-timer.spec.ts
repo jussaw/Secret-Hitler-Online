@@ -257,17 +257,19 @@ test("on a phone, the countdown stays on top of a discard pile grown by vetoes",
   for (const size of [viewport, { width: viewport.height, height: viewport.width }]) {
     await page.setViewportSize(size);
     const at = `${size.width}x${size.height}`;
+    // A phone held sideways scrolls, and elementFromPoint sees only what is on screen.
+    await page.evaluate(() => document.querySelector(".term-timer")!.scrollIntoView({ block: "center" }));
     const parts = await measure(page);
     const timer = parts.timer!;
     for (const card of parts.deckCards.filter((c) => overlaps(timer, c))) {
       expect(timer.bottom - card.top, `how far a card reaches under the countdown at ${at}`).toBeLessThanOrEqual(3);
       const x = (Math.max(timer.left, card.left) + Math.min(timer.right, card.right)) / 2;
       const y = (card.top + timer.bottom) / 2;
-      const onTop = await page.evaluate(
-        ([x, y]) => !!document.elementFromPoint(x, y)?.closest(".term-timer"),
-        [x, y]
-      );
-      expect(onTop, `the countdown on top of the cards at ${at}`).toBe(true);
+      const hit = await page.evaluate(([x, y]) => {
+        const el = document.elementFromPoint(x, y);
+        return el?.closest(".term-timer") ? "the countdown" : `${el?.tagName} #${el?.id} .${el?.className}`;
+      }, [x, y]);
+      expect(hit, `on top of the cards at ${at}, (${x}, ${y}), card ${JSON.stringify(card)}, countdown ${JSON.stringify(timer)}`).toBe("the countdown");
     }
   }
 });
