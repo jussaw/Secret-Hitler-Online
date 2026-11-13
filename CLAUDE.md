@@ -120,7 +120,12 @@ keeps credit to upstream and to the board game's creators.
   step is still the current one, and `clearAnimationQueue` drops them all.
   Prompts are a fixed overlay whose box scrolls (`CustomAlert.css`), except the portrait picker
   (`IconSelection`): its box is a column with CONFIRM pinned at the foot, and only the grid of
-  portraits scrolls (`IconSelection.css`, keyed on `ButtonPrompt`'s `className`).
+  portraits scrolls (`IconSelection.css`, keyed on `ButtonPrompt`'s `className`). `CustomAlert`
+  fades the overlay in and out with CSS classes, and once a closed prompt's fade-out has had its
+  `ALERT_FADE_OUT_MS` (1 s, which `hideAlertAndFinish` also waits) it sets `hidden` on `#alert`
+  (`display: none`). So a closed prompt is never drawn and never takes a press, however the browser
+  left its animations (Firefox could leave the empty box up until a reload, issue #27), and an
+  overlay that was never shown starts hidden, with no fade-out when a page opens.
   Sounds are in `src/sound/`:
   `SoundManager` (Web Audio; the `AudioContext` is created in the first trusted gesture, so `play()`
   before it is a silent no-op; volume and mute in `localStorage` under `sounds`; every `play()`
@@ -140,9 +145,9 @@ keeps credit to upstream and to the board game's creators.
   the decks column keeps its order, the counts box above the draw pile on desktops and between
   the piles in the narrow windows, clear of every pile's cards; every media query
   parses and the phone-only query exists, found by what it matches), `firefox` (the same no-scroll
-  tests, since Firefox rounds the layout differently, and the header-fit tests of
-  `sounds.spec.ts` and `spectator.spec.ts`), and `phone-360`/`phone-412` (Galaxy S8 and Pixel 7
-  emulation, `phone.spec.ts`: the game fits without scrolling, in order, with 44px targets, for
+  tests, since Firefox rounds the layout differently, the header-fit tests of `sounds.spec.ts` and
+  `spectator.spec.ts`, and `prompt-close.spec.ts`), and `phone-360`/`phone-412` (Galaxy S8 and
+  Pixel 7 emulation, `phone.spec.ts`: the game fits without scrolling, in order, with 44px targets, for
   players and a spectator; at 320x568 it keeps the phone layout and only scrolls down, for both, and
   `phone-360` also checks the login page and the lobby there; the lobby tests (the host's, a
   guest's and a spectator's lobby fit without scrolling, with 44px targets and 16px field text,
@@ -164,7 +169,11 @@ keeps credit to upstream and to the board game's creators.
   `prompts.spec.ts` runs in `desktop` and both phone projects (`phone-360` also at 320x568); it
   opens every prompt from a scripted game socket (`e2e/fakeGame.ts`), and checks that the portrait
   picker's label and CONFIRM are in view without scrolling, on a phone held sideways too, while its
-  grid scrolls to the last portrait. `sounds.spec.ts` runs in every
+  grid scrolls to the last portrait. `prompt-close.spec.ts` runs in every project: after the role
+  alert's OKAY, a vote closed by the server's OK, the policy alert (then END TERM, which must take
+  the press) and the portrait picker in the lobby, the overlay stops being drawn within the
+  fade-out (a screenshot with it against one without), stays gone, and lets presses through to the
+  page. `sounds.spec.ts` runs in every
   project: no sound and no `AudioContext` before the first trusted gesture, each sound in step with
   its animation, and the header control's fit, touch targets, keyboard use and saved settings.
   `spectator.spec.ts` plays a scripted game to a spectator (no prompt before the victory screen, the

@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import "./App.css";
 import "./fonts.css";
 import MaxLengthTextField from "./util/MaxLengthTextField";
-import CustomAlert from "./custom-alert/CustomAlert";
+import CustomAlert, { ALERT_FADE_OUT_MS } from "./custom-alert/CustomAlert";
 import RoleAlert from "./custom-alert/RoleAlert";
 import EventBar from "./event-bar/EventBar";
 import GameScreen from "./game/GameScreen";
@@ -106,7 +106,6 @@ import {
 } from "./spectator/spectatorStatus";
 
 const EVENT_BAR_FADE_OUT_DURATION = 500;
-const CUSTOM_ALERT_FADE_DURATION = 1000;
 
 const DEFAULT_GAME_STATE: GameState = {
   liberalPolicies: 0,
@@ -1837,7 +1836,7 @@ class App extends Component<{}, AppState> {
         if (this.animationStep === step) {
           this.onAnimationFinish();
         }
-      }, CUSTOM_ALERT_FADE_DURATION);
+      }, ALERT_FADE_OUT_MS);
     } else {
       this.setState({ alertContent: <div /> });
       this.onAnimationFinish();
