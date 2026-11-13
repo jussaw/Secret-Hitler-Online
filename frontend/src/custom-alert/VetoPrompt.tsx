@@ -13,6 +13,8 @@ type VetoPromptState = {
 };
 
 class VetoPrompt extends Component<VetoPromptProps, VetoPromptState> {
+  timeoutID: ReturnType<typeof setTimeout> | undefined;
+
   constructor(props: VetoPromptProps) {
     super(props);
     this.state = {
@@ -22,7 +24,7 @@ class VetoPrompt extends Component<VetoPromptProps, VetoPromptState> {
 
   onButtonClick(accepted: boolean) {
     this.setState({ waitingForServer: true });
-    setTimeout(
+    this.timeoutID = setTimeout(
       () => this.setState({ waitingForServer: false }),
       SERVER_TIMEOUT
     );
@@ -31,6 +33,10 @@ class VetoPrompt extends Component<VetoPromptProps, VetoPromptState> {
       command: WSCommandType.REGISTER_PRESIDENT_VETO,
       veto: accepted,
     });
+  }
+
+  componentWillUnmount() {
+    clearTimeout(this.timeoutID);
   }
 
   render() {

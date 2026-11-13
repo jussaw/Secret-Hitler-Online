@@ -20,6 +20,8 @@ class PresidentLegislativePrompt extends Component<
   PresidentLegislativePromptProps,
   PresidentLegislativePromptState
 > {
+  timeoutID: ReturnType<typeof setTimeout> | undefined;
+
   constructor(props: PresidentLegislativePromptProps) {
     super(props);
     this.state = {
@@ -35,7 +37,7 @@ class PresidentLegislativePrompt extends Component<
     }
     // Lock the button so that it can't be pressed multiple times.
     this.setState({ waitingForServer: true });
-    setTimeout(() => {
+    this.timeoutID = setTimeout(() => {
       this.setState({ waitingForServer: false });
     }, SERVER_TIMEOUT);
 
@@ -44,6 +46,10 @@ class PresidentLegislativePrompt extends Component<
       command: WSCommandType.REGISTER_PRESIDENT_CHOICE,
       choice: this.state.selection,
     });
+  }
+
+  componentWillUnmount() {
+    clearTimeout(this.timeoutID);
   }
 
   // noinspection DuplicatedCode

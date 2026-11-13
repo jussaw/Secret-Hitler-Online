@@ -14,6 +14,9 @@ import "./InvestigationAlert.css";
  * The card and related text are animated for effect.
  */
 class InvestigationAlert extends Component {
+  flipTimeout;
+  textTimeout;
+
   constructor(props) {
     super(props);
     this.state = {
@@ -21,12 +24,20 @@ class InvestigationAlert extends Component {
       showText: false,
       disableButton: true,
     };
-    setTimeout(() => {
+  }
+
+  componentDidMount() {
+    this.flipTimeout = setTimeout(() => {
       this.setState({ flipCard: true });
     }, 1000);
-    setTimeout(() => {
+    this.textTimeout = setTimeout(() => {
       this.setState({ showText: true, disableButton: false });
     }, 1500);
+  }
+
+  componentWillUnmount() {
+    clearTimeout(this.flipTimeout);
+    clearTimeout(this.textTimeout);
   }
 
   render() {
