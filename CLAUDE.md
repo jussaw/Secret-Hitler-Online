@@ -198,6 +198,9 @@ so mount a volume at `/data`.
   review), Minor ones included, is fixed on the phase's branch before its PR merges. Nothing is
   deferred to a later phase or left as a note. A finding that needs no change gets a stated reason
   in the review record instead.
+- The phase's own PR ticks its "PR merged into `development`" box in `docs/PLAN.md`, in its last
+  commit before the merge, so no follow-up PR is opened just for that tick. Boxes the user owns,
+  such as a real game on the deployed build, stay unticked for the user.
 - In a fork `gh` defaults to `upstream`, so pass `--repo jussaw/Secret-Hitler-Online` on every `gh`
   command. Never push to `upstream` or open pull requests against it.
 
