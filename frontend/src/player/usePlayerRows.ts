@@ -117,8 +117,8 @@ const defaultProps: Partial<PlayerDisplayProps> = {
   showVotes: false,
   showRoles: false,
   showLabels: true,
+  showBusy: false,
 };
-
 
 export type PlayerRow = {
   name: string;
@@ -192,19 +192,21 @@ export function usePlayerRows(inputProps: PlayerDisplayProps): PlayerRow[] {
         busyPlayers.add(game[PARAM_CHANCELLOR]);
         break;
       case STATE_CHANCELLOR_VOTING:
-        let playerOrder = getPlayerOrder();
-        let i = 0;
-        for (i; i < game.playerOrder.length; i++) {
-          let name = playerOrder[i];
-          let isAlive = game.players[name].alive;
-          if (!game.userVotes.hasOwnProperty(name) && isAlive) {
-            // player has not voted (is not in the map of votes) and is alive
+        for (const name of getPlayerOrder()) {
+          if (!game.userVotes.hasOwnProperty(name)) {
+            // player has not voted (is not in the map of votes)
             busyPlayers.add(name);
           }
         }
         break;
       default: // This includes the victory states and setup.
         break;
+    }
+    // A player who is not alive is never busy.
+    for (const name of [...busyPlayers]) {
+      if (game.players[name]?.alive !== true) {
+        busyPlayers.delete(name);
+      }
     }
     return busyPlayers;
   };
@@ -291,7 +293,8 @@ export function usePlayerRows(inputProps: PlayerDisplayProps): PlayerRow[] {
       icon: props.gameState.icon[name],
       office,
       isUser: name === props.user,
-      busy: busyPlayers.has(name) && !props.showVotes && props.showBusy, // Do not show while voting.
+      // Do not show while voting.
+      busy: busyPlayers.has(name) && !props.showVotes && props.showBusy === true,
       // Skip votes for players that are not alive.
       showVote: index < playerVotesVisible && players[name].alive,
       vote: props.gameState.userVotes[name],
