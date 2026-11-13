@@ -402,8 +402,8 @@ git commit -m "fix(frontend): clear the status line and step on return to lobby"
 ### Task 6: Phone-only query
 
 **Files:**
-- Modify: `frontend/src/game/GameScreen.css` (phone block from about line 187, tall block from
-  about line 307), `frontend/src/game/PlayerRoster.css` (phone block 146–181; delete the tall
+- Modify: `frontend/src/game/GameScreen.css` (phone block from about line 200, tall block from
+  about line 330), `frontend/src/game/PlayerRoster.css` (phone block 146–181; delete the tall
   block, 183–207), `frontend/src/game/RoundTracker.css` (the phone block's comment and arrow,
   62–82), `CLAUDE.md` (the `frontend/` paragraph's breakpoint sentences)
 - Test: `frontend/e2e/no-scroll.spec.ts`
@@ -452,6 +452,9 @@ Expected: FAIL, because there's no phone-only rule yet.
     `grid-auto-rows: calc(var(--roster-font) * 3)`, `gap: 4px 6px`, `padding: 6px 8px`.
   - `.game-body .roster-row, .game-body .roster-portrait`: `max-height: none`.
   - `.game-body .roster-status`: `width: 3em`.
+  - `.game-body .roster-role-icon`: `height: 1.1em`, and `.game-body .roster-detail`:
+    `font-size: 0.8em`. These are `PlayerRoster.css`'s sizes. Since #22 the desktop rules enlarge
+    both, and tall windows used to get the smaller sizes back from the phone block.
   - `.game-table`: `--column-gap: 12px`, its `--tracker-font`, its `--deck-width` `min(...)`,
     `align-content: start`, `padding: 8px`.
   - `.game-decks .end-term`: `min-width: 44px; min-height: 44px`.
