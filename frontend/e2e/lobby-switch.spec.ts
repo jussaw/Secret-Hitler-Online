@@ -1,19 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { createLobby, joinGuests, lobbyCode, waitForPlayers, watchLobby } from "./lobby";
-
-/** Joins `lobby` as `name` from the login form and picks the first free portrait. */
-async function joinAs(page: Page, name: string, lobby: string): Promise<void> {
-  await page.goto("/");
-  await page.getByRole("textbox", { name: "Your Name" }).first().fill(name);
-  await page.getByRole("textbox", { name: "Lobby" }).fill(lobby);
-  await page.getByRole("button", { name: "JOIN" }).click();
-  await pickPortrait(page);
-}
-
-async function pickPortrait(page: Page): Promise<void> {
-  await page.locator("#icon.selectable:not(.disabled)").first().click();
-  await page.getByRole("button", { name: "CONFIRM" }).click();
-}
+import { createLobby, joinGuests, joinLobby, lobbyCode, waitForPlayers, watchLobby } from "./lobby";
 
 /**
  * What a test opened, so `finally` closes it even when setup fails half way. `browser.newPage()`
@@ -59,7 +45,7 @@ test("a player watches instead, and the others see the seat go", async ({ page, 
   const opened = new Opened();
   try {
     const { host, code } = await opened.host(browser);
-    await joinAs(page, "Ann", code);
+    await joinLobby(page, code, "Ann");
     await waitForPlayers(host, 2);
 
     await page.getByRole("button", { name: "WATCH INSTEAD" }).click();
@@ -140,7 +126,7 @@ test("the host passes on when the host watches instead", async ({ page, browser 
   try {
     const code = await createLobby(page, "Host Player");
     const ann = await opened.page(browser);
-    await joinAs(ann, "Ann", code);
+    await joinLobby(ann, code, "Ann");
     await waitForPlayers(page, 2);
 
     await page.getByRole("button", { name: "WATCH INSTEAD" }).click();
@@ -163,7 +149,7 @@ test("a reload keeps each switch, and coming back as Sam keeps the look", async 
   const opened = new Opened();
   try {
     const { host, code } = await opened.host(browser);
-    await joinAs(page, "Sam", code);
+    await joinLobby(page, code, "Sam");
     const look = await faceOf(page, "Sam");
     await page.getByRole("button", { name: "WATCH INSTEAD" }).click();
     await expect(page.getByRole("button", { name: "PLAY INSTEAD" })).toBeVisible();
@@ -198,7 +184,7 @@ test("the host comes back inside the grace window and is still the host", async 
   try {
     const code = await createLobby(page, "Host Player");
     const ann = await opened.page(browser);
-    await joinAs(ann, "Ann", code);
+    await joinLobby(ann, code, "Ann");
     await waitForPlayers(page, 2);
     const look = await faceOf(ann, "Host Player");
     // Ann's page records whether the host's seat ever went (the count dropping to 1 / 10).
@@ -245,7 +231,7 @@ test("a game started right after someone watches instead seats only the connecte
     const code = await createLobby(page, "Host Player");
     await opened.guests(baseURL!, code, 4);
     const ann = await opened.page(browser);
-    await joinAs(ann, "Ann", code);
+    await joinLobby(ann, code, "Ann");
     await waitForPlayers(page, 6);
 
     await ann.getByRole("button", { name: "WATCH INSTEAD" }).click();

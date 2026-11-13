@@ -3,13 +3,18 @@ import { expect, type Page } from "@playwright/test";
 /** How often guests ping: the server drops a game socket after 30 s without traffic. */
 const PING_MS = 10_000;
 
+/** Picks the first free portrait in the open portrait picker and confirms it. */
+export async function pickPortrait(page: Page): Promise<void> {
+  await page.locator("#icon.selectable:not(.disabled)").first().click();
+  await page.getByRole("button", { name: "CONFIRM" }).click();
+}
+
 /** Creates a lobby from the login page as `host`, picks the first free portrait, returns the code. */
 export async function createLobby(page: Page, host: string): Promise<string> {
   await page.goto("/");
   await page.getByRole("textbox", { name: "Your Name" }).last().fill(host);
   await page.getByRole("button", { name: "CREATE LOBBY" }).click();
-  await page.locator("#icon.selectable:not(.disabled)").first().click();
-  await page.getByRole("button", { name: "CONFIRM" }).click();
+  await pickPortrait(page);
   const link = await page.locator("#linkText").inputValue();
   return new URL(link).searchParams.get("lobby")!;
 }
@@ -158,8 +163,7 @@ export async function joinLobby(page: Page, lobby: string, name: string): Promis
   await page.getByRole("textbox", { name: "Lobby" }).fill(lobby);
   await page.getByRole("textbox", { name: "Your Name" }).first().fill(name);
   await page.getByRole("button", { name: "JOIN" }).click();
-  await page.locator("#icon.selectable:not(.disabled)").first().click();
-  await page.getByRole("button", { name: "CONFIRM" }).click();
+  await pickPortrait(page);
   await page.locator("#linkText").waitFor();
 }
 
