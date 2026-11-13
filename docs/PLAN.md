@@ -39,7 +39,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 6. Sounds | `phase-6-sounds` | done |
 | 7. Spectators | `phase-7-spectators` | done |
 | 8. Game screen redesign | `phase-8-game-screen` | in progress |
-| 9. Phase 8 follow-ups | — | not started |
+| 9. Phase 8 follow-ups | `phase-9-follow-ups` | in progress |
 | 10. Baseline bugs | `phase-10-baseline-bugs` | in progress |
 
 ---
@@ -587,7 +587,9 @@ Files: `frontend/src/game/GameScreen.css`, `frontend/src/game/PlayerRoster.css`,
 
 ## Phase 9: Phase 8 follow-ups
 
-These are Minor review findings deferred from Phase 8. Break them down when the phase starts.
+Breakdown: [`docs/superpowers/plans/2026-11-12-phase-9-follow-ups.md`](superpowers/plans/2026-11-12-phase-9-follow-ups.md) · Spec: [`docs/superpowers/specs/2026-11-12-game-screen-redesign-design.md`](superpowers/specs/2026-11-12-game-screen-redesign-design.md)
+
+These are Minor review findings deferred from Phase 8. The breakdown records the decisions taken when the phase started.
 
 - [ ] `frontend/src/game/roundStep.ts`: list the five no-step states explicitly instead of `default`, so TypeScript checks the switch is exhaustive; wrap the over-long `stepForPolicyLine` line; add a test that `lastState` is ignored outside `POST_LEGISLATIVE`
 - [ ] `frontend/src/player/usePlayerRows.ts`: `busy` is typed `boolean` but is `undefined` when `showBusy` is omitted (coerce or default it); the voting-state busy loop indexes `getPlayerOrder()` by `playerOrder.length` and throws with `includeUser: false` (iterate the order directly); a dead president counts as busy in nomination; remove the double blank line
@@ -603,6 +605,7 @@ These are Minor review findings deferred from Phase 8. Break them down when the 
 - [ ] `frontend/e2e/prompts.spec.ts`: add an upright short viewport (the project's width x 600) beside the sideways one for the scrolled-prompt test
 - [ ] Phones under 360 px: below about 257 px (about 273 px on Linux) the tracker's steps wrap and the card grows past its reserved height; decide whether to support or test narrower phones
 - [ ] `frontend/src/game/RoundTracker.css`: the smaller phone step line uses the shared stacked-layout query, so tall windows get it too; decide whether tall windows keep it or get their own step size
+- [ ] `frontend/src/game/RoundTracker.css`: the phone block's comment says the arrow's half-width is "about 0.2em"; it is 0.16–0.18em
 - [ ] `CLAUDE.md`: it says `--round-tracker-ems` keeps two lines' height; it is the whole card's height in its ems
 - [ ] Tooling: the e2e files are outside `tsconfig.json`'s `include`, so `npm run build` does not type-check them; Vitest prints a "jsdom was created N times" notice
 
