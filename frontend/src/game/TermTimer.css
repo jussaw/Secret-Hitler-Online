@@ -1,0 +1,61 @@
+@import '../variables.css';
+
+/* The END TERM countdown: an icon and the seconds left. GameScreen.css places it beside END TERM
+   and sets --term-timer-font for each layout; every other size here is in the chip's own ems. */
+.term-timer {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25em;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0.3em 0.55em;
+    border: 2px solid transparent;
+    border-radius: 0.45em;
+    font-family: var(--headerFont);
+    font-size: var(--term-timer-font, 20px);
+    line-height: 1;
+    color: var(--textColorWhite);
+    background: var(--backgroundDark);
+    white-space: nowrap;
+}
+
+/* The president's chip is a button in the second colour, so it is not taken for END TERM. */
+button.term-timer {
+    background: var(--buttonAltFill);
+    box-shadow: 0 0.2em 0 var(--buttonAltShadowFill);
+}
+
+button.term-timer:hover,
+button.term-timer:focus {
+    background: var(--buttonAltHoverFill);
+}
+
+button.term-timer:not(:disabled):active {
+    top: 0.2em;
+    background: var(--buttonAltFill);
+    box-shadow: 0 0 0 var(--buttonAltShadowFill);
+}
+
+button.term-timer:focus-visible {
+    outline: 2px solid var(--textColorWhite);
+    outline-offset: 2px;
+}
+
+.term-timer-icon {
+    flex: none;
+    width: 1em;
+    height: 1em;
+}
+
+/* Wide enough for "10", so the chip keeps its width as the seconds go down. */
+.term-timer-seconds {
+    min-width: 1.1em;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Paused, the seconds are dimmed: the time stands still. */
+.term-timer.paused .term-timer-seconds {
+    opacity: 0.7;
+}

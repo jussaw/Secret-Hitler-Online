@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
 import { LobbyState } from "../types";
 import GameScreen, { GameScreenProps } from "./GameScreen";
@@ -22,6 +22,8 @@ function renderScreen(overrides: Partial<GameScreenProps> = {}) {
     electionTracker: 0,
     spectatorCount: 0,
     onEndTerm: vi.fn(),
+    onPauseTerm: vi.fn(),
+    onResumeTerm: vi.fn(),
     ...overrides,
   };
   render(<GameScreen {...props} />);
@@ -77,7 +79,7 @@ test("the decks column holds END TERM, the counts box, the draw pile and the dis
   renderScreen();
   // Desktops lay the column out in this order; tall windows and phones place them by CSS.
   const names = [
-    ["end term", ".end-term"],
+    ["end term", ".end-term-slot"], // END TERM, with its countdown beside it
     ["counts", "#pps-container"],
     ["draw", ".game-deck.draw"],
     ["discard", ".game-deck.discard"],
@@ -106,6 +108,8 @@ test("a spectator sees every player in the roster, none their own, and no END TE
       fascistPolicies={0}
       electionTracker={0}
       onEndTerm={vi.fn()}
+      onPauseTerm={vi.fn()}
+      onResumeTerm={vi.fn()}
     />
   );
   expect(container.querySelectorAll(".roster-row")).toHaveLength(5);
@@ -113,6 +117,61 @@ test("a spectator sees every player in the roster, none their own, and no END TE
   // The button keeps its box, so the decks column lays out as a player's does.
   // A hidden button has no accessible name, so find it by its text.
   expect(screen.getByText("END TERM")).toHaveStyle({ visibility: "hidden" });
+});
+
+/** The game at END TERM, with the server's countdown. */
+const atEndTerm = (remainingMs: number, paused: boolean, president = "Alice") =>
+  makeGameState(NAMES, { state: LobbyState.POST_LEGISLATIVE, president, termTimer: { remainingMs, paused } });
+
+test("END TERM flashes while the countdown runs, and not once it is paused", () => {
+  renderScreen({ gameState: atEndTerm(7_000, false) });
+  expect(screen.getByRole("button", { name: "END TERM" })).toHaveClass("counting");
+  cleanup();
+  renderScreen({ gameState: atEndTerm(7_000, true) });
+  expect(screen.getByRole("button", { name: "END TERM" })).not.toHaveClass("counting");
+});
+
+test("there is no countdown and no flash without the server's countdown", () => {
+  renderScreen({ gameState: makeGameState(NAMES, { state: LobbyState.POST_LEGISLATIVE }) });
+  expect(screen.getByRole("button", { name: "END TERM" })).not.toHaveClass("counting");
+  expect(document.querySelector(".term-timer")).toBeNull();
+});
+
+test("a countdown left in a packet after END TERM shows nothing", () => {
+  renderScreen({
+    gameState: makeGameState(NAMES, { termTimer: { remainingMs: 7_000, paused: false } }),
+  });
+  expect(screen.getByRole("button", { name: "END TERM" })).not.toHaveClass("counting");
+  expect(document.querySelector(".term-timer")).toBeNull();
+});
+
+test("the president pauses the countdown with its button, and resumes it", () => {
+  const props = renderScreen({ gameState: atEndTerm(7_000, false) });
+  fireEvent.click(screen.getByRole("button", { name: "Pause the countdown" }));
+  expect(props.onPauseTerm).toHaveBeenCalledTimes(1);
+  cleanup();
+  const paused = renderScreen({ gameState: atEndTerm(7_000, true) });
+  fireEvent.click(screen.getByRole("button", { name: "Resume the countdown" }));
+  expect(paused.onResumeTerm).toHaveBeenCalledTimes(1);
+  expect(paused.onPauseTerm).not.toHaveBeenCalled();
+});
+
+test("everyone else sees the countdown beside END TERM but cannot pause it", () => {
+  renderScreen({ gameState: atEndTerm(7_000, false, "Bob") });
+  const timer = screen.getByRole("timer", { name: "Time left in the term" });
+  expect(timer).toHaveTextContent("7");
+  expect(timer.closest(".end-term-slot")).toContainElement(screen.getByRole("button", { name: "END TERM" }));
+  expect(screen.queryByRole("button", { name: /countdown/ })).toBeNull();
+  // END TERM, disabled for them, flashes too.
+  expect(screen.getByRole("button", { name: "END TERM" })).toHaveClass("counting");
+});
+
+test("a spectator sees the countdown, and whether it is paused, beside the hidden END TERM", () => {
+  renderScreen({ gameState: atEndTerm(4_200, true, "Bob"), user: "", spectator: true });
+  const timer = screen.getByRole("timer", { name: "The countdown to the end of the term is paused" });
+  expect(timer).toHaveTextContent("5");
+  expect(timer).toBeVisible();
+  expect(screen.queryByRole("button", { name: /countdown/ })).toBeNull();
 });
 
 test("the header shows how many spectators watch, once anyone does", () => {

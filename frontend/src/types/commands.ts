@@ -7,6 +7,9 @@ export const enum WSCommandType {
   REGISTER_PRESIDENT_VETO = "president-veto",
   REGISTER_PEEK = "register-peek",
   END_TERM = "end-term",
+  // The president pauses and resumes the END TERM countdown.
+  PAUSE_TERM_TIMER = "pause-term-timer",
+  RESUME_TERM_TIMER = "resume-term-timer",
   // Select an icon
   SELECT_ICON = "select-icon",
   // Select a player
@@ -30,6 +33,8 @@ export type ServerRequestPayload =
   | { command: WSCommandType.REGISTER_PRESIDENT_VETO; veto: boolean }
   | { command: WSCommandType.REGISTER_PEEK }
   | { command: WSCommandType.END_TERM }
+  | { command: WSCommandType.PAUSE_TERM_TIMER }
+  | { command: WSCommandType.RESUME_TERM_TIMER }
   | { command: WSCommandType.SELECT_ICON; icon: string }
   | { command: WSCommandType.NOMINATE_CHANCELLOR; target: string }
   | { command: WSCommandType.REGISTER_EXECUTION; target: string }

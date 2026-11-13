@@ -170,10 +170,54 @@
     align-items: center;
 }
 
+/* END TERM and the countdown beside it. On desktops and in tall windows the countdown stands just
+   above END TERM, in the room the table keeps there beside the tracker (at least the tracker's
+   height and the row gap), so it moves nothing. The gap between them holds END TERM's flash. */
+.end-term-slot {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
 .game-decks .end-term {
     margin: 0 0 5px; /* room for the button's shadow */
     padding: calc(var(--deck-width) * 0.06) calc(var(--deck-width) * 0.13);
     font-size: calc(var(--deck-width) * 0.19);
+}
+
+.term-timer-anchor {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: calc(100% + 8px + var(--deck-width) * 0.03);
+    z-index: 1; /* over a tall pile's cards, which come later in the page */
+    display: flex;
+    justify-content: center;
+}
+
+.end-term-slot .term-timer {
+    --term-timer-font: calc(var(--deck-width) * 0.17);
+}
+
+/* While the countdown runs, END TERM flashes: its outline fades in and out, so its colours and
+   size stay put. With reduced motion the outline stays lit instead. */
+.game-decks .end-term.counting {
+    outline: 3px solid var(--selectionHover);
+    outline-offset: 2px;
+    animation: end-term-flash 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes end-term-flash {
+    from {
+        outline-color: var(--selectionNone);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .game-decks .end-term.counting {
+        animation: none;
+    }
 }
 
 /* A full pile's cards stand up to 0.34w above the deck (17 cards, from 9% of its 1.468w height
@@ -315,13 +359,33 @@
         margin: 0;
     }
 
-    .game-decks .end-term {
+    .game-decks .end-term-slot {
         grid-area: end;
         justify-self: center;
+    }
+
+    .game-decks .end-term {
         min-width: 44px;
         min-height: 44px;
         padding: 6px 18px;
         font-size: 20px;
+    }
+
+    /* The countdown sits at END TERM's right, centred on the button (less its shadow's room), in
+       the empty cell above the discard pile. That pile's cards reach it only with eleven or more
+       cards, which takes vetoes late in a game, and then the countdown stays on top of them. */
+    .term-timer-anchor {
+        left: calc(100% + 10px);
+        right: auto;
+        top: 0;
+        bottom: 5px;
+        align-items: center;
+    }
+
+    .end-term-slot .term-timer {
+        --term-timer-font: 20px;
+        min-width: 44px;
+        min-height: 44px;
     }
 
     .game-deck {
@@ -428,7 +492,8 @@
         padding: 8px;
     }
 
-    .game-decks .end-term {
+    .game-decks .end-term,
+    .end-term-slot .term-timer {
         min-width: 44px;
         min-height: 44px;
     }
