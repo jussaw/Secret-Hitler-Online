@@ -71,7 +71,9 @@ keeps credit to upstream and to the board game's creators.
   player on the default portrait, HOST on the host's row), `lobbyStatus` (a pure function from the
   usernames, portraits and viewer to the status line; it names who START GAME waits for and says
   when bots fill the table), `joinError` (`joinErrorMessage`, `CONTACT_ERROR`, `CONNECT_ERROR`: the
-  `/check-login` messages JOIN and PLAY INSTEAD share) and `copyText` (the Clipboard API, with a
+  `/check-login` messages JOIN and PLAY INSTEAD share), `normalizeName` (runs of whitespace made one
+  space, then trimmed: JOIN, CREATE LOBBY and PLAY INSTEAD send every name through it, and each
+  field takes at most `MAX_NAME_LENGTH` characters) and `copyText` (the Clipboard API, with a
   select-and-copy fallback).
   `GameScreen.css` lists the lobby's selectors beside the game's for the page, header and roster
   column, so the roster cannot drift between the lobby and the game; `LobbyScreen.css` holds only
@@ -84,10 +86,14 @@ keeps credit to upstream and to the board game's creators.
   sets the `spectator` cookie (the `name` cookie stays); PLAY INSTEAD opens `PlayInsteadPrompt`
   (`src/custom-alert/`) for a name, checks it with `/check-login`, reopens the socket as a player
   and saves the cookies as JOIN does, and the portrait picker opens unless the server restores the
-  name's remembered portrait. In `App`, `openSeat`, `openWatch` and `closeSocket` do this, and
-  `tryOpenWebSocket` builds the new socket before it closes the old one. `alertShowCount`,
-  `pickerShownAt` and `playInsteadSession` keep a late reply from touching the wrong prompt: the
-  picker updates only while it is the alert on screen.
+  name's remembered portrait. If the server closes that player socket before its first message
+  (the seat went between the check and the join), `seatPending` sends the person back to watching
+  with a snackbar. In `App`, `openSeat`, `openWatch` and `closeSocket` do this, and
+  `tryOpenWebSocket` builds the new socket before it closes the old one, keeping the lobby's players
+  on screen when it reopens to the same lobby. `alertShowCount`, `pickerShownAt` and
+  `playInsteadSession` keep a late reply from touching the wrong prompt: the picker updates only
+  while it is the alert on screen, and `animationStep` names the running queue step, so an alert's
+  fade finishes only its own step.
   Prompts are a fixed overlay whose box scrolls (`CustomAlert.css`). Sounds are in `src/sound/`:
   `SoundManager` (Web Audio; the `AudioContext` is created in the first trusted gesture, so `play()`
   before it is a silent no-op; volume and mute in `localStorage` under `sounds`; every `play()`
@@ -111,12 +117,14 @@ keeps credit to upstream and to the board game's creators.
   players and a spectator; at 320x568 it keeps the phone layout and only scrolls down, for both, and
   `phone-360` also checks the login page and the lobby there; the lobby tests (the host's, a
   guest's and a spectator's lobby fit without scrolling, with 44px targets and 16px field text,
-  the roster first, and the busy bubble at 320px); and a phone held sideways gets the phone
-  layout). `no-scroll.spec.ts` also has a lobby test, for the host, a guest and a spectator at
+  the roster first, the busy bubble at 320px, and the PLAY INSTEAD prompt with 44px targets, 16px
+  field text and twelve characters at most); and a phone held sideways gets the phone layout).
+  `no-scroll.spec.ts` also has a lobby test, for the host, a guest and a spectator at
   `DESKTOP_SIZES`, `SQUARE_DESKTOPS` and the `NARROW_WINDOWS`. `lobby-switch.spec.ts` (`desktop`
   and `phone-360`) plays the seat switch in a real lobby: watching instead and playing instead, a
   full lobby, a taken name, the host passing on, reloads, the grace window, and a game started
-  right after someone watches instead. `tracker.spec.ts` (`desktop`) checks the lit step against the status line.
+  right after someone watches instead (both grace-window tests fail when their timing missed the
+  window). `tracker.spec.ts` (`desktop`) checks the lit step against the status line.
   `prompts.spec.ts` runs in `desktop` and both phone projects (`phone-360` also at 320x568); it
   opens every prompt from a scripted game socket (`e2e/fakeGame.ts`). `sounds.spec.ts` runs in every
   project: no sound and no `AudioContext` before the first trusted gesture, each sound in step with
@@ -131,14 +139,14 @@ keeps credit to upstream and to the board game's creators.
   `/game` socket after 30 s with no traffic either way, so the client pings every 20 s
   (`PING_INTERVAL`); `connection.spec.ts` (`desktop`) holds a quiet lobby's socket open for 35 s.
   Shared helpers are `e2e/lobby.ts` (`waitForPlayers`, `joinGuests`, with `pickLooks` false for
-  guests who stay on the default portrait, `joinLobby`, `longestLineLobby`, `lobbyStatusCard`),
-  `e2e/layout.ts` (`wrappedLabels`, `smallFieldText`, `MIN_FIELD_TEXT`) and `e2e/soundLog.ts`. `App.css` hides
-  `overflow-x` on `html` and `body`, so horizontal overflow shows only in `body.scrollWidth`, and
-  `body` scrolls vertically by itself (`pageHeight` measures both). The client talks to its own
-  origin (`src/constants/serverUrls.ts`; `wss:` on `https:` pages) unless `VITE_SERVER_ADDRESS` is
-  set, and the dev server proxies the backend paths to `BACKEND_URL` (default
-  `http://localhost:4040`). `VITE_*` variables live in `.env.development` (dev server only:
-  `VITE_DEBUG`) and `.env.dev` (`--mode dev`), typed in `src/vite-env.d.ts`.
+  guests who stay on the default portrait, `joinLobby`, `pickPortrait`, `longestLineLobby`,
+  `lobbyStatusCard`), `e2e/layout.ts` (`wrappedLabels`, `smallFieldText`, `MIN_FIELD_TEXT`) and
+  `e2e/soundLog.ts`. `App.css` hides `overflow-x` on `html` and `body`, so horizontal overflow
+  shows only in `body.scrollWidth`, and `body` scrolls vertically by itself (`pageHeight` measures
+  both). The client talks to its own origin (`src/constants/serverUrls.ts`; `wss:` on `https:`
+  pages) unless `VITE_SERVER_ADDRESS` is set, and the dev server proxies the backend paths to
+  `BACKEND_URL` (default `http://localhost:4040`). `VITE_*` variables live in `.env.development`
+  (dev server only: `VITE_DEBUG`) and `.env.dev` (`--mode dev`), typed in `src/vite-env.d.ts`.
 - `docs/`: `PLAN.md` (phased plan and progress), `superpowers/specs/` (design),
   `superpowers/plans/` (per-phase step-by-step breakdowns), `images/` (the README's screenshots,
   taken from a scripted seven-player game at 1600x900 and at 412x915 on a phone).
