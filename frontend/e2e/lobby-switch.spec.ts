@@ -128,6 +128,7 @@ test("a taken name keeps the spectator watching", async ({ page, browser }) => {
     );
 
     await page.getByRole("button", { name: "CANCEL" }).click();
+    await expect(page.getByRole("button", { name: "PLAY INSTEAD" })).toBeVisible();
     await expect(page.getByRole("button", { name: "PLAY INSTEAD" })).toBeEnabled();
   } finally {
     await opened.close();
@@ -150,7 +151,7 @@ test("the host passes on when the host watches instead", async ({ page, browser 
   }
 });
 
-/** No prompt and no portrait picker is on screen, now and 1.5 s on (a ghost picker came late). */
+/** No portrait picker is in the alert box, now and 1.5 s on (a ghost picker came late). */
 async function expectNoPicker(page: Page): Promise<void> {
   const picker = page.locator("#alert-box #icon-container");
   await expect(picker).toHaveCount(0);
