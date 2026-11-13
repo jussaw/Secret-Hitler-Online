@@ -48,6 +48,10 @@ public class Lobby implements Serializable {
     // The rejoin key each name's latest connection was opened with (hasLiveConnectionWithKey). Never
     // sent to any client. Not backed up: after a restart no connection is live to be replaced.
     transient private ConcurrentHashMap<String, String> usernameToRejoinKey;
+    // The removal each name's last disconnect scheduled, while it is pending. A name has at most
+    // one, and a new connection under the name calls it off, so every disconnect gets a whole grace
+    // window (PLAYER_TIMEOUT_IN_SEC) of its own. Not backed up: no connection outlives a restart.
+    transient private ConcurrentHashMap<String, RemoveUserTask> pendingRemovals;
 
     final private Set<String> usersInGame;
     final private ConcurrentHashMap<String, String> usernameToIcon;
@@ -98,6 +102,7 @@ public class Lobby implements Serializable {
         activeUsernames = new ConcurrentLinkedQueue<>();
         spectators = ConcurrentHashMap.newKeySet();
         usernameToRejoinKey = new ConcurrentHashMap<>();
+        pendingRemovals = new ConcurrentHashMap<>();
         usersInGame = new ConcurrentSkipListSet<>();
         usernameToIcon = new ConcurrentHashMap<>();
         usernameToPreferredIcon = new ConcurrentHashMap<>();
@@ -292,6 +297,7 @@ public class Lobby implements Serializable {
             return replaced;
         }
         addNewConnection(context, name);
+        cancelPendingRemoval(name); // back inside the window: the name keeps its place
         if (rejoinKey == null) {
             usernameToRejoinKey.remove(name); // an older client: nothing can take its place
         } else {
@@ -340,7 +346,9 @@ public class Lobby implements Serializable {
      *                                  Lobby.
      * @modifies this
      * @effects removes the user context (websocket connection) of the player from
-     *          the lobby.
+     *          the lobby. The name keeps its place for {@code PLAYER_TIMEOUT_IN_SEC},
+     *          counted from this disconnect, and loses it then unless a connection
+     *          under the name has called the removal off.
      */
     synchronized public void removeUser(WsContext context) {
         if (!hasUser(context)) {
@@ -349,11 +357,13 @@ public class Lobby implements Serializable {
             // Delay removing players from the list by adding it to a timer.
             int delay_in_ms = (int) (PLAYER_TIMEOUT_IN_SEC * 1000);
             final String username = userToUsername.get(context);
+            RemoveUserTask removal = new RemoveUserTask(username);
+            pendingRemovals.put(username, removal);
 
             int timerSchedulingAttempts = 0;
             while (timerSchedulingAttempts < MAX_TIMER_SCHEDULING_ATTEMPTS) {
                 try {
-                    userTimeoutTimer.schedule(new RemoveUserTask(username), delay_in_ms);
+                    userTimeoutTimer.schedule(removal, delay_in_ms);
                     break; // exit loop if successful
                 } catch (IllegalStateException e) {
                     // Timer hit an error state and must be reset.
@@ -363,6 +373,7 @@ public class Lobby implements Serializable {
                 }
             }
             if (timerSchedulingAttempts == MAX_TIMER_SCHEDULING_ATTEMPTS) {
+                pendingRemovals.remove(username, removal);
                 System.out.println("Failed to schedule removal of the user '" + username + "'.");
             }
 
@@ -370,8 +381,17 @@ public class Lobby implements Serializable {
         }
     }
 
+    /** Calls off the removal the name's last disconnect scheduled, if it is still pending. */
+    private void cancelPendingRemoval(String username) {
+        RemoveUserTask removal = pendingRemovals.remove(username);
+        if (removal != null) {
+            removal.cancel();
+        }
+    }
+
     /**
-     * Small helper class for removing users from the active users queue.
+     * Removes a name from the lobby when the grace window after its disconnect ends, unless the
+     * removal has been called off since.
      */
     class RemoveUserTask extends TimerTask {
         private final String username;
@@ -384,6 +404,12 @@ public class Lobby implements Serializable {
             // Under the lobby's lock, so a rejoin under way as the window ends either finishes
             // first, and the player is kept, or starts after the removal and adds them back.
             synchronized (Lobby.this) {
+                // A removal that fell due as the name rejoined was called off too late to stop it,
+                // so it checks that it is still the name's pending one. If not, the name came back
+                // since, and any later disconnect has a window of its own (#42).
+                if (!pendingRemovals.remove(username, this)) {
+                    return;
+                }
                 // If the user is still disconnected when the task runs, mark them as inactive
                 // and remove them from the lobby.
                 if (!userToUsername.values().contains(username) && activeUsernames.contains(username)) {
@@ -608,6 +634,7 @@ public class Lobby implements Serializable {
         activeUsernames = new ConcurrentLinkedQueue<>();
         spectators = ConcurrentHashMap.newKeySet();
         usernameToRejoinKey = new ConcurrentHashMap<>();
+        pendingRemovals = new ConcurrentHashMap<>();
         userTimeoutTimer = new Timer();
         cpuTickTimer = new Timer();
     }
