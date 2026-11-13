@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import PlayInsteadPrompt from "./PlayInsteadPrompt";
+import { CONTACT_ERROR } from "../lobby/joinError";
 
 beforeEach(() => {
   vi.spyOn(console, "error");
@@ -71,6 +72,19 @@ describe("PlayInsteadPrompt", () => {
     expect(alert).toHaveTextContent(message);
     expect(alert).toHaveClass("prompt-error");
     expect(button("CONTINUE")).toBeEnabled();
+  });
+
+  test("a rejected check shows the contact error and CONTINUE works again", async () => {
+    const onContinue = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce("");
+    setup("Sam", onContinue);
+    fireEvent.click(button("CONTINUE"));
+    expect(await screen.findByRole("alert")).toHaveTextContent(CONTACT_ERROR);
+    expect(button("CONTINUE")).toBeEnabled();
+    fireEvent.click(button("CONTINUE"));
+    expect(onContinue).toHaveBeenCalledTimes(2);
   });
 
   test("editing the name clears the error", async () => {

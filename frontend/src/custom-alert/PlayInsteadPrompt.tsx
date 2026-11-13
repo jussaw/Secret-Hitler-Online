@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { CONTACT_ERROR } from "../lobby/joinError";
 import "./PlayInsteadPrompt.css";
 
 type PlayInsteadPromptProps = {
@@ -37,8 +38,14 @@ export default function PlayInsteadPrompt({
     pending.current = true;
     setChecking(true);
     setError("");
-    const result = await onContinue(trimmed);
-    pending.current = false;
+    let result: string;
+    try {
+      result = await onContinue(trimmed);
+    } catch {
+      result = CONTACT_ERROR;
+    } finally {
+      pending.current = false;
+    }
     if (!mounted.current) return;
     setChecking(false);
     setError(result);
