@@ -470,6 +470,33 @@ const victoryPacket = () => {
   return { ...state, [PARAM_PACKET_TYPE]: PACKET_GAME_STATE };
 };
 
+test("a portrait CONFIRM's fade does not cut short the game's first step", async () => {
+  vi.useFakeTimers();
+  const app = await playerInLobby();
+  await deliver(app, { ...lobbyPacket, [PARAM_ICON]: { Ann: defaultPortrait, Ben: "p2" } });
+  const picker = app.state.alertContent as React.ReactElement<{ onConfirm: () => void }>;
+  expect(picker.type).toBe(IconSelection);
+  act(() => picker.props.onConfirm()); // the queue is cleared and the picker fades for a second
+  act(() => app.onClickWatchInstead());
+  await act(async () => {
+    vi.advanceTimersByTime(300);
+  });
+  // The game starts: a spectator gets no role alert, so its first step is the event bar (2.5 s).
+  await deliver(app, gameStatePacket());
+  expect(app.state.showEventBar).toBe(true);
+  await act(async () => {
+    vi.advanceTimersByTime(1500); // past the picker's fade
+  });
+  expect(app.state.showEventBar).toBe(true);
+  expect(app.allAnimationsFinished).toBe(false);
+  expect(app.state.statusBarText).toBe("---");
+  await act(async () => {
+    vi.advanceTimersByTime(1500);
+  });
+  expect(app.allAnimationsFinished).toBe(true);
+  expect(app.state.statusBarText).not.toBe("---");
+});
+
 test("a fade timer from an earlier alert does not blank the victory screen", async () => {
   vi.useFakeTimers();
   const app = await playerInLobby();

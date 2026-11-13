@@ -222,6 +222,8 @@ class App extends Component<{}, AppState> {
   reconnectOnConnectionClosed: boolean = true;
   snackbarMessages: number = 0;
   animationQueue: (() => void)[] = [];
+  /** Bumped when an animation step starts and when the queue is cleared: names the running step. */
+  animationStep = 0;
   okMessageListeners: (() => void)[] = [];
   allAnimationsFinished: boolean = true;
   gameOver: boolean = false;
@@ -1654,7 +1656,7 @@ class App extends Component<{}, AppState> {
     if (this.animationQueue.length > 0) {
       let func = this.animationQueue.shift();
       if (func !== undefined) {
-        func(); //call the function.
+        this.startAnimationStep(func);
       }
     } else {
       // the animation queue is empty, so we set a flag.
@@ -1670,6 +1672,8 @@ class App extends Component<{}, AppState> {
     this.allAnimationsFinished = true;
     this.setState({ allAnimationsFinished: true });
     this.animationQueue = [];
+    this.animationStep += 1; // the running step is over
+
     // A PLAY INSTEAD prompt that was still queued went with it.
     if (!this.playInsteadShown) {
       this.playInsteadOpen = false;
@@ -1717,9 +1721,15 @@ class App extends Component<{}, AppState> {
       this.setState({ allAnimationsFinished: false });
       let func = this.animationQueue.shift();
       if (func !== undefined) {
-        func(); //call the function.
+        this.startAnimationStep(func);
       }
     }
+  }
+
+  /** Runs a step from the queue as the current one (animationStep). */
+  startAnimationStep(func: () => void) {
+    this.animationStep += 1;
+    func();
   }
 
   /** @param names the state change's sounds; the vote result plays with the tally line. */
@@ -1788,11 +1798,16 @@ class App extends Component<{}, AppState> {
     this.setState({ showAlert: false });
     if (delayExit) {
       const shownAt = this.alertShowCount;
+      const step = this.animationStep;
       setTimeout(() => {
         // Another alert was shown during the fade (the queue had been cleared): it owns the box.
-        if (this.alertShowCount !== shownAt) return;
-        this.setState({ alertContent: <div /> }); // reset the alert box contents
-        this.onAnimationFinish();
+        if (this.alertShowCount === shownAt) {
+          this.setState({ alertContent: <div /> }); // reset the alert box contents
+        }
+        // Finish only this alert's own step: one that started after a cleared queue runs its course.
+        if (this.animationStep === step) {
+          this.onAnimationFinish();
+        }
       }, CUSTOM_ALERT_FADE_DURATION);
     } else {
       this.setState({ alertContent: <div /> });
