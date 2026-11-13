@@ -38,6 +38,7 @@ For more information, read the [official rulebook here](https://www.secrethitler
   - The lobby tagged every guest as `[Host]`.
   - A game started within 3 s of someone leaving or reloading seated a player who could never take the seat, and the game stalled at that seat's first turn. A game now seats only players who are connected.
   - A player who reloaded mid-game was locked out of their seat for 3 s.
+  - A player whose network dropped for a moment (a phone changing networks, say) was sent to the login page and could not rejoin for about 30 s, because the server still held their dead connection. The page now gets straight back into its seat, and keeps retrying for about 30 s when the network is gone.
   - A request sent right after the server started could get a 404.
   - The console showed React warnings.
 - **Removed:** Google Analytics, the Twitter share button, and upstream's Firebase and Fly.io deployment config. All 20 player portraits are available without sharing on Twitter.
