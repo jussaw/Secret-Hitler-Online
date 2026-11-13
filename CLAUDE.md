@@ -46,11 +46,12 @@ keeps credit to upstream and to the board game's creators.
   those files): compact rows about 26px tall in two columns (`PRES` or `CHAN` after the name), the
   tracker, a decks row with END TERM over the counts box, and the boards at full width. With ten
   players and the longest status it fits 360x740 and 412x915 without scrolling; a phone held
-  sideways scrolls. The phone layout holds down to 320px wide, tested at 320x568, where the page may
-  scroll (narrower phones are out of scope); with Linux-drawn fonts the longest status still takes a
-  third line at a few untested widths (see `docs/PLAN.md`, Phase 9). `SoundControl.css` (44px header
-  targets) and `RoundTracker.css` (the smaller step line) keep the stacked query itself, so tall
-  windows get those too, on purpose. Among the stacked windows, those at least 700px wide
+  sideways scrolls. The phone layout holds down to 320px wide, where the page may scroll: the login
+  page, the lobby, every prompt and the game are tested at 320x568 (narrower phones are out of
+  scope); with Linux-drawn fonts the longest status still takes a third line at a few untested
+  widths (see `docs/PLAN.md`, Phase 9). `SoundControl.css` (44px header targets) and
+  `RoundTracker.css` (the smaller step line) keep the stacked query itself, so tall windows get
+  those too, on purpose. Among the stacked windows, those at least 700px wide and narrower than 5:4
   (half-screen desktop windows, upright monitors, tablets held upright) fit one screen instead, with
   the roster across the top in two columns (three in near-square windows), from a later block,
   `(min-width: 700px) and (aspect-ratio < 5/4)`, in `GameScreen.css` alone (`PlayerRoster.css` has
@@ -73,21 +74,25 @@ keeps credit to upstream and to the board game's creators.
   watching. Playwright tests live in `frontend/e2e/`, in four projects: `desktop`
   (`no-scroll.spec.ts`: at `DESKTOP_SIZES` and in the `NARROW_WINDOWS` no scroll, every board at
   least its `BOARD_FLOOR`, the tracker exactly its reserved height and the boards unmoved by the
-  longest status; wide twelve-character names fit there and at `SQUARE_DESKTOPS`), `firefox` (the
-  same no-scroll tests, since Firefox rounds the layout differently, and the header-fit tests of
+  longest status; wide twelve-character names fit there and at `SQUARE_DESKTOPS`; every media query
+  parses and the phone-only query exists, found by what it matches), `firefox` (the same no-scroll
+  tests, since Firefox rounds the layout differently, and the header-fit tests of
   `sounds.spec.ts` and `spectator.spec.ts`), and `phone-360`/`phone-412` (Galaxy S8 and Pixel 7
   emulation, `phone.spec.ts`: the game fits without scrolling, in order, with 44px targets, for
-  players and a spectator; at 320x568 it keeps the phone layout and only scrolls down, for both; and
-  a phone held sideways gets the phone layout). `tracker.spec.ts` (`desktop`) checks the lit step
-  against the status line. `prompts.spec.ts` runs in `desktop` and both phone projects; it opens
-  every prompt from a scripted game socket (`e2e/fakeGame.ts`). `sounds.spec.ts` runs in every
+  players and a spectator; at 320x568 it keeps the phone layout and only scrolls down, for both, and
+  `phone-360` also checks the login page and the lobby there; and a phone held sideways gets the
+  phone layout). `tracker.spec.ts` (`desktop`) checks the lit step against the status line.
+  `prompts.spec.ts` runs in `desktop` and both phone projects (`phone-360` also at 320x568); it
+  opens every prompt from a scripted game socket (`e2e/fakeGame.ts`). `sounds.spec.ts` runs in every
   project: no sound and no `AudioContext` before the first trusted gesture, each sound in step with
   its animation, and the header control's fit, touch targets, keyboard use and saved settings.
   `spectator.spec.ts` plays a scripted game to a spectator (no prompt before the victory screen, the
   status lines, the sounds), plays a real game whose spectator frames it scans for secrets
   (`e2e/driveGame.ts` seats raw-socket players; `e2e/secrets.ts` mirrors the backend's list), and
   checks the count fits every header. `startGame` (`e2e/lobby.ts`) joins one raw spectator by
-  default, and the no-scroll and phone tests also measure a spectator's view. The server closes a
+  default, and the no-scroll and phone tests also measure a spectator's view. `settle`
+  (`e2e/lobby.ts`) fails when the web fonts do not load; they come from Google Fonts through
+  `src/fonts.css`, so the browser tests need network access. The server closes a
   `/game` socket after 30 s with no traffic either way, so the client pings every 20 s
   (`PING_INTERVAL`); `connection.spec.ts` (`desktop`) holds a quiet lobby's socket open for 35 s.
   Shared helpers are `e2e/lobby.ts`, `e2e/layout.ts` and `e2e/soundLog.ts`. `App.css` hides
