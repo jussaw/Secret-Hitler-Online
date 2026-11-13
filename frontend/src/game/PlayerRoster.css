@@ -112,7 +112,7 @@
 
 .roster-detail.role-fascist {
   font-weight: 600;
-  color: #e8604a;
+  color: var(--textColorFascist);
 }
 
 .roster-tag {
