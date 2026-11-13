@@ -319,6 +319,27 @@ test("a lasting disconnect drops the prompt", async () => {
   expect(app.state.showAlert).toBe(false);
 });
 
+test("a portrait picker queued before WATCH INSTEAD does not open for the spectator", async () => {
+  vi.useFakeTimers();
+  const app = await playerInLobby();
+  // An alert fades out for a second, holding the queue.
+  act(() => app.queueAlert(<div />, false));
+  act(() => app.hideAlertAndFinish());
+  // Meanwhile a lobby packet with the default portrait queues the picker behind it.
+  await deliver(app, { ...lobbyPacket, [PARAM_ICON]: { Ann: defaultPortrait, Ben: "p2" } });
+  await act(async () => {
+    vi.advanceTimersByTime(600);
+  });
+  act(() => app.onClickWatchInstead());
+  await act(async () => {
+    vi.advanceTimersByTime(600);
+  });
+  expect(app.state.spectator).toBe(true);
+  expect(app.state.showAlert).toBe(false);
+  expect((app.state.alertContent as React.ReactElement).type).not.toBe(IconSelection);
+  expect(app.allAnimationsFinished).toBe(true);
+});
+
 test("WATCH INSTEAD that cannot open a socket lands on the login page with the lobby", async () => {
   const app = await playerInLobby();
   FakeSocket.failNext = true;

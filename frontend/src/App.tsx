@@ -994,6 +994,11 @@ class App extends Component<{}, AppState> {
     // Not closed when the server confirms a selection. The picker is built when the step runs, so a
     // queued one can never surface as an empty box.
     this.addAnimationToQueue(() => {
+      // Queued before a WATCH INSTEAD: a spectator has no portrait to pick.
+      if (this.state.spectator) {
+        this.onAnimationFinish();
+        return;
+      }
       this.alertShowCount += 1;
       this.pickerShownAt = this.alertShowCount;
       this.setState({ showAlert: true });
