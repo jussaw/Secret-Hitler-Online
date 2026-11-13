@@ -186,23 +186,23 @@ export function withStatus(
 }
 
 /**
- * Fills every empty roster detail line with "CHANCELLOR" and empties every full one, then puts
- * the text back. Returns how far, in px, the furthest roster row or the boards moved: nothing may
+ * Fills every empty `selector` element (default: the roster detail line) with `text` and empties
+ * every full one, then puts the text back. Returns how far, in px, the furthest roster row or the boards moved: nothing may
  * move when a player becomes president or chancellor, is executed or has their role shown.
  */
-export function rowShift(page: Page): Promise<number> {
-  return page.evaluate(() => {
+export function rowShift(page: Page, selector = ".roster-detail", text = "CHANCELLOR"): Promise<number> {
+  return page.evaluate(([selector, text]) => {
     const watched = [
       ...Array.from(document.querySelectorAll(".roster-row")),
       document.querySelector("#board-container")!,
     ];
     const boxes = () => watched.map((el) => el.getBoundingClientRect());
     const before = boxes();
-    const details = Array.from(document.querySelectorAll(".roster-detail"));
+    const details = Array.from(document.querySelectorAll(selector));
     // Edit React's own text node (or a stand-in) so later renders still reach it.
     const nodes = details.map((detail) => detail.firstChild ?? detail.appendChild(document.createTextNode("")));
     const old = nodes.map((node) => node.nodeValue);
-    nodes.forEach((node, i) => (node.nodeValue = old[i] ? "" : "CHANCELLOR"));
+    nodes.forEach((node, i) => (node.nodeValue = old[i] ? "" : text));
     const after = boxes();
     nodes.forEach((node, i) => (node.nodeValue = old[i]));
     return Math.max(
@@ -216,5 +216,5 @@ export function rowShift(page: Page): Promise<number> {
         )
       )
     );
-  });
+  }, [selector, text]);
 }

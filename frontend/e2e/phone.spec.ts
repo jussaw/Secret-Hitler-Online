@@ -4,6 +4,7 @@ import {
   overflowX,
   overlaps,
   pageHeight,
+  rowShift,
   smallTargets,
   trackerReserved,
   withStatus,
@@ -134,6 +135,9 @@ async function checkGame(
       expect(overlaps(a, b), `rows ${i} and ${i + 1 + j} overlap`).toBe(false);
     })
   );
+
+  // The PRES/CHAN tag appearing beside a name moves no row.
+  expect(await rowShift(page, ".roster-tag", "CHAN"), "a PRES/CHAN tag moves a row").toBeLessThanOrEqual(0.5);
 
   // A spectator's hidden END TERM is no target.
   expect(await smallTargets(page, ".game-screen"), "small touch targets").toEqual([]);

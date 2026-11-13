@@ -44,21 +44,28 @@ for (const prompt of PROMPTS) {
   });
 }
 
-test("a prompt that opens while the page is scrolled is on screen", async ({ page, isMobile }) => {
-  test.skip(!isMobile, "only phones scroll the game page");
-  // The game fits a phone held upright, so this one is held sideways, where the page scrolls.
-  const { width, height } = page.viewportSize()!;
-  await page.setViewportSize({ width: height, height: width });
-  const game = await openFakeGame(page);
-  game.send(gamePacket({ state: LobbyState.CHANCELLOR_NOMINATION, president: TEN[1], electionTracker: 1 }));
-  await page.locator(".game-screen").waitFor();
-  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-  expect(await page.evaluate(() => window.scrollY), "the game page scrolls").toBeGreaterThan(0);
+const SHORT_SHAPES: { name: string; shape: (w: number, h: number) => { width: number; height: number } }[] = [
+  { name: "sideways", shape: (w, h) => ({ width: h, height: w }) },
+  { name: "upright and short", shape: (w) => ({ width: w, height: 600 }) },
+];
 
-  game.send(PROMPTS.find((p) => p.name === "vote")!.packets[0]);
-  const alertBox = page.locator("#alert-box.appear-custom-alert");
-  await alertBox.getByRole("button", { name: "CONFIRM" }).waitFor();
-  const box = (await alertBox.boundingBox())!;
-  expect(box.y, "box top").toBeGreaterThanOrEqual(0);
-  expect(box.y + box.height, "box bottom").toBeLessThanOrEqual(page.viewportSize()!.height);
-});
+for (const { name, shape } of SHORT_SHAPES) {
+  test(`a prompt that opens while the page is scrolled is on screen, ${name}`, async ({ page, isMobile }) => {
+    test.skip(!isMobile, "only phones scroll the game page");
+    // The game fits a phone held upright, so this one is shortened, where the page scrolls.
+    const { width, height } = page.viewportSize()!;
+    await page.setViewportSize(shape(width, height));
+    const game = await openFakeGame(page);
+    game.send(gamePacket({ state: LobbyState.CHANCELLOR_NOMINATION, president: TEN[1], electionTracker: 1 }));
+    await page.locator(".game-screen").waitFor();
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    expect(await page.evaluate(() => window.scrollY), "the game page scrolls").toBeGreaterThan(0);
+
+    game.send(PROMPTS.find((p) => p.name === "vote")!.packets[0]);
+    const alertBox = page.locator("#alert-box.appear-custom-alert");
+    await alertBox.getByRole("button", { name: "CONFIRM" }).waitFor();
+    const box = (await alertBox.boundingBox())!;
+    expect(box.y, "box top").toBeGreaterThanOrEqual(0);
+    expect(box.y + box.height, "box bottom").toBeLessThanOrEqual(page.viewportSize()!.height);
+  });
+}
