@@ -237,8 +237,6 @@ class App extends Component<{}, AppState> {
   lobbyUsers?: string[] = undefined;
   /** Vote-tally sounds that a running showVotes has scheduled. */
   soundTimers: ReturnType<typeof setTimeout>[] = [];
-  /** The end of a held status line (queueStatusMessage), which advances the animation queue. */
-  holdTimers: ReturnType<typeof setTimeout>[] = [];
   /** True from PLAY INSTEAD being pressed until its prompt closes; a game starting closes it. */
   playInsteadOpen = false;
   /** True while the PLAY INSTEAD prompt is on screen (not just queued). */
@@ -1251,7 +1249,7 @@ class App extends Component<{}, AppState> {
           fascistPolicies: newState.fascistPolicies,
           electionTracker: newState.electionTracker,
         });
-        setTimeout(() => this.onAnimationFinish(), 500);
+        this.finishStepAfter(500);
       });
     }
 
@@ -1700,9 +1698,6 @@ class App extends Component<{}, AppState> {
     // Sounds still in the queue go with it; so does a vote tally that has not sounded yet.
     this.soundTimers.forEach(clearTimeout);
     this.soundTimers = [];
-    // A held status line's end would advance the next queue early.
-    this.holdTimers.forEach(clearTimeout);
-    this.holdTimers = [];
   }
 
   playSounds(names: SoundName[]) {
@@ -1750,6 +1745,19 @@ class App extends Component<{}, AppState> {
     func();
   }
 
+  /**
+   * Finishes the running step after `ms`, unless it is over by then (the queue was cleared, so
+   * a later step may be running): a step's timer must not cut short a step it does not own.
+   */
+  finishStepAfter(ms: number) {
+    const step = this.animationStep;
+    setTimeout(() => {
+      if (this.animationStep === step) {
+        this.onAnimationFinish();
+      }
+    }, ms);
+  }
+
   /** @param names the state change's sounds; the vote result plays with the tally line. */
   showVotes(newState: GameState, names: SoundName[] = []) {
     this.setState({ statusBarText: "Tallying votes...", statusStep: RoundStep.ELECTION });
@@ -1790,9 +1798,7 @@ class App extends Component<{}, AppState> {
       () => this.setState({ showVotes: false, statusBarText: "" }),
       6000
     );
-    setTimeout(() => {
-      this.onAnimationFinish();
-    }, 6500);
+    this.finishStepAfter(6500);
   }
 
   /**
@@ -1849,9 +1855,7 @@ class App extends Component<{}, AppState> {
       setTimeout(() => {
         this.setState({ showEventBar: false });
       }, duration);
-      setTimeout(() => {
-        this.onAnimationFinish();
-      }, duration + EVENT_BAR_FADE_OUT_DURATION);
+      this.finishStepAfter(duration + EVENT_BAR_FADE_OUT_DURATION);
     });
   }
 
@@ -1892,11 +1896,7 @@ class App extends Component<{}, AppState> {
       if (step === null) this.setState({ statusBarText: message });
       else this.setState({ statusBarText: message, statusStep: step });
       if (holdMs > 0) {
-        const hold = setTimeout(() => {
-          this.holdTimers = this.holdTimers.filter((timer) => timer !== hold);
-          this.onAnimationFinish();
-        }, holdMs);
-        this.holdTimers.push(hold);
+        this.finishStepAfter(holdMs);
       } else {
         this.onAnimationFinish();
       }
