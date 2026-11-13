@@ -93,6 +93,41 @@ async function openVeto(page: Page) {
   };
 }
 
+// Firefox styles a page that has just appeared with its container units measured against the
+// window, then again against their containers. A button that eased every change of size or place
+// would slide from there into its place, out from under a press made where it is drawn (issue #59).
+test("no button eases into its size or place as the game page appears", async ({ page }) => {
+  const game = await openFakeGame(page);
+  await page.addStyleTag({ content: "#alert { display: none !important; }" });
+  await page.evaluate(() => {
+    const eased: string[] = [];
+    (globalThis as unknown as { eased: typeof eased }).eased = eased;
+    document.addEventListener(
+      "transitionrun",
+      (event) => {
+        const button = (event.target as Element).closest("button");
+        const name = button?.getAttribute("aria-label") ?? button?.textContent?.trim();
+        if (button) eased.push(`${name}: ${event.propertyName}`);
+      },
+      true
+    );
+  });
+  // END TERM, the president's countdown and the header's speaker all take their size from a
+  // container.
+  game.send(
+    gamePacket({
+      state: LobbyState.POST_LEGISLATIVE,
+      chancellor: TEN[2],
+      termTimer: { remainingMs: 10_000, paused: true },
+    })
+  );
+  await expect(page.getByRole("button", { name: "END TERM" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Resume the countdown" })).toBeVisible();
+  // Two frames: the restyle against the containers comes with the first layout.
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  expect(await page.evaluate(() => (globalThis as unknown as { eased: string[] }).eased)).toEqual([]);
+});
+
 test("END TERM takes a held press anywhere it is drawn", async ({ page }) => {
   const game = await openFakeGame(page);
   await page.addStyleTag({ content: "#alert { display: none !important; }" });
