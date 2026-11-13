@@ -124,9 +124,9 @@ The Gradle 7.4.2 wrapper does not run on JDKs newer than 17. Java 17 comes from 
 
 Known baseline failures (do not "fix" them while doing unrelated work):
 
-- The dev-build console shows pre-existing React warnings: #8 (`Player.render` calls `setState`)
-  and #5 (prompts set state from uncleared timers; on React 18 only `ElectionTrackerAlert`'s
-  constructor timer still warns, after a failed election).
+- The dev-build console shows a pre-existing React warning: #5 (prompts set state from uncleared
+  timers; on React 18 only `ElectionTrackerAlert`'s constructor timer still warns, after a failed
+  election).
 
 `npm run dev:server` points at upstream's hosted dev backend, not anything this fork runs.
 
