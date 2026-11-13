@@ -32,8 +32,9 @@ keeps credit to upstream and to the board game's creators.
   is made for someone who cannot take it, and a start that fails leaves the lobby untouched
   (`LobbyStartTest`). While a game waits in `POST_LEGISLATIVE` for a human president, `Lobby` runs
   the END TERM countdown (`TermTimer`, `END_TERM_TIMER_IN_SEC`, 10 s): it starts with the first
-  game packet that shows END TERM, and at zero one daemon thread shared by every lobby ends the
-  term as END TERM would. The president's `pause-term-timer` and `resume-term-timer` pause it and
+  game packet that shows END TERM, and at zero it ends the term as END TERM would (one daemon
+  thread keeps time for every lobby and hands each end to a pooled thread, so a lobby busy sending
+  delays no other). The president's `pause-term-timer` and `resume-term-timer` pause it and
   run it on from the time left; every game packet carries `termTimer` (`remainingMs` and `paused`)
   while there is one. CPU presidents get none, since they end their own terms. It is transient, so
   a lobby restored from a backup starts a fresh countdown with its first packet. An END TERM, pause
@@ -53,7 +54,8 @@ keeps credit to upstream and to the board game's creators.
   `lastState` to the step; `App` queues the step with each status line). `TermTimer` is the END
   TERM countdown: an icon and the seconds left, counted down on the page from each packet's
   `remainingMs`. It is the president's pause and resume button, and shows everyone else (spectators
-  too) whether it is paused. `GameScreen` puts it in `.end-term-slot` with END TERM, which flashes
+  too) whether it is paused; the seconds left are its accessible description, so its name stays
+  put. `GameScreen` puts it in `.end-term-slot` with END TERM, which flashes
   (an outline, held steady with reduced motion) while the countdown runs. It stands just above END
   TERM on desktop and in tall windows, in the room the table keeps there beside the tracker, and
   at its right on phones, so it moves nothing.
@@ -155,7 +157,9 @@ keeps credit to upstream and to the board game's creators.
   `term-timer.spec.ts` (`desktop` and both phone projects) plays the END TERM countdown from a
   scripted socket for the president (pause and resume), another player and a spectator, checks it
   stands beside END TERM at every tested size and on a phone held sideways, clear of the rest of
-  the table and moving nothing, and (`desktop`) lets the server end a real game's term after 10 s.
+  the table (with 8 discards, the most a game holds at END TERM without vetoes) and moving
+  nothing, checks on phones that it stays on top of the 11 discards vetoes can leave, and
+  (`desktop`) lets the server end a real game's term after 10 s.
   The scripted sockets record what the page sends (`received`).
   `prompts.spec.ts` runs in `desktop` and both phone projects (`phone-360` also at 320x568); it
   opens every prompt from a scripted game socket (`e2e/fakeGame.ts`), and checks that the portrait
