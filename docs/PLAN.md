@@ -612,7 +612,7 @@ These are Minor review findings deferred from Phase 8. Break them down when the 
 
 The six open issues listed as known baseline failures in `CLAUDE.md`. Each is fixed test first on its own branch and lands here as one commit with its box ticked.
 
-- [ ] #4: the login page's gifs get a stable `key`
+- [x] #4: the login page's gifs get a stable `key`
 - [ ] #5: the prompts clear their timers on unmount, and `ElectionTrackerAlert` starts its timer in `componentDidMount`
 - [ ] #8: `Player.render` no longer calls `setState`
 - [ ] #9: the lobby tags only the host as `[Host]`
