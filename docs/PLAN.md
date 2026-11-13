@@ -40,6 +40,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 7. Spectators | `phase-7-spectators` | done |
 | 8. Game screen redesign | `phase-8-game-screen` | in progress |
 | 9. Phase 8 follow-ups | — | not started |
+| 10. Baseline bugs | `phase-10-baseline-bugs` | in progress |
 
 ---
 
@@ -604,6 +605,20 @@ These are Minor review findings deferred from Phase 8. Break them down when the 
 - [ ] `frontend/src/game/RoundTracker.css`: the smaller phone step line uses the shared stacked-layout query, so tall windows get it too; decide whether tall windows keep it or get their own step size
 - [ ] `CLAUDE.md`: it says `--round-tracker-ems` keeps two lines' height; it is the whole card's height in its ems
 - [ ] Tooling: the e2e files are outside `tsconfig.json`'s `include`, so `npm run build` does not type-check them; Vitest prints a "jsdom was created N times" notice
+
+---
+
+## Phase 10: Baseline bugs
+
+The six open issues listed as known baseline failures in `CLAUDE.md`. Each is fixed test first on its own branch and lands here as one commit with its box ticked.
+
+- [x] #4: the login page's gifs get a stable `key`
+- [ ] #5: the prompts clear their timers on unmount, and `ElectionTrackerAlert` starts its timer in `componentDidMount`
+- [ ] #8: `Player.render` no longer calls `setState`
+- [ ] #9: the lobby tags only the host as `[Host]`
+- [ ] #10: a player who reloads mid-game can rejoin within the 3 s grace window
+- [ ] #13: the routes and the `/game` WebSocket are registered before the server starts
+- [ ] PR merged into `development`
 
 ---
 
