@@ -26,29 +26,9 @@ PORT=4040 java -jar build/libs/secret-hitler-online.jar
 
 The Docker image does the same in three stages: `docker build -t secret-hitler-online .` at the repo root, then `docker run -p 8080:8080 -v sh-data:/data secret-hitler-online`. CI publishes it as `ghcr.io/jussaw/secret-hitler-online` on every push to `development`.
 
-Your setup will vary depending on if you're only making changes to the frontend, or if you're making changes to the frontend and the backend at once.
+## Running the backend and the frontend
 
-## Frontend Only
-
-Follow these instructions if you are only making changes to the frontend. These instructions will allow you to connect to the development server rather than needing to run the instance locally.
-
-### Running frontend server
-
-Open a terminal window and run the following commands to clone the project and set up the frontend dependencies:
-
-```bash
-git clone git@github.com:jussaw/Secret-Hitler-Online.git
-cd Secret-Hitler-Online/frontend
-
-npm install
-npm run dev:server
-```
-
-The dev server runs at [localhost:3000](http://localhost:3000). `dev:server` reads `.env.dev`, which points at a hosted development backend.
-
-## Changing frontend + backend
-
-If you're modifying the backend, you'll need to run the server locally. You'll need two terminal windows to run the frontend and backend.
+This fork runs no hosted development backend, so even frontend-only changes need the server running locally. You'll need two terminal windows to run the frontend and backend. (`npm run dev:server` still reads `.env.dev`, which points at upstream's hosted development backend. That server has none of this fork's changes, spectators among them.)
 
 ### Running backend server
 
@@ -89,4 +69,14 @@ npm test              # Vitest in watch mode
 npm test -- --run     # single run
 npm run build         # type-check, then build into dist/
 npm run preview       # serve dist/ on port 3000
+```
+
+### Browser tests
+
+The Playwright tests build the frontend and the jar, serve them on port 4545 and drive the whole app in desktop Chrome, Firefox and two emulated phones. They need Java 17 active for the Gradle wrapper. From `frontend/`:
+
+```bash
+npx playwright install chromium firefox   # once
+npm run e2e                               # every project
+npm run e2e -- --project=phone-360        # one project
 ```
