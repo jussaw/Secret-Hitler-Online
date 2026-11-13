@@ -52,6 +52,7 @@ import {
   PARAM_INVESTIGATION,
   PARAM_SPECTATOR,
   PARAM_SPECTATOR_COUNT,
+  MAX_NAME_LENGTH,
 } from "./constants";
 
 import PlayerDisplay, {
@@ -93,6 +94,7 @@ import {
 import { sounds, type SoundName } from "./sound/SoundManager";
 import SoundControl from "./sound/SoundControl";
 import { CONNECT_ERROR, CONTACT_ERROR, joinErrorMessage } from "./lobby/joinError";
+import { normalizeName } from "./lobby/normalizeName";
 import PlayInsteadPrompt from "./custom-alert/PlayInsteadPrompt";
 import { lobbySounds, SOUND_CUES, soundEvents, type Cue } from "./sound/soundEvents";
 import {
@@ -688,12 +690,12 @@ class App extends Component<{}, AppState> {
   shouldJoinButtonBeEnabled() {
     return (
       this.state.joinLobby.length === LOBBY_CODE_LENGTH &&
-      this.state.joinName.length !== 0
+      normalizeName(this.state.joinName) !== ""
     );
   }
 
   shouldCreateLobbyButtonBeEnabled() {
-    return this.state.createLobbyName.length !== 0;
+    return normalizeName(this.state.createLobbyName) !== "";
   }
 
   /**
@@ -701,7 +703,7 @@ class App extends Component<{}, AppState> {
    */
   onClickJoin = () => {
     // Capture the form values: tryOpenWebSocket clears them via setState.
-    const name = this.state.joinName;
+    const name = normalizeName(this.state.joinName);
     const lobby = this.state.joinLobby;
     this.setState({ joinError: "Connecting..." });
     this.tryLogin(name, lobby)
@@ -843,7 +845,7 @@ class App extends Component<{}, AppState> {
    */
   onClickCreateLobby = () => {
     // Capture the form value: tryOpenWebSocket clears it via setState.
-    const name = this.state.createLobbyName;
+    const name = normalizeName(this.state.createLobbyName);
     this.setState({ createLobbyError: "Connecting..." });
     this.tryCreateLobby()
       .then((response) => {
@@ -896,7 +898,7 @@ class App extends Component<{}, AppState> {
             label={"Your Name"}
             onChange={this.updateJoinName}
             value={this.state.joinName}
-            maxLength={12}
+            maxLength={MAX_NAME_LENGTH}
           />
           <p id={"errormessage"}>{this.state.joinError}</p>
           <button
@@ -919,7 +921,7 @@ class App extends Component<{}, AppState> {
             label={"Your Name"}
             onChange={this.updateCreateLobbyName}
             value={this.state.createLobbyName}
-            maxLength={12}
+            maxLength={MAX_NAME_LENGTH}
           />
           <p id={"errormessage"}>{this.state.createLobbyError}</p>
           <button

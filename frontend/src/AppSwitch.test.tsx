@@ -477,3 +477,40 @@ test("a join after giving up still retries a socket that closes before its first
   expect(FakeSocket.instances.length).toBe(before + 1);
   expect(app.state.page).toBe("lobby");
 });
+
+test("JOIN checks and joins under the normalized name", async () => {
+  const ref = createRef<App>();
+  render(<App ref={ref} />);
+  const app = ref.current!;
+  await act(async () => {
+    app.setState({ joinName: "Sam ", joinLobby: "HBIA" });
+  });
+  await act(async () => {
+    app.onClickJoin();
+  });
+  const check = vi
+    .mocked(fetch)
+    .mock.calls.map(([url]) => new URL(String(url), "http://host"))
+    .find((url) => url.pathname.endsWith("/check-login"));
+  expect(check?.searchParams.get("name")).toBe("Sam");
+  expect(new URL(lastUrl(), "http://host").searchParams.get("name")).toBe("Sam");
+  expect(Cookies.get("name")).toBe("Sam");
+});
+
+test("CREATE LOBBY joins under the normalized name", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => Promise.resolve(new Response("HBIA", { status: 200 })))
+  );
+  const ref = createRef<App>();
+  render(<App ref={ref} />);
+  const app = ref.current!;
+  await act(async () => {
+    app.setState({ createLobbyName: "Sam  Lee " });
+  });
+  await act(async () => {
+    app.onClickCreateLobby();
+  });
+  expect(new URL(lastUrl(), "http://host").searchParams.get("name")).toBe("Sam Lee");
+  expect(Cookies.get("name")).toBe("Sam Lee");
+});

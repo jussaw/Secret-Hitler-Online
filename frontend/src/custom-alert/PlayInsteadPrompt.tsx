@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { MAX_NAME_LENGTH } from "../constants";
 import { CONTACT_ERROR } from "../lobby/joinError";
+import { normalizeName } from "../lobby/normalizeName";
 import "./PlayInsteadPrompt.css";
 
 type PlayInsteadPromptProps = {
@@ -8,8 +10,6 @@ type PlayInsteadPromptProps = {
   onContinue: (name: string) => Promise<string>;
   onCancel: () => void;
 };
-
-const MAX_NAME_LENGTH = 12;
 
 export default function PlayInsteadPrompt({
   initialName,
@@ -30,17 +30,17 @@ export default function PlayInsteadPrompt({
     };
   }, []);
 
-  const trimmed = name.trim();
-  const canContinue = trimmed !== "" && !checking;
+  const normalized = normalizeName(name);
+  const canContinue = normalized !== "" && !checking;
 
   const submit = async () => {
-    if (trimmed === "" || pending.current) return;
+    if (normalized === "" || pending.current) return;
     pending.current = true;
     setChecking(true);
     setError("");
     let result: string;
     try {
-      result = await onContinue(trimmed);
+      result = await onContinue(normalized);
     } catch {
       result = CONTACT_ERROR;
     }

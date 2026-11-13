@@ -1,4 +1,5 @@
 import React, {Component} from "react";
+import { MAX_NAME_LENGTH } from "../constants";
 
 /**
  * A MaxLengthTextField is a text field that has a constrained
@@ -68,7 +69,7 @@ class MaxLengthTextField extends Component {
 }
 
 MaxLengthTextField.defaultProps = {
-    maxLength: 12, /*Set to -1 to disable.*/
+    maxLength: MAX_NAME_LENGTH, /*Set to -1 to disable.*/
     label: "Label",
     placeholder: "",
     textAreaLabel: "Prompt Here",

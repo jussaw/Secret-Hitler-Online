@@ -58,6 +58,13 @@ describe("PlayInsteadPrompt", () => {
     expect(console.error).not.toHaveBeenCalled();
   });
 
+  test("CONTINUE collapses runs of spaces, as the login form does", () => {
+    const { onContinue } = setup("Sam");
+    fireEvent.change(field(), { target: { value: " Sam   Lee " } });
+    fireEvent.click(button("CONTINUE"));
+    expect(onContinue).toHaveBeenCalledWith("Sam Lee");
+  });
+
   test("Enter acts as CONTINUE", () => {
     const { onContinue } = setup("Sam");
     fireEvent.keyDown(field(), { key: "Enter" });

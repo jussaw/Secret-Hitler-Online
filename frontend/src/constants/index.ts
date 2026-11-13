@@ -32,6 +32,8 @@ export const PING_INTERVAL = 20000;
 //////// Game Constants
 export const MIN_PLAYERS = 5;
 export const MAX_PLAYERS = 10;
+/** The longest name a player can join under. */
+export const MAX_NAME_LENGTH = 12;
 
 //////// JSON Packet Data
 
