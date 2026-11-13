@@ -38,7 +38,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 5. Phone layout | `phase-5-phone` | done |
 | 6. Sounds | `phase-6-sounds` | done |
 | 7. Spectators | `phase-7-spectators` | done |
-| 8. Game screen redesign | `phase-8-game-screen` | in progress |
+| 8. Game screen redesign | `phase-8-game-screen` | done |
 | 9. Phase 8 follow-ups | `phase-9-follow-ups` | done |
 | 10. Baseline bugs | `fix/issue-N`, one per issue | done |
 
@@ -374,7 +374,7 @@ Tasks 5.1-5.3 give every window narrower than 5:4 the phone layout, with full-si
 Deferred: a desktop prompt taller than the window (ten-player pickers and the victory prompt at 1080p and below) now scrolls inside its box instead of growing the page, but it does not yet fit the window without scrolling. That needs smaller prompt contents, not layout.
 
 - [x] Phone e2e passes; Phase 4 e2e still passes
-- [ ] One full game played on a real phone against the deployed instance
+- [x] One full game played on a real phone against the deployed instance
 - [x] PR merged into `development`
 
 **Start Phase 6: Sounds**
@@ -580,8 +580,8 @@ Files: `frontend/src/game/GameScreen.css`, `frontend/src/game/PlayerRoster.css`,
 
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
 - [x] Every board floor in the breakdown's Global Constraints holds
-- [ ] One real game on the deployed build, on a desktop and on a phone, shows every row state: office, busy, votes, roles, executed, victory
-- [ ] PR merged into `development` and deployed
+- [x] One real game on the deployed build, on a desktop and on a phone, shows every row state: office, busy, votes, roles, executed, victory
+- [x] PR merged into `development` and deployed
 
 ---
 
@@ -634,5 +634,5 @@ The six open issues `CLAUDE.md` listed as known baseline failures (each fix remo
 
 ## Done when
 
-- [ ] All ten phases merged and the Progress table reads "done" for each
+- [x] All ten phases merged and the Progress table reads "done" for each
 - [ ] The deployed instance has hosted one full game with real players, at least one spectator and at least one phone
