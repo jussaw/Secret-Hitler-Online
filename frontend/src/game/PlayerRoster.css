@@ -1,0 +1,207 @@
+/* Row content scales from the row: the layout sets the row's height and may set --roster-font. */
+.roster {
+  --roster-font: 16px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--textFont);
+  font-size: var(--roster-font);
+  text-align: left;
+}
+
+.roster-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  min-height: 0;
+  padding: 4px 0.6em 4px 4px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.roster-row.is-user {
+  background: rgba(246, 181, 63, 0.12);
+  box-shadow: inset 0 0 0 3px #f6b53f;
+}
+
+.roster-portrait {
+  position: relative;
+  flex: none;
+  height: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 11.4% / 17%;
+}
+
+.roster-card,
+.roster-face {
+  position: absolute;
+  display: block;
+}
+
+.roster-card {
+  width: 107.26%;
+  left: -3.63%;
+  top: -3.87%;
+}
+
+.roster-face {
+  width: 87.9%;
+  left: 6.05%;
+  top: 5.79%;
+}
+
+.roster-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.roster-name {
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #eeeeee;
+  white-space: nowrap;
+}
+
+/* The layouts size the text so any realistic twelve-character name fits. A name too wide even so
+   is cut short with an ellipsis inside its own box, never under the vote slot, and the role icon
+   after it stays; the row's title holds the full name. */
+.roster-name-text {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.roster-role-icon {
+  flex: none;
+  height: 1.1em;
+  width: auto;
+}
+
+.roster-detail {
+  display: block;
+  min-height: 1.2em;
+  line-height: 1.2;
+  font-size: 0.8em;
+  white-space: nowrap;
+  color: var(--textColorOnDark);
+}
+
+.roster-detail.office {
+  font-family: var(--headerFont);
+  color: #f08a5d;
+  letter-spacing: 0.04em;
+}
+
+.roster-detail.role-liberal {
+  font-weight: 600;
+  color: var(--textColorLiberal);
+}
+
+.roster-detail.role-fascist {
+  font-weight: 600;
+  color: #e8604a;
+}
+
+.roster-tag {
+  display: none;
+}
+
+.roster-status {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2em;
+  height: 2.2em;
+}
+
+.roster-vote,
+.roster-busy {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.roster-row.is-disabled img {
+  filter: brightness(35%);
+}
+
+.roster-row.is-disabled .roster-name,
+.roster-row.is-disabled .roster-detail {
+  color: var(--playerDisabledTextColor);
+}
+
+/* Compact rows, on phones (the same query as GameScreen.css's phone block, which sets the rows'
+   height): one line of portrait, name, the office as PRES or CHAN, and the vote or busy bubble at
+   the right. The detail line is hidden, so a long name ends in an ellipsis; a visible role keeps
+   its icon after the name. */
+@media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
+  .roster-row {
+    gap: 0.4em;
+    padding: 3px 0.4em 3px 3px;
+    border-radius: 6px;
+  }
+
+  .roster-text {
+    flex: 0 1 auto;
+  }
+
+  .roster-detail {
+    display: none;
+  }
+
+  .roster-tag {
+    display: block;
+    flex: none;
+    font-family: var(--headerFont);
+    color: #f08a5d;
+    letter-spacing: 0.02em;
+    line-height: 1;
+  }
+
+  .roster-tag:empty {
+    display: none;
+  }
+
+  .roster-status {
+    margin-left: auto;
+  }
+}
+
+/* Tall windows keep the full rows (GameScreen.css's tall-window block, which comes after the phone
+   block and undoes it). */
+@media (min-width: 700px) and (aspect-ratio < 5/4) {
+  .roster-row {
+    gap: 0.6em;
+    padding: 4px 0.6em 4px 4px;
+    border-radius: 10px;
+  }
+
+  .roster-text {
+    flex: 1 1 auto;
+  }
+
+  .roster-detail {
+    display: block;
+  }
+
+  .roster-tag {
+    display: none;
+  }
+
+  .roster-status {
+    margin-left: 0;
+  }
+}

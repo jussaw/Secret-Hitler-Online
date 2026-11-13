@@ -9,8 +9,21 @@ export const DESKTOP_SIZES = [
 ];
 
 /**
- * Windows narrower than 5:4 but wider than a phone, where the stacked game screen fits one
- * screen with round-table-size tiles.
+ * Desktop windows squarer than 16:9 (5:4, 4:3 and 16:10 screens), where the roster column's width,
+ * not the window's height, sets the size of the roster's text.
+ */
+export const SQUARE_DESKTOPS = [
+  { width: 1280, height: 1024 },
+  { width: 1280, height: 960 },
+  { width: 1440, height: 900 },
+  { width: 1600, height: 1280 },
+  { width: 1680, height: 1050 },
+];
+
+/**
+ * Windows narrower than 5:4 and at least 700px wide (half-screen desktop windows, upright monitors
+ * and tablets, and near-square windows): the roster runs across the top, above the tracker, and
+ * the game fits one screen.
  */
 export const NARROW_WINDOWS = [
   { width: 960, height: 1080 }, // half a 1080p screen
@@ -22,10 +35,38 @@ export const NARROW_WINDOWS = [
   { width: 744, height: 1133 }, // iPad mini, upright
   { width: 700, height: 900 }, // the narrowest
   { width: 800, height: 700 }, // a short window
-  // Dragged windows, at sizes where Firefox rounds each zoomed seat's width up.
+  // Dragged windows, near square.
   { width: 903, height: 903 },
   { width: 990, height: 793 },
 ];
+
+/**
+ * The narrowest each board (the first #board image) may be, in CSS px, keyed "WxH", for every
+ * player count. At the five desktop sizes these are 90% of the design mockup's widths; in the
+ * other windows, the widths the round table reached before the roster replaced it.
+ */
+export const BOARD_FLOOR: Record<string, number> = {
+  "1920x1080": 999,
+  "1920x937": 867,
+  "1600x900": 833,
+  "1366x768": 710,
+  "1280x720": 666,
+  "1279x1024": 690,
+  "1080x1920": 768,
+  "1280x1440": 1023,
+  "1024x1366": 775,
+  "960x1080": 739,
+  "820x1180": 592,
+  "744x1133": 522,
+  "700x900": 506,
+  "800x700": 439,
+  "903x903": 597,
+  "990x793": 513,
+};
+
+/** The longest status line the game shows. */
+export const LONG_STATUS =
+  "Chancellor has motioned to veto the agenda. Waiting for the president to decide.";
 
 /** Touch targets on phones are at least this many CSS px wide and tall. */
 export const MIN_TARGET = 44;
@@ -98,18 +139,68 @@ export function smallTargets(page: Page, scope: string): Promise<string[]> {
 }
 
 /**
- * Fills every empty seat label with "CHANCELLOR" and empties every full one, then puts the text
- * back. Returns how far, in px, the furthest seat box moved: a seat must not move when its
- * player becomes president or chancellor.
+ * The height the game table keeps for the round tracker (`--tracker-height`, GameScreen.css), read
+ * from a hidden probe that takes it.
  */
-export function labelShift(page: Page): Promise<number> {
+export function trackerReserved(page: Page): Promise<number> {
   return page.evaluate(() => {
-    const seats = Array.from(document.querySelectorAll(".table-seat"));
-    const boxes = () => seats.map((seat) => seat.getBoundingClientRect());
+    const probe = document.createElement("div");
+    probe.style.cssText = "position: absolute; visibility: hidden; height: var(--tracker-height);";
+    document.querySelector(".game-table")!.appendChild(probe);
+    const height = probe.getBoundingClientRect().height;
+    probe.remove();
+    return height;
+  });
+}
+
+/**
+ * Shows `text` as the status line, measures the tracker, the boards and the page's height (as
+ * pageHeight does), then puts the old line back. The tracker wraps "president" and "chancellor" in
+ * spans, so the line can hold several text nodes: the first takes `text` and the rest are blanked.
+ * Only React's own text nodes are edited (or a stand-in added), so later renders still reach them.
+ */
+export function withStatus(
+  page: Page,
+  text: string
+): Promise<{ tracker: Box; boards: Box; height: number }> {
+  return page.evaluate((text) => {
+    const box = (el: Element) => {
+      const r = el.getBoundingClientRect();
+      return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+    };
+    const line = document.querySelector("#status-bar-text")!;
+    const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
+    const nodes: Node[] = [];
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) nodes.push(node);
+    if (nodes.length === 0) nodes.push(line.appendChild(document.createTextNode("")));
+    const old = nodes.map((node) => node.nodeValue);
+    nodes.forEach((node, i) => (node.nodeValue = i === 0 ? text : ""));
+    const measured = {
+      tracker: box(document.querySelector(".game-table > .round-tracker")!),
+      boards: box(document.querySelector("#board-container")!),
+      height: Math.max(document.documentElement.scrollHeight, document.body.scrollHeight),
+    };
+    nodes.forEach((node, i) => (node.nodeValue = old[i]));
+    return measured;
+  }, text);
+}
+
+/**
+ * Fills every empty roster detail line with "CHANCELLOR" and empties every full one, then puts
+ * the text back. Returns how far, in px, the furthest roster row or the boards moved: nothing may
+ * move when a player becomes president or chancellor, is executed or has their role shown.
+ */
+export function rowShift(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    const watched = [
+      ...Array.from(document.querySelectorAll(".roster-row")),
+      document.querySelector("#board-container")!,
+    ];
+    const boxes = () => watched.map((el) => el.getBoundingClientRect());
     const before = boxes();
-    const labels = seats.map((seat) => seat.querySelector("#player-display-label")!);
+    const details = Array.from(document.querySelectorAll(".roster-detail"));
     // Edit React's own text node (or a stand-in) so later renders still reach it.
-    const nodes = labels.map((label) => label.firstChild ?? label.appendChild(document.createTextNode("")));
+    const nodes = details.map((detail) => detail.firstChild ?? detail.appendChild(document.createTextNode("")));
     const old = nodes.map((node) => node.nodeValue);
     nodes.forEach((node, i) => (node.nodeValue = old[i] ? "" : "CHANCELLOR"));
     const after = boxes();

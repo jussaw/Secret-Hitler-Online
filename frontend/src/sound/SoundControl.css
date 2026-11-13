@@ -8,9 +8,9 @@
  *
  * The control is a size container as tall as the header, so 100cqh is the header's height:
  * - --target is the button's size: as much of the header as fits, up to 44px, and a full 44px
- *   touch target on touch screens (phones, and tablets held upright, which get the narrow-window
- *   layout), where the game header can be shorter than that. There the button is top-aligned and
- *   hangs below the header.
+ *   touch target on touch screens (phones held either way, and tablets held upright, which get the
+ *   narrow-window layout), where the game header can be shorter than that. There the button is
+ *   top-aligned and hangs below the header.
  * - The icon stays centred on the header whichever way the button fits.
  */
 .sound-control {
@@ -126,8 +126,9 @@
     cursor: pointer;
 }
 
-/* Touch screens: the same query as the stacked game layout (GameScreen.css, TableSeats.css). */
-@media (max-width: 768px), (aspect-ratio < 5/4) {
+/* Touch screens: phones (held upright or sideways) and windows narrower than 5:4, which
+   GameScreen.css and PlayerRoster.css lay out for touch with this same query. */
+@media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
     .sound-control {
         --target: 44px;
     }

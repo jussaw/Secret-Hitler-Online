@@ -7,6 +7,7 @@ import CustomAlert from "./custom-alert/CustomAlert";
 import RoleAlert from "./custom-alert/RoleAlert";
 import EventBar from "./event-bar/EventBar";
 import GameScreen from "./game/GameScreen";
+import { RoundStep, stepForPolicyLine, stepForState } from "./game/roundStep";
 
 // TODO: replace constants with enums from types
 import {
@@ -177,6 +178,8 @@ type AppState = {
   showEventBar: boolean;
   eventBarMessage: string;
   statusBarText: string;
+  /** The round step lit beside the status line; null until a line lights one. */
+  statusStep: RoundStep | null;
   allAnimationsFinished: boolean;
 };
 
@@ -208,6 +211,7 @@ const defaultAppState: AppState = {
   showEventBar: false,
   eventBarMessage: "",
   statusBarText: "---",
+  statusStep: null,
   allAnimationsFinished: true,
 };
 
@@ -751,7 +755,7 @@ class App extends Component<{}, AppState> {
     return (
       <div className="App">
         <header className="App-header">
-          SECRET-HITLER.ONLINE
+          SECRET-HITLER
           <SoundControl />
         </header>
         <br />
@@ -954,7 +958,7 @@ class App extends Component<{}, AppState> {
     return (
       <div className="App">
         <header className="App-header">
-          SECRET-HITLER.ONLINE
+          SECRET-HITLER
           <SpectatorCount count={this.state.spectatorCount} />
           <SoundControl />
         </header>
@@ -1122,7 +1126,7 @@ class App extends Component<{}, AppState> {
     let state = newState.state;
     /** Queues the status line: a player's text, or what the table waits for, named, for a spectator. */
     const queueStatus = (playerText: string) =>
-      this.queueStatusMessage(spectator ? waitingText(newState) : playerText);
+      this.queueStatusMessage(spectator ? waitingText(newState) : playerText, stepForState(newState));
     // A socket's first packet (joining, reloading or reconnecting mid-game) shows a spectator the
     // table as it is: no held lines and no vote reveal for what has already happened.
     const catchingUp = spectator && this.soundState === undefined;
@@ -1176,7 +1180,7 @@ class App extends Component<{}, AppState> {
           }
           this.queueSounds(soundNames, "tracker");
           if (spectator) {
-            if (!catchingUp) this.queueStatusMessage(trackerText(newState), SPECTATOR_RESULT_MS);
+            if (!catchingUp) this.queueStatusMessage(trackerText(newState), stepForState(newState), SPECTATOR_RESULT_MS);
           } else {
             this.queueAlert(
               <ElectionTrackerAlert
@@ -1197,7 +1201,7 @@ class App extends Component<{}, AppState> {
         // Show an alert with the new policy
         this.queueSounds(soundNames, "policy");
         if (spectator) {
-          if (!catchingUp) this.queueStatusMessage(policyText(newState), SPECTATOR_RESULT_MS);
+          if (!catchingUp) this.queueStatusMessage(policyText(newState), stepForPolicyLine(newState), SPECTATOR_RESULT_MS);
         } else {
           this.queueAlert(
             <PolicyEnactedAlert
@@ -1415,7 +1419,7 @@ class App extends Component<{}, AppState> {
           this.queueSounds(soundNames, "result");
           const result = spectator && !catchingUp ? resultText(newState) : "";
           if (result) {
-            this.queueStatusMessage(result, SPECTATOR_RESULT_MS);
+            this.queueStatusMessage(result, stepForState(newState), SPECTATOR_RESULT_MS);
           }
           switch (spectator ? undefined : newState.lastState) {
             case STATE_PP_ELECTION:
@@ -1497,7 +1501,7 @@ class App extends Component<{}, AppState> {
           if (newState.state === STATE_LIBERAL_VICTORY_EXECUTION) {
             this.queueSounds(soundNames, "result");
             if (spectator) {
-              if (!catchingUp) this.queueStatusMessage(resultText(newState), SPECTATOR_RESULT_MS);
+              if (!catchingUp) this.queueStatusMessage(resultText(newState), stepForState(newState), SPECTATOR_RESULT_MS);
             } else {
               this.showExecutionResults(name, newState);
             }
@@ -1539,7 +1543,7 @@ class App extends Component<{}, AppState> {
             console.log("Player ordering: " + players);
           }
           if (spectator) {
-            this.queueStatusMessage(waitingText(newState)); // the winners, under the victory screen
+            this.queueStatusMessage(waitingText(newState), stepForState(newState)); // the winners, under the victory screen
           }
           this.queueSounds(soundNames, "end");
           this.addAnimationToQueue(() => {
@@ -1691,7 +1695,7 @@ class App extends Component<{}, AppState> {
 
   /** @param names the state change's sounds; the vote result plays with the tally line. */
   showVotes(newState: GameState, names: SoundName[] = []) {
-    this.setState({ statusBarText: "Tallying votes..." });
+    this.setState({ statusBarText: "Tallying votes...", statusStep: RoundStep.ELECTION });
     setTimeout(() => {
       this.setState({ showVotes: true });
     }, 1000);
@@ -1710,10 +1714,12 @@ class App extends Component<{}, AppState> {
       if (yesVotes > noVotes) {
         this.setState({
           statusBarText: yesVotes + " - " + noVotes + ": Vote passed",
+          statusStep: RoundStep.ELECTION,
         });
       } else {
         this.setState({
           statusBarText: yesVotes + " - " + noVotes + ": Vote failed",
+          statusStep: RoundStep.ELECTION,
         });
       }
     }, 2000);
@@ -1810,13 +1816,15 @@ class App extends Component<{}, AppState> {
   /**
    * Adds an update to the status message to the animation queue.
    * @param message {String} the text for the status bar to display.
+   * @param step the round step to light with the message, or null to leave the lit step alone.
    * @param holdMs how long the message shows before the queue moves on (default 0).
    * @effects Adds a new function to the animation queue that, when called, updates {@code this.state.statusBarText} to
    *          the message provided then advances the animation queue, at once or after {@code holdMs}.
    */
-  queueStatusMessage(message: string, holdMs = 0) {
+  queueStatusMessage(message: string, step: RoundStep | null, holdMs = 0) {
     this.addAnimationToQueue(() => {
-      this.setState({ statusBarText: message });
+      if (step === null) this.setState({ statusBarText: message });
+      else this.setState({ statusBarText: message, statusStep: step });
       if (holdMs > 0) {
         const hold = setTimeout(() => {
           this.holdTimers = this.holdTimers.filter((timer) => timer !== hold);
@@ -1852,6 +1860,7 @@ class App extends Component<{}, AppState> {
           showVotes={this.state.showVotes}
           showBusy={this.state.allAnimationsFinished} // Only show busy when there isn't an active animation.
           statusBarText={this.state.statusBarText}
+          statusStep={this.state.statusStep}
           drawDeckSize={this.state.drawDeckSize}
           discardDeckSize={this.state.discardDeckSize}
           liberalPolicies={this.state.liberalPolicies}

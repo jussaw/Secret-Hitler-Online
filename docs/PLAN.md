@@ -25,7 +25,7 @@
 
 Each phase lists its tasks, the files they touch, and acceptance checks. Phases 2 to 7 depend on the code shape left by the phase before, so the step-by-step breakdown (exact code and test bodies) for a phase is written to `docs/superpowers/plans/` when that phase starts, and linked from its heading here. This file is the source of truth for what is done.
 
-Every phase ends with a **Start Phase N** block. A phase is not finished until that block is done, so work flows straight from one phase into the next. Its boxes are ticked in the first commit on the new phase's branch, because the previous phase's PR is already merged by then. Phase 7 ends with **Done when** instead.
+Every phase ends with a **Start Phase N** block. A phase is not finished until that block is done, so work flows straight from one phase into the next. Its boxes are ticked in the first commit on the new phase's branch, because the previous phase's PR is already merged by then. Phase 8 ends with **Done when** instead.
 
 ## Progress
 
@@ -38,6 +38,8 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 5. Phone layout | `phase-5-phone` | done |
 | 6. Sounds | `phase-6-sounds` | done |
 | 7. Spectators | `phase-7-spectators` | done |
+| 8. Game screen redesign | `phase-8-game-screen` | in progress |
+| 9. Phase 8 follow-ups | — | not started |
 
 ---
 
@@ -501,9 +503,111 @@ Files: `frontend/src/App.tsx` (login form `renderLoginPage` 646, `tryOpenWebSock
 - [x] A spectator joining mid-game and refreshing stays a spectator
 - [x] PR merged into `development` (#18) and deployed
 
+**Start Phase 8: Game screen redesign**
+
+- [x] Progress table: Phase 8 added and set to "in progress"
+- [x] `git checkout development && git pull`, then `git checkout -b phase-8-game-screen`
+- [x] Design written and committed: [`docs/superpowers/specs/2026-11-12-game-screen-redesign-design.md`](superpowers/specs/2026-11-12-game-screen-redesign-design.md), with reference screenshots
+- [x] Write the Phase 8 step-by-step breakdown to `docs/superpowers/plans/` (writing-plans skill) and link it from the Phase 8 heading
+- [x] Begin Task 8.1
+
+---
+
+## Phase 8: Game screen redesign
+
+Breakdown: [`docs/superpowers/plans/2026-11-12-phase-8-game-screen.md`](superpowers/plans/2026-11-12-phase-8-game-screen.md) · Spec: [`docs/superpowers/specs/2026-11-12-game-screen-redesign-design.md`](superpowers/specs/2026-11-12-game-screen-redesign-design.md)
+
+Outcome: the players sit in a roster at the side and the boards are more than twice as wide on desktop; a round tracker replaces the black status bar; a phone shows the whole game without scrolling; the banner reads `SECRET-HITLER`.
+
+### Task 8.1: Banner reads SECRET-HITLER
+
+Files: `frontend/src/App.tsx` (754, 957), `frontend/src/game/GameScreen.tsx` (47), `frontend/e2e/spectator.spec.ts` (375), with tests in `App.test.tsx` and `GameScreen.test.tsx`
+
+- [x] The login, lobby and game headers read `SECRET-HITLER`
+
+### Task 8.2: Round step mapping
+
+Files: new `frontend/src/game/roundStep.ts` and `roundStep.test.ts`
+
+- [x] Tests first: `stepForState` for every state, `POST_LEGISLATIVE` after each kind of `lastState`, `null` for setup and victory; `stepForPolicyLine`
+- [x] Implement `RoundStep`, `ROUND_STEPS`, `stepForState`, `stepForPolicyLine`
+
+### Task 8.3: Per-player row data
+
+Files: new `frontend/src/player/usePlayerRows.ts` and `usePlayerRows.test.tsx`, `frontend/src/player/PlayerDisplay.tsx`
+
+- [x] Tests first: office, busy, role by viewer, executed, staged votes, the user's row
+- [x] Move the per-player logic out of `usePlayerTiles` into `usePlayerRows`; the prompts' tiles are unchanged (`PlayerDisplay.test.tsx` passes as is)
+
+### Task 8.4: PlayerRoster
+
+Files: new `frontend/src/game/PlayerRoster.tsx`, `PlayerRoster.css`, `PlayerRoster.test.tsx`
+
+- [x] Tests first: order, the user's row, offices, own and teammates' roles beside offices, executed, busy, votes, the reserved detail line
+- [x] Implement the roster rows (portrait in the card's frame, name, detail line, vote or busy)
+
+### Task 8.5: RoundTracker
+
+Files: new `frontend/src/game/RoundTracker.tsx`, `RoundTracker.css`, `RoundTracker.test.tsx`
+
+- [x] Tests first: the lit step, no step, the orange words, `#status-bar-text`, the fade
+- [x] Implement the tracker
+
+### Task 8.6: Queue the step with each status line
+
+Files: `frontend/src/App.tsx` (state 179 and 210, `queueStatusMessage` 1817 and its callers, `showVotes` 1693), `frontend/src/game/GameScreen.tsx`, new `frontend/e2e/tracker.spec.ts`
+
+- [x] Browser tests first: the vote result keeps ELECTION lit; end of term after a failed vote lights ELECTION
+- [x] `App` queues a step with every status line; `GameScreen` shows `RoundTracker` in place of `StatusBar`
+
+### Task 8.7: Desktop and tall-window layout
+
+Files: `frontend/src/game/GameScreen.tsx`, `GameScreen.css`, `GameScreen.test.tsx`, `frontend/e2e/layout.ts`, `frontend/e2e/no-scroll.spec.ts`; deletes `TableSeats.*`, `seatPositions.*` and `frontend/src/status-bar/`
+
+- [x] Browser tests first: no scroll, the board floors, the roster beside or above, the tracker centred on the boards, END TERM above the draw pile, rows that never jump, the spectator view
+- [x] Rebuild the game page as roster, tracker, boards and decks column; delete the round table
+
+### Task 8.8: Phone layout and docs
+
+Files: `frontend/src/game/GameScreen.css`, `frontend/src/game/PlayerRoster.css`, `frontend/e2e/phone.spec.ts`, `frontend/e2e/prompts.spec.ts`, `frontend/src/sound/SoundControl.css`, `CLAUDE.md`
+
+- [x] Browser tests first: no scroll at 360x740 and 412x915 with ten players and the longest status, the order, END TERM over the counts box, touch targets, a sideways phone, the spectator view
+- [x] Compact roster and the phone column
+- [x] `CLAUDE.md` updated: the game page's files, layouts, breakpoints and tests
+
+**Phase 8 acceptance**
+
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] Every board floor in the breakdown's Global Constraints holds
+- [ ] One real game on the deployed build, on a desktop and on a phone, shows every row state: office, busy, votes, roles, executed, victory
+- [ ] PR merged into `development` and deployed
+
+---
+
+## Phase 9: Phase 8 follow-ups
+
+These are Minor review findings deferred from Phase 8. Break them down when the phase starts.
+
+- [ ] `frontend/src/game/roundStep.ts`: list the five no-step states explicitly instead of `default`, so TypeScript checks the switch is exhaustive; wrap the over-long `stepForPolicyLine` line; add a test that `lastState` is ignored outside `POST_LEGISLATIVE`
+- [ ] `frontend/src/player/usePlayerRows.ts`: `busy` is typed `boolean` but is `undefined` when `showBusy` is omitted (coerce or default it); the voting-state busy loop indexes `getPlayerOrder()` by `playerOrder.length` and throws with `includeUser: false` (iterate the order directly); a dead president counts as busy in nomination; remove the double blank line
+- [ ] `frontend/src/player/usePlayerRows.test.tsx`: the test "a liberal sees only their own role" asserts that a liberal sees all five roles (the fixture sets every id); rename it or set only the user's id
+- [ ] `frontend/src/game/PlayerRoster.css`: the Fascist/Hitler role word uses `#e8604a`, not a palette colour; derive it from the palette (e.g. `--textColorHighlight`) or name it in `variables.css`, distinct from the `#f08a5d` office orange
+- [ ] `frontend/src/game/PlayerRoster.test.tsx`: add tests that an office outranks `EXECUTED` on the detail line, and that a visible role icon shows on a darkened row
+- [ ] `frontend/src/game/RoundTracker.tsx`: build the highlight regex once; add tests for an empty line, an all-caps `PRESIDENT`, and the first render having no fade class; a step-only change (same text) leaves `shown.step` stale, so a text change right after briefly re-lights the older step during the fade
+- [ ] `frontend/src/game/GameScreen.test.tsx`: make the status assertion exact (`toHaveTextContent(/^…$/)`); add a test that `statusStep` reaches the tracker's `aria-current`
+- [ ] `frontend/src/App.tsx`: RETURN TO LOBBY resets the boards but not `statusBarText` or `statusStep`, so the next game opens with the last game's line and lit step; reset both; wrap the over-long election-tracker line
+- [ ] `frontend/e2e/tracker.spec.ts`: add a case that ELECTION stays lit under the victory screen (voting, then `FASCIST_VICTORY_ELECTION`)
+- [ ] `frontend/src/game/GameScreen.css` and `PlayerRoster.css`: the tall-window blocks restate base values to undo the phone block; note at the base rules that their values are restated there, or move to a phone-only query
+- [ ] `frontend/e2e/phone.spec.ts`: no check that rows keep their place when a PRES/CHAN tag appears (`rowShift` fills `.roster-detail`, which phones hide)
+- [ ] `frontend/e2e/prompts.spec.ts`: add an upright short viewport (the project's width x 600) beside the sideways one for the scrolled-prompt test
+- [ ] Phones under 360 px: below about 257 px (about 273 px on Linux) the tracker's steps wrap and the card grows past its reserved height; decide whether to support or test narrower phones
+- [ ] `frontend/src/game/RoundTracker.css`: the smaller phone step line uses the shared stacked-layout query, so tall windows get it too; decide whether tall windows keep it or get their own step size
+- [ ] `CLAUDE.md`: it says `--round-tracker-ems` keeps two lines' height; it is the whole card's height in its ems
+- [ ] Tooling: the e2e files are outside `tsconfig.json`'s `include`, so `npm run build` does not type-check them; Vitest prints a "jsdom was created N times" notice
+
 ---
 
 ## Done when
 
-- [x] All seven phases merged and the Progress table reads "done" for each
+- [ ] All eight phases merged and the Progress table reads "done" for each
 - [ ] The deployed instance has hosted one full game with real players, at least one spectator and at least one phone

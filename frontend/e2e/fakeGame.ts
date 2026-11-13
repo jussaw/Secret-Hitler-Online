@@ -27,10 +27,10 @@ const ALL_ROLES: Record<string, Role> = Object.fromEntries(
 export type FakeGame = { send(packet: object): void };
 
 /**
- * Creates a lobby as TEN[0] through the login form, with every portrait already chosen, and
- * returns the scripted socket. The client's own messages are ignored.
+ * Creates a lobby of `names` (TEN by default) as names[0] through the login form, with every
+ * portrait already chosen, and returns the scripted socket. The client's own messages are ignored.
  */
-export async function openFakeGame(page: Page): Promise<FakeGame> {
+export async function openFakeGame(page: Page, names: string[] = TEN): Promise<FakeGame> {
   await page.route("**/new-lobby", (route) => route.fulfill({ body: "FAKE" }));
   let connect!: (ws: WebSocketRoute) => void;
   const connected = new Promise<WebSocketRoute>((resolve) => (connect = resolve));
@@ -40,12 +40,12 @@ export async function openFakeGame(page: Page): Promise<FakeGame> {
   });
 
   await page.goto("/");
-  await page.getByRole("textbox", { name: "Your Name" }).last().fill(USER);
+  await page.getByRole("textbox", { name: "Your Name" }).last().fill(names[0]);
   await page.getByRole("button", { name: "CREATE LOBBY" }).click();
   const ws = await connected;
-  const icon = Object.fromEntries(TEN.map((name, i) => [name, `p${i + 1}`]));
-  ws.send(JSON.stringify({ type: "lobby", usernames: TEN, icon }));
-  await page.getByText(`Players (${TEN.length}/10)`).waitFor();
+  const icon = Object.fromEntries(names.map((name, i) => [name, `p${i + 1}`]));
+  ws.send(JSON.stringify({ type: "lobby", usernames: names, icon }));
+  await page.getByText(`Players (${names.length}/10)`).waitFor();
   return { send: (packet) => ws.send(JSON.stringify(packet)) };
 }
 

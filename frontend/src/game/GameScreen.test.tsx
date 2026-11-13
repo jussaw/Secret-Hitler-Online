@@ -13,6 +13,7 @@ function renderScreen(overrides: Partial<GameScreenProps> = {}) {
     showVotes: false,
     showBusy: true,
     statusBarText: "Waiting for president to nominate a chancellor.",
+    statusStep: null,
     drawDeckSize: 17,
     discardDeckSize: 0,
     liberalPolicies: 0,
@@ -26,14 +27,19 @@ function renderScreen(overrides: Partial<GameScreenProps> = {}) {
   return props;
 }
 
-test("shows every player and the status text", () => {
+test("shows every player in the roster, the user's own row marked, and the status text", () => {
   renderScreen();
+  const rows = Array.from(document.querySelectorAll(".roster-row"));
+  expect(rows.map((row) => row.getAttribute("data-player"))).toEqual(NAMES);
+  expect(document.querySelectorAll(".roster-row.is-user")).toHaveLength(1);
+  expect(document.querySelector(".roster-row.is-user")).toHaveAttribute("data-player", "Alice");
   for (const name of NAMES) {
     expect(screen.getByText(name)).toBeInTheDocument();
   }
-  expect(
-    screen.getByText("Waiting for president to nominate a chancellor.")
-  ).toBeInTheDocument();
+  // The tracker wraps "president" and "chancellor" in spans, so read the line's whole text.
+  expect(document.getElementById("status-bar-text")).toHaveTextContent(
+    "Waiting for president to nominate a chancellor."
+  );
 });
 
 test("END TERM is disabled outside the post-legislative phase", () => {
@@ -59,7 +65,7 @@ test("the president ends the term with END TERM", () => {
   expect(props.onEndTerm).toHaveBeenCalledTimes(1);
 });
 
-test("a spectator sees every seat, none their own, and no END TERM", () => {
+test("a spectator sees every player in the roster, none their own, and no END TERM", () => {
   const { container } = render(
     <GameScreen
       gameState={makeGameState(NAMES, { state: LobbyState.POST_LEGISLATIVE, president: "Bob" })}
@@ -69,6 +75,7 @@ test("a spectator sees every seat, none their own, and no END TERM", () => {
       showVotes={false}
       showBusy={true}
       statusBarText="Waiting for Bob to end their term."
+      statusStep={null}
       drawDeckSize={17}
       discardDeckSize={0}
       liberalPolicies={0}
@@ -77,9 +84,9 @@ test("a spectator sees every seat, none their own, and no END TERM", () => {
       onEndTerm={vi.fn()}
     />
   );
-  expect(container.querySelectorAll(".table-seat")).toHaveLength(5);
-  expect(container.querySelectorAll("#player-container.highlight")).toHaveLength(0);
-  // The button keeps its box, so the centre lays out as a player's does.
+  expect(container.querySelectorAll(".roster-row")).toHaveLength(5);
+  expect(container.querySelectorAll(".roster-row.is-user")).toHaveLength(0);
+  // The button keeps its box, so the decks column lays out as a player's does.
   // A hidden button has no accessible name, so find it by its text.
   expect(screen.getByText("END TERM")).toHaveStyle({ visibility: "hidden" });
 });
@@ -92,4 +99,9 @@ test("the header shows how many spectators watch, once anyone does", () => {
 test("the header shows no count when nobody watches", () => {
   renderScreen({ spectatorCount: 0 });
   expect(screen.queryByRole("status", { name: /watching/ })).toBeNull();
+});
+
+test("the game banner reads SECRET-HITLER", () => {
+  renderScreen();
+  expect(document.querySelector("header")).toHaveTextContent(/^SECRET-HITLER$/);
 });

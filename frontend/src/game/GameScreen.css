@@ -1,6 +1,6 @@
 @import '../variables.css';
 
-/* The whole game page fits the viewport: a slim header, then the table. */
+/* The whole game page fits the window: a slim header, then the roster and the table. */
 .game-screen {
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
@@ -15,27 +15,105 @@
     line-height: 1.15;
 }
 
-/* Seats and the centre box are positioned in percent of this area (seatPositions.ts). */
-.game-table {
-    position: relative;
-}
-
-.game-centre {
-    position: absolute;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1vh;
-}
-
-/* Both boards fit the space the deck and status rows leave: two 1683x650 boards plus 16px of margins. */
-.game-boards {
-    flex: 1 1 0;
+/* Desktop: the roster is a column at the left and the table takes the rest. */
+.game-body {
+    --roster-width: clamp(260px, 20vw, 380px);
+    /* The portrait is at most a fifth of the column's width. */
+    --portrait-max: calc(var(--roster-width) * 0.2);
+    /* A row's room beside the largest portrait: less the column's 8px padding each side and the
+       row's 4px on the left. */
+    --row-room: calc(var(--roster-width) - 20px - var(--portrait-max));
+    display: grid;
+    grid-template-columns: var(--roster-width) minmax(0, 1fr);
     min-height: 0;
-    width: 100%;
+}
+
+.game-body > .roster {
+    --roster-gap: 6px;
+    /* Text follows the window's height, but never outgrows the row's room. A row spends 1.8em on
+       its two gaps and right padding (PlayerRoster.css) and at least 3em on the vote slot, and a
+       twelve-character name in capitals with its role icon takes up to about 10.5em ("WOLFGANG
+       MAX"): 15.6em leaves a little over all of that, and at the narrowest column (260px) still
+       gives 12px text. */
+    --roster-font: clamp(12px, min(1.8vh, var(--row-room) / 15.6), 20px);
+    box-sizing: border-box;
+    min-height: 0;
+    padding: 8px;
+    gap: var(--roster-gap);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+/* Ten rows share the column's height. Fewer rows stop at 1.5 times a ten-player row, at the top. */
+.game-body .roster-row {
+    flex: 1 1 0;
+    max-height: calc((100% - 9 * var(--roster-gap)) * 0.15);
+}
+
+.game-body .roster-portrait {
+    max-height: var(--portrait-max);
+}
+
+/* The vote slot takes what the gaps and a 10.8em name leave, from 3em up to the mockup's 4.3em,
+   so the ja/nein pill (2.68:1) grows only where the names have their room. */
+.game-body .roster-status {
+    width: clamp(3em, var(--row-room) - 12.6em, 4.3em);
+}
+
+/* The table: the tracker over the boards, and the decks column one gap to the right of the
+   boards. The boards and decks are centred together, with spare width split between the outer
+   columns. Sizes come from the table's own size (100cqw, 100cqh), so no status line or label can
+   move the boards.
+
+   The decks column is sized from the deck's width w: 1.35w wide and 4.77w + 9px tall (END TERM
+   0.31w + 4px with 5px for its shadow, each pile 1.808w with room for its cards, the counts box
+   0.844w). The deck takes the largest width (up to 150px) at which the column, counted as
+   4.8w + 10px, fits the row and is no taller than the boards beside it, which are
+   (100cqw - gap - 1.35w - 20px) x 0.7724 + 16px tall. */
+.game-table {
+    --row-gap: 12px;
+    --column-gap: 24px;
+    --tracker-font: clamp(12px, 1.9vh, 22px);
+    /* RoundTracker.css keeps the card this many of its ems tall, whatever its line holds. */
+    --tracker-height: calc(var(--tracker-font) * var(--round-tracker-ems));
+    /* What the row of boards and decks may take: the table less the tracker and the gap under it. */
+    --boards-height: calc(100cqh - var(--tracker-height) - var(--row-gap));
+    --deck-width: min(
+        150px,
+        (var(--boards-height) - 10px) / 4.8,
+        ((100cqw - var(--column-gap) - 20px) * 0.7724 + 6px) / (4.8 + 1.35 * 0.7724)
+    );
+    --decks-width: calc(var(--deck-width) * 1.35);
+    /* Two stacked 1683x650 boards with 4px margins are (width - 20px) / 1.2946 + 16px tall. */
+    --board-width: min(
+        100cqw - var(--decks-width) - var(--column-gap) - 20px,
+        (var(--boards-height) - 16px) * 1.2946
+    );
     container-type: size;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-content: center;
+    gap: var(--row-gap) 0;
+    padding: 12px;
+    min-width: 0;
+    min-height: 0;
+}
+
+/* Never wider than the boards, so the status line cannot widen their column. */
+.game-table > .round-tracker {
+    --round-font-size: var(--tracker-font);
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: center;
+    max-width: calc(var(--board-width) + 20px);
+    margin: 0;
+}
+
+.game-boards {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: center;
     display: flex;
-    align-items: center;
     justify-content: center;
 }
 
@@ -43,16 +121,31 @@
     display: block;
     min-width: 0;
     max-width: none;
-    width: min(100cqw - 20px, (100cqh - 16px) * 1.2946);
+    width: var(--board-width);
 }
 
-/* Decks and the policy status keep their proportions at a smaller size. */
+/* END TERM over the draw pile, then the counts box and the discard pile. */
 .game-decks {
-    --deck-width: clamp(40px, 7vh, 80px);
+    grid-column: 3;
+    grid-row: 2;
+    align-self: center;
+    box-sizing: border-box;
+    width: var(--decks-width);
+    margin-left: var(--column-gap);
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 2vh;
-    /* A full pile's cards stand up to 23% of the deck's height (1.468 x its width) above it. */
+}
+
+.game-decks .end-term {
+    margin: 0 0 5px; /* room for the button's shadow */
+    padding: calc(var(--deck-width) * 0.06) calc(var(--deck-width) * 0.13);
+    font-size: calc(var(--deck-width) * 0.19);
+}
+
+/* A full pile's cards stand up to 0.34w above the deck (17 cards, from 9% of its 1.468w height
+   up by 2% each), so each pile keeps that much room above it. */
+.game-deck {
     padding-top: calc(var(--deck-width) * 0.34);
 }
 
@@ -61,152 +154,268 @@
     width: var(--deck-width);
 }
 
+.game-decks #deck-base {
+    display: block;
+}
+
 .game-decks #deck-card-count {
     font-size: calc(var(--deck-width) * 0.25);
 }
 
+/* The counts box is as wide as the column, and its labels never wrap. */
 .game-decks #pps-container {
-    margin: 0;
-    padding: 0.8vh 1.2vh;
+    align-self: stretch;
+    margin: calc(var(--deck-width) * 0.08) 0 0;
+    padding: calc(var(--deck-width) * 0.07);
+    line-height: 1.2;
 }
 
 .game-decks #pps-text {
-    font-size: clamp(9px, 1.4vh, 16px);
+    font-size: calc(var(--deck-width) * 0.11);
+    white-space: nowrap;
 }
 
 .game-decks #pps-icon {
-    width: 3vh;
-    height: 3vh;
+    width: calc(var(--deck-width) * 0.17);
+    height: calc(var(--deck-width) * 0.17);
 }
 
 .game-decks #pps-icon-number {
-    font-size: clamp(11px, 2vh, 22px);
+    font-size: calc(var(--deck-width) * 0.15);
 }
 
-.game-status {
-    display: flex;
-    align-items: center;
-    gap: 1.5vh;
-    width: 100%;
-}
-
-.game-status #status-bar {
-    flex: 1;
-    min-height: 0;
-}
-
-/* Two lines are always reserved, so a status that wraps does not resize the boards. */
-.game-status #status-bar-text {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 2.5em; /* a little over two 1.2 lines, so rounding never grows it */
-    line-height: 1.2;
-    padding: 0.8vh 8px;
-    font-size: clamp(12px, 2vh, 22px);
-}
-
-.game-status button {
-    margin: 0 0 5px;
-    padding: 0.8vh 2.2vh;
-    font-size: clamp(14px, 2.6vh, 30px);
-}
-
-/* Phones, and windows too narrow for the round table (below 5:4 the diagonal seats would cover the
-   boards): the page scrolls, with the players first, then status and END TERM, the boards and the
-   decks. TableSeats.css turns the seats into a grid at the same breakpoint. */
-@media (max-width: 768px), (aspect-ratio < 5/4) {
+/* Phones, windows narrower than 5:4 and windows under 500px tall: one column of the compact roster
+   (PlayerRoster.css), the tracker, the decks row and the boards at full width. The page is as tall
+   as its column and scrolls if it must, so the table is only an inline-size container (for the
+   boards' width), nothing reads 100cqh, and sizes follow the window's width. Tall windows (the
+   block after this one) override all of it; SoundControl.css and PlayerRoster.css use the same
+   query. */
+@media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
     .game-screen {
         display: block;
         height: auto;
     }
 
-    .game-table {
+    .game-body {
         display: flex;
         flex-direction: column;
-        gap: 12px;
-        padding: 8px 8px 24px;
+        gap: 8px;
+        padding: 8px 6px 16px;
     }
 
-    /* A static box ignores the inline left/right/top/bottom that place it on the round table. */
-    .game-centre {
-        position: static;
-        gap: 12px;
-        width: 100%;
-        max-width: 720px;
-        margin: 0 auto;
+    /* Two columns of rows about 26px tall: five lines for ten players. */
+    .game-body > .roster {
+        --roster-font: clamp(10.5px, 2.9vw, 15px);
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-auto-rows: max(26px, 2.45em);
+        gap: 4px 5px;
+        padding: 5px;
+        border-radius: 10px;
     }
 
-    .game-status {
-        order: -1;
+    .game-body .roster-row,
+    .game-body .roster-portrait {
+        max-height: none;
     }
 
-    .game-status button {
+    /* The ja/nein pill (2.68:1) fills the slot's width; the busy bubble (1.51:1) its height. */
+    .game-body .roster-status {
+        width: 2.7em;
+        height: 1.6em;
+    }
+
+    /* The tracker, the decks row and the boards, top to bottom. Its line's text is sized so the
+       longest status takes at most the two lines the card keeps for it at 360px wide, and its
+       steps fit one line. */
+    .game-table {
+        --tracker-font: clamp(10.5px, 3.1vw, 16px);
+        --deck-width: clamp(48px, 14vw, 72px);
+        container-type: inline-size;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 0;
+    }
+
+    .game-table > .round-tracker {
+        align-self: center;
+        max-width: 100%;
+    }
+
+    /* END TERM centred over the counts box, the draw pile at its left and the discard pile at its
+       right. A full pile's cards stand above its deck, in the empty cells beside END TERM. */
+    .game-decks {
+        order: 1;
+        display: grid;
+        grid-template-areas: ". end ." "draw pps discard";
+        align-items: center;
+        gap: 4px 12px;
+        width: auto;
+        margin: 0;
+    }
+
+    .game-decks .end-term {
+        grid-area: end;
+        justify-self: center;
+        min-width: 44px;
         min-height: 44px;
-        padding: 8px 16px;
+        padding: 6px 18px;
         font-size: 20px;
     }
 
+    .game-deck {
+        padding-top: 0;
+    }
+
+    .game-deck.draw {
+        grid-area: draw;
+    }
+
+    .game-deck.discard {
+        grid-area: discard;
+    }
+
+    .game-decks #pps-container {
+        grid-area: pps;
+        align-self: stretch;
+        margin: 0;
+        padding: 6px 8px;
+    }
+
+    .game-decks #pps-text {
+        font-size: clamp(10px, 2.8vw, 14px);
+    }
+
+    .game-decks #pps-icon {
+        width: clamp(15px, 4.4vw, 22px);
+        height: clamp(15px, 4.4vw, 22px);
+    }
+
+    .game-decks #pps-icon-number {
+        font-size: clamp(13px, 3.9vw, 19px);
+    }
+
     .game-boards {
-        flex: none;
-        container-type: inline-size;
+        order: 2;
+        align-self: stretch;
     }
 
     .game-boards #board {
         width: calc(100cqw - 20px);
     }
-
-    .game-decks {
-        --deck-width: clamp(56px, 16vw, 96px);
-    }
-
-    .game-decks #pps-text {
-        font-size: 12px;
-    }
 }
 
-/* Windows at least 700px wide and narrower than 5:4: the stacked layout fits one screen, as the
-   round table does. Under the players come status and END TERM, then the boards, sized to the
-   height that is left, with the decks in a column beside them. TableSeats.css shrinks the seats
-   at the same breakpoint. */
+/* Tall windows (half-screen windows, upright monitors and tablets, near-square windows): the
+   roster runs across the top, text sized by the window's width, and spare height collects at the
+   bottom of the page. This block also undoes the phone block above, which these windows match. */
 @media (min-width: 700px) and (aspect-ratio < 5/4) {
     .game-screen {
         display: grid;
         height: 100dvh;
     }
 
-    .game-table {
-        min-height: 0;
-        padding-bottom: 8px;
-    }
-
-    .game-centre {
-        flex: 1 1 0;
-        min-height: 0;
-        max-width: none;
+    .game-body {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-columns: minmax(0, 1fr);
         grid-template-rows: auto minmax(0, 1fr);
-        align-items: center;
+        gap: 0;
+        padding: 0;
     }
 
-    .game-status {
-        grid-column: 1 / -1;
+    .game-body > .roster {
+        --roster-font: clamp(12px, 1.5vw, 18px);
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-auto-rows: calc(var(--roster-font) * 3);
+        gap: 4px 6px;
+        padding: 6px 8px;
+        border-radius: 0;
+    }
+
+    .game-body .roster-row,
+    .game-body .roster-portrait {
+        max-height: none;
+    }
+
+    .game-body .roster-status {
+        width: 3em;
+        height: 2.2em;
+    }
+
+    /* END TERM is at least 44px tall here, so a narrow column is up to 4.49w + 50px tall. */
+    .game-table {
+        --column-gap: 12px;
+        --tracker-font: clamp(12px, 1.5vw, 20px);
+        --deck-width: min(
+            140px,
+            (var(--boards-height) - 10px) / 4.8,
+            (var(--boards-height) - 50px) / 4.49,
+            ((100cqw - var(--column-gap) - 20px) * 0.7724 + 6px) / (4.8 + 1.35 * 0.7724),
+            ((100cqw - var(--column-gap) - 20px) * 0.7724 - 34px) / (4.49 + 1.35 * 0.7724)
+        );
+        container-type: size;
+        display: grid;
+        align-content: start;
+        gap: var(--row-gap) 0;
+        padding: 8px;
+    }
+
+    .game-table > .round-tracker {
+        align-self: auto;
+        max-width: calc(var(--board-width) + 20px);
+    }
+
+    .game-decks {
+        order: 0;
+        display: flex;
+        gap: 0;
+        width: var(--decks-width);
+        margin: 0 0 0 var(--column-gap);
+    }
+
+    .game-decks .end-term {
+        min-width: 44px;
+        min-height: 44px;
+        padding: calc(var(--deck-width) * 0.06) calc(var(--deck-width) * 0.13);
+        font-size: calc(var(--deck-width) * 0.19);
+    }
+
+    .game-deck {
+        padding-top: calc(var(--deck-width) * 0.34);
+    }
+
+    .game-decks #pps-container {
+        margin: calc(var(--deck-width) * 0.08) 0 0;
+        padding: calc(var(--deck-width) * 0.07);
+    }
+
+    .game-decks #pps-text {
+        font-size: calc(var(--deck-width) * 0.11);
+    }
+
+    .game-decks #pps-icon {
+        width: calc(var(--deck-width) * 0.17);
+        height: calc(var(--deck-width) * 0.17);
+    }
+
+    .game-decks #pps-icon-number {
+        font-size: calc(var(--deck-width) * 0.15);
     }
 
     .game-boards {
-        align-self: stretch;
-        container-type: size;
+        order: 0;
+        align-self: center;
     }
 
     .game-boards #board {
-        width: min(100cqw - 20px, (100cqh - 16px) * 1.2946);
+        width: var(--board-width);
     }
+}
 
-    /* A full pile's cards stand above each deck, so the gaps leave room for them. */
-    .game-decks {
-        --deck-width: clamp(40px, 7vh, 80px);
-        flex-direction: column;
-        gap: calc(var(--deck-width) * 0.34 + 1vh);
+/* Near-square windows are short of height, so three players share each line of the roster. */
+@media (min-width: 700px) and (aspect-ratio < 5/4) and (aspect-ratio >= 1/1) {
+    .game-body > .roster {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }

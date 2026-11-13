@@ -372,7 +372,7 @@ test("the spectator count fits every header", async ({ page, isMobile }) => {
   await settle(page);
   // The title's own font, not a wider fallback, is what the count must clear.
   await page.evaluate(async () => {
-    await document.fonts.load(getComputedStyle(document.querySelector("header")!).font, "SECRET-HITLER.ONLINE");
+    await document.fonts.load(getComputedStyle(document.querySelector("header")!).font, "SECRET-HITLER");
   });
   const icon = Object.fromEntries(TEN.map((name, i) => [name, `p${i + 1}`]));
   const check = async (where: string) => {
