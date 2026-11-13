@@ -15,7 +15,7 @@
 - Licence stays CC BY-NC-SA 4.0; README keeps credit to upstream and the board game's creators.
 - No new art. Sound clips are CC0 only and listed in `docs/SOUND-CREDITS.md`.
 - The WebSocket protocol stays backward compatible for players; spectator support only adds fields and a query parameter.
-- One branch per phase off `development` (`phase-1-housekeeping`, `phase-2-vite`, …), merged by pull request on the fork when every box in the phase is ticked.
+- One branch per phase off `main` (`phase-1-housekeeping`, `phase-2-vite`, …), merged by pull request on the fork when every box in the phase is ticked. Until 2026-11-13 the working branch was `development`, which is why earlier phases below say so.
 - Commits follow Conventional Commits with a scope: `type(scope): summary`.
 - Tick a box in this file in the same commit as the work it describes.
 - Desktop acceptance sizes: 1920x1080, 1920x937, 1600x900, 1366x768, 1280x720. Phone acceptance sizes: 360x740, 412x915.
