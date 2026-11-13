@@ -598,8 +598,8 @@ These are Minor review findings deferred from Phase 8. The breakdown records the
 - [x] `frontend/src/game/PlayerRoster.test.tsx`: add tests that an office outranks `EXECUTED` on the detail line, and that a visible role icon shows on a darkened row
 - [x] `frontend/src/game/RoundTracker.tsx`: build the highlight regex once; add tests for an empty line, an all-caps `PRESIDENT`, and the first render having no fade class; a step-only change (same text) leaves `shown.step` stale, so a text change right after briefly re-lights the older step during the fade
 - [x] `frontend/src/game/GameScreen.test.tsx`: make the status assertion exact (`toHaveTextContent(/^…$/)`); add a test that `statusStep` reaches the tracker's `aria-current`
-- [ ] `frontend/src/App.tsx`: RETURN TO LOBBY resets the boards but not `statusBarText` or `statusStep`, so the next game opens with the last game's line and lit step; reset both; wrap the over-long election-tracker line
-- [ ] `frontend/e2e/tracker.spec.ts`: add a case that ELECTION stays lit under the victory screen (voting, then `FASCIST_VICTORY_ELECTION`)
+- [x] `frontend/src/App.tsx`: RETURN TO LOBBY resets the boards but not `statusBarText` or `statusStep`, so the next game opens with the last game's line and lit step; reset both; wrap the over-long election-tracker line
+- [x] `frontend/e2e/tracker.spec.ts`: add a case that ELECTION stays lit under the victory screen (voting, then `FASCIST_VICTORY_ELECTION`)
 - [ ] `frontend/src/game/GameScreen.css` and `PlayerRoster.css`: the tall-window blocks restate base values to undo the phone block; note at the base rules that their values are restated there, or move to a phone-only query
 - [ ] `frontend/e2e/phone.spec.ts`: no check that rows keep their place when a PRES/CHAN tag appears (`rowShift` fills `.roster-detail`, which phones hide)
 - [ ] `frontend/e2e/prompts.spec.ts`: add an upright short viewport (the project's width x 600) beside the sideways one for the scrolled-prompt test
