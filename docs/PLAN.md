@@ -611,6 +611,11 @@ These are Minor review findings deferred from Phase 8. The breakdown records the
 
 **Known limits.** With Linux-drawn fonts, the longest status takes a third line at 335px and 363–364px wide, so the tracker grows by a line there (about 14px at 335px, 16px at 363–364px); at 381–383px the step line keeps under 12% to spare but does not wrap. None of these is a common phone width, and each was measured in the Playwright Linux image (Galaxy S8 emulation).
 
+**Phase 9 acceptance**
+
+- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [ ] Every board floor in Phase 8's breakdown holds
+
 ---
 
 ## Phase 10: Baseline bugs
