@@ -19,13 +19,14 @@ export function isPicking(
   return icons[name] === undefined || icons[name] === defaultPortrait;
 }
 
+const WATCHING = "You are watching. ";
 const plain = (text: string): StatusSegment => ({ text, highlight: false });
-const name = (text: string): StatusSegment => ({ text, highlight: true });
+const nameSegment = (text: string): StatusSegment => ({ text, highlight: true });
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 /** The line for a guest, who is neither the host nor watching. */
 function guestLine(usernames: string[], bots: number): StatusSegment[] {
-  const host = name(usernames[0]);
+  const host = nameSegment(usernames[0]);
   if (bots > 0) {
     return [
       plain("Waiting for "),
@@ -41,11 +42,9 @@ export function lobbyStatus(
   icons: Record<string, string>,
   viewer: LobbyViewer,
 ): StatusSegment[] {
-  const prefix = viewer.spectator ? [plain("You are watching. ")] : [];
+  const prefix = viewer.spectator ? [plain(WATCHING)] : [];
   if (usernames.length === 0) {
-    return viewer.spectator
-      ? [plain("You are watching. No one has a seat yet.")]
-      : [];
+    return viewer.spectator ? [plain(`${WATCHING}No one has a seat yet.`)] : [];
   }
 
   const picking = usernames.filter((n) => isPicking(n, icons));
@@ -55,7 +54,7 @@ export function lobbyStatus(
     const first =
       picking[0] === viewer.user && !viewer.spectator
         ? plain("you")
-        : name(picking[0]);
+        : nameSegment(picking[0]);
     const others = picking.length - 1;
     const rest = others > 0 ? ` and ${plural(others, "other")}` : "";
     return [

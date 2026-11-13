@@ -172,4 +172,10 @@ describe("lobbyStatus", () => {
     );
     expect(text(status)).toBe("Waiting for Long Guest 2 to pick a look.");
   });
+
+  it("lets picking beat the bots line for a host with fewer than five players", () => {
+    const players = TEN.slice(0, 4);
+    const status = lobbyStatus(players, icons(players, [lg(3)]), player(HOST));
+    expect(text(status)).toBe("Waiting for Long Guest 3 to pick a look.");
+  });
 });
