@@ -43,9 +43,10 @@ export default function PlayInsteadPrompt({
       result = await onContinue(trimmed);
     } catch {
       result = CONTACT_ERROR;
-    } finally {
-      pending.current = false;
     }
+    // After a success the app is closing the prompt: stay busy so nothing submits twice.
+    if (result === "") return;
+    pending.current = false;
     if (!mounted.current) return;
     setChecking(false);
     setError(result);
@@ -71,7 +72,7 @@ export default function PlayInsteadPrompt({
             setError("");
           }}
           onKeyDown={(e) => {
-            if (e.key === "Enter") {
+            if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) {
               e.preventDefault();
               submit();
             }

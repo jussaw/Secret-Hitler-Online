@@ -106,6 +106,25 @@ describe("PlayInsteadPrompt", () => {
     expect(console.warn).not.toHaveBeenCalled();
   });
 
+  test("CONTINUE stays disabled after a successful check", async () => {
+    const { onContinue } = setup("Sam");
+    fireEvent.click(button("CONTINUE"));
+    await act(async () => {});
+    expect(button("CONTINUE")).toBeDisabled();
+    fireEvent.click(button("CONTINUE"));
+    fireEvent.keyDown(field(), { key: "Enter" });
+    expect(onContinue).toHaveBeenCalledTimes(1);
+  });
+
+  test("Enter during IME composition does not submit", () => {
+    const { onContinue } = setup("Sam");
+    fireEvent.keyDown(field(), { key: "Enter", isComposing: true });
+    fireEvent.keyDown(field(), { key: "Enter", keyCode: 229 });
+    expect(onContinue).not.toHaveBeenCalled();
+    fireEvent.keyDown(field(), { key: "Enter" });
+    expect(onContinue).toHaveBeenCalledTimes(1);
+  });
+
   test("CANCEL calls onCancel", () => {
     const { onCancel } = setup();
     fireEvent.click(button("CANCEL"));
