@@ -40,6 +40,9 @@ export const NARROW_WINDOWS = [
   { width: 990, height: 793 },
 ];
 
+/** The narrowest phone supported, where the page may scroll down (but never sideways). */
+export const NARROW_PHONE = { width: 320, height: 568 };
+
 /**
  * The narrowest each board (the first #board image) may be, in CSS px, keyed "WxH", for every
  * player count. At the five desktop sizes these are 90% of the design mockup's widths; in the

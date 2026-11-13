@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import {
   LONG_STATUS,
+  NARROW_PHONE,
   overflowX,
   overlaps,
   pageHeight,
@@ -12,17 +13,59 @@ import {
 } from "./layout";
 import { createLobby, joinGuests, settle, startGame, watchLobby } from "./lobby";
 
-// Runs in the phone projects; each sets its own viewport (360x740 or 412x915).
+// Runs in the phone projects; each sets its own viewport (360x740 or 412x915). phone-360 also
+// checks the login page, the lobby and the game at NARROW_PHONE (320x568).
 
-test("the login page fits the phone", async ({ page }) => {
-  const { width } = page.viewportSize()!;
-  await page.goto("/");
-  await settle(page);
-  const overflow = await overflowX(page);
-  expect(overflow.scrollWidth, "scrollWidth").toBeLessThanOrEqual(width);
-  expect(overflow.offscreen, "past the edge").toEqual([]);
-  expect(await smallTargets(page, "body"), "small touch targets").toEqual([]);
-});
+/** In phone-360, sets the narrowest phone's viewport; every other project skips the test. */
+async function narrowPhone(page: Page): Promise<void> {
+  test.skip(test.info().project.name !== "phone-360", "one phone project is enough");
+  await page.setViewportSize(NARROW_PHONE);
+}
+
+for (const narrow of [false, true]) {
+  const phone = narrow ? "a 320px phone" : "the phone";
+
+  test(`the login page fits ${phone}`, async ({ page }) => {
+    if (narrow) await narrowPhone(page);
+    const { width } = page.viewportSize()!;
+    await page.goto("/");
+    await settle(page);
+    const overflow = await overflowX(page);
+    expect(overflow.scrollWidth, "scrollWidth").toBeLessThanOrEqual(width);
+    expect(overflow.offscreen, "past the edge").toEqual([]);
+    expect(await smallTargets(page, "body"), "small touch targets").toEqual([]);
+  });
+
+  test(`the lobby and its portrait picker fit ${phone}`, async ({ page, baseURL }) => {
+    if (narrow) await narrowPhone(page);
+    const { width } = page.viewportSize()!;
+    await page.goto("/");
+    await page.getByRole("textbox", { name: "Your Name" }).last().fill("Host Player");
+    await page.getByRole("button", { name: "CREATE LOBBY" }).click();
+    const portraits = page.locator("#icon.selectable:not(.disabled)");
+    await portraits.first().waitFor();
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    let overflow = await overflowX(page);
+    expect(overflow.scrollWidth, "scrollWidth with the picker open").toBeLessThanOrEqual(width);
+    expect(overflow.offscreen, "picker past the edge").toEqual([]);
+    expect(await smallTargets(page, "#alert-box"), "small targets in the picker").toEqual([]);
+
+    await portraits.first().click();
+    await page.getByRole("button", { name: "CONFIRM" }).click();
+    const link = await page.locator("#linkText").inputValue();
+    const guests = await joinGuests(baseURL!, new URL(link).searchParams.get("lobby")!, 9);
+    try {
+      await expect(page.getByText("Players (10/10)")).toBeVisible();
+      await settle(page);
+      overflow = await overflowX(page);
+      expect(overflow.scrollWidth, "scrollWidth").toBeLessThanOrEqual(width);
+      expect(overflow.offscreen, "past the edge").toEqual([]);
+      expect(await smallTargets(page, "body"), "small touch targets").toEqual([]);
+    } finally {
+      guests.forEach((ws) => ws.close());
+    }
+  });
+}
 
 test("text fields use 16px text, so iOS Safari does not zoom in on focus", async ({ page }) => {
   await page.goto("/");
@@ -31,35 +74,6 @@ test("text fields use 16px text, so iOS Safari does not zoom in on focus", async
   );
   expect(sizes.length, "login text fields").toBeGreaterThan(0);
   for (const size of sizes) expect(size, "text field font size").toBeGreaterThanOrEqual(16);
-});
-
-test("the lobby and its portrait picker fit the phone", async ({ page, baseURL }) => {
-  const { width } = page.viewportSize()!;
-  await page.goto("/");
-  await page.getByRole("textbox", { name: "Your Name" }).last().fill("Host Player");
-  await page.getByRole("button", { name: "CREATE LOBBY" }).click();
-  const portraits = page.locator("#icon.selectable:not(.disabled)");
-  await portraits.first().waitFor();
-  await page.evaluate(() => document.fonts.ready.then(() => undefined));
-  let overflow = await overflowX(page);
-  expect(overflow.scrollWidth, "scrollWidth with the picker open").toBeLessThanOrEqual(width);
-  expect(overflow.offscreen, "picker past the edge").toEqual([]);
-  expect(await smallTargets(page, "#alert-box"), "small targets in the picker").toEqual([]);
-
-  await portraits.first().click();
-  await page.getByRole("button", { name: "CONFIRM" }).click();
-  const link = await page.locator("#linkText").inputValue();
-  const guests = await joinGuests(baseURL!, new URL(link).searchParams.get("lobby")!, 9);
-  try {
-    await expect(page.getByText("Players (10/10)")).toBeVisible();
-    await settle(page);
-    overflow = await overflowX(page);
-    expect(overflow.scrollWidth, "scrollWidth").toBeLessThanOrEqual(width);
-    expect(overflow.offscreen, "past the edge").toEqual([]);
-    expect(await smallTargets(page, "body"), "small touch targets").toEqual([]);
-  } finally {
-    guests.forEach((ws) => ws.close());
-  }
 });
 
 /** The game page's parts, in viewport px, and the height the table keeps for the tracker. */
@@ -208,7 +222,7 @@ test("a 320px phone keeps the phone layout, and only scrolls down", async ({ pag
   const guests = await startGame(page, baseURL!, 10);
   try {
     await settle(page);
-    await page.setViewportSize({ width: 320, height: 568 });
+    await page.setViewportSize(NARROW_PHONE);
     await settle(page);
     await checkGame(page, { players: 10, scrollDown: true });
   } finally {
@@ -272,7 +286,7 @@ test("a spectator's game keeps the phone layout at 320px", async ({ page, browse
     await host.getByRole("button", { name: "START GAME" }).click();
     await expect(page.locator(".game-screen")).toBeVisible();
     await settle(page);
-    await page.setViewportSize({ width: 320, height: 568 });
+    await page.setViewportSize(NARROW_PHONE);
     await settle(page);
     await checkGame(page, { players: 10, spectator: true, scrollDown: true });
   } finally {

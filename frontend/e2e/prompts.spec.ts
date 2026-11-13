@@ -1,14 +1,15 @@
 import { expect, test } from "@playwright/test";
 import { LobbyState } from "../src/types";
 import { PROMPTS, TEN, gamePacket, openFakeGame } from "./fakeGame";
-import { DESKTOP_SIZES, overflowX, smallTargets } from "./layout";
+import { DESKTOP_SIZES, NARROW_PHONE, overflowX, smallTargets } from "./layout";
 
-// Runs in every project. Phones: no horizontal overflow, the prompt on screen and near-full width,
-// large touch targets. Desktop, at all five sizes: the prompt never makes the page scroll, and its
+// Runs in desktop and the phone projects. Phones, at the project's size (phone-360 also at
+// NARROW_PHONE, 320x568): no horizontal overflow, the prompt on screen and near-full width, large
+// touch targets. Desktop, at all five sizes: the prompt never makes the page scroll, and its
 // button can always be reached.
 
 for (const prompt of PROMPTS) {
-  test(`the ${prompt.name} prompt fits`, async ({ page, isMobile }) => {
+  test(`the ${prompt.name} prompt fits`, async ({ page, isMobile }, testInfo) => {
     const game = await openFakeGame(page);
     prompt.packets.forEach((packet) => game.send(packet));
     const alertBox = page.locator("#alert-box.appear-custom-alert");
@@ -16,7 +17,8 @@ for (const prompt of PROMPTS) {
     await button.waitFor({ timeout: 15_000 });
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
 
-    const sizes = isMobile ? [page.viewportSize()!] : DESKTOP_SIZES;
+    const phones = testInfo.project.name === "phone-360" ? [NARROW_PHONE] : [];
+    const sizes = isMobile ? [page.viewportSize()!, ...phones] : DESKTOP_SIZES;
     for (const size of sizes) {
       await page.setViewportSize(size);
       const at = `${size.width}x${size.height}`;
