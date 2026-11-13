@@ -25,7 +25,7 @@ For more information, read the [official rulebook here](https://www.secrethitler
 ## What this fork adds
 
 - **A game screen that fits one screen.** The players are listed at the left, each with their office, any role you know and their vote. A round tracker over the boards lights the current step (nomination, election, legislative session, executive action) above the status line.
-- **Phones.** A phone held upright gets one column: the players in two compact columns, the tracker, the decks and the boards. A ten-player game fits without scrolling at common sizes such as 360x740 and 412x915.
+- **Phones.** A phone held upright gets one column: the players in two compact columns, the tracker, the decks and the boards. A ten-player game fits without scrolling at common sizes such as 360x740 and 412x915. Phones down to 320px wide keep the same layout, though the page may scroll on them.
 - **Spectators.** Enter a lobby code and press **WATCH** to follow a game without a seat. Spectators see the table and the status lines, but no roles, hands or peeks until the game is over. The server filters those out, so they never reach a spectator's browser. Everyone sees how many people are watching.
 - **Sound effects** for joining, nominations, votes, policies, presidential powers and the end of the game. The speaker button in the header mutes them and sets the volume, and each browser remembers its own setting. Every clip is CC0, credited in [docs/SOUND-CREDITS.md](docs/SOUND-CREDITS.md).
 - **Lobbies survive a restart.** The server backs up its lobbies to a SQLite file and restores them when it starts.
