@@ -590,10 +590,22 @@ public class Lobby implements Serializable {
      *                          not all players have selected an icon.
      * @modifies this
      * @effects creates and stores a new SecretHitlerGame.
-     *          The usernames of all active users are added to the game in a
-     *          randomized order.
+     *          The usernames of all connected users are added to the game in a
+     *          randomized order. A user inside the grace window after a disconnect
+     *          ({@code PLAYER_TIMEOUT_IN_SEC}) is not seated: the lobby drops them
+     *          at once, as {@code RemoveUserTask} would have, keeping their preferred
+     *          icon. They find the lobby in a game when they return and can watch it.
      */
     synchronized public void startNewGame() {
+        // Seat only players with a live connection.
+        Set<String> connected = new HashSet<>(userToUsername.values());
+        for (String username : new ArrayList<>(activeUsernames)) {
+            if (!connected.contains(username)) {
+                activeUsernames.remove(username);
+                usernameToIcon.remove(username);
+            }
+        }
+
         if (activeUsernames.size() > SecretHitlerGame.MAX_PLAYERS) {
             throw new RuntimeException("Too many users to start a game.");
         } else if (isInGame()) {

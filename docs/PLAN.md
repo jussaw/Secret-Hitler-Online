@@ -41,7 +41,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 8. Game screen redesign | `phase-8-game-screen` | done |
 | 9. Phase 8 follow-ups | `phase-9-follow-ups` | done |
 | 10. Baseline bugs | `fix/issue-N`, one per issue | done |
-| 11. Lobby redesign | `phase-11-lobby` | not started |
+| 11. Lobby redesign | `phase-11-lobby` | in progress |
 
 ---
 
@@ -639,7 +639,7 @@ Breakdown: [`docs/superpowers/plans/2026-11-13-phase-11-lobby.md`](superpowers/p
 
 Issue #23: the lobby matches the game screen and fits one screen, says what START GAME is waiting for, and lets anyone in the lobby switch between playing and watching. Added after the first ten phases were done, so the "Done when" below covers Phases 1 to 10.
 
-- [ ] `backend/src/main/java/server/util/Lobby.java`: a game seats only players with a live connection, so nobody inside the 3 s grace window gets a seat they cannot take
+- [x] `backend/src/main/java/server/util/Lobby.java`: a game seats only players with a live connection, so nobody inside the 3 s grace window gets a seat they cannot take
 - [ ] `frontend/src/game/RosterRow.tsx`: one roster row for the game and the lobby
 - [ ] `frontend/src/lobby/lobbyStatus.ts`: the status line names who START GAME is waiting for and says when bots fill the table
 - [ ] `frontend/src/lobby/joinError.ts` and `copyText.ts`: JOIN's error messages shared with PLAY INSTEAD; COPY uses the Clipboard API with today's fallback
