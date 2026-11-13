@@ -56,8 +56,8 @@
     max-height: var(--portrait-max);
 }
 
-/* The role icon and the office or role line are larger than in the other layouts (the phone block
-   puts PlayerRoster.css's sizes back). */
+/* The role icon and the office or role line are larger than in the other layouts (the phone and
+   tall-window blocks put PlayerRoster.css's sizes back). */
 .game-body .roster-role-icon {
     height: 1.3em;
 }
@@ -201,8 +201,7 @@
    the boards at full width. The query is the stacked one (SoundControl.css and RoundTracker.css
    use it) less the tall windows below, which have their own block. The page is as tall as its
    column and scrolls if it must, so the table is only an inline-size container (for the boards'
-   width), nothing reads 100cqh, and sizes follow the window's width. Phones down to 320px wide are
-   supported (at 320x568 the page may scroll); narrower ones are not. */
+   width), nothing reads 100cqh, and sizes follow the window's width. */
 @media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
     .game-screen {
         display: block;

@@ -389,8 +389,9 @@ test("every media query in the page's styles parses, the phone-only query among 
     return Array.from(new Set(found));
   });
   expect(queries.length).toBeGreaterThan(0);
-  // A browser serializes a query it can't parse as "not all".
-  expect(queries.filter((text) => text === "not all")).toEqual([]);
+  // A browser serializes a query it can't parse as "not all", also inside a comma list.
+  const parts = queries.flatMap((text) => text.split(",").map((part) => part.trim()));
+  expect(parts.filter((part) => part === "not all")).toEqual([]);
 
   // The phone-only query is the one that matches phones, in either orientation, and not a tall
   // window. The stacked query also matches the tall window, and App.css's (max-width: 768px) misses
