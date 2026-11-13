@@ -86,46 +86,82 @@ a {
     color: var(--textColorLiberal);
 }
 
-/* Credit to https://designtheway.com/css-buttons/ for the CSS source code.*/
+/* Credit to https://designtheway.com/css-buttons/ for the CSS source code.
+ *
+ * A button is drawn as a face standing on its shadow, and both are inside its box, so a press
+ * anywhere on what is drawn reaches it. ::before draws the face and, below it, the shadow,
+ * --button-depth tall. A press moves the face down onto the shadow, and the label with it, by
+ * moving the box's transparent border from its bottom to its top. The box itself stays still, so
+ * a held press never moves the button out from under the pointer (issue #29). The border moves in
+ * one step: browsers round each border width down to whole pixels, so widths on their way would
+ * shrink the box by a pixel, while the two widths swapped keep its height at any pixel ratio. The
+ * bottom margin is --button-depth smaller, so the shadow takes the room it took when it was drawn
+ * outside the box. Variants set --button-face and --button-shadow in place of a background and a
+ * box-shadow. */
 button {
-    background:transparent;
-    border: 2px solid transparent;
+    --button-face: var(--buttonFill);
+    --button-shadow: var(--buttonShadowFill);
+    --button-depth: 5px;
+    --button-border: 2px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    border: var(--button-border) solid transparent;
+    border-bottom-width: calc(var(--button-border) + var(--button-depth));
     box-sizing: border-box;
     cursor: pointer;
     font-size: calc(6px + 4vmin);
     font-family: var(--headerFont);
     color: var(--headerTextColor);
-    background: var(--buttonFill);
     line-height: 1;
-    margin: 18px;
+    margin: 18px 18px calc(18px - var(--button-depth));
     padding: 10px 25px;
     text-align: center;
     text-decoration: none;
     display:inline-block;
+    /* A press moves the label, and the baseline with it: aligned by its top, a button keeps its
+       line, and the buttons beside it, where they are. */
+    vertical-align: top;
     outline:none;
     position:relative;
+    isolation: isolate; /* the face, at z-index -1, stays in front of what is behind the button */
     border-radius: 10px;
-    top:0;
-    -webkit-transition: all 0.15s ease-in-out 0s, visibility 0s;
-    -moz-transition: all 0.15s ease-in-out 0s, visibility 0s;
-    transition: all 0.15s ease-in-out 0s, visibility 0s;
-    box-shadow: 0 5px 0 var(--buttonShadowFill);
+    -webkit-transition: all 0.15s ease-in-out 0s, visibility 0s, border-width 0s;
+    -moz-transition: all 0.15s ease-in-out 0s, visibility 0s, border-width 0s;
+    transition: all 0.15s ease-in-out 0s, visibility 0s, border-width 0s;
     -webkit-tap-highlight-color: transparent;
 }
 
+/* The face: the padding box and the border around it, so it moves with the border. Its shadow
+   goes in the same step; only its colour eases. */
+button::before {
+    content: "";
+    position: absolute;
+    inset: calc(-1 * var(--button-border));
+    z-index: -1;
+    border-radius: inherit;
+    background: var(--button-face);
+    box-shadow: 0 var(--button-depth) 0 var(--button-shadow);
+    transition: background-color 0.15s ease-in-out;
+}
+
 button:hover, button:focus, button:focus-visible{
-    background: var(--buttonHoverFill);
+    --button-face: var(--buttonHoverFill);
 }
 
 button:not(:disabled):active{
-    top:5px;
-    background: var(--buttonFill);
-    box-shadow: 0 0 0 var(--buttonShadowFill);
+    --button-face: var(--buttonFill);
+    border-top-width: calc(var(--button-border) + var(--button-depth));
+    border-bottom-width: var(--button-border);
+}
+
+button:not(:disabled):active::before{
+    box-shadow: 0 0 0 var(--button-shadow);
 }
 
 button:disabled{
-    box-shadow: 0 5px 0 var(--buttonDisabledShadowFill);
-    background: var(--buttonDisabledFill);
+    --button-face: var(--buttonDisabledFill);
+    --button-shadow: var(--buttonDisabledShadowFill);
     cursor: not-allowed;
 }
 
@@ -141,9 +177,13 @@ input {
     outline:none;
 }
 
-/* Touch targets on phones are at least 44px tall. */
+/* Touch targets on phones are at least 44px tall: a button's face, with its shadow below. */
 @media (max-width: 768px) {
-    button, input {
+    button {
+        min-height: calc(44px + var(--button-depth));
+    }
+
+    input {
         min-height: 44px;
     }
 

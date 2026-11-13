@@ -137,13 +137,14 @@
     border-color: #f08a5d;
 }
 
-/* The page's buttons keep App.css's look; the layouts size them. */
+/* The page's buttons keep App.css's look; the layouts size them. The shadow, at the foot of the
+   box, takes no room, as it did when it was drawn outside the box. */
 .lobby-main button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.35em;
-    margin: 0;
+    margin: 0 0 calc(-1 * var(--button-depth));
     font-size: 1.3em;
     padding: 0.5em 0.9em;
 }
@@ -211,25 +212,24 @@
 
 /* A neutral grey variant of App.css's button. */
 .lobby-secondary button {
-    background: #6e655e;
-    box-shadow: 0 5px 0 #4b4440;
+    --button-face: #6e655e;
+    --button-shadow: #4b4440;
 }
 
 .lobby-secondary button:not(:disabled):hover,
 .lobby-secondary button:not(:disabled):focus,
 .lobby-secondary button:not(:disabled):focus-visible {
-    background: #857b73;
+    --button-face: #857b73;
 }
 
 .lobby-secondary button:not(:disabled):active {
-    background: #6e655e;
-    box-shadow: 0 0 0 #4b4440;
+    --button-face: #6e655e;
 }
 
 .lobby-secondary button:disabled {
+    --button-face: #5b534d;
+    --button-shadow: #433c38;
     color: rgba(255, 255, 255, 0.45);
-    background: #5b534d;
-    box-shadow: 0 5px 0 #433c38;
 }
 
 .lobby-full-note {
@@ -305,7 +305,7 @@
 
     .lobby-main button {
         min-width: 44px;
-        min-height: 44px;
+        min-height: calc(44px + var(--button-depth));
     }
 
     .lobby-actions {
@@ -385,15 +385,15 @@
         text-align: left;
     }
 
-    /* Tall windows are touch screens too (END TERM and the sound control are 44px tall here): the
-       field and the buttons are at least 44px tall, and the field's text at least 16px, so iOS
-       Safari does not zoom into it. */
+    /* Tall windows are touch screens too (END TERM's face and the sound control are 44px tall
+       here): the field and the buttons' faces are at least 44px tall, and the field's text at
+       least 16px, so iOS Safari does not zoom into it. */
     .lobby-link-row input {
         min-height: 44px;
         font-size: max(16px, 1em);
     }
 
     .lobby-main button {
-        min-height: 44px;
+        min-height: calc(44px + var(--button-depth));
     }
 }

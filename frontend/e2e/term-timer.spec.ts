@@ -142,11 +142,36 @@ function measure(page: Page) {
       const r = el.getBoundingClientRect();
       return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
     };
+    // A button's box holds its shadow under its face (App.css), in a bottom border that much wider
+    // than the top one. The face is the box less that; anything else's face is its box.
+    const face = (el: Element | null) => {
+      const b = box(el);
+      if (!el || !b) return null;
+      const style = getComputedStyle(el);
+      return { ...b, bottom: b.bottom - (parseFloat(style.borderBottomWidth) - parseFloat(style.borderTopWidth)) };
+    };
+    // The icon and the seconds stay inside the chip's border. (A button's face is drawn over its
+    // border, past its padding box, so the chip's scrollWidth no longer tells.)
+    const fits = (el: Element) => {
+      const chip = el.getBoundingClientRect();
+      const style = getComputedStyle(el);
+      return Array.from(el.children).every((child) => {
+        const r = child.getBoundingClientRect();
+        if (r.width === 0) return true; // the hidden description
+        return (
+          r.left >= chip.left + parseFloat(style.borderLeftWidth) - 1 &&
+          r.right <= chip.right - parseFloat(style.borderRightWidth) + 1
+        );
+      });
+    };
     const timer = document.querySelector(".term-timer");
+    const endTerm = document.querySelector(".game-decks .end-term");
     return {
       timer: box(timer),
-      timerFits: timer ? timer.scrollWidth <= timer.clientWidth + 1 : true,
-      endTerm: box(document.querySelector(".game-decks .end-term"))!,
+      timerFace: face(timer),
+      timerFits: timer ? fits(timer) : true,
+      endTerm: box(endTerm)!,
+      endTermFace: face(endTerm)!,
       header: box(document.querySelector(".game-screen > header"))!,
       roster: box(document.querySelector(".game-body > .roster"))!,
       tracker: box(document.querySelector(".game-table > .round-tracker"))!,
@@ -193,7 +218,10 @@ async function checkPlacement(page: Page, size: Size, placement: Placement, touc
     expect(timer.top, `the countdown under the header at ${at}`).toBeGreaterThanOrEqual(parts.header.bottom);
   } else {
     expect(timer.left, `the countdown right of END TERM's flash at ${at}`).toBeGreaterThanOrEqual(parts.endTerm.right + FLASH);
-    expect(Math.abs(centreY(timer) - centreY(parts.endTerm)), `the countdown level with END TERM at ${at}`).toBeLessThanOrEqual(1);
+    expect(
+      Math.abs(centreY(parts.timerFace!) - centreY(parts.endTermFace)),
+      `the countdown's face level with END TERM's at ${at}`
+    ).toBeLessThanOrEqual(1);
   }
   for (const [name, part] of [
     ["the roster", parts.roster],
@@ -204,8 +232,9 @@ async function checkPlacement(page: Page, size: Size, placement: Placement, touc
   ] as const) {
     expect(overlaps(timer, part), `the countdown over ${name} at ${at}`).toBe(false);
   }
+  // The president's chip is a button: the shadow under its face may touch the top of a card.
   for (const card of parts.deckCards) {
-    expect(overlaps(timer, card), `the countdown over a deck card at ${at}`).toBe(false);
+    expect(overlaps(parts.timerFace!, card), `the countdown over a deck card at ${at}`).toBe(false);
   }
   if (touch) {
     expect(await smallTargets(page, ".game-screen"), `small touch targets at ${at}`).toEqual([]);
@@ -243,7 +272,7 @@ async function discardsShown(page: Page, count: number) {
 /**
  * After vetoes late in a game, the discard pile can hold up to 11 cards at END TERM, and with the
  * phones' largest decks its top cards then reach the countdown at END TERM's right. The countdown
- * stays on top of them, over no more than their top 3px.
+ * stays on top of them, its face over no more than their top 3px.
  */
 test("on a phone, the countdown stays on top of a discard pile grown by vetoes", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === "desktop", "phones put the countdown above the discard pile");
@@ -261,10 +290,12 @@ test("on a phone, the countdown stays on top of a discard pile grown by vetoes",
     await page.evaluate(() => document.querySelector(".term-timer")!.scrollIntoView({ block: "center" }));
     const parts = await measure(page);
     const timer = parts.timer!;
-    for (const card of parts.deckCards.filter((c) => overlaps(timer, c))) {
-      expect(timer.bottom - card.top, `how far a card reaches under the countdown at ${at}`).toBeLessThanOrEqual(3);
-      const x = (Math.max(timer.left, card.left) + Math.min(timer.right, card.right)) / 2;
-      const y = (card.top + timer.bottom) / 2;
+    // The chip is a button, measured by its face: the shadow under the face may cover more.
+    const face = parts.timerFace!;
+    for (const card of parts.deckCards.filter((c) => overlaps(face, c))) {
+      expect(face.bottom - card.top, `how far a card reaches under the countdown at ${at}`).toBeLessThanOrEqual(3);
+      const x = (Math.max(face.left, card.left) + Math.min(face.right, card.right)) / 2;
+      const y = (card.top + face.bottom) / 2;
       const hit = await page.evaluate(([x, y]) => {
         const el = document.elementFromPoint(x, y);
         return el?.closest(".term-timer") ? "the countdown" : `${el?.tagName} #${el?.id} .${el?.className}`;

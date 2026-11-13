@@ -20,24 +20,37 @@
     white-space: nowrap;
 }
 
-/* The president's chip is a button in the second colour, so it is not taken for END TERM. */
+/* The president's chip is a button in the second colour, so it is not taken for END TERM. App.css
+   draws its face and shadow; the chip's own background is the other players' chip. Its shadow
+   takes no room, as it did when it was drawn outside the box. */
 button.term-timer {
-    background: var(--buttonAltFill);
-    box-shadow: 0 0.2em 0 var(--buttonAltShadowFill);
+    --button-face: var(--buttonAltFill);
+    --button-shadow: var(--buttonAltShadowFill);
+    --button-depth: 0.2em;
+    background: transparent;
+    border-bottom-width: calc(var(--button-border) + var(--button-depth));
+    margin-bottom: calc(-1 * var(--button-depth));
+}
+
+/* Whole pixels where the browser can round: it rounds a border's width down to them, which would
+   leave the face a fraction of a pixel off its shadow and its margin. */
+@supports (width: round(1px, 1px)) {
+    button.term-timer {
+        --button-depth: round(0.2em, 1px);
+    }
 }
 
 button.term-timer:hover,
 button.term-timer:focus {
-    background: var(--buttonAltHoverFill);
+    --button-face: var(--buttonAltHoverFill);
 }
 
 button.term-timer:not(:disabled):active {
-    top: 0.2em;
-    background: var(--buttonAltFill);
-    box-shadow: 0 0 0 var(--buttonAltShadowFill);
+    --button-face: var(--buttonAltFill);
 }
 
-button.term-timer:focus-visible {
+/* Round the face, which a press moves, not round the shadow too. */
+button.term-timer:focus-visible::before {
     outline: 2px solid var(--textColorWhite);
     outline-offset: 2px;
 }
