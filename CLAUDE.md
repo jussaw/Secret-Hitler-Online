@@ -218,6 +218,10 @@ keeps credit to upstream and to the board game's creators.
   `superpowers/plans/` (per-phase step-by-step breakdowns), `images/` (the README's screenshots,
   taken from a scripted seven-player game at 1600x900 and at 412x915 on a phone), `pr/` (each pull
   request's before-and-after screenshots, in a folder named for its branch).
+- `.claude/skills/`: project skills. `implement-issue` (`/implement-issue N`) takes one GitHub issue
+  through the Workflow below to a pull request with green CI, which it merges for an issue labelled
+  `bug`, then checks the published image. An issue that needs design gets a pushed spec and plan and
+  a prompt for a new session instead.
 
 ## Commands
 
@@ -253,6 +257,9 @@ so mount a volume at `/data`.
 
 - One branch per phase off an up-to-date `development` (`phase-1-housekeeping`, `phase-2-vite`, …),
   merged into `development` by pull request on the fork once every box in the phase is ticked.
+- A single issue outside a phase gets its own branch and pull request through the `implement-issue`
+  skill. Once CI is green it merges the pull request itself for an issue labelled `bug`, and leaves
+  any other for the user to merge.
 - Name every worktree for the work it holds (`pin-picker-confirm`, not a generated name such as
   `game-state-sync-b7a6ea`), and give its branch the same name. Rename a generated or prefixed
   branch (`claude/…`, `worktree-…`) before the first commit.
@@ -281,8 +288,9 @@ so mount a volume at `/data`.
 
 Conventional Commits, always with a scope: `type(scope): summary`, lowercase imperative summary,
 no trailing period, at most 72 characters. Scopes in use: `frontend`, `backend`, `docker`, `ci`,
-`plan` (`docs/PLAN.md` and its breakdowns), `docs` (other files under `docs/`), and for top-level
-documents the file's name (`readme`, `development`, `claude`).
+`plan` (`docs/PLAN.md` and its breakdowns), `docs` (other files under `docs/`), `skills`
+(`.claude/skills/`), and for top-level documents the file's name (`readme`, `development`,
+`claude`).
 
 ## Pointers
 
