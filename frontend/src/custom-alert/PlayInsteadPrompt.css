@@ -1,0 +1,24 @@
+.play-instead-field {
+  display: block;
+  margin: 10px 0 0;
+}
+
+.play-instead-field-label {
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* 16px stops iOS zooming into the field; 44px is the phones' touch target. */
+.play-instead-field input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  font-size: 16px;
+}
+
+/* Keeps its height when empty, so an error does not move the buttons. */
+.prompt-error {
+  min-height: 1.4em;
+  margin: 6px 0 12px;
+  color: #f08a5d;
+}

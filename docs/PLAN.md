@@ -644,7 +644,7 @@ Issue #23: the lobby matches the game screen and fits one screen, says what STAR
 - [x] `frontend/src/lobby/lobbyStatus.ts`: the status line names who START GAME is waiting for and says when bots fill the table
 - [x] `frontend/src/lobby/joinError.ts` and `copyText.ts`: JOIN's error messages shared with PLAY INSTEAD; COPY uses the Clipboard API with today's fallback
 - [x] `frontend/src/lobby/LobbyScreen.tsx`: the lobby page in the game's three layouts, with the game's header, roster rows and cards
-- [ ] `frontend/src/custom-alert/PlayInsteadPrompt.tsx`: the name prompt behind PLAY INSTEAD
+- [x] `frontend/src/custom-alert/PlayInsteadPrompt.tsx`: the name prompt behind PLAY INSTEAD
 - [ ] `frontend/src/App.tsx`: WATCH INSTEAD and PLAY INSTEAD reconnect as the other kind, in the lobby only
 - [ ] `frontend/src/App.tsx`: the lobby page is `LobbyScreen`; `Lobby.css` and the old lobby markup are gone; the browser tests use the new wording
 - [ ] `frontend/e2e/no-scroll.spec.ts` and `phone.spec.ts`: the lobby fits every tested window with ten players and the longest line, for the host, a guest and a spectator
