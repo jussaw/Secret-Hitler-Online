@@ -39,6 +39,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 6. Sounds | `phase-6-sounds` | done |
 | 7. Spectators | `phase-7-spectators` | done |
 | 8. Game screen redesign | `phase-8-game-screen` | in progress |
+| 9. Phase 8 follow-ups | — | not started |
 
 ---
 
@@ -568,7 +569,7 @@ Files: `frontend/src/game/GameScreen.tsx`, `GameScreen.css`, `GameScreen.test.ts
 
 ### Task 8.8: Phone layout and docs
 
-Files: `frontend/src/game/GameScreen.css`, `frontend/src/game/PlayerRoster.css`, `frontend/e2e/phone.spec.ts`, `CLAUDE.md`
+Files: `frontend/src/game/GameScreen.css`, `frontend/src/game/PlayerRoster.css`, `frontend/e2e/phone.spec.ts`, `frontend/e2e/prompts.spec.ts`, `frontend/src/sound/SoundControl.css`, `CLAUDE.md`
 
 - [x] Browser tests first: no scroll at 360x740 and 412x915 with ten players and the longest status, the order, END TERM over the counts box, touch targets, a sideways phone, the spectator view
 - [x] Compact roster and the phone column
@@ -580,6 +581,28 @@ Files: `frontend/src/game/GameScreen.css`, `frontend/src/game/PlayerRoster.css`,
 - [x] Every board floor in the breakdown's Global Constraints holds
 - [ ] One real game on the deployed build, on a desktop and on a phone, shows every row state: office, busy, votes, roles, executed, victory
 - [ ] PR merged into `development` and deployed
+
+---
+
+## Phase 9: Phase 8 follow-ups
+
+These are Minor review findings deferred from Phase 8. Break them down when the phase starts.
+
+- [ ] `frontend/src/game/roundStep.ts`: list the five no-step states explicitly instead of `default`, so TypeScript checks the switch is exhaustive; wrap the over-long `stepForPolicyLine` line; add a test that `lastState` is ignored outside `POST_LEGISLATIVE`
+- [ ] `frontend/src/game/usePlayerRows.ts`: `busy` is typed `boolean` but is `undefined` when `showBusy` is omitted (coerce or default it); the voting-state busy loop indexes `getPlayerOrder()` by `playerOrder.length` and throws with `includeUser: false` (iterate the order directly); a dead president counts as busy in nomination; remove the double blank line
+- [ ] `frontend/src/game/usePlayerRows.test.tsx`: the test "a liberal sees only their own role" asserts that a liberal sees all five roles (the fixture sets every id); rename it or set only the user's id
+- [ ] `frontend/src/game/PlayerRoster.css`: the Fascist/Hitler role word uses `#e8604a`, not a palette colour; derive it from the palette (e.g. `--textColorHighlight`) or name it in `variables.css`, distinct from the `#f08a5d` office orange
+- [ ] `frontend/src/game/PlayerRoster.test.tsx`: add tests that an office outranks `EXECUTED` on the detail line, and that a visible role icon shows on a darkened row
+- [ ] `frontend/src/game/RoundTracker.tsx`: build the highlight regex once; add tests for an empty line, an all-caps `PRESIDENT`, and the first render having no fade class
+- [ ] `frontend/src/game/GameScreen.test.tsx`: make the status assertion exact (`toHaveTextContent(/^…$/)`); add a test that `statusStep` reaches the tracker's `aria-current`
+- [ ] `frontend/src/App.tsx`: RETURN TO LOBBY resets the boards but not `statusBarText` or `statusStep`, so the next game opens with the last game's line and lit step; reset both; wrap the over-long election-tracker line
+- [ ] `frontend/e2e/tracker.spec.ts`: add a case that ELECTION stays lit under the victory screen (voting, then `FASCIST_VICTORY_ELECTION`)
+- [ ] `frontend/src/game/GameScreen.css` and `PlayerRoster.css`: the tall-window blocks restate base values to undo the phone block; note at the base rules that their values are restated there, or move to a phone-only query
+- [ ] `frontend/e2e/phone.spec.ts`: no check that rows keep their place when a PRES/CHAN tag appears (`rowShift` fills `.roster-detail`, which phones hide)
+- [ ] `frontend/e2e/prompts.spec.ts`: add an upright short viewport (the project's width x 600) beside the sideways one for the scrolled-prompt test
+- [ ] Phones under 360 px: below about 356 px the tracker's steps wrap and the card grows past its reserved height; decide whether to support or test narrower phones
+- [ ] `CLAUDE.md`: it says `--round-tracker-ems` keeps two lines' height; it is the whole card's height in its ems
+- [ ] Tooling: the e2e files are outside `tsconfig.json`'s `include`, so `npm run build` does not type-check them; Vitest prints a "jsdom was created N times" notice
 
 ---
 
