@@ -32,7 +32,8 @@ export default function RoundTracker(props: { step: RoundStep | null; text: stri
   const latestStep = useRef(step);
   latestStep.current = step;
 
-  // While no fade runs, `shown.step` follows `step`, so a later fade holds the step that was actually lit.
+  // While no fade runs, `shown.step` follows `step`, so a later fade holds the step that was
+  // actually lit.
   if (text === shown.text && shown.step !== step) setShown({ text: shown.text, step });
 
   // When the text changes, the old line and its step stay (the line fades with `.fading`) for FADE_MS,

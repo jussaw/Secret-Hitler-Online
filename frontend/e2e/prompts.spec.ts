@@ -44,9 +44,9 @@ for (const prompt of PROMPTS) {
   });
 }
 
-const SHORT_SHAPES: { name: string; shape: (w: number, h: number) => { width: number; height: number } }[] = [
-  { name: "sideways", shape: (w, h) => ({ width: h, height: w }) },
-  { name: "upright and short", shape: (w) => ({ width: w, height: 600 }) },
+const SHORT_SHAPES = [
+  { name: "sideways", shape: (w: number, h: number) => ({ width: h, height: w }) },
+  { name: "upright and short", shape: (w: number) => ({ width: w, height: 600 }) },
 ];
 
 for (const { name, shape } of SHORT_SHAPES) {
@@ -56,7 +56,9 @@ for (const { name, shape } of SHORT_SHAPES) {
     const { width, height } = page.viewportSize()!;
     await page.setViewportSize(shape(width, height));
     const game = await openFakeGame(page);
-    game.send(gamePacket({ state: LobbyState.CHANCELLOR_NOMINATION, president: TEN[1], electionTracker: 1 }));
+    game.send(
+      gamePacket({ state: LobbyState.CHANCELLOR_NOMINATION, president: TEN[1], electionTracker: 1 })
+    );
     await page.locator(".game-screen").waitFor();
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     expect(await page.evaluate(() => window.scrollY), "the game page scrolls").toBeGreaterThan(0);

@@ -266,12 +266,7 @@ export const PROMPTS: { name: string; packets: object[]; button: string }[] = [
 ];
 
 /** The lobby packet a spectator of the scripted lobby gets: TEN with portraits, one spectator. */
-export const WATCHED_LOBBY = {
-  type: "lobby",
-  usernames: TEN,
-  icon: Object.fromEntries(TEN.map((name, i) => [name, `p${i + 1}`])),
-  spectatorCount: 1,
-};
+export const WATCHED_LOBBY = { ...lobbyPacket(), spectatorCount: 1 };
 
 export type FakeWatch = FakeGame & {
   /** While down, the server closes the open socket and every new one at once. */

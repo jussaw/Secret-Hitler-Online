@@ -147,7 +147,10 @@ test("RETURN TO LOBBY gives the next game a fresh line and no lit step", async (
   // The vote-result line holds ELECTION lit first.
   await expect(current).toHaveText(/LEGISLATIVE SESSION/, { timeout: 15000 });
   game.send(
-    gamePacket({ state: S.FASCIST_VICTORY_POLICY, president: TEN[1], chancellor: TEN[2] }, EVERY_ROLE)
+    gamePacket(
+      { state: S.FASCIST_VICTORY_POLICY, president: TEN[1], chancellor: TEN[2] },
+      EVERY_ROLE
+    )
   );
   const returnButton = page.getByRole("button", { name: "RETURN TO LOBBY" });
   await returnButton.waitFor({ timeout: 15000 });

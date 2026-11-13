@@ -191,7 +191,11 @@ export function withStatus(
  * boards moved: nothing may move when a player becomes president or chancellor, is executed or
  * has their role shown.
  */
-export function rowShift(page: Page, selector = ".roster-detail", text = "CHANCELLOR"): Promise<number> {
+export function rowShift(
+  page: Page,
+  selector = ".roster-detail",
+  text = "CHANCELLOR"
+): Promise<number> {
   return page.evaluate(([target, fill]) => {
     const watched = [
       ...Array.from(document.querySelectorAll(".roster-row")),
@@ -201,7 +205,9 @@ export function rowShift(page: Page, selector = ".roster-detail", text = "CHANCE
     const before = boxes();
     const details = Array.from(document.querySelectorAll(target));
     // Edit React's own text node (or a stand-in) so later renders still reach it.
-    const nodes = details.map((detail) => detail.firstChild ?? detail.appendChild(document.createTextNode("")));
+    const nodes = details.map(
+      (detail) => detail.firstChild ?? detail.appendChild(document.createTextNode(""))
+    );
     const old = nodes.map((node) => node.nodeValue);
     nodes.forEach((node, i) => (node.nodeValue = old[i] ? "" : fill));
     const after = boxes();
