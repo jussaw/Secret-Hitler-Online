@@ -16,8 +16,10 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -69,12 +71,12 @@ public class Lobby implements Serializable {
     // none. It is kept out of the backup: a lobby restored mid-term starts a new countdown with the
     // first state it sends.
     public static float END_TERM_TIMER_IN_SEC = 10;
-    // One thread ends the terms of every lobby. It is a daemon, so it never keeps the server up.
-    private static final ScheduledExecutorService TERM_TIMERS = Executors.newSingleThreadScheduledExecutor(task -> {
-        Thread thread = new Thread(task, "end-term-timers");
-        thread.setDaemon(true);
-        return thread;
-    });
+    // One thread keeps the time for every lobby and hands each term's end to a pooled thread, which
+    // waits for that lobby's lock alone, so a lobby busy sending never delays another's term. The
+    // threads are daemons, so they never keep the server up, and pooled ones end when idle.
+    private static final ScheduledExecutorService TERM_TIMERS =
+            Executors.newSingleThreadScheduledExecutor(daemonThreads("end-term-timers"));
+    private static final ExecutorService TERM_ENDS = Executors.newCachedThreadPool(daemonThreads("end-term"));
     // The countdown of the term waiting for END TERM, running or paused, if there is one.
     transient private TermTimer termTimer;
     // When the running countdown ends its term.
@@ -714,12 +716,24 @@ public class Lobby implements Serializable {
         return TimeUnit.NANOSECONDS.toMillis(System.nanoTime());
     }
 
+    /** Makes daemon threads named {@code name}. */
+    private static ThreadFactory daemonThreads(String name) {
+        return task -> {
+            Thread thread = new Thread(task, name);
+            thread.setDaemon(true);
+            return thread;
+        };
+    }
+
     /**
      * Starts the END TERM countdown when the game waits for a human president to end the term,
      * and drops a countdown whose term is over. Every game packet calls this before it reads the
      * countdown, so each one shows the countdown of the game it carries.
      */
     private void syncTermTimer() {
+        if (expiredTermTimer != null && expiredTermTimer.game != game) {
+            expiredTermTimer = null; // its game is over: no command can be late for it now
+        }
         boolean waiting = game != null && game.getState() == GameState.POST_LEGISLATIVE
                 && usersInGame.contains(game.getCurrentPresident());
         if (termTimer != null && !(waiting && termTimer.isFor(game, game.getRound()))) {
@@ -732,10 +746,12 @@ public class Lobby implements Serializable {
         }
     }
 
-    /** Ends the running countdown's term when its time is up. */
+    /** Ends the running countdown's term when its time is up, in place of any end scheduled before. */
     private void scheduleTermEnd() {
+        cancelTermEnd();
         TermTimer timer = termTimer;
-        termTimerEnd = TERM_TIMERS.schedule(() -> endTermOnTime(timer), timer.remainingMs(), TimeUnit.MILLISECONDS);
+        termTimerEnd = TERM_TIMERS.schedule(() -> TERM_ENDS.execute(() -> endTermOnTime(timer)),
+                timer.remainingMs(), TimeUnit.MILLISECONDS);
     }
 
     /** Cancels the end of the term, if it is scheduled. */
