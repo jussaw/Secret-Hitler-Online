@@ -92,7 +92,6 @@ import {
 } from "./types";
 import { sounds, type SoundName } from "./sound/SoundManager";
 import SoundControl from "./sound/SoundControl";
-import SpectatorCount from "./spectator/SpectatorCount";
 import { CONNECT_ERROR, CONTACT_ERROR, joinErrorMessage } from "./lobby/joinError";
 import PlayInsteadPrompt from "./custom-alert/PlayInsteadPrompt";
 import { lobbySounds, SOUND_CUES, soundEvents, type Cue } from "./sound/soundEvents";
@@ -271,6 +270,7 @@ class App extends Component<{}, AppState> {
     this.hideAlertAndFinish = this.hideAlertAndFinish.bind(this);
     this.onClickWatchInstead = this.onClickWatchInstead.bind(this);
     this.onClickPlayInstead = this.onClickPlayInstead.bind(this);
+    this.onCopied = this.onCopied.bind(this);
     this.playInstead = this.playInstead.bind(this);
     this.closePlayInstead = this.closePlayInstead.bind(this);
     this.closeSocket = this.closeSocket.bind(this);
@@ -996,6 +996,11 @@ class App extends Component<{}, AppState> {
     this.reconnectOnConnectionClosed = false;
   }
 
+  /** Tells the user whether COPY put the invite link on the clipboard. */
+  onCopied(ok: boolean) {
+    this.showSnackBar(ok ? "Copied!" : "Could not copy the link.");
+  }
+
   showSnackBar(message: string) {
     this.setState({ snackbarMessage: message });
     let snackbar = document.getElementById("snackbar");
@@ -1032,9 +1037,7 @@ class App extends Component<{}, AppState> {
           onWatchInstead={this.onClickWatchInstead}
           onPlayInstead={this.onClickPlayInstead}
           onLeave={this.onClickLeaveLobby}
-          onCopied={(ok: boolean) =>
-            this.showSnackBar(ok ? "Copied!" : "Could not copy the link.")
-          }
+          onCopied={this.onCopied}
         />
         <div style={{ textAlign: "center" }}>
           <div id="snackbar">{this.state.snackbarMessage}</div>
