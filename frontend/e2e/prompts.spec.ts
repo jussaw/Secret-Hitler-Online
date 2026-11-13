@@ -78,10 +78,6 @@ test("the portrait picker's CONFIRM is in view without scrolling", async ({ page
   for (const size of [...promptSizes(page, isMobile, testInfo.project.name), ...sideways]) {
     await resizeAndCheckFit(page, alertBox, isMobile, size);
     const at = `${size.width}x${size.height}`;
-    // Buttons ease into their new vmin font size, so measure once that has finished.
-    await alertBox.evaluate((el) =>
-      Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)).then(() => undefined)
-    );
     // Only the grid scrolls: the box has nothing below CONFIRM to scroll to.
     const boxOverflow = await alertBox.evaluate((el) => el.scrollHeight - el.clientHeight);
     expect(boxOverflow, `the box scrolls at ${at}`).toBeLessThanOrEqual(0);

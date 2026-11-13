@@ -126,9 +126,10 @@ button {
     position:relative;
     isolation: isolate; /* the face, at z-index -1, stays in front of what is behind the button */
     border-radius: 10px;
-    -webkit-transition: all 0.15s ease-in-out 0s, visibility 0s, border-width 0s;
-    -moz-transition: all 0.15s ease-in-out 0s, visibility 0s, border-width 0s;
-    transition: all 0.15s ease-in-out 0s, visibility 0s, border-width 0s;
+    /* Only the label's colour eases (the face's eases in ::before). A button's size and place follow
+       the layout at once: Firefox styles a page that has just appeared against the window before
+       its containers, and an ease from there slid buttons out from under presses (issue #59). */
+    transition: color 0.15s ease-in-out;
     -webkit-tap-highlight-color: transparent;
 }
 
