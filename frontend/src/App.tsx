@@ -427,6 +427,7 @@ class App extends Component<{}, AppState> {
    * @return {boolean} whether the socket opened.
    */
   openSeat(name: string, lobby: string): boolean {
+    this.failedConnections = 0; // a user action starts a fresh connection
     if (!this.tryOpenWebSocket(name, lobby)) return false;
     Cookies.set(COOKIE_NAME, name, { expires: 7 });
     Cookies.set(COOKIE_LOBBY, lobby);
@@ -439,6 +440,7 @@ class App extends Component<{}, AppState> {
    * @return {boolean} whether the socket opened.
    */
   openWatch(lobby: string): boolean {
+    this.failedConnections = 0; // a user action starts a fresh connection
     if (!this.tryOpenWebSocket("", lobby, true)) return false;
     Cookies.set(COOKIE_LOBBY, lobby);
     Cookies.set(COOKIE_SPECTATOR, "true");
@@ -1689,22 +1691,19 @@ class App extends Component<{}, AppState> {
                   buttonOnClick={() => {
                     this.gameOver = false;
                     this.reconnectOnConnectionClosed = true;
-                    if (
-                      !this.tryOpenWebSocket(this.state.name, this.state.lobby, this.state.spectator)
-                    ) {
-                      this.setState({
-                        page: PAGE.LOGIN,
-                        joinName: this.rejoinName(),
-                        joinLobby: this.state.lobby,
-                        joinError: CONNECT_ERROR,
-                        gameState: DEFAULT_GAME_STATE,
-                      });
-                      this.hideAlertAndFinish();
-                      return;
-                    }
+                    this.failedConnections = 0;
+                    const lobby = this.state.lobby;
+                    const opened = this.tryOpenWebSocket(
+                      this.state.name,
+                      lobby,
+                      this.state.spectator
+                    );
                     this.hideAlertAndFinish();
                     this.setState({
-                      page: PAGE.LOBBY,
+                      page: opened ? PAGE.LOBBY : PAGE.LOGIN,
+                      joinName: opened ? "" : this.rejoinName(),
+                      joinLobby: opened ? "" : lobby,
+                      joinError: opened ? "" : CONNECT_ERROR,
                       gameState: DEFAULT_GAME_STATE,
                       liberalPolicies: 0,
                       fascistPolicies: 0,

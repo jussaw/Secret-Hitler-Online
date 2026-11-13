@@ -12,6 +12,7 @@ import {
 } from "./constants";
 import { makeGameState } from "./game/testGameState";
 import { CONNECT_ERROR, CONTACT_ERROR } from "./lobby/joinError";
+import { RoundStep } from "./game/roundStep";
 import ButtonPrompt from "./custom-alert/ButtonPrompt";
 import { LobbyState, Role } from "./types";
 import IconSelection from "./custom-alert/IconSelection";
@@ -428,9 +429,29 @@ test("RETURN TO LOBBY that cannot build a socket goes to the login page with the
   });
   const prompt = app.state.alertContent as React.ReactElement<{ buttonOnClick: () => void }>;
   expect(prompt.type).toBe(ButtonPrompt);
+  act(() => app.setState({ statusBarText: "Liberals win", statusStep: RoundStep.ELECTION }));
   FakeSocket.failNext = true;
   act(() => prompt.props.buttonOnClick());
   expect(app.state.page).toBe("login");
   expect(app.state.joinLobby).toBe("HBIA");
   expect(app.state.joinError).toBe(CONNECT_ERROR);
+  expect(app.state.statusBarText).toBe("---");
+  expect(app.state.statusStep).toBeNull();
+});
+
+test("a join after giving up still retries a socket that closes before its first message", async () => {
+  const app = await playerInLobby();
+  for (let i = 0; i < 20 && app.state.page !== "login"; i++) {
+    act(() => FakeSocket.instances[FakeSocket.instances.length - 1].onclose?.());
+  }
+  expect(app.state.page).toBe("login");
+  expect(app.failedConnections).toBeGreaterThan(0);
+  await act(async () => {
+    app.setState({ joinName: "Ann", joinLobby: "HBIA" });
+    app.onClickJoin();
+  });
+  const before = FakeSocket.instances.length;
+  act(() => FakeSocket.instances[before - 1].onclose?.());
+  expect(FakeSocket.instances.length).toBe(before + 1);
+  expect(app.state.page).toBe("lobby");
 });
