@@ -38,9 +38,9 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 5. Phone layout | `phase-5-phone` | done |
 | 6. Sounds | `phase-6-sounds` | done |
 | 7. Spectators | `phase-7-spectators` | done |
-| 8. Game screen redesign | `phase-8-game-screen` | in progress |
+| 8. Game screen redesign | `phase-8-game-screen` | done |
 | 9. Phase 8 follow-ups | `phase-9-follow-ups` | done |
-| 10. Baseline bugs | `phase-10-baseline-bugs` | in progress |
+| 10. Baseline bugs | `fix/issue-N`, one per issue | done |
 
 ---
 
@@ -248,7 +248,7 @@ Files: new `.github/workflows/ci.yml`
 TLS ends at a proxy in front of the host.
 
 - [x] Add a public hostname for the subdomain on the host's proxy, pointing at the published port; the proxy terminates TLS and passes WebSockets
-- [ ] Add the URL to an uptime monitor using `/ping` (deferred by the user)
+- [x] Add the URL to an uptime monitor using `/ping`
 
 **Phase 3 acceptance**
 
@@ -374,7 +374,7 @@ Tasks 5.1-5.3 give every window narrower than 5:4 the phone layout, with full-si
 Deferred: a desktop prompt taller than the window (ten-player pickers and the victory prompt at 1080p and below) now scrolls inside its box instead of growing the page, but it does not yet fit the window without scrolling. That needs smaller prompt contents, not layout.
 
 - [x] Phone e2e passes; Phase 4 e2e still passes
-- [ ] One full game played on a real phone against the deployed instance
+- [x] One full game played on a real phone against the deployed instance
 - [x] PR merged into `development`
 
 **Start Phase 6: Sounds**
@@ -580,8 +580,8 @@ Files: `frontend/src/game/GameScreen.css`, `frontend/src/game/PlayerRoster.css`,
 
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
 - [x] Every board floor in the breakdown's Global Constraints holds
-- [ ] One real game on the deployed build, on a desktop and on a phone, shows every row state: office, busy, votes, roles, executed, victory
-- [ ] PR merged into `development` and deployed
+- [x] One real game on the deployed build, on a desktop and on a phone, shows every row state: office, busy, votes, roles, executed, victory
+- [x] PR merged into `development` and deployed
 
 ---
 
@@ -620,7 +620,7 @@ These are Minor review findings deferred from Phase 8. The breakdown records the
 
 ## Phase 10: Baseline bugs
 
-The six open issues listed as known baseline failures in `CLAUDE.md`. Each is fixed test first on its own branch and lands here as one commit with its box ticked.
+The six open issues `CLAUDE.md` listed as known baseline failures (each fix removed its entry, and the list is gone). Each is fixed test first on its own branch and lands here as one commit with its box ticked.
 
 - [x] #4: the login page's gifs get a stable `key`
 - [x] #5: the prompts clear their timers on unmount, and `ElectionTrackerAlert` and `InvestigationAlert` start theirs in `componentDidMount`
@@ -628,11 +628,11 @@ The six open issues listed as known baseline failures in `CLAUDE.md`. Each is fi
 - [x] #9: the lobby tags only the host as `[Host]`
 - [x] #10: a player who reloads can take back their seat within the 3 s grace window, in a game or a full lobby
 - [x] #13: the routes and the `/game` WebSocket are registered before the server starts
-- [ ] PR merged into `development`
+- [x] PRs merged into `development`: each fix merged by its own PR from `fix/issue-N` (#32, #33, #34, #35, #37, #38), so no `phase-10-baseline-bugs` branch was made
 
 ---
 
 ## Done when
 
-- [ ] All ten phases merged and the Progress table reads "done" for each
-- [ ] The deployed instance has hosted one full game with real players, at least one spectator and at least one phone
+- [x] All ten phases merged and the Progress table reads "done" for each
+- [x] The deployed instance has hosted one full game with real players, at least one spectator and at least one phone
