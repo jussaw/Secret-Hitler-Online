@@ -2,7 +2,6 @@ package server;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -262,9 +261,8 @@ public class RejoinServerTest {
         TestSocket rejoined = connect("lobby=" + code + "&name=A10");
         rejoined.nextState("CHANCELLOR_NOMINATION");
         assertTrue(rejoined.isOpen());
-        // Still 488, not 489: a rejoin during a game does not put the name back in the count that
-        // isFull reads (activeUsernames). So this checks only that the outsider is refused.
-        assertNotEquals("an outsider is still refused", 200,
+        assertTrue("the returning player is counted again (#41)", lobby.isFull());
+        assertEquals("an outsider finds the lobby full again", 489,
                 checkLogin("lobby=" + code + "&name=Zed").statusCode());
     }
 
