@@ -45,6 +45,9 @@ public class Lobby implements Serializable {
     // Connections watching the lobby without a seat. They have no name, icon or vote, are never
     // counted as users, and are not backed up.
     transient private Set<WsContext> spectators;
+    // The rejoin key each name's latest connection was opened with (see isHeldUnderKey). Never
+    // sent to any client. Not backed up: after a restart no connection is live to be replaced.
+    transient private ConcurrentHashMap<String, String> usernameToRejoinKey;
 
     final private Set<String> usersInGame;
     final private ConcurrentHashMap<String, String> usernameToIcon;
@@ -94,6 +97,7 @@ public class Lobby implements Serializable {
         userToUsername = new ConcurrentHashMap<WsContext, String>();
         activeUsernames = new ConcurrentLinkedQueue<>();
         spectators = ConcurrentHashMap.newKeySet();
+        usernameToRejoinKey = new ConcurrentHashMap<>();
         usersInGame = new ConcurrentSkipListSet<>();
         usernameToIcon = new ConcurrentHashMap<>();
         usernameToPreferredIcon = new ConcurrentHashMap<>();
@@ -192,6 +196,21 @@ public class Lobby implements Serializable {
     }
 
     /**
+     * Returns whether the name's live connection was opened with this rejoin key: the same page
+     * is reconnecting, so that connection is dead even if the server has not seen it close (a
+     * network that dropped without a word reaches the server only at its idle timeout).
+     *
+     * @param name      the name of the user.
+     * @param rejoinKey the key the new connection brings, or null for none.
+     * @return true iff {@code rejoinKey} is not null, {@code name} has a live connection, and
+     *         that connection brought the same key.
+     */
+    synchronized public boolean isHeldUnderKey(String name, String rejoinKey) {
+        return rejoinKey != null && !rejoinKey.isEmpty() && hasUserWithName(name)
+                && rejoinKey.equals(usernameToRejoinKey.get(name));
+    }
+
+    /**
      * Checks if a user can be added back to the lobby while a game is running.
      *
      * @param name the name of the user to add.
@@ -246,6 +265,47 @@ public class Lobby implements Serializable {
      *          previously in the same game but was removed.
      */
     synchronized public void addUser(WsContext context, String name) {
+        addUser(context, name, null);
+    }
+
+    /**
+     * Adds a user (websocket connection) to the lobby as {@code addUser(context, name)} does, and
+     * remembers the rejoin key it brought. A connection that brings the key its name's live
+     * connection was opened with ({@code isHeldUnderKey}) takes that connection's place instead:
+     * the name keeps its seat, portrait and place in the lobby, and only the connection changes.
+     *
+     * @param context   the websocket connection context.
+     * @param name      the name of the player to be added.
+     * @param rejoinKey the key the connection brought, or null for none.
+     * @return the connection whose place was taken, which the caller closes, or null.
+     * @throws IllegalArgumentException as {@code addUser(context, name)}.
+     */
+    synchronized public WsContext addUser(WsContext context, String name, String rejoinKey) {
+        if (userToUsername.containsKey(context)) {
+            throw new IllegalArgumentException("Duplicate websockets cannot be added to a lobby.");
+        }
+        if (isHeldUnderKey(name, rejoinKey)) {
+            WsContext replaced = null;
+            for (Entry<WsContext, String> entry : userToUsername.entrySet()) {
+                if (entry.getValue().equals(name)) {
+                    replaced = entry.getKey();
+                }
+            }
+            userToUsername.remove(replaced);
+            userToUsername.put(context, name);
+            return replaced;
+        }
+        addNewConnection(context, name);
+        if (rejoinKey == null || rejoinKey.isEmpty()) {
+            usernameToRejoinKey.remove(name); // an older client: nothing can take its place
+        } else {
+            usernameToRejoinKey.put(name, rejoinKey);
+        }
+        return null;
+    }
+
+    /** Adds a connection for a name with no live connection: the body of {@code addUser}. */
+    private void addNewConnection(WsContext context, String name) {
         if (userToUsername.containsKey(context)) {
             throw new IllegalArgumentException("Duplicate websockets cannot be added to a lobby.");
         } else {
@@ -341,6 +401,7 @@ public class Lobby implements Serializable {
             // remove them from the lobby.
             if (!userToUsername.values().contains(username) && activeUsernames.contains(username)) {
                 activeUsernames.remove(username);
+                usernameToRejoinKey.remove(username);
 
                 if (usernameToIcon.containsKey(username)) {
                     usernameToIcon.remove(username); // possible for users to disconnect before choosing icon
@@ -558,6 +619,7 @@ public class Lobby implements Serializable {
         userToUsername = new ConcurrentHashMap<>();
         activeUsernames = new ConcurrentLinkedQueue<>();
         spectators = ConcurrentHashMap.newKeySet();
+        usernameToRejoinKey = new ConcurrentHashMap<>();
         userTimeoutTimer = new Timer();
         cpuTickTimer = new Timer();
     }

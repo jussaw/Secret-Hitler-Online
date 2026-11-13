@@ -27,8 +27,10 @@ import server.util.Lobby;
  * A player who reloads keeps their seat for {@code Lobby.PLAYER_TIMEOUT_IN_SEC}. Inside that
  * window they can take it back through /check-login and the /game handshake, in a running game
  * (#10) and when every seat is taken, while a second live connection with the same name is still
- * refused. A player of the game can also rejoin after the window, as after a server restart. Over
- * real sockets.
+ * refused. A player of the game can also rejoin after the window, as after a server restart. And
+ * a page whose network dropped without the server noticing takes its name back from its own dead
+ * connection by bringing the same rejoin key (#26), which no other connection can do. Over real
+ * sockets.
  */
 public class RejoinServerTest {
     private static Javalin app;
@@ -92,11 +94,22 @@ public class RejoinServerTest {
         return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
     }
 
+    /** The rejoin key a test page sends for {@code name}. */
+    private static String keyOf(String name) {
+        return "key-of-" + name;
+    }
+
     /** Connects players with portraits p1.. and waits until each has its icon. */
     private List<TestSocket> players(String code, String... names) throws Exception {
+        return players(code, false, names);
+    }
+
+    /** As {@code players}, each bringing {@code keyOf(name)} when {@code withKeys} is set. */
+    private List<TestSocket> players(String code, boolean withKeys, String... names) throws Exception {
         List<TestSocket> players = new ArrayList<>();
         for (int i = 0; i < names.length; i++) {
-            TestSocket player = connect("lobby=" + code + "&name=" + names[i]);
+            String key = withKeys ? "&rejoinKey=" + keyOf(names[i]) : "";
+            TestSocket player = connect("lobby=" + code + "&name=" + names[i] + key);
             player.send(command(code, names[i], "select-icon").put("icon", "p" + (i + 1)));
             player.next("ok");
             players.add(player);
@@ -106,7 +119,12 @@ public class RejoinServerTest {
 
     /** Seats the players and starts a game with no CPU players (five or more names). */
     private List<TestSocket> startGame(String code, String... names) throws Exception {
-        List<TestSocket> players = players(code, names);
+        return startGame(code, false, names);
+    }
+
+    /** As {@code startGame}, each player bringing {@code keyOf(name)} when {@code withKeys} is set. */
+    private List<TestSocket> startGame(String code, boolean withKeys, String... names) throws Exception {
+        List<TestSocket> players = players(code, withKeys, names);
         players.get(0).send(command(code, names[0], "start-game"));
         for (TestSocket player : players) {
             player.nextState("CHANCELLOR_NOMINATION");
@@ -295,5 +313,90 @@ public class RejoinServerTest {
         Collections.sort(expected);
         assertEquals(expected, usernames(back.next("lobby")));
         assertEquals(10, lobby.getUserCount());
+    }
+
+    /** Fails if, within half a second, the name loses its connection or the lobby a user. */
+    private static void assertStaysSeated(Lobby lobby, String name, int users, TestSocket socket)
+            throws InterruptedException {
+        long until = System.currentTimeMillis() + 500;
+        while (System.currentTimeMillis() < until) {
+            assertTrue(name + " lost their connection", lobby.hasUserWithName(name));
+            assertEquals(users, lobby.getUserCount());
+            assertTrue(socket.isOpen());
+            Thread.sleep(20);
+        }
+    }
+
+    /** #26: the old connection here is open, as a dead one looks to the server until its idle timeout. */
+    @Test
+    public void aPageReconnectingWithItsKeyTakesItsNameBackFromItsDeadConnection() throws Exception {
+        String code = "RJAH";
+        Lobby lobby = lobby(code);
+        List<TestSocket> players = startGame(code, true, "Ann", "Bob", "Cat", "Dan", "Eve");
+        TestSocket dead = players.get(0);
+
+        TestSocket back = connect("lobby=" + code + "&name=Ann&rejoinKey=" + keyOf("Ann"));
+        JSONObject state = back.nextState("CHANCELLOR_NOMINATION");
+        assertEquals("Ann's portrait is kept", "p1", state.getJSONObject("icon").getString("Ann"));
+
+        TestSocket.CloseInfo replaced = dead.awaitClose();
+        assertEquals(SecretHitlerServer.CLOSE_REPLACED, replaced.code);
+        assertEquals("Replaced by a newer connection under the same name.", replaced.reason);
+        // The old connection's close, once the server sees it, takes nothing from the new one.
+        assertStaysSeated(lobby, "Ann", 5, back);
+
+        back.send(command(code, "Ann", "get-state"));
+        back.nextState("CHANCELLOR_NOMINATION");
+        assertTrue("the server takes the new connection's commands as Ann's", back.isOpen());
+        for (TestSocket player : List.of(back, players.get(1))) {
+            for (JSONObject packet : player.received()) {
+                assertFalse("a packet carried a rejoin key", packet.toString().contains("key-of-"));
+            }
+        }
+    }
+
+    @Test
+    public void onlyTheKeyTheNamesConnectionBroughtTakesItsPlace() throws Exception {
+        String code = "RJAI";
+        Lobby lobby = lobby(code);
+        List<TestSocket> players = startGame(code, true, "Ann", "Bob", "Cat", "Dan", "Eve");
+
+        for (String key : List.of("&rejoinKey=" + keyOf("Bob"), "&rejoinKey=", "")) {
+            TestSocket.CloseInfo refused = connect("lobby=" + code + "&name=Ann" + key).awaitClose();
+            assertEquals(key, 1002, refused.code);
+            assertEquals(key, "A user with the name Ann is already in the lobby.", refused.reason);
+        }
+        assertTrue("Ann's connection is untouched", players.get(0).isOpen());
+        assertTrue(lobby.hasUserWithName("Ann"));
+    }
+
+    /** An older client sends no key, and nothing can take its connection's place. */
+    @Test
+    public void aConnectionOpenedWithoutAKeyIsNotReplaced() throws Exception {
+        String code = "RJAJ";
+        lobby(code);
+        List<TestSocket> players = startGame(code, "Ann", "Bob", "Cat", "Dan", "Eve");
+
+        TestSocket.CloseInfo refused = connect("lobby=" + code + "&name=Ann&rejoinKey=" + keyOf("Ann"))
+                .awaitClose();
+        assertEquals("A user with the name Ann is already in the lobby.", refused.reason);
+        assertTrue(players.get(0).isOpen());
+    }
+
+    @Test
+    public void aFullLobbyTakesItsPlayerBackFromTheirDeadConnection() throws Exception {
+        String code = "RJAK";
+        Lobby lobby = lobby(code);
+        String[] names = { "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10" };
+        List<TestSocket> players = players(code, true, names);
+
+        TestSocket back = connect("lobby=" + code + "&name=A10&rejoinKey=" + keyOf("A10"));
+        JSONObject packet = back.next("lobby");
+        List<String> expected = new ArrayList<>(List.of(names));
+        Collections.sort(expected);
+        assertEquals(expected, usernames(packet));
+        assertEquals("A10's portrait is kept", "p10", packet.getJSONObject("icon").getString("A10"));
+        assertEquals(SecretHitlerServer.CLOSE_REPLACED, players.get(9).awaitClose().code);
+        assertStaysSeated(lobby, "A10", 10, back);
     }
 }

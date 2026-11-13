@@ -41,6 +41,12 @@ public class SecretHitlerServer {
     public static final String PARAM_CHOICE = "choice"; // the index of the chosen policy.
     public static final String PARAM_ICON = "icon";
     public static final String PARAM_SPECTATOR = "spectator"; // "true" in the /game and /check-login query
+    // Optional, in a player's /game query: a random key the page keeps for its lifetime. A connection
+    // that brings the key its name's live connection was opened with takes that connection's place.
+    public static final String PARAM_REJOIN_KEY = "rejoinKey";
+
+    // The close code of a connection whose place another connection took (Lobby.addUser).
+    public static final int CLOSE_REPLACED = 4001;
 
     // Passed to client
     // The type of the packet tells the client how to parse the contents.
@@ -494,7 +500,8 @@ public class SecretHitlerServer {
      * @requires the context must have the following parameters:
      *           {@code lobby}: a String representing the lobby code.
      *           {@code name}: a String username. Cannot already exist in the given
-     *           lobby.
+     *           lobby, unless the connection brings the {@code rejoinKey} that
+     *           name's live connection was opened with.
      * @effects Closes the websocket session if:
      *          <p>
      *          - 400 if the {@code lobby} or {@code name} parameters are missing.
@@ -502,7 +509,8 @@ public class SecretHitlerServer {
      *          - 404 if there is no lobby with the given code
      *          <p>
      *          - 403 the username is invalid (there is already another user
-     *          with that name in the lobby).
+     *          with that name in the lobby, and this connection does not bring
+     *          its {@code rejoinKey}).
      *          <p>
      *          - 488 if the lobby is currently in a game and the user is not
      *          a rejoining player.
@@ -510,7 +518,8 @@ public class SecretHitlerServer {
      *          - 489 if the lobby is full and the user is not taking back their
      *          own seat ({@code Lobby.canRejoin}).
      *          <p>
-     *          Otherwise, connects the user to the lobby.
+     *          Otherwise, connects the user to the lobby. A connection that takes
+     *          its name's place closes the old one with {@code CLOSE_REPLACED}.
      */
     static void onWebsocketConnect(WsConnectContext ctx) {
         if ("true".equals(ctx.queryParam(PARAM_SPECTATOR))) {
@@ -541,9 +550,13 @@ public class SecretHitlerServer {
         }
 
         Lobby lobby = codeToLobby.get(code);
+        String rejoinKey = ctx.queryParam(PARAM_REJOIN_KEY);
+        // The page whose connection holds this name, reconnecting: its old connection is dead, though
+        // the server may not see that for up to the idle timeout (a phone that changed networks).
+        boolean reclaiming = lobby.isHeldUnderKey(name, rejoinKey);
         // A player taking back their own seat is refused neither for a full lobby nor for a game.
-        boolean rejoining = lobby.canRejoin(name);
-        if (lobby.hasUserWithName(name)) { // duplicate names not allowed
+        boolean rejoining = reclaiming || lobby.canRejoin(name);
+        if (lobby.hasUserWithName(name) && !reclaiming) { // duplicate names not allowed
             logger.debug("FAILED (Repeat username)");
             ctx.session.close(StatusCode.PROTOCOL, "A user with the name " + name + " is already in the lobby.");
             return;
@@ -557,8 +570,14 @@ public class SecretHitlerServer {
             return;
         }
         logger.debug("SUCCESS");
-        lobby.addUser(ctx, name);
+        WsContext replaced = lobby.addUser(ctx, name, rejoinKey);
         userToLobby.put(ctx, lobby); // keep track of which lobby this connection is in.
+        if (replaced != null) {
+            // Forget the old connection first, so its close (whenever it comes) changes nothing.
+            userToLobby.remove(replaced);
+            replaced.session.close(CLOSE_REPLACED, "Replaced by a newer connection under the same name.");
+            logger.info("User '" + name + "' in lobby '" + code + "' reconnected in place of their old connection.");
+        }
         lobby.updateAllUsers();
         hasLobbyChanged = true;
     }
@@ -854,8 +873,9 @@ public class SecretHitlerServer {
      * @effects Removes the user from any connected lobbies.
      */
     static void onWebSocketClose(WsCloseContext ctx) {
-        if (userToLobby.containsKey(ctx)) {
-            Lobby lobby = userToLobby.get(ctx);
+        // One lookup: a connection replaced on another thread may leave the map at any moment.
+        Lobby lobby = userToLobby.get(ctx);
+        if (lobby != null) {
             synchronized (lobby) {
                 if (lobby.isSpectator(ctx)) {
                     lobby.removeSpectator(ctx);
