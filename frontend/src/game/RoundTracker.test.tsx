@@ -98,9 +98,7 @@ describe("RoundTracker line", () => {
     rerender(<RoundTracker step={RoundStep.LEGISLATIVE} text="Same" />);
     expect(container.querySelector(".round-step.current")!.textContent).toBe(ROUND_STEPS[2]);
   });
-});
 
-describe("RoundTracker edge cases", () => {
   test("the first render does not fade", () => {
     const { container } = render(<RoundTracker step={null} text="First" />);
     const line = container.querySelector("#status-bar-text")!;
