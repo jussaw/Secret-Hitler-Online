@@ -140,6 +140,11 @@ so mount a volume at `/data`.
 
 - One branch per phase off an up-to-date `development` (`phase-1-housekeeping`, `phase-2-vite`, …),
   merged into `development` by pull request on the fork once every box in the phase is ticked.
+- At the end of every phase, before its PR is merged, bring the docs up to date with what the
+  phase changed. That means `README.md` (what the fork adds, hosting, and the screenshots in
+  `docs/images/` when the game screen looks different), `DEVELOPMENT.md`, this file, and anything
+  else under `docs/` the phase left stale. Commit them on the phase's branch, so the PR merges
+  with its docs.
 - In a fork `gh` defaults to `upstream`, so pass `--repo jussaw/Secret-Hitler-Online` on every `gh`
   command. Never push to `upstream` or open pull requests against it.
 
