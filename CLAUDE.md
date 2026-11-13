@@ -122,12 +122,6 @@ The Gradle 7.4.2 wrapper does not run on JDKs newer than 17. Java 17 comes from 
 | Whole app on one port (after the frontend build) | `cd backend && ./gradlew jar && java -jar build/libs/secret-hitler-online.jar` |
 | Image (repo root) | `docker build -t secret-hitler-online .` |
 
-Known baseline failures (do not "fix" them while doing unrelated work):
-
-- The dev-build console shows a pre-existing React warning: #5 (prompts set state from uncleared
-  timers; on React 18 only `ElectionTrackerAlert`'s constructor timer still warns, after a failed
-  election).
-
 `npm run dev:server` points at upstream's hosted dev backend, not anything this fork runs.
 
 ## Deploy

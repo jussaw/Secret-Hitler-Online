@@ -23,6 +23,8 @@ class ChancellorLegislativePrompt extends Component<
   ChancellorLegislativePromptProps,
   ChancellorLegislativePromptState
 > {
+  timeoutID: ReturnType<typeof setTimeout> | undefined;
+
   constructor(props: ChancellorLegislativePromptProps) {
     super(props);
     this.state = {
@@ -39,7 +41,7 @@ class ChancellorLegislativePrompt extends Component<
     }
     // Lock the button so that it can't be pressed multiple times.
     this.setState({ waitingForServer: true });
-    setTimeout(() => {
+    this.timeoutID = setTimeout(() => {
       this.setState({ waitingForServer: false });
     }, SERVER_TIMEOUT);
 
@@ -55,7 +57,7 @@ class ChancellorLegislativePrompt extends Component<
       // If veto power is activated:
       // Lock the button so that it can't be pressed multiple times.
       this.setState({ waitingForServer: true });
-      setTimeout(() => {
+      this.timeoutID = setTimeout(() => {
         this.setState({ waitingForServer: false });
       }, SERVER_TIMEOUT);
 
@@ -68,6 +70,10 @@ class ChancellorLegislativePrompt extends Component<
         "Veto power is unlocked when there are 5 fascist policies."
       );
     }
+  }
+
+  componentWillUnmount() {
+    clearTimeout(this.timeoutID);
   }
 
   // noinspection DuplicatedCode

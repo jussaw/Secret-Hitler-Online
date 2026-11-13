@@ -623,7 +623,7 @@ These are Minor review findings deferred from Phase 8. The breakdown records the
 The six open issues listed as known baseline failures in `CLAUDE.md`. Each is fixed test first on its own branch and lands here as one commit with its box ticked.
 
 - [x] #4: the login page's gifs get a stable `key`
-- [ ] #5: the prompts clear their timers on unmount, and `ElectionTrackerAlert` starts its timer in `componentDidMount`
+- [x] #5: the prompts clear their timers on unmount, and `ElectionTrackerAlert` and `InvestigationAlert` start theirs in `componentDidMount`
 - [x] #8: `Player`, `EventBar` and `App` no longer call `setState` in `render`
 - [x] #9: the lobby tags only the host as `[Host]`
 - [x] #10: a player who reloads can take back their seat within the 3 s grace window, in a game or a full lobby

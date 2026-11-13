@@ -8,15 +8,23 @@ import ETToken from '../assets/board-tracker.png';
 import './ElectionTrackerAlert.css';
 
 class ElectionTrackerAlert extends Component {
+    moveTimeout;
 
     constructor(props) {
         super(props);
         let initialPos = "et-position-" + (this.props.trackerPosition - 1);
-        let moveClass = "et-moveto-" + (this.props.trackerPosition);
         this.state = {
             trackerClass: initialPos
         };
-        setTimeout(()=>this.setState({trackerClass:moveClass}), 500);
+    }
+
+    componentDidMount() {
+        let moveClass = "et-moveto-" + (this.props.trackerPosition);
+        this.moveTimeout = setTimeout(()=>this.setState({trackerClass:moveClass}), 500);
+    }
+
+    componentWillUnmount() {
+        clearTimeout(this.moveTimeout);
     }
 
     render() {
