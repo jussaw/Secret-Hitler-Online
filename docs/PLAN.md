@@ -25,7 +25,7 @@
 
 Each phase lists its tasks, the files they touch, and acceptance checks. Phases 2 to 7 depend on the code shape left by the phase before, so the step-by-step breakdown (exact code and test bodies) for a phase is written to `docs/superpowers/plans/` when that phase starts, and linked from its heading here. This file is the source of truth for what is done.
 
-Every phase ends with a **Start Phase N** block. A phase is not finished until that block is done, so work flows straight from one phase into the next. Its boxes are ticked in the first commit on the new phase's branch, because the previous phase's PR is already merged by then. Phase 8 ends with **Done when** instead.
+Every phase ends with a **Start Phase N** block. A phase is not finished until that block is done, so work flows straight from one phase into the next. Its boxes are ticked in the first commit on the new phase's branch, because the previous phase's PR is already merged by then. Phase 8 ends without a Start Phase 9 block, since Phase 9 was added after it was planned, and Phase 9 ends with **Done when** instead.
 
 ## Progress
 
@@ -629,5 +629,5 @@ The six open issues listed as known baseline failures in `CLAUDE.md`. Each is fi
 
 ## Done when
 
-- [ ] All eight phases merged and the Progress table reads "done" for each
+- [ ] All nine phases merged and the Progress table reads "done" for each
 - [ ] The deployed instance has hosted one full game with real players, at least one spectator and at least one phone
