@@ -184,6 +184,53 @@ test("PLAY INSTEAD seats the spectator", async () => {
   expect(FakeSocket.instances[0].closed).toBe(true);
 });
 
+test("a seat refused after its check leaves the person watching", async () => {
+  const app = await spectatorInLobby();
+  act(() => app.onClickPlayInstead());
+  await act(async () => {
+    expect(await app.playInstead("Sam")).toBe("");
+  });
+  const seat = FakeSocket.instances[FakeSocket.instances.length - 1];
+  expect(seat.url).toContain("name=Sam");
+  // The game started (or the last seat went) between the check and the join: the server closes it.
+  act(() => seat.onclose?.());
+  expect(lastUrl()).toContain("spectator=true");
+  expect(lastUrl()).not.toContain("name=");
+  expect(Cookies.get("spectator")).toBe("true");
+  expect(app.state.spectator).toBe(true);
+  expect(app.state.page).toBe("lobby");
+  expect(app.state.snackbarMessage).toBe("Could not take a seat. You are still watching.");
+});
+
+test("LEAVE LOBBY before the seat's first packet still leaves", async () => {
+  const app = await spectatorInLobby();
+  act(() => app.onClickPlayInstead());
+  await act(async () => {
+    expect(await app.playInstead("Sam")).toBe("");
+  });
+  const before = FakeSocket.instances.length;
+  act(() => app.onClickLeaveLobby());
+  act(() => FakeSocket.instances[before - 1].onclose?.());
+  expect(FakeSocket.instances.length).toBe(before);
+  expect(app.state.page).toBe("login");
+});
+
+test("a seat that has delivered a packet reconnects as a player when it closes", async () => {
+  const app = await spectatorInLobby();
+  act(() => app.onClickPlayInstead());
+  await act(async () => {
+    expect(await app.playInstead("Sam")).toBe("");
+  });
+  await deliver(app, { ...lobbyPacket, [PARAM_USERNAMES]: ["Ann", "Ben", "Sam"] });
+  act(() => FakeSocket.instances[FakeSocket.instances.length - 1].onclose?.());
+  expect(lastUrl()).toContain("name=Sam");
+  expect(lastUrl()).not.toContain("spectator=true");
+  expect(app.failedConnections).toBe(1);
+  expect(app.state.spectator).toBe(false);
+  expect(app.state.page).toBe("lobby");
+  expect(Cookies.get("spectator")).toBeUndefined();
+});
+
 test("a taken name keeps the spectator watching", async () => {
   const app = await spectatorInLobby();
   act(() => app.onClickPlayInstead());

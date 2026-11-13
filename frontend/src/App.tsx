@@ -139,6 +139,8 @@ const COOKIE_LOBBY = "lobby";
 const COOKIE_SPECTATOR = "spectator";
 /** Under JOIN when the connection to the lobby is lost for good. */
 const DISCONNECTED_ERROR = "Disconnected from the lobby.";
+/** The snackbar when the server refuses a PLAY INSTEAD seat after its check passed. */
+const SEAT_REFUSED = "Could not take a seat. You are still watching.";
 /** How long a spectator's status line shows what happened, in place of a player's alert. */
 const SPECTATOR_RESULT_MS = 3000;
 
@@ -245,6 +247,12 @@ class App extends Component<{}, AppState> {
   playInsteadStep?: () => void = undefined;
   /** Counts the PLAY INSTEAD openings, so a check that began under an earlier prompt does nothing. */
   playInsteadSession = 0;
+  /**
+   * True from PLAY INSTEAD opening a player's socket until that socket's first message. A close
+   * before then is the server refusing the seat (the game started, the last seat went, the name
+   * was taken), so the person goes back to watching.
+   */
+  seatPending = false;
   /** Counts the alerts shown, so a late fade timer does not blank a newer alert. */
   alertShowCount = 0;
   /** The alertShowCount at which the portrait picker was shown: it is on screen while this matches. */
@@ -389,6 +397,7 @@ class App extends Component<{}, AppState> {
 
     console.log("Websocket created for " + url);
     this.websocket = ws;
+    this.seatPending = false;
     // A new socket has no history, so its first packet plays no sounds (no burst on reconnect).
     this.soundState = undefined;
     this.lobbyUsers = undefined;
@@ -483,7 +492,17 @@ class App extends Component<{}, AppState> {
         ". Reopening to current lobby " +
         this.state.lobby
     );
-    //
+
+    if (this.seatPending && this.reconnectOnConnectionClosed) {
+      // The server refused the PLAY INSTEAD seat after its check: keep watching.
+      this.seatPending = false;
+      if (this.openWatch(this.state.lobby)) {
+        this.showSnackBar(SEAT_REFUSED);
+      } else {
+        this.toLoginPage(CONNECT_ERROR);
+      }
+      return;
+    }
 
     if (
       this.reconnectOnConnectionClosed &&
@@ -538,6 +557,7 @@ class App extends Component<{}, AppState> {
 
   async onWebSocketMessage(msg: MessageEvent) {
     this.failedConnections = 0;
+    this.seatPending = false; // the server took the seat
     let message = JSON.parse(msg.data);
     // Decode message contents as communication is encoded
     if (DEBUG) {
@@ -831,6 +851,7 @@ class App extends Component<{}, AppState> {
     if (response === undefined) return CONTACT_ERROR;
     if (!response.ok) return joinErrorMessage(response.status, name);
     if (!this.openSeat(name, lobby)) return CONNECT_ERROR;
+    this.seatPending = true;
     // Free the alert slot at once: the new socket's lobby packet may queue the portrait picker.
     this.closePlayInstead(false);
     return "";
