@@ -169,10 +169,11 @@ keeps credit to upstream and to the board game's creators.
   no margin, gives its shadow the 5px it kept below itself. A 44px minimum is the face's:
   `calc(44px + var(--button-depth))`. END TERM stands above the piles' cards, and its countdown
   flash is drawn round the face. Only the label's colour eases (the face's eases in `::before`); a
-  button's size and place follow the layout at once. Firefox styles a page that has just appeared
+  button's size and place follow the layout at once. That goes for the header's speaker too, which
+  undoes the look but keeps `App.css`'s `transition`. Firefox styles a page that has just appeared
   with its container units measured against the window, then against their containers, and an
-  ease from there slid END TERM, the countdown chip and the header's speaker into place, out from
-  under a press (issue #59).
+  ease from there slid END TERM, the countdown chip and the speaker into place, out from under a
+  press (issue #59).
   Sounds are in `src/sound/`:
   `SoundManager` (Web Audio; the `AudioContext` is created in the first trusted gesture, so `play()`
   before it is a silent no-op; volume and mute in `localStorage` under `sounds`; every `play()`
@@ -226,9 +227,10 @@ keeps credit to upstream and to the board game's creators.
   never missed) holds mouse presses for 150 ms on END TERM and on the veto prompt's REJECT, 1px
   and 3px below the top edge and 2px into the shadow and at its foot (the shadow found by its
   colour in a screenshot), and checks that each click reaches the button and that, in no frame of
-  a held press, REJECT's box or ACCEPT's beside it moves. It also checks that no button starts a
-  transition as the game page appears (END TERM, the president's countdown chip and the header's
-  speaker eased there in Firefox). `sounds.spec.ts` runs in every
+  a held press, REJECT's box or ACCEPT's beside it moves. It measures a button once the page's
+  images have loaded, and checks that no button eases its size or place (a transition on anything
+  but a colour) as the game page appears (END TERM, the president's countdown chip and the
+  header's speaker did in Firefox). `sounds.spec.ts` runs in every
   project: no sound and no `AudioContext` before the first trusted gesture, each sound in step with
   its animation, and the header control's fit, touch targets, keyboard use and saved settings.
   `spectator.spec.ts` plays a scripted game to a spectator (no prompt before the victory screen, the
