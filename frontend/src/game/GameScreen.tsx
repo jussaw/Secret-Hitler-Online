@@ -3,10 +3,9 @@ import Deck from "../board/Deck";
 import { GameState, LobbyState } from "../types";
 import PlayerPolicyStatus from "../util/PlayerPolicyStatus";
 import "./GameScreen.css";
+import PlayerRoster from "./PlayerRoster";
 import RoundTracker from "./RoundTracker";
 import { RoundStep } from "./roundStep";
-import { centreBox } from "./seatPositions";
-import TableSeats from "./TableSeats";
 import SoundControl from "../sound/SoundControl";
 import SpectatorCount from "../spectator/SpectatorCount";
 
@@ -32,8 +31,8 @@ export type GameScreenProps = {
 };
 
 /**
- * The game page below the overlays: a round table with the players seated around the boards,
- * decks, status text and END TERM.
+ * The game page below the overlays: the roster of players beside (or, in tall windows, above) the
+ * table, which holds the round tracker over the boards and a column of END TERM and the decks.
  */
 export default function GameScreen(props: GameScreenProps) {
   const { gameState, user } = props;
@@ -41,8 +40,6 @@ export default function GameScreen(props: GameScreenProps) {
   const canEndTerm =
     gameState.state === LobbyState.POST_LEGISLATIVE &&
     gameState.president === user;
-  // The centre box comes from the seat geometry, so seats and boards cannot drift apart.
-  const centre = centreBox(gameState.playerOrder.length);
 
   return (
     <div className="game-screen">
@@ -52,23 +49,17 @@ export default function GameScreen(props: GameScreenProps) {
         <SoundControl />
       </header>
 
-      <div className="game-table">
-        <TableSeats
+      <div className="game-body">
+        <PlayerRoster
           gameState={gameState}
           user={user}
           showVotes={props.showVotes}
           showBusy={props.showBusy}
         />
 
-        <div
-          className="game-centre"
-          style={{
-            left: `${centre.left}%`,
-            right: `${100 - centre.right}%`,
-            top: `${centre.top}%`,
-            bottom: `${100 - centre.bottom}%`,
-          }}
-        >
+        <div className="game-table">
+          <RoundTracker step={props.statusStep} text={props.statusBarText} />
+
           <div className="game-boards">
             <Board
               numPlayers={gameState.playerOrder.length}
@@ -79,24 +70,25 @@ export default function GameScreen(props: GameScreenProps) {
           </div>
 
           <div className="game-decks">
-            <Deck cardCount={props.drawDeckSize} deckType={"DRAW"} />
-            <PlayerPolicyStatus
-              numFascistPolicies={props.fascistPolicies}
-              numLiberalPolicies={props.liberalPolicies}
-              playerCount={gameState.playerOrder.length}
-            />
-            <Deck cardCount={props.discardDeckSize} deckType={"DISCARD"} />
-          </div>
-
-          <div className="game-status">
-            <RoundTracker step={props.statusStep} text={props.statusBarText} />
             <button
+              className="end-term"
               disabled={!canEndTerm}
               onClick={props.onEndTerm}
               style={props.spectator ? { visibility: "hidden" } : undefined}
             >
               END TERM
             </button>
+            <div className="game-deck draw">
+              <Deck cardCount={props.drawDeckSize} deckType={"DRAW"} />
+            </div>
+            <PlayerPolicyStatus
+              numFascistPolicies={props.fascistPolicies}
+              numLiberalPolicies={props.liberalPolicies}
+              playerCount={gameState.playerOrder.length}
+            />
+            <div className="game-deck discard">
+              <Deck cardCount={props.discardDeckSize} deckType={"DISCARD"} />
+            </div>
           </div>
         </div>
       </div>

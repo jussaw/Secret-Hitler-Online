@@ -9,6 +9,7 @@
   gap: 6px;
   font-family: var(--textFont);
   font-size: var(--roster-font);
+  text-align: left;
 }
 
 .roster-row {

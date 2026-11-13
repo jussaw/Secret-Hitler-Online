@@ -126,7 +126,7 @@
     cursor: pointer;
 }
 
-/* Touch screens: the same query as the stacked game layout (GameScreen.css, TableSeats.css). */
+/* Touch screens: phones and windows narrower than 5:4, which GameScreen.css lays out for touch. */
 @media (max-width: 768px), (aspect-ratio < 5/4) {
     .sound-control {
         --target: 44px;

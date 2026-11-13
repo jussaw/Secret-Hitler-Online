@@ -27,8 +27,12 @@ function renderScreen(overrides: Partial<GameScreenProps> = {}) {
   return props;
 }
 
-test("shows every player and the status text", () => {
+test("shows every player in the roster, the user's own row marked, and the status text", () => {
   renderScreen();
+  const rows = Array.from(document.querySelectorAll(".roster-row"));
+  expect(rows.map((row) => row.getAttribute("data-player"))).toEqual(NAMES);
+  expect(document.querySelectorAll(".roster-row.is-user")).toHaveLength(1);
+  expect(document.querySelector(".roster-row.is-user")).toHaveAttribute("data-player", "Alice");
   for (const name of NAMES) {
     expect(screen.getByText(name)).toBeInTheDocument();
   }
@@ -61,7 +65,7 @@ test("the president ends the term with END TERM", () => {
   expect(props.onEndTerm).toHaveBeenCalledTimes(1);
 });
 
-test("a spectator sees every seat, none their own, and no END TERM", () => {
+test("a spectator sees every player in the roster, none their own, and no END TERM", () => {
   const { container } = render(
     <GameScreen
       gameState={makeGameState(NAMES, { state: LobbyState.POST_LEGISLATIVE, president: "Bob" })}
@@ -80,9 +84,9 @@ test("a spectator sees every seat, none their own, and no END TERM", () => {
       onEndTerm={vi.fn()}
     />
   );
-  expect(container.querySelectorAll(".table-seat")).toHaveLength(5);
-  expect(container.querySelectorAll("#player-container.highlight")).toHaveLength(0);
-  // The button keeps its box, so the centre lays out as a player's does.
+  expect(container.querySelectorAll(".roster-row")).toHaveLength(5);
+  expect(container.querySelectorAll(".roster-row.is-user")).toHaveLength(0);
+  // The button keeps its box, so the decks column lays out as a player's does.
   // A hidden button has no accessible name, so find it by its text.
   expect(screen.getByText("END TERM")).toHaveStyle({ visibility: "hidden" });
 });

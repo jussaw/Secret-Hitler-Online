@@ -14,9 +14,9 @@ export default defineConfig({
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   use: { baseURL: `http://localhost:${PORT}`, trace: "retain-on-failure" },
   projects: [
-    // The round table at the five desktop sizes.
+    // The game page at the five desktop sizes and in the narrow windows.
     { name: "desktop", use: devices["Desktop Chrome"], testIgnore: /phone\.spec/ },
-    // Firefox lays out the zoomed seats of narrow windows, and the header control, with its own rounding.
+    // Firefox lays out the game page and the header control with its own rounding.
     { name: "firefox", use: devices["Desktop Firefox"], testMatch: /(no-scroll|sounds|spectator)\.spec/ },
     // Phones in portrait, emulated with touch and their own pixel ratio.
     { name: "phone-360", use: devices["Galaxy S8"], testIgnore: /no-scroll\.spec/ },

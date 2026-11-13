@@ -563,8 +563,8 @@ Files: `frontend/src/App.tsx` (state 179 and 210, `queueStatusMessage` 1817 and 
 
 Files: `frontend/src/game/GameScreen.tsx`, `GameScreen.css`, `GameScreen.test.tsx`, `frontend/e2e/layout.ts`, `frontend/e2e/no-scroll.spec.ts`; deletes `TableSeats.*`, `seatPositions.*` and `frontend/src/status-bar/`
 
-- [ ] Browser tests first: no scroll, the board floors, the roster beside or above, the tracker centred on the boards, END TERM above the draw pile, rows that never jump, the spectator view
-- [ ] Rebuild the game page as roster, tracker, boards and decks column; delete the round table
+- [x] Browser tests first: no scroll, the board floors, the roster beside or above, the tracker centred on the boards, END TERM above the draw pile, rows that never jump, the spectator view
+- [x] Rebuild the game page as roster, tracker, boards and decks column; delete the round table
 
 ### Task 8.8: Phone layout and docs
 
