@@ -71,9 +71,11 @@ keeps credit to upstream and to the board game's creators.
   ems, which the layouts reserve) and `roundStep` (a pure function from the game state and
   `lastState` to the step; `App` queues the step with each status line). `TermTimer` is the END
   TERM countdown: an icon and the seconds left, counted down on the page from each packet's
-  `remainingMs`. It is the president's pause and resume button, and shows everyone else (spectators
-  too) whether it is paused; the seconds left are its accessible description, so its name stays
-  put. `GameScreen` puts it in `.end-term-slot` with END TERM, which flashes
+  `remainingMs`. The page takes the time passed since the packet from `remainingMs`, not the page
+  time from a deadline, whose fractions could show a second too many: the first frame shows the
+  server's seconds exactly. It is the president's pause and resume button, and shows everyone
+  else (spectators too) whether it is paused; the seconds left are its accessible description, so
+  its name stays put. `GameScreen` puts it in `.end-term-slot` with END TERM, which flashes
   (an outline, held steady with reduced motion) while the countdown runs. It stands just above END
   TERM on desktop and in tall windows, in the room the table keeps there beside the tracker, and
   at its right on phones, so it moves nothing.
