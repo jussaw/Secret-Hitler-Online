@@ -16,7 +16,10 @@ export const ROUND_STEPS: readonly RoundStep[] = [
   RoundStep.EXECUTIVE,
 ];
 
-/** The step a status line lights for this state; null keeps the previous step (SETUP, victory states). */
+/**
+ * The step a status line lights for this state; null keeps the previous step
+ * (SETUP, victory states).
+ */
 export function stepForState(
   game: Pick<GameState, "state" | "lastState">,
 ): RoundStep | null {
@@ -42,7 +45,8 @@ export function stepForState(
         case LobbyState.PP_ELECTION:
           return RoundStep.EXECUTIVE;
         case LobbyState.CHANCELLOR_VOTING:
-        case LobbyState.CHANCELLOR_NOMINATION: // a third failed vote leaves lastState alone
+        // a third failed vote leaves lastState alone
+        case LobbyState.CHANCELLOR_NOMINATION:
           return RoundStep.ELECTION;
         default:
           return RoundStep.LEGISLATIVE;
@@ -56,7 +60,10 @@ export function stepForState(
   }
 }
 
-/** The spectator's "policy was enacted" line: ELECTION when the election tracker forced it. */
+/**
+ * The spectator's "policy was enacted" line: ELECTION when the election
+ * tracker forced it.
+ */
 export function stepForPolicyLine(
   game: Pick<GameState, "electionTrackerAdvanced">,
 ): RoundStep {
