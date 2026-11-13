@@ -190,6 +190,20 @@ export async function longestLineLobby(
   return guests;
 }
 
+/**
+ * The lobby's status card: its height and its computed `min-height`, which keeps it two lines tall
+ * whatever its line holds.
+ */
+export function lobbyStatusCard(page: Page): Promise<{ height: number; minHeight: number }> {
+  return page.evaluate(() => {
+    const card = document.querySelector(".lobby-status")!;
+    return {
+      height: card.getBoundingClientRect().height,
+      minHeight: parseFloat(getComputedStyle(card).minHeight),
+    };
+  });
+}
+
 /** Watches `lobby` from the login form, and waits for its lobby or game page. */
 export async function watchLobby(page: Page, lobby: string): Promise<void> {
   await page.goto("/");

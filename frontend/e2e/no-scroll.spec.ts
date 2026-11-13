@@ -12,12 +12,14 @@ import {
   overlaps,
   pageHeight,
   rowShift,
+  smallFieldText,
   smallTargets,
   trackerReserved,
   withStatus,
+  wrappedLabels,
   type Box,
 } from "./layout";
-import { lobbyCode, longestLineLobby, settle, startGame, watchLobby } from "./lobby";
+import { lobbyCode, lobbyStatusCard, longestLineLobby, settle, startGame, watchLobby } from "./lobby";
 
 type Size = { width: number; height: number };
 
@@ -437,7 +439,6 @@ function measureLobby(page: Page) {
       const r = document.querySelector(selector)!.getBoundingClientRect();
       return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
     };
-    const status = document.querySelector(".lobby-status")!;
     return {
       players: box(".lobby-players"),
       main: box(".lobby-main"),
@@ -449,8 +450,6 @@ function measureLobby(page: Page) {
         scrollWidth: el.scrollWidth,
         clientWidth: el.clientWidth,
       })),
-      statusHeight: status.getBoundingClientRect().height,
-      statusMinHeight: parseFloat(getComputedStyle(status).minHeight),
     };
   });
 }
@@ -471,10 +470,12 @@ async function checkLobby(page: Page, size: Size, viewer: string) {
   const lobby = await measureLobby(page);
   expect(lobby.rows, `roster rows at ${at}`).toBe(10);
   // The status card keeps two lines' height, so the longest line does not grow it.
+  const status = await lobbyStatusCard(page);
   expect(
-    Math.abs(lobby.statusHeight - lobby.statusMinHeight),
-    `status card ${lobby.statusHeight}px against its min-height ${lobby.statusMinHeight}px at ${at}`
+    Math.abs(status.height - status.minHeight),
+    `status card ${status.height}px against its min-height ${status.minHeight}px at ${at}`
   ).toBeLessThanOrEqual(1);
+  expect(await wrappedLabels(page, ".lobby-screen"), `wrapped button labels at ${at}`).toEqual([]);
   // Twelve-character names fit whole, as they do in the game.
   for (const name of lobby.names) {
     expect(name.scrollWidth, `"${name.text}" is cut off at ${at}`).toBeLessThanOrEqual(name.clientWidth + 1);
@@ -485,6 +486,7 @@ async function checkLobby(page: Page, size: Size, viewer: string) {
   } else {
     expect(lobby.players.bottom, `roster above the code card at ${at}`).toBeLessThanOrEqual(lobby.codeCard.top);
     expect(await smallTargets(page, ".lobby-screen"), `small touch targets at ${at}`).toEqual([]);
+    expect(await smallFieldText(page, ".lobby-screen"), `small text in text fields at ${at}`).toEqual([]);
   }
 }
 

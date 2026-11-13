@@ -74,6 +74,9 @@ export const LONG_STATUS =
 /** Touch targets on phones are at least this many CSS px wide and tall. */
 export const MIN_TARGET = 44;
 
+/** Text fields' text is at least this many CSS px, so iOS Safari does not zoom in on focus. */
+export const MIN_FIELD_TEXT = 16;
+
 export type Box = { left: number; right: number; top: number; bottom: number };
 
 /** Firefox lays boxes out unrounded, so boxes that touch can share a few millionths of a px. */
@@ -139,6 +142,48 @@ export function smallTargets(page: Page, scope: string): Promise<string[]> {
         }),
     { scope, min: MIN_TARGET }
   );
+}
+
+/**
+ * Text fields inside `scope` whose text is smaller than MIN_FIELD_TEXT, as `input#id 13px`. Throws
+ * when `scope` holds no text field, so a check that finds none small has measured something.
+ */
+export function smallFieldText(page: Page, scope: string): Promise<string[]> {
+  return page.evaluate(
+    ({ scope, min }) => {
+      const fields = Array.from(document.querySelectorAll(`${scope} input`));
+      if (fields.length === 0) throw new Error(`no text field in ${scope}`);
+      return fields.flatMap((el) => {
+        const size = parseFloat(getComputedStyle(el).fontSize);
+        return size >= min ? [] : [`${el.tagName.toLowerCase()}#${el.id} ${size}px`];
+      });
+    },
+    { scope, min: MIN_FIELD_TEXT }
+  );
+}
+
+/**
+ * Button labels inside `scope` that wrap onto more than one line, as `"text" n lines`. Each text
+ * node is measured by itself, one rect per line, so a button's icon is never counted as a line.
+ */
+export function wrappedLabels(page: Page, scope: string): Promise<string[]> {
+  return page.evaluate((scope) => {
+    const wrapped: string[] = [];
+    for (const button of Array.from(document.querySelectorAll(`${scope} button`))) {
+      const r = button.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0 || getComputedStyle(button).visibility !== "visible") continue;
+      const walker = document.createTreeWalker(button, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const text = (node.nodeValue ?? "").trim();
+        if (!text) continue;
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const lines = range.getClientRects().length;
+        if (lines > 1) wrapped.push(`"${text}" ${lines} lines`);
+      }
+    }
+    return wrapped;
+  }, scope);
 }
 
 /**

@@ -6,14 +6,17 @@ import {
   overlaps,
   pageHeight,
   rowShift,
+  smallFieldText,
   smallTargets,
   trackerReserved,
   withStatus,
+  wrappedLabels,
   type Box,
 } from "./layout";
 import {
   createLobby,
   joinGuests,
+  lobbyStatusCard,
   longestLineLobby,
   settle,
   startGame,
@@ -67,6 +70,8 @@ for (const narrow of [false, true]) {
       await settle(page);
       // The 320px phone may scroll down, never sideways.
       if (!narrow) expect(await pageHeight(page), "scrollHeight").toBeLessThanOrEqual(height);
+      expect(await wrappedLabels(page, ".lobby-screen"), "wrapped button labels").toEqual([]);
+      expect(await smallFieldText(page, ".lobby-screen"), "small text in text fields").toEqual([]);
       overflow = await overflowX(page);
       expect(overflow.scrollWidth, "scrollWidth").toBeLessThanOrEqual(width);
       expect(overflow.offscreen, "past the edge").toEqual([]);
@@ -76,17 +81,19 @@ for (const narrow of [false, true]) {
     }
   });
 
-  test(`a guest's and a spectator's lobby fit ${phone}`, async ({ page, browser, baseURL }) => {
+  test(`the host's, a guest's and a spectator's lobby fit ${phone}`, async ({ page, browser, baseURL }) => {
     if (narrow) await narrowPhone(page);
     // Each viewer has a page (and cookies) of its own, with the project's phone settings.
     const host = await browser.newPage();
     const spectator = await browser.newPage();
     try {
       const { width, height } = page.viewportSize()!;
+      await host.setViewportSize({ width, height });
       await spectator.setViewportSize({ width, height });
       const sockets = await longestLineLobby(baseURL!, { host, guest: page, spectator });
       try {
         for (const [viewer, viewerPage] of [
+          ["host", host],
           ["guest", page],
           ["spectator", spectator],
         ] as const) {
@@ -100,14 +107,13 @@ for (const narrow of [false, true]) {
           expect(overflow.scrollWidth, `the ${viewer}'s scrollWidth`).toBeLessThanOrEqual(width);
           expect(overflow.offscreen, `past the edge for the ${viewer}`).toEqual([]);
           expect(await smallTargets(viewerPage, "body"), `the ${viewer}'s small touch targets`).toEqual([]);
+          expect(await wrappedLabels(viewerPage, ".lobby-screen"), `the ${viewer}'s wrapped button labels`).toEqual([]);
+          expect(
+            await smallFieldText(viewerPage, ".lobby-screen"),
+            `small text in the ${viewer}'s text fields`
+          ).toEqual([]);
           if (!narrow) {
-            const status = await viewerPage.evaluate(() => {
-              const card = document.querySelector(".lobby-status")!;
-              return {
-                height: card.getBoundingClientRect().height,
-                minHeight: parseFloat(getComputedStyle(card).minHeight),
-              };
-            });
+            const status = await lobbyStatusCard(viewerPage);
             expect(
               Math.abs(status.height - status.minHeight),
               `the ${viewer}'s status card ${status.height}px against its min-height ${status.minHeight}px`
@@ -363,7 +369,7 @@ test("a phone held sideways gets the phone layout", async ({ page, baseURL }) =>
 
 test("a spectator's lobby and game fit the phone", async ({ page, browser, baseURL }) => {
   const { width } = page.viewportSize()!;
-  // The host plays in a desktop page of its own; this phone watches.
+  // The host plays in a page of its own (with the project's phone settings); this phone watches.
   const host = await browser.newPage();
   const code = await createLobby(host, "Host Player");
   const guests = await joinGuests(baseURL!, code, 9);
@@ -391,7 +397,7 @@ test("a spectator's lobby and game fit the phone", async ({ page, browser, baseU
 
 test("a spectator's game keeps the phone layout at 320px", async ({ page, browser, baseURL }) => {
   test.skip(test.info().project.name !== "phone-360", "one phone project is enough");
-  // The host plays in a desktop page of its own; this phone watches.
+  // The host plays in a page of its own (with the project's phone settings); this phone watches.
   const host = await browser.newPage();
   const code = await createLobby(host, "Host Player");
   const guests = await joinGuests(baseURL!, code, 9);
