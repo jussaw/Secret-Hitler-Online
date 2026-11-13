@@ -26,7 +26,14 @@ keeps credit to upstream and to the board game's creators.
   `GameToJSONConverter.convertForSpectator` sends no role, hand or peek until the game is over.
   Every command from a spectator except `ping` and `get-state` is logged and dropped, and every
   packet, lobby or game, carries `spectatorCount`. `Lobby` pins its `serialVersionUID`, so backups
-  written by earlier releases still load (`DatabaseBackupTest`). `Lobby.startNewGame` seats only
+  written by earlier releases still load (`DatabaseBackupTest`). A player whose connection closes
+  keeps their place in `activeUsernames` and their portrait for a 3 s grace window
+  (`PLAYER_TIMEOUT_IN_SEC`), counted from that disconnect (in a game the seat itself is kept for
+  the whole game). The removal a disconnect schedules is the name's only pending one
+  (`pendingRemovals`), a new connection under the name calls it off, and it runs under the lobby's
+  lock and does nothing unless it is still the pending one. So a removal never undoes a rejoin
+  under way, and one left from an earlier drop never cuts a later window short, even if it fell
+  due during a rejoin (`LobbyRejoinTest`, `LobbyGraceWindowTest`). `Lobby.startNewGame` seats only
   players with a live connection: a name still inside the 3 s grace window after a disconnect is
   dropped from `activeUsernames` and `usernameToIcon` (its preferred portrait is kept), so no seat
   is made for someone who cannot take it, and a start that fails leaves the lobby untouched
@@ -34,8 +41,7 @@ keeps credit to upstream and to the board game's creators.
   from a backup (`activeUsernames` is transient, so a restored lobby has no one in it), goes back
   at the end of `activeUsernames`: the lobby counts them at once, and lists and seats them when
   the game ends. So a host back after the window is host no longer, and after a restore the first
-  player back is the host. One back inside the window keeps their place, and the removal at the
-  window's end takes the lobby's lock, so it never undoes a rejoin under way (`LobbyRejoinTest`).
+  player back is the host. One back inside the window keeps their place (`LobbyRejoinTest`).
   While a game waits in `POST_LEGISLATIVE` for a human president, `Lobby` runs
   the END TERM countdown (`TermTimer`, `END_TERM_TIMER_IN_SEC`, 10 s): it starts with the first
   game packet that shows END TERM, and at zero it ends the term as END TERM would (one daemon
