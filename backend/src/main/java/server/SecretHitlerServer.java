@@ -363,13 +363,16 @@ public class SecretHitlerServer {
      *          - 403: the username is invalid (there is already another user
      *          with that name in the lobby.)
      *          <p>
-     *          - 488: the lobby is currently in a game.
+     *          - 488: the lobby is currently in a game, and the user is not one of
+     *          its players with no live connection.
      *          <p>
-     *          - 489: the lobby is full.
+     *          - 489: the lobby is full, and the user is not taking back their
+     *          own seat ({@code Lobby.canRejoin}).
      *          <p>
      *          - 200: Success. There is a lobby with the given name and the
      *          user can open a websocket connection with these login
-     *          credentials.
+     *          credentials. This includes a player rejoining the running game
+     *          or, inside the grace window after a disconnect, the lobby.
      */
     public static void checkLogin(Context ctx) {
         String lobbyCode = ctx.queryParam(PARAM_LOBBY);
@@ -390,17 +393,16 @@ public class SecretHitlerServer {
         } else { // the lobby exists
             Lobby lobby = codeToLobby.get(lobbyCode);
 
-            if (lobby.isFull()) {
+            if (lobby.canRejoin(name)) { // takes back their own seat, even in a full lobby
+                ctx.status(200);
+                ctx.result(lobby.isInGame() ? "Login request valid (re-joining an existing game)."
+                        : "Login request valid.");
+            } else if (lobby.isFull()) {
                 ctx.status(489);
                 ctx.result("The lobby is currently full.");
             } else if (lobby.isInGame()) {
-                if (lobby.canAddUserDuringGame(name)) {
-                    ctx.status(200);
-                    ctx.result("Login request valid (re-joining an existing game).");
-                } else {
-                    ctx.status(488);
-                    ctx.result("The lobby is currently in a game.");
-                }
+                ctx.status(488);
+                ctx.result("The lobby is currently in a game.");
             } else if (lobby.hasUserWithName(name)) { // repeat username.
                 ctx.status(403);
                 ctx.result("There is already a user with the name '" + name + "' in the lobby.");
@@ -493,7 +495,8 @@ public class SecretHitlerServer {
      *          - 488 if the lobby is currently in a game and the user is not
      *          a rejoining player.
      *          <p>
-     *          - 489 if the lobby is full.
+     *          - 489 if the lobby is full and the user is not taking back their
+     *          own seat ({@code Lobby.canRejoin}).
      *          <p>
      *          Otherwise, connects the user to the lobby.
      */
@@ -526,15 +529,17 @@ public class SecretHitlerServer {
         }
 
         Lobby lobby = codeToLobby.get(code);
+        // A player taking back their own seat is refused neither for a full lobby nor for a game.
+        boolean rejoining = lobby.canRejoin(name);
         if (lobby.hasUserWithName(name)) { // duplicate names not allowed
             logger.debug("FAILED (Repeat username)");
             ctx.session.close(StatusCode.PROTOCOL, "A user with the name " + name + " is already in the lobby.");
             return;
-        } else if (lobby.isFull()) {
+        } else if (lobby.isFull() && !rejoining) {
             logger.debug("FAILED (Lobby is full)");
             ctx.session.close(StatusCode.PROTOCOL, "The lobby " + code + " is currently full.");
             return;
-        } else if (lobby.isInGame() && !lobby.canAddUserDuringGame(name)) {
+        } else if (lobby.isInGame() && !rejoining) {
             logger.debug("FAILED (Lobby in game)");
             ctx.session.close(StatusCode.PROTOCOL, "The lobby " + code + " is currently in a game..");
             return;
