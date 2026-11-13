@@ -241,6 +241,8 @@ class App extends Component<{}, AppState> {
   playInsteadSession = 0;
   /** Counts the alerts shown, so a late fade timer does not blank a newer alert. */
   alertShowCount = 0;
+  /** The alertShowCount at which the portrait picker was shown: it is on screen while this matches. */
+  pickerShownAt = -1;
 
   // noinspection DuplicatedCode
   constructor(props: any) {
@@ -549,7 +551,11 @@ class App extends Component<{}, AppState> {
             if (message[PARAM_ICON][this.state.name] === defaultPortrait) {
               this.showChangeIconAlert();
             }
-            this.updateChangeIconAlert();
+            // Follow the lobby only while the picker itself is the alert on screen: any other
+            // alert, or one fading out, must not turn into a picker.
+            if (this.state.showAlert && this.pickerShownAt === this.alertShowCount) {
+              this.updateChangeIconAlert();
+            }
           }
         );
         break;
@@ -976,6 +982,7 @@ class App extends Component<{}, AppState> {
     // queued one can never surface as an empty box.
     this.addAnimationToQueue(() => {
       this.alertShowCount += 1;
+      this.pickerShownAt = this.alertShowCount;
       this.setState({ showAlert: true });
       this.updateChangeIconAlert();
     });

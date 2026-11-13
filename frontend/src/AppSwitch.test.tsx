@@ -264,6 +264,28 @@ test("the portrait picker opens after PLAY INSTEAD, even when the lobby packet i
   expect((app.state.alertContent as React.ReactElement).type).toBe(IconSelection);
 });
 
+test("a return under the same name keeps the remembered portrait and opens no picker", async () => {
+  vi.useFakeTimers();
+  const app = await spectatorInLobby();
+  act(() => app.onClickPlayInstead());
+  await act(async () => {
+    expect(await app.playInstead("Sam")).toBe("");
+  });
+  // The server restored Sam's old portrait, so the first packet already carries it.
+  const back = {
+    ...lobbyPacket,
+    [PARAM_USERNAMES]: ["Ann", "Sam"],
+    [PARAM_ICON]: { Ann: "p1", Sam: "p2" },
+  };
+  await deliver(app, back);
+  expect((app.state.alertContent as React.ReactElement | null)?.type).not.toBe(IconSelection);
+  await act(async () => {
+    vi.advanceTimersByTime(1500);
+  });
+  expect((app.state.alertContent as React.ReactElement | null)?.type).not.toBe(IconSelection);
+  expect(app.state.showAlert).toBe(false);
+});
+
 test("a lasting disconnect drops the prompt", async () => {
   const app = await spectatorInLobby();
   act(() => app.onClickPlayInstead());
