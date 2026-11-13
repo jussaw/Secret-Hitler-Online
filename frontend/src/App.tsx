@@ -94,6 +94,7 @@ import {
 import { sounds, type SoundName } from "./sound/SoundManager";
 import SoundControl from "./sound/SoundControl";
 import SpectatorCount from "./spectator/SpectatorCount";
+import { CONTACT_ERROR, joinErrorMessage } from "./lobby/joinError";
 import { lobbySounds, SOUND_CUES, soundEvents, type Cue } from "./sound/soundEvents";
 import {
   VICTORY_TEXT,
@@ -632,25 +633,7 @@ class App extends Component<{}, AppState> {
           if (DEBUG) {
             console.log("Response is not ok");
           }
-          if (response.status === 404) {
-            this.setState({ joinError: "The lobby could not be found." });
-          } else if (response.status === 403) {
-            this.setState({
-              joinError:
-                "There is already a user with the name '" +
-                name +
-                "' in the lobby.",
-            });
-          } else if (response.status === 488) {
-            this.setState({ joinError: "The lobby is currently in a game." });
-          } else if (response.status === 489) {
-            this.setState({ joinError: "The lobby is currently full." });
-          } else {
-            this.setState({
-              joinError:
-                "There was an error connecting to the server. Please try again.",
-            });
-          }
+          this.setState({ joinError: joinErrorMessage(response.status, name) });
         } else {
           // Username and lobby were verified. Try to open websocket.
           if (!this.tryOpenWebSocket(name, lobby)) {
@@ -667,10 +650,7 @@ class App extends Component<{}, AppState> {
         }
       })
       .catch(() => {
-        this.setState({
-          joinError:
-            "There was an error contacting the server. Please wait and try again.",
-        });
+        this.setState({ joinError: CONTACT_ERROR });
       });
   };
 
