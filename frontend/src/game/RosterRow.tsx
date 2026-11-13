@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import PlayerBase from "../assets/player-base.png";
-import portraits, { portraitsAltText } from "../assets";
+import portraits, { defaultPortrait, portraitsAltText } from "../assets";
 import "./PlayerRoster.css";
 
 export type RosterRowProps = {
@@ -18,11 +18,12 @@ export type RosterRowProps = {
 /** One roster row: portrait, name, detail line, tag and status slot. Shared by the game and the lobby. */
 export default function RosterRow(props: RosterRowProps) {
   const className = "roster-row" + (props.isUser ? " is-user" : "") + (props.disabled ? " is-disabled" : "");
+  const icon = portraits[props.icon] ? props.icon : defaultPortrait; // an unknown id shows the default
   return (
     <li className={className} data-player={props.name} title={props.name}>
       <span className="roster-portrait">
         <img className="roster-card" src={PlayerBase} alt="" />
-        <img className="roster-face" src={portraits[props.icon]} alt={portraitsAltText[props.icon]} />
+        <img className="roster-face" src={portraits[icon]} alt={portraitsAltText[icon]} />
       </span>
       <span className="roster-text">
         <span className="roster-name">

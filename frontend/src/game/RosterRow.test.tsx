@@ -1,6 +1,7 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { portraitsAltText } from "../assets";
+import portraits, { defaultPortrait, portraitsAltText } from "../assets";
+import busyIcon from "../assets/player-icon-busy.png";
 import RosterRow, { RosterRowProps } from "./RosterRow";
 
 function renderRow(overrides: Partial<RosterRowProps> = {}) {
@@ -29,7 +30,7 @@ describe("RosterRow", () => {
       detail: "HOST",
       detailClass: "office",
       tag: "HOST",
-      status: <img className="roster-busy" alt="busy" />,
+      status: <img className="roster-busy" src={busyIcon} alt="busy" />,
     });
     expect(row.getAttribute("title")).toBe("Ann");
     expect(row.querySelector(".roster-face")?.getAttribute("alt")).toBe(portraitsAltText.p3);
@@ -44,10 +45,20 @@ describe("RosterRow", () => {
     expect(row.classList.contains("is-disabled")).toBe(true);
     const plain = renderRow();
     expect(plain.classList.contains("is-user")).toBe(false);
+    expect(plain.classList.contains("is-disabled")).toBe(false);
   });
 
   it("a role icon follows the name", () => {
     const row = renderRow({ roleIcon: { src: "x.png", alt: "Liberal" } });
-    expect(row.querySelector('.roster-name img.roster-role-icon[alt="Liberal"]')).not.toBeNull();
+    const icon = row.querySelector('.roster-name img.roster-role-icon[alt="Liberal"]');
+    expect(icon).not.toBeNull();
+    expect(icon?.getAttribute("src")).toBe("x.png");
+    expect(icon?.previousElementSibling?.classList.contains("roster-name-text")).toBe(true);
+  });
+
+  it("an unknown portrait id falls back to the default portrait", () => {
+    const face = renderRow({ icon: "p99" }).querySelector(".roster-face");
+    expect(face?.getAttribute("src")).toBe(portraits[defaultPortrait]);
+    expect(face?.getAttribute("alt")).toBe(portraitsAltText[defaultPortrait]);
   });
 });
