@@ -655,7 +655,7 @@ Issue #23: the lobby matches the game screen and fits one screen, says what STAR
 **Phase 11 acceptance**
 
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] PR merged into `development`
+- [x] PR merged into `development`
 - [ ] The user plays one real lobby on the deployed build, on a desktop and on a phone: switches each way, sees the status line name the player still picking, and starts a game
 
 ---
