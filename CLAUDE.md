@@ -103,7 +103,8 @@ keeps credit to upstream and to the board game's creators.
   `http://localhost:4040`). `VITE_*` variables live in `.env.development` (dev server only:
   `VITE_DEBUG`) and `.env.dev` (`--mode dev`), typed in `src/vite-env.d.ts`.
 - `docs/`: `PLAN.md` (phased plan and progress), `superpowers/specs/` (design),
-  `superpowers/plans/` (per-phase step-by-step breakdowns).
+  `superpowers/plans/` (per-phase step-by-step breakdowns), `images/` (the README's screenshots,
+  taken from a scripted seven-player game at 1600x900 and at 412x915 on a phone).
 
 ## Commands
 
