@@ -41,6 +41,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 8. Game screen redesign | `phase-8-game-screen` | done |
 | 9. Phase 8 follow-ups | `phase-9-follow-ups` | done |
 | 10. Baseline bugs | `fix/issue-N`, one per issue | done |
+| 11. Lobby redesign | `phase-11-lobby` | not started |
 
 ---
 
@@ -629,6 +630,33 @@ The six open issues `CLAUDE.md` listed as known baseline failures (each fix remo
 - [x] #10: a player who reloads can take back their seat within the 3 s grace window, in a game or a full lobby
 - [x] #13: the routes and the `/game` WebSocket are registered before the server starts
 - [x] PRs merged into `development`: each fix merged by its own PR from `fix/issue-N` (#32, #33, #34, #35, #37, #38), so no `phase-10-baseline-bugs` branch was made
+
+---
+
+## Phase 11: Lobby redesign
+
+Breakdown: [`docs/superpowers/plans/2026-11-13-phase-11-lobby.md`](superpowers/plans/2026-11-13-phase-11-lobby.md) · Spec: [`docs/superpowers/specs/2026-11-13-lobby-redesign-design.md`](superpowers/specs/2026-11-13-lobby-redesign-design.md)
+
+Issue #23: the lobby matches the game screen and fits one screen, says what START GAME is waiting for, and lets anyone in the lobby switch between playing and watching. Added after the first ten phases were done, so the "Done when" below covers Phases 1 to 10.
+
+- [ ] `backend/src/main/java/server/util/Lobby.java`: a game seats only players with a live connection, so nobody inside the 3 s grace window gets a seat they cannot take
+- [ ] `frontend/src/game/RosterRow.tsx`: one roster row for the game and the lobby
+- [ ] `frontend/src/lobby/lobbyStatus.ts`: the status line names who START GAME is waiting for and says when bots fill the table
+- [ ] `frontend/src/lobby/joinError.ts` and `copyText.ts`: JOIN's error messages shared with PLAY INSTEAD; COPY uses the Clipboard API with today's fallback
+- [ ] `frontend/src/lobby/LobbyScreen.tsx`: the lobby page in the game's three layouts, with the game's header, roster rows and cards
+- [ ] `frontend/src/custom-alert/PlayInsteadPrompt.tsx`: the name prompt behind PLAY INSTEAD
+- [ ] `frontend/src/App.tsx`: WATCH INSTEAD and PLAY INSTEAD reconnect as the other kind, in the lobby only
+- [ ] `frontend/src/App.tsx`: the lobby page is `LobbyScreen`; `Lobby.css` and the old lobby markup are gone; the browser tests use the new wording
+- [ ] `frontend/e2e/no-scroll.spec.ts` and `phone.spec.ts`: the lobby fits every tested window with ten players and the longest line, for the host, a guest and a spectator
+- [ ] `frontend/e2e/lobby-switch.spec.ts`: the switch both ways, a full lobby, a taken name, the host passing on, reloads, and a game started right after a switch
+- [ ] `CLAUDE.md` and `README.md` describe the lobby and the switch
+- [ ] The pull request shows the lobby before and after, on desktop and on a phone, and closes #23
+
+**Phase 11 acceptance**
+
+- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [ ] PR merged into `development`
+- [ ] The user plays one real lobby on the deployed build, on a desktop and on a phone: switches each way, sees the status line name the player still picking, and starts a game
 
 ---
 
