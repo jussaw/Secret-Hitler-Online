@@ -95,7 +95,9 @@ keeps credit to upstream and to the board game's creators.
   while it is the alert on screen. `animationStep` names the running queue step, and every queue
   timer (`finishStepAfter`, for the event bar, the board, the vote tally and a held status line,
   and the fade in `hideAlertAndFinish`) finishes only the step it belongs to, so a timer left from
-  a cleared queue never cuts short the next one's step.
+  a cleared queue never cuts short the next one's step. A prompt's server-OK listener
+  (`addServerOKListener`) is tied to its step the same way: an OK goes to the first listener whose
+  step still runs, and `clearAnimationQueue` drops them all.
   Prompts are a fixed overlay whose box scrolls (`CustomAlert.css`). Sounds are in `src/sound/`:
   `SoundManager` (Web Audio; the `AudioContext` is created in the first trusted gesture, so `play()`
   before it is a silent no-op; volume and mute in `localStorage` under `sounds`; every `play()`
