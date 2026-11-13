@@ -15,7 +15,7 @@ class ButtonPrompt extends Component {
 
     render() {
         return (
-            <div>
+            <div className={this.props.className}>
                 {this.props.renderLabel(this)}
                 {this.props.renderHeader(this)}
                 {this.props.children}
@@ -61,6 +61,7 @@ ButtonPrompt.defaultProps = {
 };
 
 ButtonPrompt.propTypes = {
+    className: PropTypes.string,
     label: PropTypes.string,
     renderLabel: PropTypes.func,
     headerText: PropTypes.string,

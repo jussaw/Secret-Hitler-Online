@@ -1,5 +1,42 @@
 @import '../variables.css';
 
+/* The picker keeps the label, its line and CONFIRM in place: the box is a column held to its
+   max-height (CustomAlert.css), and only the portrait grid scrolls, between the line and CONFIRM.
+   The box still scrolls if a window is too short even for those three. */
+#alert-box:has(> .icon-picker) {
+    display: flex;
+    flex-direction: column;
+}
+
+.icon-picker {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.icon-picker > * {
+    flex: none;
+}
+
+/* A column keeps both margins between the label and its line, where a block let them collapse
+   into the line's larger one. */
+.icon-picker > #prompt-label {
+    margin-bottom: 0;
+}
+
+.icon-picker > #icon-container {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+/* A column would stretch the button across the box. */
+.icon-picker > #prompt-button {
+    align-self: center;
+}
+
 #icon-container {
     width: 100%;
 }
