@@ -59,23 +59,25 @@
   color: #6a5d53;
 }
 
-/* Phones are narrow: smaller steps with tighter gaps keep the line on one line, with room to spare
-   for a font that renders wider than ours. The sum above reads this size too. */
+/* Phones are narrow: smaller steps with tighter pills and gaps keep the line on one line, with room
+   to spare on Linux, whose hinting renders the labels up to a sixth wider than macOS does. The sum
+   above reads this size too. Each arrow sits half the gap, plus half its own width (about 0.2em),
+   left of its step, so it stays centred in the gap. */
 @media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
   :root {
     --round-steps-size: 0.8;
   }
 
   .round-step {
-    padding: 0.15em 0.5em;
+    padding: 0.15em 0.25em;
   }
 
   .round-step + .round-step {
-    margin-left: 1em;
+    margin-left: 0.7em;
   }
 
   .round-step + .round-step::before {
-    left: -0.72em;
+    left: -0.55em;
   }
 }
 
