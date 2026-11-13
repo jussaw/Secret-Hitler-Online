@@ -381,7 +381,7 @@ class App extends Component<{}, AppState> {
 
     this.closeSocket();
 
-    console.log("Websocket opened successfully to " + url);
+    console.log("Websocket created for " + url);
     this.websocket = ws;
     // A new socket has no history, so its first packet plays no sounds (no burst on reconnect).
     this.soundState = undefined;
