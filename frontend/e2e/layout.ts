@@ -139,6 +139,53 @@ export function smallTargets(page: Page, scope: string): Promise<string[]> {
 }
 
 /**
+ * The height the game table keeps for the round tracker (`--tracker-height`, GameScreen.css), read
+ * from a hidden probe that takes it.
+ */
+export function trackerReserved(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    const probe = document.createElement("div");
+    probe.style.cssText = "position: absolute; visibility: hidden; height: var(--tracker-height);";
+    document.querySelector(".game-table")!.appendChild(probe);
+    const height = probe.getBoundingClientRect().height;
+    probe.remove();
+    return height;
+  });
+}
+
+/**
+ * Shows `text` as the status line, measures the tracker, the boards and the page's height (as
+ * pageHeight does), then puts the old line back. The tracker wraps "president" and "chancellor" in
+ * spans, so the line can hold several text nodes: the first takes `text` and the rest are blanked.
+ * Only React's own text nodes are edited (or a stand-in added), so later renders still reach them.
+ */
+export function withStatus(
+  page: Page,
+  text: string
+): Promise<{ tracker: Box; boards: Box; height: number }> {
+  return page.evaluate((text) => {
+    const box = (el: Element) => {
+      const r = el.getBoundingClientRect();
+      return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+    };
+    const line = document.querySelector("#status-bar-text")!;
+    const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
+    const nodes: Node[] = [];
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) nodes.push(node);
+    if (nodes.length === 0) nodes.push(line.appendChild(document.createTextNode("")));
+    const old = nodes.map((node) => node.nodeValue);
+    nodes.forEach((node, i) => (node.nodeValue = i === 0 ? text : ""));
+    const measured = {
+      tracker: box(document.querySelector(".game-table > .round-tracker")!),
+      boards: box(document.querySelector("#board-container")!),
+      height: Math.max(document.documentElement.scrollHeight, document.body.scrollHeight),
+    };
+    nodes.forEach((node, i) => (node.nodeValue = old[i]));
+    return measured;
+  }, text);
+}
+
+/**
  * Fills every empty roster detail line with "CHANCELLOR" and empties every full one, then puts
  * the text back. Returns how far, in px, the furthest roster row or the boards moved: nothing may
  * move when a player becomes president or chancellor, is executed or has their role shown.

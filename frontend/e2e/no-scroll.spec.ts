@@ -13,15 +13,17 @@ import {
   pageHeight,
   rowShift,
   smallTargets,
+  trackerReserved,
+  withStatus,
   type Box,
 } from "./layout";
 import { lobbyCode, settle, startGame, watchLobby } from "./lobby";
 
 type Size = { width: number; height: number };
 
-/** The game page's parts, in viewport px. */
-function measureTable(page: Page) {
-  return page.evaluate(() => {
+/** The game page's parts, in viewport px, and the height the table keeps for the tracker. */
+async function measureTable(page: Page) {
+  const parts = await page.evaluate(() => {
     const box = (el: Element) => {
       const r = el.getBoundingClientRect();
       return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
@@ -34,13 +36,6 @@ function measureTable(page: Page) {
     });
     const endTerm = document.querySelector(".game-decks .end-term")!;
     const status = document.querySelector("#status-bar-text")!.textContent ?? "";
-    // The height the table keeps for the tracker, read from a probe that takes it.
-    const table = document.querySelector(".game-table")!;
-    const probe = document.createElement("div");
-    probe.style.cssText = "position: absolute; visibility: hidden; height: var(--tracker-height);";
-    table.appendChild(probe);
-    const trackerReserved = probe.getBoundingClientRect().height;
-    probe.remove();
     return {
       roster: one(".game-body > .roster"),
       rows: Array.from(document.querySelectorAll(".roster-row"), box),
@@ -61,7 +56,6 @@ function measureTable(page: Page) {
         };
       }),
       tracker: one(".game-table > .round-tracker"),
-      trackerReserved,
       status,
       boards: one("#board-container"),
       boardWidth: document.querySelector("#board")!.getBoundingClientRect().width,
@@ -78,6 +72,7 @@ function measureTable(page: Page) {
       deckCards: Array.from(document.querySelectorAll(".game-decks #deck-policy.deck-final-show"), box),
     };
   });
+  return { ...parts, trackerReserved: await trackerReserved(page) };
 }
 
 /** Waits for a status line in words, in place of the "---" the page starts with. */
@@ -95,27 +90,6 @@ const moved = (a: Box, b: Box) =>
   );
 
 const centreX = (b: Box) => (b.left + b.right) / 2;
-
-/**
- * Shows `text` as the status line, measures the boards, then puts the old line back. The tracker
- * wraps "president" and "chancellor" in spans, so the line can hold several text nodes: the first
- * takes `text` and the rest are blanked. Only React's own text nodes are edited (or a stand-in
- * added), so later renders still reach them.
- */
-function boardsWithStatus(page: Page, text: string): Promise<Box> {
-  return page.evaluate((text) => {
-    const line = document.querySelector("#status-bar-text")!;
-    const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
-    const nodes: Node[] = [];
-    for (let node = walker.nextNode(); node; node = walker.nextNode()) nodes.push(node);
-    if (nodes.length === 0) nodes.push(line.appendChild(document.createTextNode("")));
-    const old = nodes.map((node) => node.nodeValue);
-    nodes.forEach((node, i) => (node.nodeValue = i === 0 ? text : ""));
-    const r = document.querySelector("#board-container")!.getBoundingClientRect();
-    nodes.forEach((node, i) => (node.nodeValue = old[i]));
-    return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
-  }, text);
-}
 
 /**
  * Every layout check at one window size. Desktop sizes put the roster at the left of the boards;
@@ -187,9 +161,9 @@ async function checkLayout(
   }
 
   // The longest status, or none, leaves the boards where they were.
-  const withLong = await boardsWithStatus(page, LONG_STATUS);
+  const withLong = (await withStatus(page, LONG_STATUS)).boards;
   expect(moved(table.boards, withLong), `boards move with the longest status at ${at}`).toBeLessThanOrEqual(0.5);
-  const withNone = await boardsWithStatus(page, "");
+  const withNone = (await withStatus(page, "")).boards;
   expect(moved(table.boards, withNone), `boards move with no status at ${at}`).toBeLessThanOrEqual(0.5);
 
   // A label filling in moves no row and not the boards.

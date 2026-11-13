@@ -1,5 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
-import { LONG_STATUS, overflowX, overlaps, pageHeight, smallTargets, type Box } from "./layout";
+import {
+  LONG_STATUS,
+  overflowX,
+  overlaps,
+  pageHeight,
+  smallTargets,
+  trackerReserved,
+  withStatus,
+  type Box,
+} from "./layout";
 import { createLobby, joinGuests, settle, startGame, watchLobby } from "./lobby";
 
 // Runs in the phone projects; each sets its own viewport (360x740 or 412x915).
@@ -52,21 +61,14 @@ test("the lobby and its portrait picker fit the phone", async ({ page, baseURL }
   }
 });
 
-/** The game page's parts, in viewport px. */
-function measureGame(page: Page) {
-  return page.evaluate(() => {
+/** The game page's parts, in viewport px, and the height the table keeps for the tracker. */
+async function measureGame(page: Page) {
+  const parts = await page.evaluate(() => {
     const box = (el: Element) => {
       const r = el.getBoundingClientRect();
       return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
     };
     const one = (selector: string) => box(document.querySelector(selector)!);
-    // The height the table keeps for the tracker, read from a probe that takes it.
-    const table = document.querySelector(".game-table")!;
-    const probe = document.createElement("div");
-    probe.style.cssText = "position: absolute; visibility: hidden; height: var(--tracker-height);";
-    table.appendChild(probe);
-    const trackerReserved = probe.getBoundingClientRect().height;
-    probe.remove();
     const endTerm = document.querySelector(".game-decks .end-term")!;
     return {
       roster: one(".game-body > .roster"),
@@ -76,7 +78,6 @@ function measureGame(page: Page) {
         (el) => getComputedStyle(el).display !== "none"
       ).length,
       tracker: one(".game-table > .round-tracker"),
-      trackerReserved,
       decks: one(".game-decks"),
       endTerm: box(endTerm),
       endTermVisibility: getComputedStyle(endTerm).visibility,
@@ -84,28 +85,7 @@ function measureGame(page: Page) {
       boards: one("#board-container"),
     };
   });
-}
-
-/**
- * Shows `text` as the status line, measures the page's height and the tracker, then puts the old
- * line back. The tracker wraps "president" and "chancellor" in spans, so the line can hold several
- * text nodes: the first takes `text` and the rest are blanked. Only React's own text nodes are
- * edited (or a stand-in added), so later renders still reach them.
- */
-function withStatus(page: Page, text: string): Promise<{ height: number; tracker: Box }> {
-  return page.evaluate((text) => {
-    const line = document.querySelector("#status-bar-text")!;
-    const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
-    const nodes: Node[] = [];
-    for (let node = walker.nextNode(); node; node = walker.nextNode()) nodes.push(node);
-    if (nodes.length === 0) nodes.push(line.appendChild(document.createTextNode("")));
-    const old = nodes.map((node) => node.nodeValue);
-    nodes.forEach((node, i) => (node.nodeValue = i === 0 ? text : ""));
-    const r = document.querySelector(".game-table > .round-tracker")!.getBoundingClientRect();
-    const height = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
-    nodes.forEach((node, i) => (node.nodeValue = old[i]));
-    return { height, tracker: { left: r.left, right: r.right, top: r.top, bottom: r.bottom } };
-  }, text);
+  return { ...parts, trackerReserved: await trackerReserved(page) };
 }
 
 const centreX = (b: Box) => (b.left + b.right) / 2;
