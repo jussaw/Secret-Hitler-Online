@@ -93,21 +93,21 @@ const centreX = (b: Box) => (b.left + b.right) / 2;
 
 /**
  * Every check of the phone's game page: one column of the roster, the tracker, the decks row and
- * the boards, with no scroll in either direction, even with the longest status. With `scroll`, the
- * page may scroll down (but never sideways), and every other check still holds.
+ * the boards, with no scroll in either direction, even with the longest status. With `scrollDown`,
+ * the page may scroll down (but never sideways), and every other check still holds.
  */
 async function checkGame(
   page: Page,
   {
     players,
     spectator = false,
-    scroll = false,
-  }: { players: number; spectator?: boolean; scroll?: boolean }
+    scrollDown = false,
+  }: { players: number; spectator?: boolean; scrollDown?: boolean }
 ) {
   const { width, height } = page.viewportSize()!;
 
   // The page.
-  if (!scroll) expect(await pageHeight(page), "scrollHeight").toBeLessThanOrEqual(height);
+  if (!scrollDown) expect(await pageHeight(page), "scrollHeight").toBeLessThanOrEqual(height);
   const overflow = await overflowX(page);
   expect(overflow.scrollWidth, "scrollWidth").toBeLessThanOrEqual(width);
   expect(overflow.offscreen, "past the edge").toEqual([]);
@@ -182,7 +182,7 @@ async function checkGame(
     `step line's natural width ${steps.natural}px against ${steps.available}px available`
   ).toBeLessThanOrEqual(steps.available * 0.88);
   const long = await withStatus(page, LONG_STATUS);
-  if (!scroll) {
+  if (!scrollDown) {
     expect(long.height, "scrollHeight with the longest status").toBeLessThanOrEqual(height);
   }
   expect(
@@ -210,7 +210,7 @@ test("a 320px phone keeps the phone layout, and only scrolls down", async ({ pag
     await settle(page);
     await page.setViewportSize({ width: 320, height: 568 });
     await settle(page);
-    await checkGame(page, { players: 10, scroll: true });
+    await checkGame(page, { players: 10, scrollDown: true });
   } finally {
     guests.forEach((ws) => ws.close());
   }
@@ -254,6 +254,27 @@ test("a spectator's lobby and game fit the phone", async ({ page, browser, baseU
     await expect(page.locator(".game-screen")).toBeVisible();
     await settle(page);
     await checkGame(page, { players: 10, spectator: true });
+  } finally {
+    guests.forEach((ws) => ws.close());
+    await host.close();
+  }
+});
+
+test("a spectator's game keeps the phone layout at 320px", async ({ page, browser, baseURL }) => {
+  test.skip(test.info().project.name !== "phone-360", "one phone project is enough");
+  // The host plays in a desktop page of its own; this phone watches.
+  const host = await browser.newPage();
+  const code = await createLobby(host, "Host Player");
+  const guests = await joinGuests(baseURL!, code, 9);
+  try {
+    await watchLobby(page, code);
+    await expect(page.getByText("Players (10/10)")).toBeVisible();
+    await host.getByRole("button", { name: "START GAME" }).click();
+    await expect(page.locator(".game-screen")).toBeVisible();
+    await settle(page);
+    await page.setViewportSize({ width: 320, height: 568 });
+    await settle(page);
+    await checkGame(page, { players: 10, spectator: true, scrollDown: true });
   } finally {
     guests.forEach((ws) => ws.close());
     await host.close();

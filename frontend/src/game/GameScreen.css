@@ -202,8 +202,9 @@
    use it) less the tall windows below, which have their own block. The page is as tall as its
    column and scrolls if it must, so the table is only an inline-size container (for the boards'
    width), nothing reads 100cqh, and sizes follow the window's width. Phones down to 320px wide
-   are supported (phone.spec.ts). Narrower ones are out of scope: below about 245px (267px on
-   Linux), the tracker's steps wrap. */
+   are supported (phone.spec.ts). Narrower ones are out of scope: at 296px and below (313px on
+   Linux) the longest status takes a third line, and below about 245px (267px on Linux) the
+   tracker's steps wrap. */
 @media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
     .game-screen {
         display: block;

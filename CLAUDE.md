@@ -45,18 +45,18 @@ keeps credit to upstream and to the board game's creators.
   those files): compact rows about 26px tall in two columns (`PRES` or `CHAN` after the name), the
   tracker, a decks row with END TERM over the counts box, and the boards at full width. With ten
   players and the longest status it fits 360x740 and 412x915 without scrolling; a phone held
-  sideways scrolls. The layout holds down to 320px wide, tested at 320x568, where the page may
-  scroll; narrower phones are out of scope. `SoundControl.css` (44px header targets) and
-  `RoundTracker.css` (the smaller step line) keep the stacked query itself, so tall windows get
-  those too, on purpose.
-  Among the stacked windows, those at least 700px wide (half-screen desktop windows, upright
-  monitors, tablets held upright) fit one screen instead, with the roster across the top in two
-  columns (three in near-square windows), from a later block,
+  sideways scrolls. The phone layout holds down to 320px wide, tested at 320x568, where the page may
+  scroll (narrower phones are out of scope); with Linux-drawn fonts the longest status still takes a
+  third line at a few untested widths (see `docs/PLAN.md`, Phase 9). `SoundControl.css` (44px header
+  targets) and `RoundTracker.css` (the smaller step line) keep the stacked query itself, so tall
+  windows get those too, on purpose. Among the stacked windows, those at least 700px wide
+  (half-screen desktop windows, upright monitors, tablets held upright) fit one screen instead, with
+  the roster across the top in two columns (three in near-square windows), from a later block,
   `(min-width: 700px) and (aspect-ratio < 5/4)`, in `GameScreen.css` alone (`PlayerRoster.css` has
   no tall block). That block holds only what differs from desktop, and no longer undoes the phone
   block, which never reaches those windows. On desktop and in tall windows a twelve-character name
-  fits whole, and only a name too wide for its row ends in an ellipsis, with the full name in
-  the row's title on hover; the phones' compact rows end any name that does not fit in an ellipsis.
+  fits whole, and only a name too wide for its row ends in an ellipsis, with the full name in the
+  row's title on hover; the phones' compact rows end any name that does not fit in an ellipsis.
   Prompts are a fixed overlay whose box scrolls (`CustomAlert.css`). Sounds are in `src/sound/`:
   `SoundManager` (Web Audio; the `AudioContext` is created in the first trusted gesture, so `play()`
   before it is a silent no-op; volume and mute in `localStorage` under `sounds`; every `play()`
@@ -76,22 +76,22 @@ keeps credit to upstream and to the board game's creators.
   same no-scroll tests, since Firefox rounds the layout differently, and the header-fit tests of
   `sounds.spec.ts` and `spectator.spec.ts`), and `phone-360`/`phone-412` (Galaxy S8 and Pixel 7
   emulation, `phone.spec.ts`: the game fits without scrolling, in order, with 44px targets, for
-  players and a spectator, a 320x568 phone keeps the phone layout and only scrolls down, and a
-  phone held sideways gets the phone layout). `tracker.spec.ts`
-  (`desktop`) checks the lit step against the status line. `prompts.spec.ts` runs in `desktop` and
-  both phone projects; it opens every prompt from a scripted game socket (`e2e/fakeGame.ts`).
-  `sounds.spec.ts` runs in every project: no sound and no `AudioContext` before the first trusted
-  gesture, each sound in step with its animation, and the header control's fit, touch targets,
-  keyboard use and saved settings. `spectator.spec.ts` plays a scripted game to a spectator (no
-  prompt before the victory screen, the status lines, the sounds), plays a real game whose spectator
-  frames it scans for secrets (`e2e/driveGame.ts` seats raw-socket players; `e2e/secrets.ts` mirrors
-  the backend's list), and checks the count fits every header. `startGame` (`e2e/lobby.ts`) joins
-  one raw spectator by default, and the no-scroll and phone tests also measure a spectator's view.
-  The server closes a `/game` socket after 30 s with no traffic either way, so the client pings
-  every 20 s (`PING_INTERVAL`); `connection.spec.ts` (`desktop`) holds a quiet lobby's socket open
-  for 35 s. Shared helpers are `e2e/lobby.ts`, `e2e/layout.ts` and `e2e/soundLog.ts`. `App.css`
-  hides `overflow-x` on `html` and `body`, so horizontal overflow shows only in `body.scrollWidth`,
-  and `body` scrolls vertically by itself (`pageHeight` measures both). The client talks to its own
+  players and a spectator; at 320x568 it keeps the phone layout and only scrolls down, for both; and
+  a phone held sideways gets the phone layout). `tracker.spec.ts` (`desktop`) checks the lit step
+  against the status line. `prompts.spec.ts` runs in `desktop` and both phone projects; it opens
+  every prompt from a scripted game socket (`e2e/fakeGame.ts`). `sounds.spec.ts` runs in every
+  project: no sound and no `AudioContext` before the first trusted gesture, each sound in step with
+  its animation, and the header control's fit, touch targets, keyboard use and saved settings.
+  `spectator.spec.ts` plays a scripted game to a spectator (no prompt before the victory screen, the
+  status lines, the sounds), plays a real game whose spectator frames it scans for secrets
+  (`e2e/driveGame.ts` seats raw-socket players; `e2e/secrets.ts` mirrors the backend's list), and
+  checks the count fits every header. `startGame` (`e2e/lobby.ts`) joins one raw spectator by
+  default, and the no-scroll and phone tests also measure a spectator's view. The server closes a
+  `/game` socket after 30 s with no traffic either way, so the client pings every 20 s
+  (`PING_INTERVAL`); `connection.spec.ts` (`desktop`) holds a quiet lobby's socket open for 35 s.
+  Shared helpers are `e2e/lobby.ts`, `e2e/layout.ts` and `e2e/soundLog.ts`. `App.css` hides
+  `overflow-x` on `html` and `body`, so horizontal overflow shows only in `body.scrollWidth`, and
+  `body` scrolls vertically by itself (`pageHeight` measures both). The client talks to its own
   origin (`src/constants/serverUrls.ts`; `wss:` on `https:` pages) unless `VITE_SERVER_ADDRESS` is
   set, and the dev server proxies the backend paths to `BACKEND_URL` (default
   `http://localhost:4040`). `VITE_*` variables live in `.env.development` (dev server only:

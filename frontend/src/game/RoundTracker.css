@@ -65,7 +65,8 @@
    in GameScreen.css would leave them out). The sum above reads this size too. Each arrow sits half
    the gap (0.35em) plus half its own width (0.16-0.18em) left of its step, so it stays centred in
    the gap. Phones down to 320px wide are supported (phone.spec.ts). Narrower ones are out of
-   scope: below about 245px (267px on Linux), the steps wrap. */
+   scope: at 296px and below (313px on Linux) the longest status takes a third line, and below
+   about 245px (267px on Linux) the steps wrap. */
 @media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
   :root {
     --round-steps-size: 0.8;

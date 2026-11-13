@@ -98,7 +98,28 @@ export async function settle(page: Page): Promise<void> {
     `,
   });
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  expect(await missingFonts(page), "the web fonts failed to load").toEqual([]);
   await page.waitForFunction(() => Array.from(document.images).every((img) => img.complete));
+}
+
+/** The web fonts the layouts are measured in (fonts.css), as `font` shorthands. */
+const WEB_FONTS = ['16px "Germania One"', "500 16px Montserrat", "bold 16px Montserrat"];
+
+/**
+ * The WEB_FONTS that have not loaded. check() alone is not enough: it is true for a family the
+ * page has no face for (when the Google Fonts stylesheet fails), and false for a face no text on
+ * the page has used yet. So each face is loaded first, and its family must be in the set.
+ */
+function missingFonts(page: Page): Promise<string[]> {
+  return page.evaluate(async (fonts) => {
+    await Promise.all(fonts.map((font) => document.fonts.load(font).catch(() => [])));
+    const families = new Set<string>();
+    document.fonts.forEach((face) => families.add(face.family.replace(/"/g, "")));
+    return fonts.filter((font) => {
+      const family = font.replace(/^.*px /, "").replace(/"/g, "");
+      return !families.has(family) || !document.fonts.check(font);
+    });
+  }, WEB_FONTS);
 }
 
 /** Opens a raw spectator socket on `lobby` that pings until closed; the caller closes it. */
