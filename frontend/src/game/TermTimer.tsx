@@ -11,12 +11,13 @@ export function secondsLeft(ms: number): number {
   return Math.max(0, Math.ceil(ms / 1000));
 }
 
-type Clock = { timer: TermTimerState; deadline: number; now: number };
+/** A packet's countdown, the page time it arrived at, and the page time at the last redraw. */
+type Clock = { timer: TermTimerState; arrived: number; now: number };
 
-/** The clock for a packet's countdown: it ends `remainingMs` after the packet arrived. */
+/** The clock for a packet's countdown, started when the packet arrived. */
 function clockFor(timer: TermTimerState): Clock {
   const now = performance.now();
-  return { timer, deadline: now + timer.remainingMs, now };
+  return { timer, arrived: now, now };
 }
 
 /**
@@ -37,7 +38,11 @@ function useRemaining(timer: TermTimerState): number {
     return () => window.clearInterval(id);
   }, [timer]);
 
-  return timer.paused ? timer.remainingMs : Math.max(0, clock.deadline - clock.now);
+  if (timer.paused) return timer.remainingMs;
+  // The time passed is taken from the server's time, not the page time from a deadline: page
+  // times have fractions, so (arrived + 7000) - arrived can come out a hair over 7000, which
+  // shows as 8 seconds. Until time passes, this is exactly the server's time.
+  return Math.max(0, timer.remainingMs - (clock.now - clock.arrived));
 }
 
 export type TermTimerProps = {
