@@ -32,9 +32,16 @@ export const SERVER_PING = "/ping";
 /**
  * The wait before each reconnect after a socket closes, in ms: the first at once, then longer, so a
  * few seconds without a network (a phone changing networks) or a server restart is ridden out.
- * After the last one fails, the page gives up and goes to the login page. About 30 s in all.
+ * After the last one fails, the page gives up and goes to the login page. The waits add up to 30 s,
+ * and each attempt has REPLY_TIMEOUT to be answered.
  */
 export const RECONNECT_DELAYS = [0, 1000, 2000, 4000, 8000, 15000];
+/**
+ * How long the server has to answer a new socket (it sends the state at once) or a ping (a pong),
+ * in ms. A socket with no answer by then is dead, although the browser may not say so for minutes
+ * (a network that died without a word, a phone waking with its screen off), so it is reconnected.
+ */
+export const REPLY_TIMEOUT = 10000;
 export const LOBBY_CODE_LENGTH = 4;
 export const SERVER_TIMEOUT = 4000;
 /** The server closes a /game socket after 30 s with no traffic either way, so ping within that. */

@@ -10,13 +10,15 @@ import {
   PARAM_ICON,
   PARAM_PACKET_TYPE,
   PARAM_USERNAMES,
+  PING_INTERVAL,
   RECONNECT_DELAYS,
+  REPLY_TIMEOUT,
 } from "./constants";
 import { makeGameState } from "./game/testGameState";
 import { CONNECT_ERROR, CONTACT_ERROR } from "./lobby/joinError";
 import { RoundStep } from "./game/roundStep";
 import ButtonPrompt from "./custom-alert/ButtonPrompt";
-import { LobbyState, Role } from "./types";
+import { LobbyState, Role, WSCommandType } from "./types";
 import IconSelection from "./custom-alert/IconSelection";
 import PlayInsteadPrompt from "./custom-alert/PlayInsteadPrompt";
 import { defaultPortrait } from "./assets";
@@ -29,7 +31,7 @@ class FakeSocket {
   OPEN = 1;
   closed = false;
   readyState?: number = undefined;
-  onclose: (() => void) | null = null;
+  onclose: ((event?: Partial<CloseEvent>) => void) | null = null;
   onmessage: ((msg: MessageEvent) => void) | null = null;
   openListeners: (() => void)[] = [];
   send = vi.fn((_data: string) => {
@@ -138,7 +140,7 @@ const gameStatePacket = () => ({
   [PARAM_PACKET_TYPE]: PACKET_GAME_STATE,
 });
 
-const lastUrl = () => FakeSocket.instances[FakeSocket.instances.length - 1].url;
+const lastUrl = () => lastSocket().url;
 const lastSocket = () => FakeSocket.instances[FakeSocket.instances.length - 1];
 
 /** Closes each new socket and waits out each reconnect (on fake timers) until the page gives up. */
@@ -192,7 +194,7 @@ test("the old socket closing stays in the lobby", async () => {
   const before = FakeSocket.instances.length;
   act(() => FakeSocket.instances[0].onclose?.());
   expect(FakeSocket.instances.length).toBe(before);
-  expect(app.failedConnections).toBe(0);
+  expect(app.reconnectAttempts).toBe(0);
   expect(app.state.page).toBe("lobby");
 });
 
@@ -256,7 +258,7 @@ test("a seat that has delivered a packet reconnects as a player when it closes",
   act(() => FakeSocket.instances[FakeSocket.instances.length - 1].onclose?.());
   expect(lastUrl()).toContain("name=Sam");
   expect(lastUrl()).not.toContain("spectator=true");
-  expect(app.failedConnections).toBe(1);
+  expect(app.reconnectAttempts).toBe(1);
   expect(app.state.spectator).toBe(false);
   expect(app.state.page).toBe("lobby");
   expect(Cookies.get("spectator")).toBeUndefined();
@@ -625,7 +627,7 @@ test("a join after giving up still retries a socket that closes before its first
   const app = await playerInLobby();
   loseConnectionForGood(app);
   expect(app.state.page).toBe("login");
-  expect(app.failedConnections).toBeGreaterThan(0);
+  expect(app.reconnectAttempts).toBeGreaterThan(0);
   await act(async () => {
     app.setState({ joinName: "Ann", joinLobby: "HBIA" });
     app.onClickJoin();
@@ -820,10 +822,15 @@ test("an OK listener whose prompt closed by its own button does not close the pi
 // Reconnecting after a lost socket (#26).
 
 test("a player's socket brings the page's rejoin key on every reconnect, and a spectator's none", async () => {
+  vi.useFakeTimers();
   const app = await playerInLobby();
   const key = new URL(lastUrl()).searchParams.get("rejoinKey");
   expect(key).toMatch(/^[0-9a-f]{32}$/);
-  act(() => lastSocket().onclose?.());
+  act(() => lastSocket().onclose?.()); // reconnects at once
+  expect(new URL(lastUrl()).searchParams.get("rejoinKey")).toBe(key);
+  act(() => lastSocket().onclose?.()); // reconnects after a wait
+  act(() => vi.advanceTimersByTime(RECONNECT_DELAYS[1]));
+  expect(FakeSocket.instances).toHaveLength(3);
   expect(new URL(lastUrl()).searchParams.get("rejoinKey")).toBe(key);
   act(() => app.onClickWatchInstead());
   expect(lastUrl()).toContain("spectator=true");
@@ -871,27 +878,114 @@ test("a packet on the new socket makes the next reconnect immediate again", asyn
   expect(FakeSocket.instances).toHaveLength(before + 1);
 });
 
-test("a press while a reconnect waits is sent once the new socket opens", async () => {
-  vi.useFakeTimers();
+/** The commands a socket has sent, by name. */
+const sentCommands = (socket: FakeSocket) =>
+  socket.send.mock.calls.map(([data]) => JSON.parse(data).command as string);
+
+async function playerInGame() {
   const app = await playerInLobby();
-  act(() => lastSocket().onclose?.());
-  const lost = lastSocket();
-  act(() => lost.onclose?.()); // the first reconnect failed too: the next one waits
-  act(() => app.onClickStartGame());
-  expect(lost.send).not.toHaveBeenCalled();
+  await deliver(app, gameStatePacket());
+  expect(app.state.page).toBe("game");
+  return app;
+}
+
+test("presses in a game while reconnecting go, in order, once the server takes a new socket", async () => {
+  vi.useFakeTimers();
+  const app = await playerInGame();
+  const vote = (vote: boolean) =>
+    act(() => app.sendWSCommand({ command: WSCommandType.REGISTER_VOTE, vote }));
+  act(() => lastSocket().onclose?.()); // reconnects at once...
+  const first = lastSocket();
+  act(() => first.onclose?.()); // ...which fails: the next one waits
+  vote(true);
   expect(app.state.snackbarMessage).not.toContain("Could not connect");
   FakeSocket.connecting = true;
   act(() => vi.advanceTimersByTime(RECONNECT_DELAYS[1]));
-  const next = lastSocket();
-  expect(next).not.toBe(lost);
-  expect(next.send).not.toHaveBeenCalled();
-  act(() => next.open());
-  expect(next.send).toHaveBeenCalledTimes(1);
-  expect(JSON.parse(next.send.mock.calls[0][0])).toMatchObject({
-    command: "start-game",
-    name: "Ann",
-    lobby: "HBIA",
-  });
+  const second = lastSocket();
+  vote(false); // while the attempt is still connecting
+  act(() => second.open());
+  act(() => second.onclose?.()); // open, but closed before the server's first message
+  act(() => vi.advanceTimersByTime(RECONNECT_DELAYS[2]));
+  const third = lastSocket();
+  act(() => third.open());
+  expect(sentCommands(third), "open is not enough: the server may still refuse it").toEqual([]);
+  await deliver(app, gameStatePacket());
+  const votes = third.send.mock.calls.map(([data]) => JSON.parse(data));
+  expect(votes).toMatchObject([
+    { command: "register-vote", vote: true, name: "Ann", lobby: "HBIA" },
+    { command: "register-vote", vote: false, name: "Ann", lobby: "HBIA" },
+  ]);
+  for (const socket of [first, second]) expect(sentCommands(socket)).toEqual([]);
+});
+
+test("a press in the lobby while a reconnect waits is not kept, and says it is retrying", async () => {
+  vi.useFakeTimers();
+  const app = await playerInLobby();
+  act(() => lastSocket().onclose?.());
+  act(() => lastSocket().onclose?.());
+  act(() => app.onClickStartGame());
+  expect(app.state.snackbarMessage).toBe("Lost connection to the server: retrying...");
+  act(() => vi.advanceTimersByTime(RECONNECT_DELAYS[1]));
+  await deliver(app, lobbyPacket);
+  expect(sentCommands(lastSocket())).not.toContain("start-game");
+});
+
+test("a socket with no pong within REPLY_TIMEOUT of a ping is dropped and reopened", async () => {
+  vi.useFakeTimers();
+  const app = await playerInGame();
+  const live = lastSocket();
+  act(() => vi.advanceTimersByTime(PING_INTERVAL));
+  expect(sentCommands(live)).toEqual(["ping"]);
+  await deliver(app, { [PARAM_PACKET_TYPE]: "pong" });
+  act(() => vi.advanceTimersByTime(PING_INTERVAL));
+  expect(sentCommands(live)).toEqual(["ping", "ping"]);
+  act(() => vi.advanceTimersByTime(REPLY_TIMEOUT - 1));
+  expect(FakeSocket.instances, "answered in time so far").toHaveLength(1);
+  act(() => vi.advanceTimersByTime(1));
+  expect(live.closed).toBe(true);
+  expect(FakeSocket.instances).toHaveLength(2);
+  expect(lastUrl()).toContain("name=Ann");
+  expect(app.state.page).toBe("game");
+});
+
+test("an attempt the server never answers is given up after REPLY_TIMEOUT for the next one", async () => {
+  vi.useFakeTimers();
+  await playerInLobby();
+  act(() => lastSocket().onclose?.());
+  const stuck = lastSocket(); // connecting, say, on a network that has gone
+  act(() => vi.advanceTimersByTime(REPLY_TIMEOUT));
+  expect(stuck.closed).toBe(true);
+  act(() => vi.advanceTimersByTime(RECONNECT_DELAYS[1]));
+  expect(FakeSocket.instances).toHaveLength(3);
+});
+
+test("a page coming back into view pings at once", async () => {
+  vi.useFakeTimers();
+  await playerInGame();
+  const visibility = vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+  try {
+    act(() => document.dispatchEvent(new Event("visibilitychange")));
+    expect(sentCommands(lastSocket())).toEqual(["ping"]);
+  } finally {
+    visibility.mockRestore();
+  }
+});
+
+test("a socket the server refuses outright ends on the login page at once", async () => {
+  const app = await playerInGame();
+  act(() => lastSocket().onclose?.()); // the network went: reconnect at once
+  const before = FakeSocket.instances.length;
+  act(() => lastSocket().onclose?.({ code: 1002, reason: "The lobby 'HBIA' does not exist." }));
+  expect(app.state.page).toBe("login");
+  expect(app.state.joinError).toBe("Disconnected from the lobby.");
+  expect(FakeSocket.instances).toHaveLength(before);
+});
+
+test("a socket closed for a bad command after it has spoken still reconnects", async () => {
+  const app = await playerInGame();
+  act(() => lastSocket().onclose?.({ code: 1002, reason: "RuntimeException: not the president" }));
+  expect(FakeSocket.instances).toHaveLength(2);
+  expect(app.state.page).toBe("game");
 });
 
 test("LEAVE LOBBY while a reconnect waits leaves at once and reconnects no more", async () => {
@@ -912,13 +1006,12 @@ test("WATCH INSTEAD while a reconnect waits opens only the spectator's socket", 
   const app = await playerInLobby();
   act(() => lastSocket().onclose?.());
   act(() => lastSocket().onclose?.());
-  act(() => app.onClickStartGame()); // held for a player's socket that will not come
   act(() => app.onClickWatchInstead());
   const watching = lastSocket();
   expect(watching.url).toContain("spectator=true");
-  act(() => vi.advanceTimersByTime(60_000));
+  await deliver(app, lobbyPacket);
+  // Past the longest wait, and short of the first ping, which the stand-in socket would not answer.
+  act(() => vi.advanceTimersByTime(Math.max(...RECONNECT_DELAYS)));
   expect(lastSocket()).toBe(watching);
-  const sent = watching.send.mock.calls.map(([data]) => JSON.parse(data).command);
-  expect(sent).not.toContain("start-game"); // only its pings
   expect(app.state.spectator).toBe(true);
 });

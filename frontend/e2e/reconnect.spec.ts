@@ -1,40 +1,55 @@
 import { expect, test, type Page, type WebSocketRoute } from "@playwright/test";
 import { startGame } from "./lobby";
 
-/** One of the page's /game sockets, through the test: the page's end and the server's end. */
-type Proxied = { page: WebSocketRoute; server?: WebSocketRoute };
+/**
+ * One of the page's /game sockets, through the test. While `cut`, the network between the page and
+ * the server is gone: no message and no close gets through either way.
+ */
+type Proxied = { page: WebSocketRoute; server?: WebSocketRoute; cut: boolean };
+
+/** The server's close of the page's dead socket when the page's reconnect takes its place. */
+const REPLACED = "4001 Replaced by a newer connection under the same name.";
 
 /**
  * Routes the page's /game sockets through the test. While `refuse()` returns true a new socket is
- * closed at once, as with no network; otherwise it is passed to the server, and a close from the
- * server is passed back with its code and reason, which `serverCloses` records.
+ * closed at once, as with no network; otherwise it is passed to the server. Every close the server
+ * makes is recorded in `serverCloses` as "code reason".
  */
 async function proxySockets(page: Page, refuse: () => boolean = () => false) {
   const sockets: Proxied[] = [];
   const serverCloses: string[] = [];
   await page.routeWebSocket(/\/game\?/, (ws) => {
+    const socket: Proxied = { page: ws, cut: false };
+    sockets.push(socket);
     if (refuse()) {
-      sockets.push({ page: ws });
       void ws.close({ code: 4000, reason: "no network" });
       return;
     }
     const server = ws.connectToServer();
+    socket.server = server;
+    ws.onMessage((message) => {
+      if (!socket.cut) server.send(message);
+    });
+    server.onMessage((message) => {
+      if (!socket.cut) ws.send(message);
+    });
+    ws.onClose((code, reason) => {
+      if (!socket.cut) void server.close({ code, reason });
+    });
     server.onClose((code, reason) => {
       serverCloses.push(`${code} ${reason}`);
-      void ws.close({ code, reason });
+      if (!socket.cut) void ws.close({ code, reason });
     });
-    sockets.push({ page: ws, server });
   });
   return { sockets, serverCloses };
 }
 
 /**
- * The network drops under the page's socket: the page's end closes, and the server's end stays
- * open, as a dead connection looks to the server until its 30 s idle timeout.
+ * The network drops under the page's socket, and the browser notices: the page's end closes, and
+ * the server's end stays open, as a dead connection looks to the server until its 30 s idle timeout.
  */
 async function dropNetwork(socket: Proxied) {
-  socket.page.onClose(() => {});
-  socket.server!.onClose(() => {});
+  socket.cut = true;
   await socket.page.close({ code: 4000, reason: "network gone" });
 }
 
@@ -73,8 +88,9 @@ test.describe("a player whose network drops mid-game", () => {
 
       await expect.poll(() => sockets.length).toBe(2);
       // The server takes the new socket in place of the old one, and refuses nothing.
-      await page.waitForTimeout(2_000);
-      expect(serverCloses).toEqual([]);
+      await expect.poll(() => serverCloses).toEqual([REPLACED]);
+      await page.waitForTimeout(1_000);
+      expect(serverCloses).toEqual([REPLACED]);
       await expect(page.locator(".game-screen")).toBeVisible();
       expect(await drops(), "the page left the game or showed the snackbar").toEqual([]);
     } finally {
@@ -93,10 +109,31 @@ test.describe("a player whose network drops mid-game", () => {
       // Back once the network is, without a press, after the snackbar said it was retrying.
       await expect(page.locator("#snackbar")).toContainText("Lost connection to the server: retrying...");
       await expect.poll(() => sockets.filter((s) => s.server).length, { timeout: 15_000 }).toBe(2);
-      await page.waitForTimeout(1_000);
-      expect(serverCloses).toEqual([]);
+      await expect.poll(() => serverCloses).toEqual([REPLACED]);
       await expect(page.locator(".game-screen")).toBeVisible();
       await expect(page.getByText("Disconnected from the lobby.")).toHaveCount(0);
+    } finally {
+      others.forEach((ws) => ws.close());
+    }
+  });
+
+  test("is back in the game when the connection dies without a word", async ({ page, baseURL }) => {
+    // The page's clock runs on its own until the drop, then the test moves it.
+    await page.clock.install();
+    const { sockets, serverCloses } = await proxySockets(page);
+    const others = await startGame(page, baseURL!, 5);
+    const drops = await watchForDrops(page);
+    try {
+      // Nothing gets through either way, and neither end hears a close (a phone waking with its
+      // screen off, a network gone dead): the browser still thinks its socket is open.
+      sockets[0].cut = true;
+      // The next ping goes unanswered: within PING_INTERVAL + REPLY_TIMEOUT (src/constants).
+      await page.clock.runFor(30_000);
+
+      await expect.poll(() => sockets.length).toBe(2);
+      await expect.poll(() => serverCloses).toEqual([REPLACED]);
+      await expect(page.locator(".game-screen")).toBeVisible();
+      expect(await drops(), "the page left the game or showed the snackbar").toEqual([]);
     } finally {
       others.forEach((ws) => ws.close());
     }
