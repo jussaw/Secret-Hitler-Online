@@ -1,5 +1,7 @@
 # Secret-Hitler-Online (self-hosted fork)
 
+**Live site: [secret-hitler.jussaw.com](https://secret-hitler.jussaw.com/)**
+
 > **This is a personal fork** of [ShrimpCryptid/Secret-Hitler-Online](https://github.com/ShrimpCryptid/Secret-Hitler-Online),
 > run as a private, self-hosted instance. It is not the hosted game at secret-hitler.online and is not
 > maintained by the original author. Report problems with this fork on
