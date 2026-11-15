@@ -42,7 +42,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 9. Phase 8 follow-ups | `phase-9-follow-ups` | done |
 | 10. Baseline bugs | `fix/issue-N`, one per issue | done |
 | 11. Lobby redesign | `phase-11-lobby` | done |
-| 12. Accounts with Discord sign-in | `phase-12-accounts` | planned |
+| 12. Accounts with Discord sign-in | `phase-12-accounts` | in progress |
 
 ---
 
@@ -680,11 +680,11 @@ Issue #30: playing needs an account, made by signing in with Discord; each accou
 - [x] `frontend/src/lobby/LobbyScreen.tsx`: CHANGE NAME, SIGN IN TO PLAY, PLAY INSTEAD with no prompt
 - [x] The browser tests run on accounts, and the login page and lobby fit every tested size
 - [x] `frontend/e2e/accounts.spec.ts`: signing in, naming, renaming and watching in the browser
-- [ ] `CLAUDE.md`, `README.md` and `DEVELOPMENT.md` describe accounts; the pull request shows the login page and lobby before and after, and closes #30
+- [x] `CLAUDE.md`, `README.md` and `DEVELOPMENT.md` describe accounts; the pull request shows the login page and lobby before and after, and closes #30
 
 **Phase 12 acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
 - [ ] PR merged into `development`
 - [ ] The user creates the Discord application and sets `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` and `DISCORD_REDIRECT_URI` on the home server
 - [ ] The user signs in with Discord on the deployed build, on a desktop and on a phone, chooses a name, renames in a lobby, and plays a game
