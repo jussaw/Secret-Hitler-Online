@@ -23,8 +23,7 @@ these rules is violating their spirit.
   before any draft existed. Show the draft and wait.
 - Not for a draft you changed after the OK. Show it again and wait again.
 - An OK for one draft of a batch posts that draft only.
-- No draft for a thing that reached **Nothing to file** until the user answers its question, in
-  the request or after it.
+- No draft for a thing that reached **Nothing to file** until the user answers its question.
 
 **No bug is drafted without a run in the throwaway checkout that tried to show it.**
 - Not when the code looks right. Code that looks right is why you run it.
@@ -49,7 +48,8 @@ number,title,state,labels`.
 
 - An open issue asks for the same thing or reports the same bug: point at it (number, title, what
   it covers) and stop for that thing. No draft, no checkout. Do not offer to comment on it.
-- A closed one: link it as related in the draft ("this may be #41 again").
+- A closed one: link it as related ("this may be #41 again"), in the draft or in the Nothing to
+  file report, and go on to step 2. The bug may be back, or the fix may not have reached the user.
 
 ## 2. Check out `development`
 
@@ -100,20 +100,21 @@ Write down what happened in plain numbers, as #63 does ("Ann's next lobby packet
    device form of "Not reproduced" (**Provenance** in `formats.md`): what it needs, and what was
    tried.
 2. The run showed the bug: draft it with the "Reproduced" form of **Provenance**.
-3. The run reached the bug's conditions and it did not show: go to **Nothing to file**.
+3. The run did not show it, and you can name what fixed it: a closed issue or a commit whose fix
+   is in the checkout, and the line that now does what the user expected. That is a report the
+   code plainly shows is already the case: go to **Nothing to file**.
+4. Any other run that did not show it, and every bug whose code only looks right: draft it with
+   the "Not reproduced" form of **Provenance**, with what was tried. Showing the draft is the ask:
+   the user can drop it there.
 
 ## Nothing to file
 
-An enhancement the code already does, or a bug that did not show in a run that reached it (case 3
-of step 4; never a device-only bug). Report what you found, with `path:line` references at the
-commit and the run's command and result, and ask whether to file it anyway (a bug as not
-reproduced). Draft nothing for it until the user answers. The other issues of a batch carry on.
-
-The user's words may answer it already ("if you can't reproduce it, file it anyway as not
-reproduced"). That is their answer: do not ask again. Draft the bug as not reproduced, with "Not
-reproduced on `development` (<commit>). Tried: <command>, <what it showed>." as its provenance,
-and show it. That answer is about drafting only: posting still waits for an OK on the draft the
-user has seen.
+Only two things come here: an enhancement the code already does (step 3), and a bug report the
+code plainly shows is already the case (case 3 of step 4). Never a bug that did not show for any
+other reason, and never a device-only bug. Report what you found, with `path:line` references at
+the commit, and for a bug what fixed it and the run's command and result. Then ask whether to file
+it anyway (a bug as not reproduced). Draft nothing for it until the user answers. The other issues
+of a batch carry on.
 
 An answer that comes after the clean-up (step 6) needs no new checkout: the draft takes its
 `path:line` references from the finding and its commit from what step 2 wrote down.
@@ -195,14 +196,16 @@ wrote, or a case the review found. The line under each is the answer.
   bug."
   - Reading is step 3. Step 4 is the run. No run, no bug draft.
 - "The code looks right on a clean close, so the issue lists what is unknown."
-  - Then run it. The run decides whether there is anything to file.
+  - Then run it. The run decides what the draft says: "Reproduced", or "Not reproduced" with what
+    was tried.
 - A draft that lists "whether it reproduces on a local build of `development`" as unknown.
   - Finding that out is your job, not the issue's. Run it.
 - "That is a scaffolding failure, not evidence of the bug, so I did not chase it."
   - That probe never ran its check. Fix it and run it again.
-- "I'd first ask the user two questions", then a full draft for a bug that did not show.
-  - A bug that did not show gets no draft. Report, ask whether to file it as not reproduced, and
-    wait.
+- "The bug did not show, so I report what I found and ask whether to file it as not reproduced."
+  - Draft it as not reproduced, with what was tried, and show it. Showing the draft is the ask: the
+    user can drop it there. Nothing to file is only for an enhancement the code already does, or a
+    bug whose fix you can name.
 - "Something in front of it keeps the connection open" / "the proxy in front of it".
   - The host's setup is private, and no run showed it. It stays out of the draft. Say it to the user
     in chat if it helps.
@@ -226,11 +229,8 @@ wrote, or a case the review found. The line under each is the answer.
     Agent tool.
 - "Neither is filed, because the code at `development` already does what each one asks." (for a bug
   seen only on an iPhone, once a mock passed)
-  - "Already does it" is for enhancements. A bug seen only on a device is drafted as not reproduced,
-    and the passing mock is what was tried.
-- "Your note on this says to file it anyway as not reproduced. Do you want me to file it that way?"
-  - The user answered before you asked. Draft it as not reproduced and show it. Only the posting
-    waits.
+  - "Already does it" is for enhancements, and for a bug whose fix you can name. A bug seen only on
+    a device is drafted as not reproduced, and the passing mock is what was tried.
 
 ## Red flags
 
@@ -245,11 +245,9 @@ wrote, or a case the review found. The line under each is the answer.
 - A line in Want:, Notes: or Scope answers a question under `## Open questions`.
 - A question for the reporter, or a fact nobody knows yet, under `## Open questions`.
 - The user answered a question in chat, and the draft drops it without writing the answer in.
-- A draft for something the code already does, or for a bug that did not show, before the user
-  answered.
-- A bug seen only on a device, and you are asking "file it anyway?" instead of drafting it as not
-  reproduced.
-- The user already said to file it anyway, and you are asking again instead of showing the draft.
+- A draft for something that reached **Nothing to file**, before the user answered.
+- A bug seen only on a device, or one that did not show here and whose fix you cannot name, and
+  you are asking "file it anyway?" instead of drafting it as not reproduced.
 - Two or more issues, and you are reading or running the code yourself instead of dispatching a
   subagent for each.
 
