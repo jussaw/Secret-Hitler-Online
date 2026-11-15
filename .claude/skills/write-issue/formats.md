@@ -36,8 +36,9 @@ every slot marked REQUIRED in the order given, and keep the example's shape.
 For a bug found in review or while reading code. No `##` headings, except `## Open questions`
 when a choice is open: it goes just before **Possible fix:**. REQUIRED, in order:
 
-1. **Provenance sentence**, first in the body: where it was found, then "Not reproduced yet." or
-   "Reproduced at `<short sha>`: <what happened>." Then the commit the line numbers come from.
+1. **Provenance**, in the first sentences of the body, one fact each: where it was found, then
+   "Not reproduced yet." or "Reproduced at `<short sha>`: <what happened>.", then the commit the
+   line numbers come from.
 2. **The mechanism:** what runs, where (`path:line`), why it goes wrong.
 3. **A concrete case**, as a numbered list of steps (with times or values when they matter).
 4. **How narrow it is,** and what stays correct.
@@ -79,9 +80,9 @@ For a bug someone saw: in a game, in the browser, in a failing test. The repo's 
 headings, these four in this order, and no other heading except `## Open questions` when a choice
 is open. REQUIRED:
 
-- `## Description`. Its first sentence is the provenance: where it was seen (or which run
-  failed), whether it was reproduced, and the commit (`development` at `<short sha>`) the line
-  numbers come from. Then what is known of the cause, and the numbers: how often, which project,
+- `## Description`. Its first sentences are the provenance, one fact each: where it was seen (or
+  which run failed), whether it was reproduced, and the commit (`development` at `<short sha>`)
+  the line numbers come from. Then what is known of the cause, and the numbers: how often, which project,
   the exact output in backticks.
 - `## Expected Behavior`: one or two sentences.
 - `## Reproduction`: a fenced block holding the command or the script that shows it (a
