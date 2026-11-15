@@ -90,9 +90,12 @@ and deleted in step 6.
   ~/.sdkman/candidates/java`, then `JAVA_HOME=<that 17.x>`): `./gradlew test --tests <Class>` from
   `<checkout>/backend`. The Gradle wrapper fails on newer JDKs.
 - Frontend: `npm ci` once in `<checkout>/frontend`, then a throwaway test beside the file, run with
-  `npx vitest run <file>`; or a throwaway `e2e/repro.spec.ts`, run with `npx playwright test
-  e2e/repro.spec.ts --project=<project>` and Java 17 active. It builds and serves on port 4545, so
-  one browser run at a time.
+  `npx vitest run <file>`; or a throwaway `e2e/repro.spec.ts`, run with `E2E_PORT=<port> npx
+  playwright test e2e/repro.spec.ts --project=<project>` and Java 17 active. It builds the app and
+  serves it on `<port>`. Pick the port once, before the first browser run: one from 4546 to 4999
+  that `lsof -nP -iTCP:<port> -sTCP:LISTEN` shows free, as `implement-issue` does. A run waits for
+  any server on its port to answer `/ping`, so on a port another session is serving it tests that
+  session's code without an error, and its result says nothing about this checkout.
 
 Write down what happened in plain numbers, as #63 does ("Ann's next lobby packet listed
 `["Ann","  "]`"), with the command. Then take the first of these that fits:
@@ -177,12 +180,13 @@ to post. Then wait.
 Two or more issues are dispatched, one subagent per issue (the Agent tool), so each draft comes
 from its own reading and your context holds only the drafts. This is not optional. Search (step 1)
 and check out (step 2) first; then read no code for any of them yourself. Start the next subagent
-only when the last has come back, never two at once (one Gradle build and one port 4545 at a
-time). Give each one its issue in the user's words, the checkout's path, the commit, the file for
-its draft (in the scratchpad, or in the `mktemp -d` directory of a session without one), and steps
-3 to 5 of this skill with **The two rules** and **Nothing to file**. It brings back its draft or
-its Nothing to file finding, with the commands it ran and their results. It makes no checkout,
-posts nothing and removes nothing. You clean up, show all of them together and post.
+only when the last has come back, never two at once (they share one checkout, one Gradle build and
+one browser port). Give each one its issue in the user's words, the checkout's path, the commit,
+the browser port if one was picked (else step 4's rule for picking one), the file for its draft (in
+the scratchpad, or in the `mktemp -d` directory of a session without one), and steps 3 to 5 of
+this skill with **The two rules** and **Nothing to file**. It brings back its draft or its Nothing
+to file finding, with the commands it ran and their results. It makes no checkout, posts nothing
+and removes nothing. You clean up, show all of them together and post.
 
 If you cannot dispatch subagents, take the issues one after another yourself. That is only for a
 session with no Agent tool: steps 3 to 5 for the first issue, to its draft or its Nothing to file
