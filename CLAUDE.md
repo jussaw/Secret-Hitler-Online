@@ -42,15 +42,17 @@ keeps credit to upstream and to the board game's creators.
   expired) is signed out, never an error. `GET /me` says who is signed in (`signedIn`, `id`,
   `username`, `discordUsername`, `test`) and which sign-ins the server has (`discord`,
   `testSignIn`); `POST /me/username` renames (400 for a name the rules refuse, 401, 403 while seated
-  in a running game, 409 taken, each with its message as the body); `POST /auth/sign-out` deletes
-  the row and clears the cookie, and sockets already open stay open. `/auth/discord[?lobby=CODE]`
-  keeps a one-use state, with the lobby code, in the `oauth-state` cookie (path `/auth`, 10 minutes)
-  and sends the browser to Discord (scope `identify`); `/auth/discord/callback` checks the state,
-  trades the code for a token and reads the user (each call to Discord within one 10 s deadline,
-  `DiscordSignIn.TIMEOUT`), makes or updates the account, starts a session and goes to `/` or
-  `/?lobby=CODE`, and any failure goes to `/?signin=failed`. The code, the token and the client
-  secret are never logged or stored, and only a 4-letter code from the code alphabet ever reaches a
-  redirect (`DiscordSignInTest`, against a fake Discord: `authorizeUrl` and `apiBase` are fields).
+  in a running game, 409 taken, each with its message as the body); `POST /auth/sign-out` clears
+  the cookie, then deletes the row, so a store that fails (a 500) still signs the browser out
+  (`AuthRoutesTest.aFailedSignOutStillClearsTheCookie`), and sockets already open stay open.
+  `/auth/discord[?lobby=CODE]` keeps a one-use state, with the lobby code, in the `oauth-state`
+  cookie (path `/auth`, 10 minutes) and sends the browser to Discord (scope `identify`);
+  `/auth/discord/callback` checks the state, trades the code for a token and reads the user (each
+  call to Discord within one 10 s deadline, `DiscordSignIn.TIMEOUT`), makes or updates the account,
+  starts a session and goes to `/` or `/?lobby=CODE`, and any failure goes to `/?signin=failed`. The
+  code, the token and the client secret are never logged or stored, and only a 4-letter code from
+  the code alphabet ever reaches a redirect (`DiscordSignInTest`, against a fake Discord:
+  `authorizeUrl` and `apiBase` are fields).
   Discord sign-in is on when `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` and `DISCORD_REDIRECT_URI`
   are set (`ApplicationConfig.discordConfigured`); `/auth/discord` is 503 otherwise.
   `TEST_SIGN_IN=true` adds `POST /auth/test-sign-in` (JSON `{"id", "username"}`, 404 without it),
@@ -85,8 +87,10 @@ keeps credit to upstream and to the board game's creators.
   `activeAccounts` (join order, the host first), `accountToName` (each account's current name, which
   packets show), `accountToRejoinKey` and `pendingRemovals` are transient; `accountToIcon`,
   `accountToPreferredIcon` and `gameSeats` (the running game's human seats, account ID to seat name,
-  which `seatAccounts()` turns round for game records, #31) are backed up. `startNewGame` seats each
-  live account under its current name, which the seat keeps until the game ends, and `Lobby.rename`
+  which `seatAccounts()` turns round for game records, #31) are backed up. `updateAllUsers` clears
+  `gameSeats` once it has sent a finished game's last packet, so `seatAccounts()` is empty from
+  then on: #31 must read the seats before that clear. `startNewGame` seats each live account under
+  its current name, which the seat keeps until the game ends, and `Lobby.rename`
   (refused while seated) changes only the name packets show (`LobbyRenameTest`). Packets keep their
   shape (`usernames` and `icon` by name, game packets by seat name), and every player's packet adds
   `you`, their name or, in a game, their seat's; a spectator's gets none.
@@ -195,13 +199,14 @@ keeps credit to upstream and to the board game's creators.
   `/me` says no `discord`, the button is off and the line reads "Sign-in is not set up on this
   server.". Signed in it is YOUR NAME: the name, a grey CHANGE NAME and "Signed in with Discord as
   rowan.d · Sign out", with the account's Discord username ("Signed in with a test account
-  (test-…)" for a test account), the only place the Discord username shows. Sign out is a button drawn as a link, with a 44px target at
-  every size whose margins take back all but its line's height (`lh`). After `/?signin=failed`,
-  which `App` takes out of the address (keeping `?lobby=`), the card says "Signing in with Discord
-  failed. Please try again.". JOIN needs a signed-in account with a name and the 4-letter code,
-  WATCH only the code, CREATE LOBBY only the account with a name; the hint reads "JOIN needs you
-  signed in · WATCH needs only the code" until then and "WATCH needs only the code" after, and a 401
-  from JOIN or CREATE LOBBY says "Sign in to play." and asks `/me` again. CHOOSE A NAME and CHANGE
+  (test-…)" for a test account), the only place the Discord username shows. Sign out is a button
+  drawn as a link, with a 44px target at every size whose margins take back all but its line's
+  height (`lh`). After `/?signin=failed`, which `App` takes out of the address (keeping `?lobby=`),
+  the card says "Signing in with Discord failed. Please try again.". JOIN needs a signed-in account
+  with a name and the 4-letter code, WATCH only the code, CREATE LOBBY only the account with a name;
+  the hint reads "JOIN needs you signed in · WATCH needs only the code" until then and "WATCH needs
+  only the code" after. A 401 from JOIN, CREATE LOBBY or the name prompt's save says "Sign in to
+  play." and asks `/me` again (a session that has ended closes the prompt). CHOOSE A NAME and CHANGE
   NAME are one prompt, `NamePrompt`: its title, "Others see it in lobbies and games. Up to 12
   characters.", the field, which takes `typedName` (`src/lobby/normalizeName.ts`: runs of whitespace
   one space, none at the start, twelve characters at most) and saves `normalizeName`'s, then the
@@ -221,9 +226,9 @@ keeps credit to upstream and to the board game's creators.
   `RULES_URL`, and `ABOUT_URL` and `ISSUES_URL`, which the lobby's footer shares, each an `OutLink`
   (`src/util/`, a new tab). `GameScreen.css` lists `.login-screen` beside the lobby and the game
   for the page and its header, and `LobbyScreen.css` lists the login page's selectors beside the
-  lobby's for the cards' look, the fields' focus, the centred column and the footer;
-  `LoginScreen.css` holds the rest. The cards are a column centred both ways on desktop and in
-  tall windows, and start at the top on phones (`LoginScreen.css` writes out the phone-only
+  lobby's for the cards' look, the fields' focus, the centred column, the grey buttons and the
+  footer; `LoginScreen.css` holds the rest. The cards are a column centred both ways on desktop and
+  in tall windows, and start at the top on phones (`LoginScreen.css` writes out the phone-only
   query). It fits one screen at every tested size but 320x568, where it may scroll down. The game
   page is `src/game/`: `GameScreen` (markup and the three layouts), `PlayerRoster` (a row per player
   in `playerOrder`: portrait, name, office or role, and the vote or busy bubble), `RoundTracker`
@@ -308,15 +313,15 @@ keeps credit to upstream and to the board game's creators.
   `playInsteadPending` names the PLAY INSTEAD under way: LEAVE LOBBY, a game starting, the login
   page and a name prompt closed unanswered end it (`cancelPlayInstead`), so a late answer takes no
   seat. If the server closes PLAY INSTEAD's player socket before its first message (the seat went
-  between the check and the join), `seatPending` sends the person back to watching with a snackbar. A signed-out
-  spectator's SIGN IN TO PLAY comes back, through the `spectator` cookie, to watching the same lobby
-  signed in, with PLAY INSTEAD ready (and CHOOSE A NAME there after a first sign-in). In `App`,
-  `openSeat`, `openWatch` and `closeSocket` do this, and `tryOpenWebSocket` builds the new socket
-  before it closes the old one, keeping the lobby's players on screen when it reopens to the same
-  lobby. `alertShowCount` and `pickerShownAt` keep a late reply from touching the wrong prompt: the
-  picker updates only while it is the alert on screen. `animationStep` names the running queue step,
-  and every queue timer (`finishStepAfter`, for the event bar, the board, the vote tally and a held
-  status line, and the fade in `hideAlertAndFinish`) finishes only the step it belongs to, so a
+  between the check and the join), `seatPending` sends the person back to watching with a snackbar.
+  A signed-out spectator's SIGN IN TO PLAY comes back, through the `spectator` cookie, to watching
+  the same lobby signed in, with PLAY INSTEAD ready (and CHOOSE A NAME there after a first sign-in).
+  In `App`, `openSeat`, `openWatch` and `closeSocket` do this, and `tryOpenWebSocket` builds the new
+  socket before it closes the old one, keeping the lobby's players on screen when it reopens to the
+  same lobby. `alertShowCount` and `pickerShownAt` keep a late reply from touching the wrong prompt:
+  the picker updates only while it is the alert on screen. `animationStep` names the running queue
+  step, and every queue timer (`finishStepAfter`, for the event bar, the board, the vote tally and a
+  held status line, and the fade in `hideAlertAndFinish`) finishes only the step it belongs to, so a
   timer left from a cleared queue never cuts short the next one's step. A prompt's server-OK
   listener (`addServerOKListener`) is tied to its step the same way: an OK goes to the first
   listener whose step is still the current one, and `clearAnimationQueue` drops them all (and a name
@@ -386,23 +391,28 @@ keeps credit to upstream and to the board game's creators.
   lobby there; the login page fits without scrolling in each of `LOGIN_STATES`, with 44px targets
   (SIGN IN WITH DISCORD, TEST SIGN-IN, CHANGE NAME and Sign out among them), 16px field text and
   unwrapped button labels; the lobby tests (the lobby fits without scrolling for each of
-  `longestLineViewers`' five viewers, with 44px targets and 16px field text,
+  `longestLineViewers`' six viewers, each with its note, with 44px targets and 16px field text,
   the roster first, the busy bubble at 320px, and `checkNamePrompt` for CHOOSE A NAME on the login
   page and over the lobby, after which PLAY INSTEAD takes a seat at once, and for CHANGE NAME on the
   login page and in the lobby: 44px targets, 16px field text, unwrapped labels, both buttons on one
   row and twelve characters at most); and a phone held sideways gets the phone layout).
-  `no-scroll.spec.ts` also has a lobby test, for the same five viewers, each one's buttons checked
-  by label (`actionLabels`) and the buttons 44px targets at every size, and a login page test per
-  state (the cards and the footer in order, 44px targets and 16px field text, and Sign out's box
-  clear of CHANGE NAME's, `accountTargets`), both at `DESKTOP_SIZES`, `SQUARE_DESKTOPS` and the
-  `NARROW_WINDOWS`. The viewers are the host and a guest (the four player buttons), a signed-in
-  spectator (PLAY INSTEAD, off in the full lobby) and two signed-out ones, on a server with Discord
-  sign-in and one without (`/me` stubbed). The login tests open the page with
-  `longestLogin(page, state)` (`e2e/lobby.ts`): each state at its fullest from stubbed requests, the
-  longest error under every card and, signed in, a twelve-character name and `LONGEST_DISCORD_NAME`
-  (32 m's, Discord's widest; "signed in, short Discord name" puts Sign out on the line just under
-  CHANGE NAME). The thinnest fit is the signed-in login page at 800x700, about 6px to spare, where
-  an added line fails first. `lobby-switch.spec.ts` (`desktop`
+  `no-scroll.spec.ts` also has a lobby test, for the same six viewers, each one's buttons checked
+  by label (`actionLabels`), a spectator's note by its text, and the buttons 44px targets at every
+  size, and a login page test per state (the cards and the footer in order, 44px targets and 16px
+  field text, and Sign out's box clear of CHANGE NAME's, `accountTargets`), both at
+  `DESKTOP_SIZES`, `SQUARE_DESKTOPS` and the `NARROW_WINDOWS`. The viewers are the host and a guest
+  (the four player buttons), a signed-in spectator (PLAY INSTEAD, off in the full lobby) and two
+  signed-out ones, on a server with Discord sign-in and one without (`/me` stubbed), all in the
+  full lobby; and a signed-in spectator of a lobby of nine, with the longest line too, whose PLAY
+  INSTEAD's `/check-login` failed: its note, `CONTACT_ERROR`, is the longest a spectator gets (one
+  line on desktop, with 220px or more to spare; two on phones, with 170px to spare at 360x740 and
+  27px at 320x568, on Linux too). The login tests open the page with `longestLogin(page, state)`
+  (`e2e/lobby.ts`): each state at its fullest from stubbed requests, the longest error under every
+  card and, signed in, a twelve-character name and `LONGEST_DISCORD_NAME` (32 m's, Discord's
+  widest; "signed in, short Discord name" puts Sign out on the line just under CHANGE NAME). The
+  thinnest fits are the signed-in login page at 800x700, about 6px to spare, and on phones at
+  360x740 on Linux, where the widest Discord username takes three lines, also about 6px
+  (`LoginScreen.css`): an added line fails there first. `lobby-switch.spec.ts` (`desktop`
   and `phone-360`) plays the seat switch in a real lobby: watching instead and playing instead, a
   full lobby, a taken name (a first sign-in from watching gets CHOOSE A NAME over the lobby, which
   refuses the host's name), the host passing on, reloads, the grace window, and a game started
