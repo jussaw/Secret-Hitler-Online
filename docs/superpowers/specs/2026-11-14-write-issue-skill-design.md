@@ -1,7 +1,7 @@
 # write-issue skill: design
 
 Date: 2026-11-14
-Status: draft, waiting for the user's approval
+Status: approved design, pending implementation plan
 
 ## Why
 
