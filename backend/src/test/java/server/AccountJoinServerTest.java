@@ -628,6 +628,35 @@ public class AccountJoinServerTest {
 
     ////// Messages
 
+    /**
+     * A message acts as its connection's account, which is a player only of the lobby it joined: a
+     * player's socket naming another lobby (and one of its players) is closed, and that lobby is
+     * untouched, with no game and nothing sent to its players.
+     */
+    @Test
+    public void aPlayerMessagingAnotherLobbyIsClosed() throws Exception {
+        String here = newCode();
+        lobby(here);
+        String there = newCode();
+        Lobby other = lobby(there);
+        TestSocket bea = players(there, "Bea").get(0); // with a portrait: a start would seat her with bots
+        int sent = settle(bea, there);
+        List<TestSocket> players = players(here, "Ann", "Cy");
+
+        for (int i = 0; i < 2; i++) {
+            String command = List.of("start-game", "get-state").get(i);
+            players.get(i).send(command(there, "Bea", command));
+            TestSocket.CloseInfo closed = players.get(i).awaitClose();
+            assertEquals(command, 1002, closed.code);
+            assertEquals(command, "The user is not in the lobby " + there + ".", closed.reason);
+        }
+
+        assertFalse(other.isInGame());
+        assertEquals(List.of("Bea"), other.getUserNames());
+        assertSentNothingSince(bea, sent, there);
+        assertNoHandlerThrew();
+    }
+
     @Test
     public void aMessageNamingSomeoneElseActsAsItsSender() throws Exception {
         String code = newCode();
