@@ -105,6 +105,42 @@ public class LobbyRenameTest {
         lobby.sendStateToAll();
         assertEquals(List.of("Ann", "P2", "P3"), names(watcher.last()));
         assertEquals("Ann", back.last().getString("you"));
+        JSONObject icons = watcher.last().getJSONObject("icon");
+        assertEquals("p1", icons.getString("Ann"));
+        assertFalse(icons.has("P1"));
+    }
+
+    @Test
+    public void aJoinRecordsTheNameItIsGiven() {
+        Lobby lobby = new Lobby();
+        List<FakeSocket> players = addPlayers(lobby, 3);
+        lobby.removeUser(players.get(0).ctx);
+        assertTrue(lobby.rename(account("P1"), "Ann"));
+        FakeSocket back = FakeSocket.open();
+        lobby.addUser(back.ctx, account("P1"), "Other");
+        FakeSocket watcher = FakeSocket.open();
+        lobby.addSpectator(watcher.ctx);
+        lobby.sendStateToAll();
+        assertEquals(List.of("Other", "P2", "P3"), names(watcher.last()));
+        assertEquals("Other", back.last().getString("you"));
+    }
+
+    @Test
+    public void aNullOrBlankNameIsRefusedAndChangesNothing() {
+        Lobby lobby = new Lobby();
+        addPlayers(lobby, 2);
+        for (String bad : new String[] { null, "", "   " }) {
+            try {
+                lobby.rename(account("P1"), bad);
+                fail("renamed to " + bad);
+            } catch (IllegalArgumentException expected) {
+                // refused
+            }
+        }
+        FakeSocket watcher = FakeSocket.open();
+        lobby.addSpectator(watcher.ctx);
+        lobby.sendStateToAll();
+        assertEquals(List.of("P1", "P2"), names(watcher.last()));
     }
 
     @Test

@@ -287,10 +287,14 @@ public class Lobby implements Serializable {
      * @param name      the new name, already checked against the name rules.
      * @return true iff the account is in the lobby (live, or inside the grace window after a
      *         disconnect) and its name changed; false if it is not here or the name is the same.
+     * @throws IllegalArgumentException if {@code name} is null or blank. Nothing changes.
      * @throws IllegalStateException if the account has a seat in the running game. Nothing
      *                               changes.
      */
     synchronized public boolean rename(String accountId, String name) {
+        if (name == null || name.trim().isEmpty()) {
+            throw new IllegalArgumentException("A name cannot be blank.");
+        }
         if (isSeated(accountId)) {
             throw new IllegalStateException("A seated account cannot be renamed during a game.");
         }
