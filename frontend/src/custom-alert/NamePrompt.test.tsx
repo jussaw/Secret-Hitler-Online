@@ -83,7 +83,7 @@ describe("NamePrompt", () => {
   });
 
   test("an error shows in the prompt", async () => {
-    const message = "There is already a user with the name 'Sam' in the lobby.";
+    const message = "Another player already has that name.";
     // A slow check: the error line is on screen (empty) from the start, so wait for its text.
     setup("Sam", vi.fn(() => new Promise<string>((r) => setTimeout(() => r(message), 30))));
     fireEvent.click(button("CONTINUE"));

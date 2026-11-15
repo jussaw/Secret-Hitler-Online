@@ -41,6 +41,15 @@ describe("fetchMe", () => {
     expect(await fetchMe()).toEqual({ ...me, username: "Sam" });
   });
 
+  it("rejects a 200 whose body is not an account answer", async () => {
+    for (const body of ["null", "{}", '{"signedIn":true,"id":1}']) {
+      mockFetch(respond(200, body, "application/json"));
+      await expect(fetchMe()).rejects.toThrow();
+      mockFetch(respond(200, body, "application/json"));
+      await expect(testSignIn()).rejects.toThrow();
+    }
+  });
+
   it("rejects on a network failure or a bad status", async () => {
     mockFetch(new TypeError("network"));
     await expect(fetchMe()).rejects.toThrow();
@@ -90,6 +99,11 @@ describe("signOut", () => {
     expect(init.method).toBe("POST");
     expect(init.headers["Content-Type"]).toBe("application/json");
     expect(init.body).toBe("{}");
+  });
+
+  it("rejects on a non-OK status", async () => {
+    mockFetch(respond(500));
+    await expect(signOut()).rejects.toThrow();
   });
 
   it("rejects on a network failure", async () => {

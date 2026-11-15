@@ -36,11 +36,32 @@ const post = (path: string, body: unknown) =>
     body: JSON.stringify(body),
   });
 
+/** Throws unless `body` has the shape of GET /me's answer. */
+function parseMe(body: unknown): Me {
+  const me = body as Record<string, unknown> | null;
+  const ok =
+    typeof me === "object" &&
+    me !== null &&
+    typeof me.signedIn === "boolean" &&
+    (!me.signedIn ||
+      (typeof me.id === "string" &&
+        typeof me.discordUsername === "string" &&
+        (me.username === null || typeof me.username === "string")));
+  if (!ok) throw new Error("The server's account answer is malformed.");
+  return me as Me;
+}
+
+/** 128 random bits in hex; crypto.randomUUID needs a secure context, getRandomValues does not. */
+function randomId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 /** Rejects when the server cannot be reached or does not answer 200. */
 export async function fetchMe(): Promise<Me> {
   const response = await fetch(SERVER_ADDRESS_HTTP + ME);
   if (!response.ok) throw new Error("GET /me answered " + response.status);
-  return (await response.json()) as Me;
+  return parseMe(await response.json());
 }
 
 /** Saves the person's name. The error is the server's message, or CONTACT_ERROR. */
@@ -73,10 +94,10 @@ export async function signOut(): Promise<void> {
 
 /** Signs in as a new test account (a random ID per call). Rejects on any failure. */
 export async function testSignIn(): Promise<Me> {
-  const response = await post(AUTH_TEST_SIGN_IN, { id: crypto.randomUUID() });
+  const response = await post(AUTH_TEST_SIGN_IN, { id: randomId() });
   if (!response.ok)
     throw new Error("POST /auth/test-sign-in answered " + response.status);
-  return (await response.json()) as Me;
+  return parseMe(await response.json());
 }
 
 /** The link that signs in with Discord; with a full lobby code, it brings the person back to it. */
