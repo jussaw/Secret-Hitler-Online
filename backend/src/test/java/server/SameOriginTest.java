@@ -52,7 +52,7 @@ public class SameOriginTest {
         accepted("https://my_host", "my_host");
         accepted("http://[::1]:4040", "[::1]:4040");
         accepted("http://[::1]", "[::1]:80");
-        accepted("http://192.168.0.7:4040", "192.168.0.7:4040");
+        accepted("http://192.0.2.7:4040", "192.0.2.7:4040");
     }
 
     @Test
