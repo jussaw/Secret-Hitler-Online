@@ -30,7 +30,7 @@ public final class Usernames {
     }
 
     /**
-     * Runs of whitespace become one space, then the ends are trimmed.
+     * Runs of whitespace become one space, then the ends are trimmed. The argument must not be null.
      */
     public static String normalize(String raw) {
         String collapsed = WHITESPACE_RUN.matcher(raw).replaceAll(" ");
@@ -45,13 +45,14 @@ public final class Usernames {
 
     /**
      * The form two names are compared in: names that differ only in case are the same name.
+     * The argument must not be null.
      */
     public static String key(String normalized) {
         return normalized.toLowerCase(Locale.ROOT);
     }
 
     /**
-     * The first rule a normalized name breaks, or null when the name is fine.
+     * The first rule a normalized name breaks, or null when the name is fine. The argument must not be null.
      */
     public static Problem problem(String normalized) {
         if (normalized.isEmpty()) {
