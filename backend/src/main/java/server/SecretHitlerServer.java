@@ -96,8 +96,11 @@ public class SecretHitlerServer {
     ///// Private Fields
     // <editor-fold desc="Private Fields">
 
-    transient private static ConcurrentHashMap<WsContext, Lobby> userToLobby = new ConcurrentHashMap<>();
-    // Package-private for SpectatorServerTest, which registers its own lobbies.
+    // Every open connection's lobby, from its add until its close handler runs. Package-private for
+    // LobbyTimeoutServerTest, which checks that the close handlers empty it after a sweep.
+    static final ConcurrentHashMap<WsContext, Lobby> userToLobby = new ConcurrentHashMap<>();
+    // Package-private for the server tests, which register their own lobbies (LobbyTimeoutServerTest
+    // puts a map of its own here, to run the sweep at a handler's lookup).
     static ConcurrentHashMap<String, Lobby> codeToLobby = new ConcurrentHashMap<>();
 
     private static final Logger logger = LoggerFactory.getLogger(SecretHitlerServer.class);
@@ -204,35 +207,33 @@ public class SecretHitlerServer {
     }
 
     /**
-     * Checks for and removes any lobbies that have timed out.
-     * 
-     * @effects For each lobby in the {@code codeToLobby} map, checks if the lobby
-     *          has timed out.
-     *          If so, closes all websockets associated with the lobby and removes
-     *          them from the
-     *          {@code userToLobby} map, then removes the lobby from the
-     *          {@code codeToLobby} map.
+     * Checks for and removes any lobbies that have timed out. Runs at start-up, on the update
+     * timer, and before a new lobby is made, without any handler's lock.
+     *
+     * @effects Closes each lobby in {@code codeToLobby} that has timed out, under its lock
+     *          ({@code Lobby.closeIfTimedOut}), so that it takes no connection and answers no
+     *          message from then on, even from a handler that looked it up just before (#64).
+     *          Then removes it from {@code codeToLobby} and closes its connections. Each
+     *          connection stays in {@code userToLobby} until its close handler runs, so a
+     *          message already on its way finds the lobby closed: a spectator's is still
+     *          known as a spectator's.
      */
     static void removeInactiveLobbies() {
-        Set<String> removedLobbyCodes = new HashSet<>();
-        int removedCount = 0;
-        Iterator<Map.Entry<String, Lobby>> itr = codeToLobby.entrySet().iterator();
-        while (itr.hasNext()) {
-            Map.Entry<String, Lobby> entry = itr.next();
+        List<String> removedLobbyCodes = new ArrayList<>();
+        for (Map.Entry<String, Lobby> entry : codeToLobby.entrySet()) {
             Lobby lobby = entry.getValue();
-            if (lobby.hasTimedOut()) {
-                // Remove the websocket connections.
-                for (WsContext ctx : lobby.getConnections()) {
-                    ctx.session.close(StatusCode.NORMAL, "The lobby has timed out.");
-                    userToLobby.remove(ctx);
-                }
-                removedLobbyCodes.add(entry.getKey());
-                removedCount++;
-                itr.remove();
+            if (!lobby.closeIfTimedOut()) {
+                continue; // live, or closed already by a sweep running at the same time
             }
+            codeToLobby.remove(entry.getKey(), lobby);
+            // A closed lobby takes no connection, so these are all it will ever have.
+            for (WsContext ctx : lobby.getConnections()) {
+                ctx.session.close(StatusCode.NORMAL, "The lobby has timed out.");
+            }
+            removedLobbyCodes.add(entry.getKey());
         }
-        if (removedCount > 0) {
-            logger.info(String.format("Removed %d inactive lobbies: %s", removedCount, removedLobbyCodes));
+        if (!removedLobbyCodes.isEmpty()) {
+            logger.info(String.format("Removed %d inactive lobbies: %s", removedLobbyCodes.size(), removedLobbyCodes));
             printLobbyStatus();
             hasLobbyChanged = true;
         }
@@ -376,7 +377,8 @@ public class SecretHitlerServer {
      *          - 400: if the {@code lobby} or {@code name} parameters are
      *          missing (or blank).
      *          <p>
-     *          - 404: if there is no lobby with the given code
+     *          - 404: if there is no lobby with the given code, or the sweep has
+     *          closed it ({@code Lobby.isClosed}).
      *          <p>
      *          - 403: the username is invalid (there is already another user
      *          with that name in the lobby.)
@@ -405,42 +407,43 @@ public class SecretHitlerServer {
             return;
         }
 
-        if (!codeToLobby.containsKey(lobbyCode)) { // lobby does not exist
+        // One lookup: the sweep may remove the lobby at any moment. Once closed, a lobby stays closed.
+        Lobby lobby = codeToLobby.get(lobbyCode);
+        if (lobby == null || lobby.isClosed()) { // lobby does not exist, or the sweep has taken it
             ctx.status(404);
             ctx.result("No such lobby found.");
-        } else { // the lobby exists
-            Lobby lobby = codeToLobby.get(lobbyCode);
-
-            if (lobby.canRejoin(name)) { // takes back their own seat, even in a full lobby
-                ctx.status(200);
-                ctx.result(lobby.isInGame() ? "Login request valid (re-joining an existing game)."
-                        : "Login request valid.");
-            } else if (lobby.isFull()) {
-                ctx.status(489);
-                ctx.result("The lobby is currently full.");
-            } else if (lobby.isInGame()) {
-                ctx.status(488);
-                ctx.result("The lobby is currently in a game.");
-            } else if (lobby.hasUserWithName(name)) { // repeat username.
-                ctx.status(403);
-                ctx.result("There is already a user with the name '" + name + "' in the lobby.");
-            } else { // unique username found. Return OK.
-                ctx.status(200);
-                ctx.result("Login request valid.");
-            }
+        } else if (lobby.canRejoin(name)) { // takes back their own seat, even in a full lobby
+            ctx.status(200);
+            ctx.result(lobby.isInGame() ? "Login request valid (re-joining an existing game)."
+                    : "Login request valid.");
+        } else if (lobby.isFull()) {
+            ctx.status(489);
+            ctx.result("The lobby is currently full.");
+        } else if (lobby.isInGame()) {
+            ctx.status(488);
+            ctx.result("The lobby is currently in a game.");
+        } else if (lobby.hasUserWithName(name)) { // repeat username.
+            ctx.status(403);
+            ctx.result("There is already a user with the name '" + name + "' in the lobby.");
+        } else { // unique username found. Return OK.
+            ctx.status(200);
+            ctx.result("Login request valid.");
         }
     }
 
     /**
      * Checks a spectator's login ({@code spectator=true}), which needs only a lobby code.
-     * 400 without a code, 404 for an unknown lobby (as for a player), otherwise 200: a
-     * spectator may watch a full lobby or a game in progress.
+     * 400 without a code, 404 for an unknown lobby or one the sweep has closed (as for a
+     * player), otherwise 200: a spectator may watch a full lobby or a game in progress.
      */
     private static void checkSpectatorLogin(Context ctx, String lobbyCode) {
         if (lobbyCode == null || lobbyCode.isBlank()) {
             ctx.status(400);
             ctx.result("Lobby must be specified.");
-        } else if (!codeToLobby.containsKey(lobbyCode)) {
+            return;
+        }
+        Lobby lobby = codeToLobby.get(lobbyCode);
+        if (lobby == null || lobby.isClosed()) {
             ctx.status(404);
             ctx.result("No such lobby found.");
         } else {
@@ -510,10 +513,11 @@ public class SecretHitlerServer {
      *          - there is no lobby with the given code.
      *          <p>
      *          - the lobby refuses the connection ({@code Lobby.joinRefusal}): the
-     *          name is blank; there is already another user with that name in the
-     *          lobby, and this connection does not bring its {@code rejoinKey}; the
-     *          lobby is full, and the user is not taking back their own seat; or the
-     *          lobby is in a game, and the user is not a rejoining player.
+     *          sweep has closed it, even if only after this lookup; the name is
+     *          blank; there is already another user with that name in the lobby,
+     *          and this connection does not bring its {@code rejoinKey}; the lobby
+     *          is full, and the user is not taking back their own seat; or the lobby
+     *          is in a game, and the user is not a rejoining player.
      *          <p>
      *          Otherwise, connects the user to the lobby. A connection that takes
      *          its name's place closes the old one with {@code CLOSE_REPLACED}.
@@ -536,13 +540,15 @@ public class SecretHitlerServer {
         String name = ctx.queryParam(PARAM_NAME);
 
         logger.debug("Attempting to connect user '" + name + "' to lobby '" + code + "': ");
-        if (!codeToLobby.containsKey(code)) { // the lobby does not exist.
+        // One lookup: the sweep may remove the lobby at any moment (#64). If it does after this, the
+        // lobby is closed by the time this connection holds its lock, and refuses it (CLOSED).
+        Lobby lobby = codeToLobby.get(code);
+        if (lobby == null) { // the lobby does not exist.
             logger.debug("FAILED (The lobby does not exist)");
-            ctx.session.close(StatusCode.PROTOCOL, "The lobby '" + code + "' does not exist.");
+            ctx.session.close(StatusCode.PROTOCOL, noSuchLobby(code));
             return;
         }
 
-        Lobby lobby = codeToLobby.get(code);
         String rejoinKey = ctx.queryParam(PARAM_REJOIN_KEY);
         if (rejoinKey != null && rejoinKey.isBlank()) {
             rejoinKey = null; // an empty key is no key
@@ -580,6 +586,7 @@ public class SecretHitlerServer {
     /** The reason a refused player's socket is closed with, for the lobby {@code code}. */
     private static String refusalReason(Lobby.JoinRefusal refusal, String code, String name) {
         return switch (refusal) {
+            case CLOSED -> noSuchLobby(code); // timed out, and on its way out of the server
             case BLANK_NAME -> "Lobby and name must be specified.";
             case NAME_TAKEN -> "A user with the name " + name + " is already in the lobby.";
             case FULL -> "The lobby " + code + " is currently full.";
@@ -587,10 +594,15 @@ public class SecretHitlerServer {
         };
     }
 
+    /** The reason a socket is closed with when its lobby does not exist, or the sweep has closed it. */
+    private static String noSuchLobby(String code) {
+        return "The lobby '" + code + "' does not exist.";
+    }
+
     /**
      * Connects a spectator ({@code spectator=true}): a connection that watches a lobby and its
      * game without a seat, with no name. Closes the session with the same error as a player's
-     * join if the lobby does not exist.
+     * join if the lobby does not exist or the sweep has closed it.
      */
     private static void connectSpectator(WsConnectContext ctx) {
         String code = ctx.queryParam(PARAM_LOBBY);
@@ -602,10 +614,15 @@ public class SecretHitlerServer {
         Lobby lobby = codeToLobby.get(code);
         if (lobby == null) {
             logger.debug("Spectator " + ctx.getSessionId() + " FAILED to watch '" + code + "' (no such lobby)");
-            ctx.session.close(StatusCode.PROTOCOL, "The lobby '" + code + "' does not exist.");
+            ctx.session.close(StatusCode.PROTOCOL, noSuchLobby(code));
             return;
         }
         synchronized (lobby) {
+            if (lobby.isClosed()) { // the sweep took it after the lookup (#64)
+                logger.debug("Spectator " + ctx.getSessionId() + " FAILED to watch '" + code + "' (timed out)");
+                ctx.session.close(StatusCode.PROTOCOL, noSuchLobby(code));
+                return;
+            }
             lobby.addSpectator(ctx);
             userToLobby.put(ctx, lobby);
             lobby.sendStateToAll();
@@ -617,7 +634,8 @@ public class SecretHitlerServer {
     /**
      * Handles a spectator's message. A spectator may only ping and ask for the state; anything
      * else is logged and dropped, with no reply, so the connection stays open and the game and
-     * the lobby's timeout are untouched.
+     * the lobby's timeout are untouched. A lobby the sweep has closed answers nothing: the
+     * connection is closed as a player's would be.
      */
     private static void onSpectatorMessage(WsMessageContext ctx, Lobby lobby) {
         String command;
@@ -627,6 +645,10 @@ public class SecretHitlerServer {
             command = "(not JSON)";
         }
         synchronized (lobby) {
+            if (lobby.isClosed()) { // the sweep has closed this connection too (#64)
+                ctx.session.close(StatusCode.PROTOCOL, noSuchLobby(ctx.queryParam(PARAM_LOBBY)));
+                return;
+            }
             switch (command) {
                 case COMMAND_PING:
                     JSONObject pong = new JSONObject();
@@ -653,8 +675,8 @@ public class SecretHitlerServer {
      *           lobby.
      *           {@code command}: a String command.
      * @modifies this
-     * @effects Ends the websocket command with code 400 if the specified lobby does
-     *          not exist, the user is not allowed
+     * @effects Closes the websocket with 1002 ({@code StatusCode.PROTOCOL}) if the
+     *          specified lobby does not exist or the sweep has closed it, the user is not allowed
      *          to make this action (usually because they are not a
      *          president/chancellor), if a required parameter is
      *          missing, or the command cannot be executed in this state.
@@ -688,15 +710,19 @@ public class SecretHitlerServer {
         String logMessage = "Received a message from user '" + name + "' in lobby '" + lobbyCode + "' ("
                 + ctx.message() + "): ";
 
-        if (!codeToLobby.containsKey(lobbyCode)) {
+        Lobby lobby = codeToLobby.get(lobbyCode); // one lookup: the sweep may remove the lobby at any moment
+        if (lobby == null) {
             logger.debug(logMessage + " FAILED (Lobby requested does not exist)");
-            ctx.session.close(StatusCode.PROTOCOL, "The lobby does not exist.");
+            ctx.session.close(StatusCode.PROTOCOL, noSuchLobby(lobbyCode));
             return;
         }
 
-        Lobby lobby = codeToLobby.get(lobbyCode);
-
         synchronized (lobby) {
+            if (lobby.isClosed()) { // the sweep took it after the lookup (#64)
+                logger.debug(logMessage + " FAILED (Lobby requested has timed out)");
+                ctx.session.close(StatusCode.PROTOCOL, noSuchLobby(lobbyCode));
+                return;
+            }
             if (!lobby.hasUser(ctx, name)) {
                 logger.debug(logMessage + " FAILED (Lobby does not have the user)");
                 ctx.session.close(StatusCode.PROTOCOL, "The user is not in the lobby " + lobbyCode + ".");
@@ -882,7 +908,9 @@ public class SecretHitlerServer {
         Lobby lobby = userToLobby.get(ctx);
         if (lobby != null) {
             synchronized (lobby) {
-                if (lobby.isSpectator(ctx)) {
+                if (lobby.isClosed()) {
+                    // The sweep closed this connection with its lobby (#64): there is no one to tell.
+                } else if (lobby.isSpectator(ctx)) {
                     lobby.removeSpectator(ctx);
                     lobby.sendStateToAll();
                     logger.info("Spectator " + ctx.getSessionId() + " stopped watching ("

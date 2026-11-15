@@ -65,6 +65,10 @@ public class Lobby implements Serializable {
     public static float PLAYER_TIMEOUT_IN_SEC = 3;
     public static float CPU_ACTION_DELAY_IN_SEC = 4;
     private long timeout;
+    // Set by the sweep that takes the lobby once it has timed out (closeIfTimedOut). A closed lobby
+    // is on its way out of the server: it takes no connection and answers no message. Not backed
+    // up, so a restored lobby is open, and the sweep at start-up closes it if it has timed out.
+    transient private boolean closed;
 
     private static Logger logger = LoggerFactory.getLogger(Lobby.class);
 
@@ -128,6 +132,29 @@ public class Lobby implements Serializable {
      */
     synchronized public boolean hasTimedOut() {
         return timeout <= System.currentTimeMillis();
+    }
+
+    /**
+     * Closes the lobby if it has timed out, as the sweep does before it removes the lobby from the
+     * server ({@code SecretHitlerServer.removeInactiveLobbies}). From then on the lobby takes no
+     * connection ({@code joinRefusal} is {@code CLOSED}, and {@code addUser} and
+     * {@code addSpectator} throw), and the server's handlers, which check {@code isClosed} under
+     * the lobby's lock, answer none of its messages. So a handler that looked the lobby up just
+     * before the sweep leaves no connection in it, however the two interleave (#64).
+     *
+     * @return true iff this call closed the lobby: it had timed out, and was not closed already.
+     */
+    synchronized public boolean closeIfTimedOut() {
+        if (closed || !hasTimedOut()) {
+            return false;
+        }
+        closed = true;
+        return true;
+    }
+
+    /** Returns whether the lobby has timed out and been closed ({@code closeIfTimedOut}). */
+    synchronized public boolean isClosed() {
+        return closed;
     }
 
     /**
@@ -244,6 +271,8 @@ public class Lobby implements Serializable {
 
     /** Why the lobby refuses a player's connection under a name ({@code joinRefusal}). */
     public enum JoinRefusal {
+        /** The lobby has timed out and been closed ({@code closeIfTimedOut}): it takes no one. */
+        CLOSED,
         /** The name is empty or only whitespace, which the page never sends (#63). */
         BLANK_NAME,
         /** Another live connection holds the name, and this one does not bring its rejoin key. */
@@ -259,15 +288,18 @@ public class Lobby implements Serializable {
      * {@code rejoinKey}, or null if {@code addUser} takes it. A connection that brings the key of
      * the name's live connection takes that connection's place ({@code hasLiveConnectionWithKey}),
      * and a player taking back their own seat ({@code canRejoin}) is refused neither for a full
-     * lobby nor for a game. The answer holds until the lobby changes, so a caller that acts on it
-     * holds the lobby's lock until the add (#43).
+     * lobby nor for a game. A closed lobby takes no one. The answer holds until the lobby changes,
+     * so a caller that acts on it holds the lobby's lock until the add (#43).
      *
      * @param name      the name of the user.
      * @param rejoinKey the key the connection brings, or null for none (never empty).
-     * @return the first refusal that applies, in the order {@code BLANK_NAME}, {@code NAME_TAKEN},
-     *         {@code FULL}, {@code IN_GAME}, or null.
+     * @return the first refusal that applies, in the order {@code CLOSED}, {@code BLANK_NAME},
+     *         {@code NAME_TAKEN}, {@code FULL}, {@code IN_GAME}, or null.
      */
     synchronized public JoinRefusal joinRefusal(String name, String rejoinKey) {
+        if (closed) {
+            return JoinRefusal.CLOSED;
+        }
         if (name.isBlank()) {
             return JoinRefusal.BLANK_NAME;
         }
@@ -463,9 +495,14 @@ public class Lobby implements Serializable {
      * Adds a spectator: a connection that watches the lobby and its game without a seat.
      *
      * @param context the websocket connection of the spectator.
-     * @throws IllegalArgumentException if the connection is already a player or a spectator.
+     * @throws IllegalArgumentException if the connection is already a player or a spectator, or
+     *                                  the lobby is closed ({@code closeIfTimedOut}), as
+     *                                  {@code addUser} throws for a connection it refuses.
      */
     synchronized public void addSpectator(WsContext context) {
+        if (closed) {
+            throw new IllegalArgumentException("Cannot add a spectator to the lobby: " + JoinRefusal.CLOSED + ".");
+        }
         if (hasUser(context) || spectators.contains(context)) {
             throw new IllegalArgumentException("This websocket is already in the Lobby.");
         }
