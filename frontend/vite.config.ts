@@ -13,6 +13,8 @@ export default defineConfig({
       "/check-login": backend,
       "/new-lobby": backend,
       "/ping": backend,
+      "/auth": backend,
+      "/me": backend,
       "/game": { target: backend, ws: true },
     },
   },

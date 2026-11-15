@@ -14,6 +14,10 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.accounts.Account;
+import server.accounts.AccountStore;
+import server.accounts.AuthRoutes;
+import server.accounts.Usernames;
 import server.util.Lobby;
 
 import java.io.*;
@@ -92,6 +96,27 @@ public class SecretHitlerServer {
     private static final int CODE_LENGTH = 4;
 
     private static final float UPDATE_FREQUENCY_SECONDS = 60;
+
+    /** What {@link #renameAccount} did. */
+    public enum RenameResult {
+        SAVED, // the account has the name, in the store and in every lobby it is in
+        TAKEN, // another account has the name, ignoring case: nothing changed
+        SEATED // the account holds a seat in a running game: nothing changed
+    }
+    // </editor-fold>
+
+    ////// Accounts
+    // <editor-fold desc="Accounts">
+
+    // Accounts and their sessions. main opens it from DATABASE_PATH (in memory when unset); tests
+    // put their own here.
+    public static AccountStore accounts;
+
+    // Taken by every rename (renameAccount) and every game start (startGame), always before any
+    // lobby's lock and never by a thread that holds a lobby's lock without it, so a game start never
+    // falls between a rename's check for seats and its change to the lobbies. Other commands never
+    // take it. A database call may run under it, but never under a lobby's lock.
+    static final Object ACCOUNTS_LOCK = new Object();
     // </editor-fold>
 
     ///// Private Fields
@@ -159,6 +184,10 @@ public class SecretHitlerServer {
                 .get("/check-login", SecretHitlerServer::checkLogin) // Checks if a login is valid.
                 .get("/new-lobby", SecretHitlerServer::createNewLobby) // Creates and returns the code for a new lobby
                 .get("/ping", SecretHitlerServer::ping)
+                .get("/me", AuthRoutes::getMe)
+                .post("/me/username", AuthRoutes::postUsername)
+                .post("/auth/sign-out", AuthRoutes::postSignOut)
+                .post("/auth/test-sign-in", AuthRoutes::postTestSignIn) // 404 unless TEST_SIGN_IN
                 .ws("/game", wsHandler -> {
                     wsHandler.onConnect(SecretHitlerServer::onWebsocketConnect);
                     wsHandler.onMessage(SecretHitlerServer::onWebSocketMessage);
@@ -172,6 +201,9 @@ public class SecretHitlerServer {
         if (ApplicationConfig.DATABASE_PATH == null || ApplicationConfig.DATABASE_PATH.isBlank()) {
             logger.error("Persistence disabled: no DATABASE_PATH environment variable provided.");
         }
+        // The same file as the lobby backup, or memory without one.
+        accounts = AccountStore.open(ApplicationConfig.DATABASE_PATH);
+        warnAboutSignIn();
         loadDatabaseBackup();
         removeInactiveLobbies(); // immediately clean in case of redundant lobbies.
 
@@ -195,6 +227,7 @@ public class SecretHitlerServer {
             @Override
             public void run() {
                 removeInactiveLobbies();
+                sweepExpiredSessions();
                 if (!codeToLobby.isEmpty()) {
                     printLobbyStatus();
                 }
@@ -205,6 +238,33 @@ public class SecretHitlerServer {
                 }
             }
         }, delayMs, periodMs);
+    }
+
+    /** Warns at start when test sign-in is on, and when no one can sign in to play. */
+    private static void warnAboutSignIn() {
+        if (ApplicationConfig.TEST_SIGN_IN) {
+            logger.warn("Test sign-in is on (TEST_SIGN_IN=true): anyone can sign in as a test account. "
+                    + "It is meant for local runs and tests only.");
+        }
+        if (!ApplicationConfig.discordConfigured() && !ApplicationConfig.TEST_SIGN_IN) {
+            logger.warn("Nobody can sign in to play: Discord sign-in is not configured (DISCORD_CLIENT_ID, "
+                    + "DISCORD_CLIENT_SECRET and DISCORD_REDIRECT_URI) and test sign-in is off.");
+        }
+    }
+
+    /**
+     * Deletes the expired sessions, on the update timer. A failure is logged, and the timer runs
+     * on: an uncaught exception would end it. Package-private for SessionSweepTest.
+     */
+    static void sweepExpiredSessions() {
+        try {
+            int swept = accounts.sweepExpiredSessions();
+            if (swept > 0) {
+                logger.info("Removed " + swept + " expired sessions.");
+            }
+        } catch (RuntimeException e) {
+            logger.error("Could not remove the expired sessions.", e);
+        }
     }
 
     /**
@@ -240,12 +300,92 @@ public class SecretHitlerServer {
         }
     }
 
+    /////// Renaming and game starts
+    // <editor-fold desc="Renaming and game starts">
+
+    /**
+     * Gives an account a new name everywhere: in the account store and in every lobby it is in.
+     * Runs under {@code ACCOUNTS_LOCK}, which every game start takes first too ({@link #startGame}),
+     * so no game starts between the check for seats and the change to the lobbies: either a game
+     * seats the new name, or the rename finds the account seated and is refused. Each lobby is
+     * read and changed under its own lock, and the store is written under none.
+     *
+     * @param accountId      the account to rename.
+     * @param normalizedName the new name, as {@code Usernames.normalize} gives it and passing
+     *                       {@code Usernames.problem}.
+     * @return {@code SEATED} if the account holds a seat in a running game in any lobby, and
+     *         {@code TAKEN} if another account has the name ignoring case; either way nothing
+     *         changes. Otherwise {@code SAVED}: the store has the name, and every lobby the account
+     *         is in (live, or inside the grace window after a disconnect) shows it, with the state
+     *         sent to its players and spectators. A lobby the sweep has closed is passed over.
+     * @throws IllegalArgumentException if the name is not normalized or breaks a name rule.
+     *                                  Nothing changes.
+     */
+    public static RenameResult renameAccount(String accountId, String normalizedName) {
+        if (normalizedName == null || !normalizedName.equals(Usernames.normalize(normalizedName))
+                || Usernames.problem(normalizedName) != null) {
+            throw new IllegalArgumentException("Not a name an account can have: '" + normalizedName + "'.");
+        }
+        synchronized (ACCOUNTS_LOCK) {
+            for (Lobby lobby : codeToLobby.values()) {
+                synchronized (lobby) {
+                    if (!lobby.isClosed() && lobby.isSeated(accountId)) {
+                        return RenameResult.SEATED;
+                    }
+                }
+            }
+            // No seat can appear from here on: a game start waits for ACCOUNTS_LOCK.
+            if (accounts.setUsername(accountId, normalizedName) == AccountStore.NameResult.TAKEN) {
+                return RenameResult.TAKEN;
+            }
+            boolean changed = false;
+            for (Lobby lobby : codeToLobby.values()) {
+                synchronized (lobby) {
+                    if (!lobby.isClosed() && lobby.rename(accountId, normalizedName)) {
+                        lobby.sendStateToAll();
+                        changed = true;
+                    }
+                }
+            }
+            if (changed) {
+                hasLobbyChanged = true;
+                logger.info("Account " + accountId + " is now '" + normalizedName + "' in its lobbies.");
+            }
+            return RenameResult.SAVED;
+        }
+    }
+
+    /**
+     * Starts a game in the lobby: the only way a game starts. Takes {@code ACCOUNTS_LOCK} and then
+     * the lobby's lock, as a rename does ({@link #renameAccount}), so each account is seated under
+     * the name it has at the start. The start-game command calls it holding both already.
+     *
+     * @throws IllegalStateException if the caller holds the lobby's lock but not
+     *                               {@code ACCOUNTS_LOCK}: taking it then could deadlock with a
+     *                               rename. Nothing changes.
+     * @throws RuntimeException      as {@code Lobby.startNewGame} does, changing nothing.
+     */
+    static void startGame(Lobby lobby) {
+        if (Thread.holdsLock(lobby) && !Thread.holdsLock(ACCOUNTS_LOCK)) {
+            throw new IllegalStateException("ACCOUNTS_LOCK must be taken before the lobby's lock.");
+        }
+        synchronized (ACCOUNTS_LOCK) {
+            synchronized (lobby) {
+                lobby.startNewGame();
+            }
+        }
+    }
+
+    // </editor-fold>
+
     /////// Database Handling
     // <editor-fold desc="Database Handling">
 
     /**
      * Opens the SQLite backup database at {@code path}, creating the file and the
-     * backup table if needed.
+     * backup table if needed. The account store keeps a connection of its own to the same
+     * file, so this one waits up to 5 s for the store's writes, as the store waits for its,
+     * instead of failing at once with SQLITE_BUSY.
      *
      * @return null if {@code path} is null or blank, or the database cannot be
      *         opened; otherwise an open connection.
@@ -256,7 +396,16 @@ public class SecretHitlerServer {
         }
         try {
             Connection c = DriverManager.getConnection("jdbc:sqlite:" + path);
-            initializeDatabase(c);
+            try {
+                initializeDatabase(c);
+            } catch (SQLException | RuntimeException e) {
+                try {
+                    c.close();
+                } catch (SQLException closeFailure) {
+                    e.addSuppressed(closeFailure);
+                }
+                throw e;
+            }
             return c;
         } catch (SQLException e) {
             logger.error("Could not open the backup database at " + path + ".", e);
@@ -340,10 +489,11 @@ public class SecretHitlerServer {
     }
 
     /**
-     * Creates the backup table if it does not exist yet.
+     * Sets the connection's busy timeout and creates the backup table if it does not exist yet.
      */
     private static void initializeDatabase(Connection c) throws SQLException {
         try (Statement stmt = c.createStatement()) {
+            stmt.execute("PRAGMA busy_timeout = 5000");
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS backup "
                     + "(id INT UNIQUE, timestamp TEXT, attempts INT, lobby_bytes BLOB);");
         }
@@ -457,10 +607,19 @@ public class SecretHitlerServer {
 
     /**
      * Generates a new lobby and returns the access code.
-     * 
+     *
      * @param ctx the HTTP get request context.
+     * @effects 401 "Sign in to play." unless the request is signed in as an account with a
+     *          name ({@code AuthRoutes.signedIn}), before the sweep runs or a lobby is made.
+     *          Otherwise 200 with the new lobby's code.
      */
     public static void createNewLobby(Context ctx) {
+        Account account = AuthRoutes.signedIn(ctx);
+        if (account == null || account.username() == null) {
+            ctx.status(401);
+            ctx.result(AuthRoutes.SIGN_IN_TO_PLAY);
+            return;
+        }
         removeInactiveLobbies();
         hasLobbyChanged = true;
 
@@ -722,6 +881,23 @@ public class SecretHitlerServer {
             return;
         }
 
+        if (COMMAND_START_GAME.equals(message.getString(PARAM_COMMAND))) {
+            // A game start takes ACCOUNTS_LOCK before the lobby's lock, as a rename does
+            // (startGame), so the command's checks and the start all run under both.
+            synchronized (ACCOUNTS_LOCK) {
+                runPlayerCommand(ctx, message, lobby, name, lobbyCode, logMessage);
+            }
+        } else {
+            runPlayerCommand(ctx, message, lobby, name, lobbyCode, logMessage);
+        }
+    }
+
+    /**
+     * Runs a player's command in their lobby, under the lobby's lock ({@code onWebSocketMessage}).
+     * The start-game command's caller holds {@code ACCOUNTS_LOCK} already.
+     */
+    private static void runPlayerCommand(WsMessageContext ctx, JSONObject message, Lobby lobby, String name,
+            String lobbyCode, String logMessage) {
         synchronized (lobby) {
             if (lobby.isClosed()) { // the sweep took it after the lookup (#64)
                 logger.debug(logMessage + " FAILED (Lobby requested has timed out)");
@@ -750,8 +926,8 @@ public class SecretHitlerServer {
                         ctx.send(msg.toString());
                         break;
 
-                    case COMMAND_START_GAME: // Starts the game.
-                        lobby.startNewGame();
+                    case COMMAND_START_GAME: // Starts the game, holding ACCOUNTS_LOCK and then the lobby's lock.
+                        startGame(lobby);
                         break;
 
                     case COMMAND_GET_STATE: // Requests the updated state of the game.

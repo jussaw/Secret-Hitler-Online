@@ -13,12 +13,13 @@ import org.eclipse.jetty.websocket.api.Session;
 import org.json.JSONObject;
 
 /**
- * A WebSocket connection for Lobby tests: a real Javalin context around a stand-in Jetty session
- * that records every text message sent to it. Lobby only sends, so nothing else is needed.
+ * A WebSocket connection for Lobby and server tests: a real Javalin context around a stand-in
+ * Jetty session that records every text message sent to it. Lobby only sends, so nothing else is
+ * needed.
  */
-final class FakeSocket {
-    final List<String> sent = new ArrayList<>();
-    final WsContext ctx;
+public final class FakeSocket {
+    public final List<String> sent = new ArrayList<>();
+    public final WsContext ctx;
 
     private FakeSocket(boolean closed) {
         RemoteEndpoint remote = stub(RemoteEndpoint.class, (method, args) -> {
@@ -43,17 +44,17 @@ final class FakeSocket {
         ctx = new WsConnectContext(UUID.randomUUID().toString(), session);
     }
 
-    static FakeSocket open() {
+    public static FakeSocket open() {
         return new FakeSocket(false);
     }
 
     /** A connection that has closed, but whose onClose has not removed it from the lobby yet. */
-    static FakeSocket closing() {
+    public static FakeSocket closing() {
         return new FakeSocket(true);
     }
 
     /** The last packet sent to this connection. */
-    JSONObject last() {
+    public JSONObject last() {
         return new JSONObject(sent.get(sent.size() - 1));
     }
 

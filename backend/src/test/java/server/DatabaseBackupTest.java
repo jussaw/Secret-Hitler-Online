@@ -10,6 +10,8 @@ import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -84,6 +86,20 @@ public class DatabaseBackupTest {
         assertNull(SecretHitlerServer.getDatabaseConnection(" "));
         assertNull(SecretHitlerServer.getDatabaseConnection(
                 new File(tmp.getRoot(), "missing/dir/backup.db").getAbsolutePath()));
+    }
+
+    /**
+     * The account store keeps its own connection to the backup file, so a backup waits for the
+     * store's writes, as long as the store waits for its, instead of failing with SQLITE_BUSY.
+     */
+    @Test
+    public void theBackupWaitsForTheAccountStoresWrites() throws Exception {
+        try (Connection c = SecretHitlerServer.getDatabaseConnection(dbPath());
+                Statement stmt = c.createStatement();
+                ResultSet timeout = stmt.executeQuery("PRAGMA busy_timeout")) {
+            assertTrue(timeout.next());
+            assertEquals(5000, timeout.getInt(1));
+        }
     }
 
     /**

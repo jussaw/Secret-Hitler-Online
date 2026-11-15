@@ -11,17 +11,24 @@ import java.net.http.HttpResponse;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import server.accounts.AccountStore;
 
 /**
  * The app {@code main} serves answers on every route as soon as {@code start} returns (#13).
- * Each test starts a fresh app and sends its first request straight away, with no retry.
+ * Each test starts a fresh app and sends its first request straight away, with no retry. A
+ * signed-in session comes from the account store itself, so it costs no request.
  */
 public class ServerStartupTest {
     private Javalin app;
     private int port;
+    private AccountStore store;
+    private AccountStore savedStore;
 
     @Before
     public void startServer() {
+        savedStore = SecretHitlerServer.accounts;
+        store = AccountStore.open(null);
+        SecretHitlerServer.accounts = store;
         app = SecretHitlerServer.createApp().start(0);
         port = app.port();
     }
@@ -29,11 +36,21 @@ public class ServerStartupTest {
     @After
     public void stopServer() {
         app.stop();
+        SecretHitlerServer.accounts = savedStore;
+        store.close();
     }
 
     private HttpResponse<String> get(String path) throws Exception {
-        HttpRequest request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + path)).build();
-        return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+        return get(path, null);
+    }
+
+    /** GETs {@code path} with the session {@code token}'s cookie, or with no cookie when it is null. */
+    private HttpResponse<String> get(String path, String token) throws Exception {
+        HttpRequest.Builder request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + path));
+        if (token != null) {
+            request.header("Cookie", "session=" + token);
+        }
+        return HttpClient.newHttpClient().send(request.build(), HttpResponse.BodyHandlers.ofString());
     }
 
     @Test
@@ -51,7 +68,8 @@ public class ServerStartupTest {
 
     @Test
     public void newLobbyAnswersAsSoonAsStartReturns() throws Exception {
-        HttpResponse<String> newLobby = get("/new-lobby");
+        String token = TestAccounts.signIn(store, "starter", "Starter");
+        HttpResponse<String> newLobby = get("/new-lobby", token);
         try {
             assertEquals(200, newLobby.statusCode());
             assertTrue(SecretHitlerServer.codeToLobby.containsKey(newLobby.body()));
