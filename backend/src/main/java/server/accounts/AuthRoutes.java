@@ -44,10 +44,15 @@ public final class AuthRoutes {
 
     /**
      * The account the request's {@code session} cookie is signed in as. A session with under
-     * {@code AccountStore.RENEW_BELOW_MS} left is extended, and the cookie is set again with it.
+     * {@code AccountStore.RENEW_BELOW_MS} left is extended ({@code AccountStore.lookup}). Every
+     * read that finds a session sets the cookie again, with a max age of the time the session has
+     * left, renewed or not: a session can be extended where no cookie can be set (a WebSocket
+     * handshake), and the next HTTP read then carries the extension to the cookie. Every route
+     * that reads a session calls this: {@code /me}, {@code /me/username}, {@code /check-login}
+     * and {@code /new-lobby}.
      *
      * @return the account, or null when the request is signed out: no cookie, or one that matches
-     *         no live session.
+     *         no live session. A signed-out request's cookie is left as it is.
      */
     public static Account signedIn(Context ctx) {
         String token = ctx.cookie(SESSION_COOKIE);
@@ -58,9 +63,7 @@ public final class AuthRoutes {
         if (session == null) {
             return null;
         }
-        if (session.renewed()) {
-            setSessionCookie(ctx, token, SESSION_MAX_AGE_SECONDS);
-        }
+        setSessionCookie(ctx, token, (int) (session.remainingMs() / 1000));
         return session.account();
     }
 

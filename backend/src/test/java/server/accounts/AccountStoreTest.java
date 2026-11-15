@@ -181,10 +181,20 @@ public class AccountStoreTest {
         assertNotNull(early);
         assertEquals("a", early.account().id());
         assertFalse(early.renewed());
+        // Not extended, the lookup still says when the session ends, and how long that is from now.
+        assertEquals(start + 30 * DAY, early.expiresAt());
+        assertEquals(30 * DAY - 12 * HOUR, early.remainingMs());
         now.set(start + DAY + MINUTE);
         SessionLookup later = store.lookup(token);
         assertNotNull(later);
         assertTrue(later.renewed());
+        assertEquals(start + DAY + MINUTE + AccountStore.SESSION_MS, later.expiresAt());
+        assertEquals(AccountStore.SESSION_MS, later.remainingMs());
+        // Read again at once, the extended session is not extended again, and has its 30 days.
+        SessionLookup again = store.lookup(token);
+        assertFalse(again.renewed());
+        assertEquals(later.expiresAt(), again.expiresAt());
+        assertEquals(AccountStore.SESSION_MS, again.remainingMs());
         assertTrue(store.lookup(twin).renewed());
         // Renewed at +1d 1m, so each lasts until +31d 1m; the twin is not used again until it ends.
         now.set(start + 31 * DAY);

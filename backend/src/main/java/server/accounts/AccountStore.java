@@ -30,8 +30,13 @@ public final class AccountStore implements AutoCloseable {
 
     public enum NameResult { SAVED, TAKEN }
 
-    /** A session's account, and whether the lookup extended the session. */
-    public record SessionLookup(Account account, boolean renewed) {
+    /**
+     * A session's account; whether the lookup extended the session; when the session ends now
+     * ({@code expiresAt}, ms since the epoch, after any extension); and how long that is from the
+     * time of the lookup ({@code remainingMs}, by the store's clock), which the cookie's max age
+     * follows.
+     */
+    public record SessionLookup(Account account, boolean renewed, long expiresAt, long remainingMs) {
     }
 
     private final Connection connection;
@@ -182,7 +187,9 @@ public final class AccountStore implements AutoCloseable {
 
     /**
      * The account a live session belongs to, or null for a missing, unknown or expired token. A
-     * session with under {@link #RENEW_BELOW_MS} left is extended to {@link #SESSION_MS} from now.
+     * session with under {@link #RENEW_BELOW_MS} left is extended to {@link #SESSION_MS} from now
+     * (so a session is written at most once a day); any other lookup writes nothing. Either way the
+     * answer says when the session ends.
      */
     public synchronized SessionLookup lookup(String token) {
         if (token == null || token.isBlank()) {
@@ -213,14 +220,15 @@ public final class AccountStore implements AutoCloseable {
             }
             boolean renewed = expiresAt - now < RENEW_BELOW_MS;
             if (renewed) {
+                expiresAt = now + SESSION_MS;
                 try (PreparedStatement ps = connection.prepareStatement(
                         "UPDATE sessions SET expires_at = ? WHERE token_hash = ?")) {
-                    ps.setLong(1, now + SESSION_MS);
+                    ps.setLong(1, expiresAt);
                     ps.setString(2, hash);
                     ps.executeUpdate();
                 }
             }
-            return new SessionLookup(account, renewed);
+            return new SessionLookup(account, renewed, expiresAt, expiresAt - now);
         } catch (SQLException e) {
             throw new IllegalStateException("Could not read the session.", e);
         }

@@ -30,6 +30,7 @@ import server.ApplicationConfig;
 import server.SecretHitlerServer;
 import server.ServerTesting;
 import server.TestAccounts;
+import server.TestSocket;
 import server.util.FakeSocket;
 import server.util.Lobby;
 
@@ -40,7 +41,8 @@ import server.util.Lobby;
  * session (junk, empty, signed out, expired) is signed out everywhere, never a 500.
  */
 public class AuthRoutesTest {
-    private static final long DAY_MS = 24L * 60 * 60 * 1000;
+    private static final long HOUR_MS = 60L * 60 * 1000;
+    private static final long DAY_MS = 24 * HOUR_MS;
     private static final String JSON = "application/json";
 
     // The account store's clock, which the tests move on to expire and renew sessions.
@@ -225,18 +227,65 @@ public class AuthRoutesTest {
         assertFalse(me.getBoolean("test"));
     }
 
+    /** Checks the response sets the session cookie again: the same token, with this max age. */
+    private static void assertCookieSetAgain(String token, String maxAge, HttpResponse<String> response) {
+        Map<String, String> cookie = sessionCookie(response);
+        assertSessionCookieAttributes(cookie);
+        assertEquals(token, cookie.get("value"));
+        assertEquals(maxAge, cookie.get("max-age"));
+    }
+
     @Test
-    public void aSessionInItsLastDaysSetsTheCookieAgain() throws Exception {
+    public void aSessionInItsLastDaysIsExtendedAndSetsTheCookieAgain() throws Exception {
         String token = TestAccounts.signIn(store, "1", "Rowan");
-        assertNull(sessionCookie(get("/me", token))); // 30 days left: nothing to renew
-
         now.addAndGet(2 * DAY_MS); // 28 days left
-        Map<String, String> renewed = sessionCookie(get("/me", token));
-        assertSessionCookieAttributes(renewed);
-        assertEquals(token, renewed.get("value"));
-        assertEquals("2592000", renewed.get("max-age"));
+        assertCookieSetAgain(token, "2592000", get("/me", token)); // extended to 30 days
+        assertEquals(now.get() + AccountStore.SESSION_MS, store.lookup(token).expiresAt());
+    }
 
-        assertNull(sessionCookie(get("/me", token))); // back to 30 days
+    /**
+     * Every read that finds a session sets the cookie, extended or not, with the time the session
+     * has left: on {@code /me}, {@code /check-login}, {@code /new-lobby} and {@code /me/username}.
+     */
+    @Test
+    public void everyReadOfASessionSetsTheCookieWithTheTimeLeft() throws Exception {
+        String token = TestAccounts.signIn(store, "1", "Rowan");
+        assertCookieSetAgain(token, "2592000", get("/me", token)); // a new session: 30 days
+
+        now.addAndGet(5 * HOUR_MS); // not old enough to extend: 30 days less 5 hours left
+        String left = String.valueOf((AccountStore.SESSION_MS - 5 * HOUR_MS) / 1000);
+        assertCookieSetAgain(token, left, get("/me", token));
+        assertCookieSetAgain(token, left, get("/check-login?lobby=NONE", token)); // 404, signed in
+        HttpResponse<String> made = get("/new-lobby", token);
+        codes.add(made.body());
+        assertEquals(200, made.statusCode());
+        assertCookieSetAgain(token, left, made);
+        assertCookieSetAgain(token, left, rename(token, "Rowena"));
+
+        // A signed-out read sets none.
+        for (String signedOut : Arrays.asList(null, "junk")) {
+            assertNull(sessionCookie(get("/me", signedOut)));
+            assertNull(sessionCookie(get("/check-login?lobby=NONE", signedOut)));
+        }
+    }
+
+    /**
+     * The /game handshake extends a session but cannot set the cookie (its upgrade's response
+     * has gone): the next HTTP read, which extends nothing itself, sets it with the extension.
+     */
+    @Test
+    public void aSessionExtendedByASocketSetsTheCookieOnTheNextRead() throws Exception {
+        String token = TestAccounts.signIn(store, "1", "Rowan");
+        now.addAndGet(2 * DAY_MS); // 28 days left
+        long extendedAt = now.get();
+        // A player's socket with no lobby: refused after its session is read, and extended.
+        TestSocket.CloseInfo refused = TestSocket.connect(port, "", token).awaitClose();
+        assertEquals("Must have the 'lobby' parameter.", refused.reason);
+        assertEquals(extendedAt + AccountStore.SESSION_MS, store.lookup(token).expiresAt());
+
+        now.addAndGet(HOUR_MS);
+        assertFalse(store.lookup(token).renewed()); // /me's own read extends nothing now
+        assertCookieSetAgain(token, String.valueOf((AccountStore.SESSION_MS - HOUR_MS) / 1000), get("/me", token));
     }
 
     ////// /me/username

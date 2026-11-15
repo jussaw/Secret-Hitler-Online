@@ -533,8 +533,8 @@ public class SecretHitlerServer {
     /**
      * Determines whether the signed-in account may join a lobby as a player: the request's
      * {@code session} cookie ({@code AuthRoutes.signedIn}, which extends a session near its end and
-     * sets the cookie again). A {@code name} parameter is ignored: a player's name is their
-     * account's.
+     * sets the cookie again whenever it finds one). A {@code name} parameter is ignored: a player's
+     * name is their account's.
      *
      * @param ctx the context of the login request: {@code lobby}, the code of the lobby, and for a
      *            spectator {@code spectator=true} ({@code checkSpectatorLogin}, which needs no
@@ -796,9 +796,11 @@ public class SecretHitlerServer {
     /**
      * The account a player's socket plays as: the one its {@code session} cookie is signed in as,
      * if it has a name. The lookup extends a session near its end, as every read of a session does,
-     * but the cookie cannot be set again here: Javalin sends the upgrade's response before any
-     * handler of the socket runs, HTTP before-handlers included. The page's next {@code GET /me}
-     * (every page load sends one) sets it again.
+     * but the cookie cannot be set again here: Javalin has sent the upgrade's response before this
+     * handler runs, and HTTP before-handlers never run for an upgrade (an access manager, which
+     * wraps every HTTP route too, is the only hook before it). The page's next HTTP read of its
+     * session ({@code AuthRoutes.signedIn}: {@code /me}, {@code /check-login} and the rest) sets
+     * the cookie again, with the time the extended session has left.
      *
      * @return the account, or null for no cookie, one that matches no live session, or an account
      *         with no name yet.
