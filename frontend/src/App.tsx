@@ -767,8 +767,12 @@ class App extends Component<{}, AppState> {
             spectatorCount: message[PARAM_SPECTATOR_COUNT] ?? 0,
             page: PAGE.LOBBY,
             name: you ?? state.name,
-            // A full lobby's note says it all, and an earlier PLAY INSTEAD's error is stale after.
-            playInsteadError: usernames.length >= MAX_PLAYERS ? "" : state.playInsteadError,
+            // A full lobby's note says it all, and PLAY INSTEAD's error is stale after it: one from
+            // before, or one that landed behind the note (a 489 answering a press made at 9 / 10).
+            playInsteadError:
+              usernames.length >= MAX_PLAYERS || state.usernames.length >= MAX_PLAYERS
+                ? ""
+                : state.playInsteadError,
           }),
           () => {
             // Back in the lobby (after a game, say): an account with no name is asked again.

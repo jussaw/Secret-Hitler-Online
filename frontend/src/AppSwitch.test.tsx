@@ -559,19 +559,40 @@ test("where sign-in is not set up, a signed-out spectator's SIGN IN TO PLAY is o
   expect(note()).toBe("Sign-in is not set up on this server.");
 });
 
+const TEN = ["Ann", "Ben", "Cat", "Dan", "Eve", "Fay", "Gus", "Hal", "Ivy", "Jo"];
+const FULL_NOTE = "The lobby is full (10 / 10). You can play when a seat frees up.";
+
+/** A lobby packet with these players, each with a portrait. */
+const lobbyWith = (names: string[]) => ({
+  ...lobbyPacket,
+  [PARAM_USERNAMES]: names,
+  [PARAM_ICON]: Object.fromEntries(names.map((name, i) => [name, `p${i + 1}`])),
+});
+
 test("a full lobby's note takes the place of PLAY INSTEAD's error, which then goes for good", async () => {
   const app = await spectatorInLobby();
   checkStatus = 489;
   await act(() => app.onClickPlayInstead());
   expect(note()).toBe("The lobby is currently full.");
-  const ten = ["Ann", "Ben", "Cat", "Dan", "Eve", "Fay", "Gus", "Hal", "Ivy", "Jo"];
-  await deliver(app, {
-    ...lobbyPacket,
-    [PARAM_USERNAMES]: ten,
-    [PARAM_ICON]: Object.fromEntries(ten.map((name, i) => [name, `p${i + 1}`])),
-  });
-  expect(note()).toBe("The lobby is full (10 / 10). You can play when a seat frees up.");
+  await deliver(app, lobbyWith(TEN));
+  expect(note()).toBe(FULL_NOTE);
   await deliver(app, lobbyPacket); // a seat frees up
+  expect(note()).toBe("");
+  expect(screen.getByRole("button", { name: "PLAY INSTEAD" })).toBeEnabled();
+});
+
+test("an error that lands behind the full lobby's note does not come back when a seat frees", async () => {
+  const app = await spectatorInLobby();
+  await deliver(app, lobbyWith(TEN.slice(0, 9)));
+  heldChecks = [];
+  const pending = app.onClickPlayInstead(); // at 9 / 10
+  await deliver(app, lobbyWith(TEN)); // the tenth player joins first
+  await act(async () => {
+    heldChecks![0](489); // then the check says the lobby is full
+    await pending;
+  });
+  expect(note()).toBe(FULL_NOTE);
+  await deliver(app, lobbyWith(TEN.slice(0, 9))); // a seat frees up
   expect(note()).toBe("");
   expect(screen.getByRole("button", { name: "PLAY INSTEAD" })).toBeEnabled();
 });
