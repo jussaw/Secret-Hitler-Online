@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import server.accounts.Account;
 import server.accounts.AccountStore;
 import server.accounts.AuthRoutes;
+import server.accounts.DiscordSignIn;
 import server.accounts.Usernames;
 import server.util.Lobby;
 
@@ -92,8 +93,8 @@ public class SecretHitlerServer {
     // In game packets while there is an END TERM countdown: {"remainingMs": ms left, "paused": boolean}.
     public static final String PARAM_TERM_TIMER = "termTimer";
 
-    private static final String CODE_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTWXYZ"; // u,v characters can look ambiguous
-    private static final int CODE_LENGTH = 4;
+    public static final String CODE_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTWXYZ"; // u,v characters can look ambiguous
+    public static final int CODE_LENGTH = 4;
 
     private static final float UPDATE_FREQUENCY_SECONDS = 60;
 
@@ -188,6 +189,8 @@ public class SecretHitlerServer {
                 .post("/me/username", AuthRoutes::postUsername)
                 .post("/auth/sign-out", AuthRoutes::postSignOut)
                 .post("/auth/test-sign-in", AuthRoutes::postTestSignIn) // 404 unless TEST_SIGN_IN
+                .get("/auth/discord", DiscordSignIn::start)
+                .get("/auth/discord/callback", DiscordSignIn::callback)
                 .ws("/game", wsHandler -> {
                     wsHandler.onConnect(SecretHitlerServer::onWebsocketConnect);
                     wsHandler.onMessage(SecretHitlerServer::onWebSocketMessage);

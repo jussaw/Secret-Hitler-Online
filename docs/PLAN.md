@@ -672,7 +672,7 @@ Issue #30: playing needs an account, made by signing in with Discord; each accou
 - [x] `backend/src/main/java/server/util/Lobby.java`: keyed on account IDs, with the race fixes' tests moved over
 - [x] `Lobby`: seats tied to accounts, `you` in every player's packet, renaming in a lobby
 - [x] `/me`, `/me/username`, sign-out, the test sign-in, the `/new-lobby` guard, and renaming across lobbies
-- [ ] `backend/src/main/java/server/accounts/DiscordSignIn.java`: the Discord OAuth2 flow
+- [x] `backend/src/main/java/server/accounts/DiscordSignIn.java`: the Discord OAuth2 flow
 - [ ] `SecretHitlerServer`: players join and act by signed-in account; the `Origin` check
 - [ ] Backups: idle lobbies from before accounts kept, their games dropped; seats' accounts survive a backup
 - [ ] `frontend/src/account/` and `NamePrompt`: the account calls, the name prompt, the messages, no join sound for a rename
