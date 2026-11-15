@@ -112,7 +112,10 @@ test("with Discord not set up, the sign-in button is off and says so", () => {
   renderLogin({ account: { signedIn: false, discord: false, testSignIn: false } });
   const card = region("YOUR ACCOUNT");
   expect(discordLink()).toBeNull();
-  expect(within(card).getByRole("button", { name: "SIGN IN WITH DISCORD" })).toBeDisabled();
+  const signIn = within(card).getByRole("button", { name: "SIGN IN WITH DISCORD" });
+  expect(signIn).toBeDisabled();
+  // The reason is the button's description, so a screen reader hears why it is off.
+  expect(signIn).toHaveAccessibleDescription("Sign-in is not set up on this server.");
   expect(card).toHaveTextContent("Sign-in is not set up on this server.");
   expect(card).not.toHaveTextContent("Sign in to play. Anyone can watch.");
 });

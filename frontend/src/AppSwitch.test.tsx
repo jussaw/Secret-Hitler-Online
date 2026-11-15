@@ -255,6 +255,7 @@ test("a seat refused after its check leaves the person watching", async () => {
     expect(await app.playInstead("Sam")).toBe("");
   });
   const seat = FakeSocket.instances[FakeSocket.instances.length - 1];
+  expect(seat.url).toContain("rejoinKey="); // a player's socket
   expect(seat.url).not.toContain("spectator=true");
   // The game started (or the last seat went) between the check and the join: the server closes it.
   act(() => seat.onclose?.());

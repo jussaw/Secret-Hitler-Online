@@ -147,7 +147,7 @@ function AccountCard(props: LoginScreenProps) {
               SIGN IN WITH DISCORD
             </a>
           ) : (
-            <button type="button" disabled>
+            <button type="button" disabled aria-describedby="login-account-hint">
               SIGN IN WITH DISCORD
             </button>
           )}
@@ -157,7 +157,7 @@ function AccountCard(props: LoginScreenProps) {
             </button>
           )}
         </div>
-        <p className="login-hint">
+        <p id="login-account-hint" className="login-hint">
           {account.discord
             ? "Sign in to play. Anyone can watch."
             : "Sign-in is not set up on this server."}
