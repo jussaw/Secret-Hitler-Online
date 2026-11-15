@@ -175,15 +175,15 @@ export default function LobbyScreen(props: LobbyScreenProps) {
             </div>
           </div>
 
-          {note && (
-            <p
-              id="lobby-note"
-              className={note === FULL_NOTE ? "lobby-note lobby-full-note" : "lobby-note"}
-              role="status"
-            >
-              {note}
-            </p>
-          )}
+          {/* Always there, so a screen reader announces a note as it comes; empty, it takes no
+              room in the column (LobbyScreen.css). */}
+          <p
+            id="lobby-note"
+            className={note === FULL_NOTE ? "lobby-note lobby-full-note" : "lobby-note"}
+            role="status"
+          >
+            {note || null}
+          </p>
 
           <footer className="lobby-footer">
             <OutLink href={ABOUT_URL}>About this project</OutLink>

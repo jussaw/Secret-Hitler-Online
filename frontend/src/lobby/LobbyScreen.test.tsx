@@ -27,7 +27,13 @@ function icons(players: string[], picking: string[] = []): Record<string, string
 }
 
 function renderLobby(overrides: Partial<LobbyScreenProps> = {}) {
-  const props: LobbyScreenProps = {
+  const props = lobbyProps(overrides);
+  render(<LobbyScreen {...props} />);
+  return props;
+}
+
+function lobbyProps(overrides: Partial<LobbyScreenProps> = {}): LobbyScreenProps {
+  return {
     lobby: "HBIA",
     inviteLink: LINK,
     usernames: TEN,
@@ -48,8 +54,6 @@ function renderLobby(overrides: Partial<LobbyScreenProps> = {}) {
     onCopied: vi.fn(),
     ...overrides,
   };
-  render(<LobbyScreen {...props} />);
-  return props;
 }
 
 /** The page's own actions, buttons and links drawn as buttons, in order (not the header's sound control). */
@@ -59,7 +63,7 @@ const buttons = () =>
     (b) => b.textContent
   );
 const button = (name: string) => screen.getByRole("button", { name });
-/** The note under a spectator's buttons, or null. */
+/** The note under a spectator's buttons: always there, and empty when there is nothing to say. */
 const note = () => document.querySelector<HTMLElement>(".lobby-note");
 /** A spectator in a lobby with a free seat. */
 const watching = (overrides: Partial<LobbyScreenProps> = {}) =>
@@ -131,7 +135,7 @@ describe("LobbyScreen", () => {
 
   it("a player has no note, whatever a spectator's would say", () => {
     renderLobby({ user: lg(1), discord: false, spectatorError: SIGN_IN_FAILED });
-    expect(note()).toBeNull();
+    expect(note()).toBeEmptyDOMElement();
     expect(screen.queryByText(SIGN_IN_FAILED)).toBeNull();
   });
 
@@ -140,7 +144,7 @@ describe("LobbyScreen", () => {
     expect(buttons()).toEqual(["COPY", "PLAY INSTEAD", "LEAVE LOBBY"]);
     expect(screen.queryByRole("link", { name: "SIGN IN TO PLAY" })).toBeNull();
     expect(document.querySelector(".is-user")).toBeNull();
-    expect(note()).toBeNull();
+    expect(note()).toBeEmptyDOMElement();
   });
 
   it("a signed-out spectator gets SIGN IN TO PLAY, a link that signs in and comes back here", () => {
@@ -153,7 +157,7 @@ describe("LobbyScreen", () => {
     expect(link.closest(".lobby-secondary")).not.toBeNull();
     expect(screen.queryByRole("button", { name: "PLAY INSTEAD" })).toBeNull();
     expect(document.querySelector(".is-user")).toBeNull();
-    expect(note()).toBeNull();
+    expect(note()).toBeEmptyDOMElement();
     fireEvent.click(button("LEAVE LOBBY"));
     expect(props.onLeave).toHaveBeenCalledTimes(1);
   });
@@ -178,6 +182,32 @@ describe("LobbyScreen", () => {
     expect(document.querySelectorAll(".lobby-note")).toHaveLength(1);
     expect(note()).toHaveTextContent(SIGN_IN_FAILED);
     expect(screen.queryByText(NOT_SET_UP)).toBeNull();
+  });
+
+  it("the note is a live region there before any note, so its text is announced as it comes", () => {
+    const { rerender } = render(<LobbyScreen {...lobbyProps({ usernames: NINE, icons: icons(NINE), user: "", spectator: true })} />);
+    const status = screen.getByRole("status");
+    expect(status).toBe(note());
+    expect(status).toHaveAttribute("id", "lobby-note");
+    expect(status).toBeEmptyDOMElement();
+
+    rerender(
+      <LobbyScreen
+        {...lobbyProps({
+          usernames: NINE,
+          icons: icons(NINE),
+          user: "",
+          spectator: true,
+          spectatorError: "You're already in this lobby in another tab or window.",
+        })}
+      />
+    );
+    expect(screen.getByRole("status")).toBe(status); // the same element, now with the text
+    expect(status).toHaveTextContent("You're already in this lobby in another tab or window.");
+
+    rerender(<LobbyScreen {...lobbyProps({ usernames: NINE, icons: icons(NINE), user: "", spectator: true })} />);
+    expect(screen.getByRole("status")).toBe(status);
+    expect(status).toBeEmptyDOMElement();
   });
 
   it("PLAY INSTEAD's error shows in the note", () => {
@@ -230,7 +260,7 @@ describe("LobbyScreen", () => {
   it("PLAY INSTEAD is on while a seat is free", () => {
     const props = watching();
     expect(button("PLAY INSTEAD")).toBeEnabled();
-    expect(note()).toBeNull();
+    expect(note()).toBeEmptyDOMElement();
     fireEvent.click(button("PLAY INSTEAD"));
     expect(props.onPlayInstead).toHaveBeenCalledTimes(1);
   });

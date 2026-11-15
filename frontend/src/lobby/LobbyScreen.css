@@ -262,6 +262,13 @@
     color: var(--textColorOnDark);
 }
 
+/* The note is always there, as a live region (role="status"), so a screen reader announces its
+   text as it comes. Empty, it is out of the column's flow: a flex gap is only kept between items
+   in the flow, so the column is laid out as if it were not there. */
+.lobby-note:empty {
+    position: absolute;
+}
+
 .lobby-footer,
 .login-footer {
     font-size: 0.9em;
