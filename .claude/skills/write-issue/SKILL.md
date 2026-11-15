@@ -128,9 +128,9 @@ An answer that comes after the clean-up (step 6) needs no new checkout: the draf
 Pick the skeleton in `formats.md`: `## 1. Bug found by reading the code`, `## 2. Bug seen in play or
 in CI` (the user or CI saw it), `## 3. Enhancement` (one pull request), `## 4. Large enhancement`
 (several parts, or more than one session). Fill every REQUIRED slot in order, and add no section it
-does not have (no Problem, Acceptance or Done when). Write the body to a file in the session's
-scratchpad directory, never in the repo or `/tmp`. A session with no scratchpad makes a fresh
-directory with `mktemp -d` and writes it there.
+does not have (no Problem, Acceptance or Done when). Write the body to a file, never in the repo:
+in the session's scratchpad directory, or, in a session without one, in a directory made with
+`mktemp -d`.
 
 Then check the draft, line by line:
 
