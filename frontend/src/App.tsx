@@ -52,6 +52,8 @@ import {
   PARAM_INVESTIGATION,
   PARAM_SPECTATOR,
   PARAM_SPECTATOR_COUNT,
+  PARAM_YOU,
+  MAX_PLAYERS,
 } from "./constants";
 
 import PlayerDisplay, {
@@ -185,6 +187,9 @@ type AppState = {
   joinError: string;
   /** The OR START ONE card's error line. */
   createLobbyError: string;
+  /** Why PLAY INSTEAD took no seat ("" for none): the note under a signed-in spectator's buttons. */
+  playInsteadError: string;
+  /** The viewer's own name: the packets' `you` (a seat's name in a game), "" for a spectator. */
   name: string;
   lobby: string;
   /** Watching without a seat: name is "", and no prompt is ever queued. */
@@ -227,6 +232,7 @@ const defaultAppState: AppState = {
   page: PAGE.LOGIN,
   accountError: "",
   ...loginForm(),
+  playInsteadError: "",
   name: "P1",
   lobby: "AAAAAA",
   spectator: false,
@@ -287,18 +293,20 @@ class App extends Component<{}, AppState> {
   lobbyUsers?: string[] = undefined;
   /** Vote-tally sounds that a running showVotes has scheduled. */
   soundTimers: ReturnType<typeof setTimeout>[] = [];
-  /** True from PLAY INSTEAD being pressed until its prompt closes; a game starting closes it. */
-  playInsteadOpen = false;
-  /** True while the PLAY INSTEAD prompt is on screen (not just queued). */
-  playInsteadShown = false;
-  /** The queued step that shows the prompt, so a prompt closed before it shows can be dropped. */
-  playInsteadStep?: () => void = undefined;
-  /** Counts the PLAY INSTEAD openings, so a check that began under an earlier prompt does nothing. */
+  /**
+   * The PLAY INSTEAD under way (its check on its way, or CHOOSE A NAME to answer first), by its
+   * playInsteadSession, or 0 for none. Leaving, a game starting and the name prompt closing
+   * unanswered end it (cancelPlayInstead), so a late answer takes no seat.
+   */
+  playInsteadPending = 0;
+  /** Counts the PLAY INSTEAD presses, so a check that began under an earlier one does nothing. */
   playInsteadSession = 0;
+  /** True while the PLAY INSTEAD under way waits for CHOOSE A NAME's CONTINUE to save a name. */
+  playInsteadAwaitsName = false;
   /**
    * True from PLAY INSTEAD opening a player's socket until that socket's first message. A close
-   * before then is the server refusing the seat (the game started, the last seat went, the name
-   * was taken), so the person goes back to watching.
+   * before then is the server refusing the seat (the game started, the last seat went, the
+   * account joined from another tab), so the person goes back to watching.
    */
   seatPending = false;
   /** Counts the alerts shown, so a late fade timer does not blank a newer alert. */
@@ -355,10 +363,7 @@ class App extends Component<{}, AppState> {
     this.onClickWatchInstead = this.onClickWatchInstead.bind(this);
     this.onClickPlayInstead = this.onClickPlayInstead.bind(this);
     this.onCopied = this.onCopied.bind(this);
-    this.playInstead = this.playInstead.bind(this);
-    this.closePlayInstead = this.closePlayInstead.bind(this);
     this.closeSocket = this.closeSocket.bind(this);
-    this.dropPlayInstead = this.dropPlayInstead.bind(this);
     this.openSeat = this.openSeat.bind(this);
     this.openWatch = this.openWatch.bind(this);
     this.addAnimationToQueue = this.addAnimationToQueue.bind(this);
@@ -545,6 +550,7 @@ class App extends Component<{}, AppState> {
       lobby: lobby,
       spectator: spectator,
       ...loginForm(),
+      playInsteadError: "",
     });
     ws.onmessage = (msg) => this.onWebSocketMessage(msg);
     ws.onclose = (event) => {
@@ -574,12 +580,13 @@ class App extends Component<{}, AppState> {
   /**
    * Opens a player's socket, under the account's name, and remembers the lobby, as every join
    * does: a reload fills the code field with it, and JOIN takes the seat back.
+   * @param name the name the page shows until the first packet's `you`: the account's.
    * @return {boolean} whether the socket opened.
    */
-  openSeat(lobby: string): boolean {
+  openSeat(lobby: string, name = this.accountName()): boolean {
     this.stopReconnecting(); // a user action starts a fresh connection
     this.reconnectAttempts = 0;
-    if (!this.tryOpenWebSocket(this.accountName(), lobby)) return false;
+    if (!this.tryOpenWebSocket(name, lobby)) return false;
     Cookies.set(COOKIE_LOBBY, lobby);
     Cookies.remove(COOKIE_SPECTATOR);
     return true;
@@ -717,7 +724,7 @@ class App extends Component<{}, AppState> {
       }),
       () => this.askForName() // once the page is the login page
     );
-    this.dropPlayInstead();
+    this.cancelPlayInstead();
     this.dropNamePrompt();
     this.clearAnimationQueue();
     this.loadAccount();
@@ -740,19 +747,29 @@ class App extends Component<{}, AppState> {
     if (DEBUG) {
       console.log(message);
     }
+    // A player's packets name the viewer (`you`): their name in the lobby, after a rename made here
+    // or in another tab too, and their seat's in a game. A spectator's carry none: no name.
+    const you: string | undefined =
+      typeof message[PARAM_YOU] === "string" && !this.state.spectator
+        ? message[PARAM_YOU]
+        : undefined;
     switch (message[PARAM_PACKET_TYPE]) {
-      case PACKET_LOBBY:
+      case PACKET_LOBBY: {
         this.queueSounds(lobbySounds(this.lobbyUsers, message[PARAM_USERNAMES]), "now");
         this.lobbyUsers = message[PARAM_USERNAMES];
         this.soundState = DEFAULT_GAME_STATE;
+        const usernames: string[] = message[PARAM_USERNAMES];
         // The icon dialog is rebuilt from this.state, so wait for the update to apply.
         this.setState(
-          {
-            usernames: message[PARAM_USERNAMES],
+          (state) => ({
+            usernames,
             icons: message[PARAM_ICON],
             spectatorCount: message[PARAM_SPECTATOR_COUNT] ?? 0,
             page: PAGE.LOBBY,
-          },
+            name: you ?? state.name,
+            // A full lobby's note says it all, and an earlier PLAY INSTEAD's error is stale after.
+            playInsteadError: usernames.length >= MAX_PLAYERS ? "" : state.playInsteadError,
+          }),
           () => {
             // Back in the lobby (after a game, say): an account with no name is asked again.
             this.askForName();
@@ -770,22 +787,26 @@ class App extends Component<{}, AppState> {
           }
         );
         break;
+      }
 
-      case PACKET_GAME_STATE:
-        // A game starting under an open PLAY INSTEAD prompt: close it and keep watching.
-        this.closePlayInstead();
+      case PACKET_GAME_STATE: {
+        // A game starting while PLAY INSTEAD is under way: no seat, keep watching.
+        this.cancelPlayInstead();
         // The game page has no name prompt (a spectator's status lines must not wait on one):
         // it is asked again back in the lobby or on the login page.
         this.closeNamePrompt();
         if (message !== this.state.gameState) {
-          this.onGameStateChanged(message);
+          // The seat's name, as this packet gives it, before the state below has it.
+          this.onGameStateChanged(message, you ?? this.state.name);
         }
-        this.setState({
+        this.setState((state) => ({
           gameState: message,
           spectatorCount: message[PARAM_SPECTATOR_COUNT] ?? 0,
           page: PAGE.GAME,
-        });
+          name: you ?? state.name,
+        }));
         break;
+      }
 
       case PACKET_OK: {
         // The first listener whose step is still the current one answers; one from an earlier step
@@ -898,6 +919,15 @@ class App extends Component<{}, AppState> {
   }
 
   /**
+   * The name CHANGE NAME starts from: a player's in the lobby is the one the roster shows (the
+   * packets' `you`, which follows a rename made in another tab), otherwise the account's.
+   */
+  nameToChange(): string {
+    const { page, spectator, name } = this.state;
+    return page === PAGE.LOBBY && !spectator && name !== "" ? name : this.accountName();
+  }
+
+  /**
    * Asks the server who the page is signed in as (GET /me); a first sign-in then gets CHOOSE A
    * NAME. Only the latest request that sets the account is shown. When /me cannot be reached the
    * card says so: blank before any answer, and otherwise still showing the account last known, so
@@ -1002,7 +1032,7 @@ class App extends Component<{}, AppState> {
           <NamePrompt
             key={this.alertShowCount}
             title={choose ? "CHOOSE A NAME" : "CHANGE NAME"}
-            initialName={choose ? "" : this.accountName()}
+            initialName={choose ? "" : this.nameToChange()}
             confirmLabel={choose ? "CONTINUE" : "SAVE"}
             secondaryLabel={choose ? "SIGN OUT" : "CANCEL"}
             onConfirm={(name) => this.saveName(name, session)}
@@ -1021,7 +1051,7 @@ class App extends Component<{}, AppState> {
 
   /**
    * Saves the name (POST /me/username) and, if it was saved, shows it on the account and closes the
-   * prompt it came from.
+   * prompt it came from. A PLAY INSTEAD waiting for that prompt then takes its seat.
    * @return {Promise<string>} "" on success or when that prompt has closed meanwhile, otherwise the
    *         error for the prompt.
    */
@@ -1044,10 +1074,17 @@ class App extends Component<{}, AppState> {
           : null
       );
     }
+    // A PLAY INSTEAD waiting for a name has one now: closing the prompt below ends it, and the seat
+    // is taken just after. (A prompt that closed unanswered ended it already: dropNamePrompt.)
+    const seat = sameAccount && this.playInsteadAwaitsName ? this.playInsteadPending : 0;
     // A CHOOSE A NAME opened again meanwhile (the page left the lobby for the login page) is
     // answered too.
     if (current || (sameAccount && this.namePromptOpen && this.namePromptKind === "choose")) {
       this.closeNamePrompt();
+    }
+    if (seat !== 0) {
+      this.playInsteadPending = seat;
+      await this.playInstead(seat, result.username);
     }
     return "";
   }
@@ -1063,13 +1100,17 @@ class App extends Component<{}, AppState> {
     if (shown) this.hideAlertAndFinish(delayExit);
   }
 
-  /** Forgets the name prompt without touching the alert box: a queued prompt leaves the queue. */
+  /**
+   * Forgets the name prompt without touching the alert box: a queued prompt leaves the queue. A
+   * PLAY INSTEAD waiting for its name ends with it.
+   */
   dropNamePrompt() {
     this.namePromptOpen = false;
     this.namePromptShown = false;
     const step = this.namePromptStep;
     this.namePromptStep = undefined;
     if (step) this.animationQueue = this.animationQueue.filter((queued) => queued !== step);
+    if (this.playInsteadAwaitsName) this.cancelPlayInstead();
   }
 
   /** Updates the lobby code field, which JOIN and WATCH share. */
@@ -1144,77 +1185,60 @@ class App extends Component<{}, AppState> {
     this.toLoginPage(CONNECT_ERROR);
   }
 
-  /** PLAY INSTEAD (a spectator in the lobby): opens the prompt for the name to play under. */
-  onClickPlayInstead() {
-    if (this.playInsteadOpen) return;
-    this.playInsteadOpen = true;
-    this.playInsteadSession += 1;
-    const show = () => {
-      this.playInsteadStep = undefined;
-      this.playInsteadShown = true;
-      this.alertShowCount += 1;
-      this.setState({
-        showAlert: true,
-        alertContent: (
-          <NamePrompt
-            key={this.alertShowCount}
-            title="PLAY INSTEAD"
-            initialName={this.accountName()}
-            confirmLabel="CONTINUE"
-            secondaryLabel="CANCEL"
-            onConfirm={this.playInstead}
-            onSecondary={() => this.closePlayInstead()}
-          />
-        ),
-      });
-    };
-    this.playInsteadStep = show;
-    this.addAnimationToQueue(show);
+  /**
+   * PLAY INSTEAD (a signed-in spectator in the lobby): takes a seat under the account's name at
+   * once, with no prompt. An account with no name yet answers CHOOSE A NAME first, and the seat is
+   * taken once CONTINUE has saved the name (saveName). One press at a time.
+   */
+  async onClickPlayInstead() {
+    const account = this.state.account;
+    if (this.playInsteadPending !== 0 || !this.state.spectator || !account?.signedIn) return;
+    const session = ++this.playInsteadSession;
+    this.playInsteadPending = session;
+    this.setState({ playInsteadError: "" });
+    if (account.username === null) {
+      this.playInsteadAwaitsName = true;
+      this.queueNamePrompt("choose"); // nothing new if CHOOSE A NAME is already open or queued
+      return;
+    }
+    await this.playInstead(session);
+  }
+
+  /** Ends the PLAY INSTEAD under way, if any: its check, or a name saved later, takes no seat. */
+  cancelPlayInstead() {
+    this.playInsteadPending = 0;
+    this.playInsteadAwaitsName = false;
   }
 
   /**
-   * Closes the PLAY INSTEAD prompt, if it is open.
-   * @param delayExit whether the animation queue waits for the prompt's fade-out.
+   * Checks that the account can play here, then reopens the connection as a player, under the
+   * account's name. Whoever cannot stays watching, with the reason under the buttons. Does nothing
+   * once its PLAY INSTEAD has ended (cancelPlayInstead).
+   * @param session the PLAY INSTEAD this check belongs to.
+   * @param name the account's name; a name just saved is passed, as the state may not show it yet.
    */
-  closePlayInstead(delayExit = true) {
-    if (!this.playInsteadOpen) return;
-    const shown = this.playInsteadShown;
-    this.dropPlayInstead();
-    if (shown) this.hideAlertAndFinish(delayExit);
-  }
-
-  /** Forgets the prompt without touching the alert box: a queued prompt is removed from the queue. */
-  dropPlayInstead() {
-    this.playInsteadOpen = false;
-    this.playInsteadShown = false;
-    const step = this.playInsteadStep;
-    this.playInsteadStep = undefined;
-    if (step) this.animationQueue = this.animationQueue.filter((queued) => queued !== step);
-  }
-
-  /**
-   * Checks that the account can play here, then reopens the connection as a player. The server
-   * seats the account under its own name, whatever the prompt's field says.
-   * @return {Promise<string>} "" on success, otherwise the error for the prompt. Whoever fails stays watching.
-   */
-  async playInstead(_name: string): Promise<string> {
+  async playInstead(session: number, name = this.accountName()) {
     const lobby = this.state.lobby;
-    const session = this.playInsteadSession;
     let response: Response | undefined;
     try {
       response = await this.tryLogin(lobby);
     } catch {
       // handled below
     }
-    // The prompt closed meanwhile (CANCEL, or a game started): keep watching, show nothing.
-    if (!this.playInsteadOpen || session !== this.playInsteadSession) return "";
-    if (response === undefined) return CONTACT_ERROR;
-    if (!response.ok) return joinErrorMessage(response.status);
-    if (!this.openSeat(lobby)) return CONNECT_ERROR;
-    this.seatPending = true;
-    // Free the alert slot at once: the new socket's lobby packet may queue the portrait picker.
-    this.closePlayInstead(false);
-    return "";
+    // Left, or a game started, meanwhile: keep watching, show nothing.
+    if (session !== this.playInsteadPending) return;
+    this.playInsteadPending = 0;
+    if (response === undefined) {
+      this.setState({ playInsteadError: CONTACT_ERROR });
+    } else if (!response.ok) {
+      this.setState({ playInsteadError: joinErrorMessage(response.status) });
+      // The session has ended (or has no name): the account shows what it is now.
+      if (response.status === 401) this.loadAccount();
+    } else if (!this.openSeat(lobby, name)) {
+      this.setState({ playInsteadError: CONNECT_ERROR });
+    } else {
+      this.seatPending = true;
+    }
   }
 
   /**
@@ -1315,6 +1339,8 @@ class App extends Component<{}, AppState> {
   }
 
   onClickLeaveLobby() {
+    // A PLAY INSTEAD check answering before the socket's close must not seat the person.
+    this.cancelPlayInstead();
     if (this.state.spectator) {
       Cookies.remove(COOKIE_SPECTATOR);
     }
@@ -1349,6 +1375,8 @@ class App extends Component<{}, AppState> {
   }
 
   renderLobbyPage() {
+    const account = this.state.account;
+    const signedIn = account?.signedIn === true;
     return (
       <>
         <LobbyScreen
@@ -1359,7 +1387,19 @@ class App extends Component<{}, AppState> {
           user={this.state.name}
           spectator={this.state.spectator}
           spectatorCount={this.state.spectatorCount}
+          signedIn={signedIn}
+          discord={account?.discord ?? true}
+          signInHref={discordSignInHref(this.state.lobby)}
+          spectatorError={
+            signedIn
+              ? this.state.playInsteadError
+              : // A failed Discord sign-in, back to watching through the spectator cookie.
+                this.state.accountError === SIGN_IN_FAILED
+                ? SIGN_IN_FAILED
+                : ""
+          }
           onStartGame={this.onClickStartGame}
+          onChangeName={this.onClickChangeName}
           onChangeLook={this.onClickChangeIcon}
           onWatchInstead={this.onClickWatchInstead}
           onPlayInstead={this.onClickPlayInstead}
@@ -1417,14 +1457,15 @@ class App extends Component<{}, AppState> {
   /**
    * Queues animations for when the game state has changed.
    * @param newState {Object} the new game state sent from the server.
+   * @param name the viewer's seat name: the packet's `you`, which this.state has only once the
+   *        packet's update applies ("" for a spectator).
    */
-  onGameStateChanged(newState: GameState) {
+  onGameStateChanged(newState: GameState, name: string = this.state.name) {
     let oldState = this.state.gameState;
-    let name = this.state.name;
     // A spectator acts on nothing and gets no prompt; status lines describe the table instead.
     const spectator = this.state.spectator;
-    let isPresident = !spectator && this.state.name === newState.president;
-    let isChancellor = !spectator && this.state.name === newState.chancellor;
+    let isPresident = !spectator && name === newState.president;
+    let isChancellor = !spectator && name === newState.chancellor;
     let state = newState.state;
     /** Queues the status line: a player's text, or what the table waits for, named, for a spectator. */
     const queueStatus = (playerText: string) =>
@@ -1552,7 +1593,7 @@ class App extends Component<{}, AppState> {
             // If the game has just started (everything in default state), show the player's role.
             this.queueAlert(
               <RoleAlert
-                role={newState.players[this.state.name].id}
+                role={newState.players[name].id}
                 gameState={newState}
                 name={name}
                 onClick={() => {
@@ -1591,7 +1632,7 @@ class App extends Component<{}, AppState> {
               <VotingPrompt
                 gameState={newState}
                 sendWSCommand={this.sendWSCommand}
-                user={this.state.name}
+                user={name}
               />,
               true
             );
@@ -1918,7 +1959,7 @@ class App extends Component<{}, AppState> {
                     showRoles={true}
                     showLabels={false}
                     useAsButtons={false}
-                    user={this.state.name}
+                    user={name}
                     gameState={newState}
                   />
                 </ButtonPrompt>
@@ -1976,14 +2017,11 @@ class App extends Component<{}, AppState> {
     this.animationQueue = [];
     this.animationStep += 1; // the running step is over
     this.okMessageListeners = []; // and so is any prompt waiting for the server's OK
-    // A PLAY INSTEAD or name prompt that was still queued went with it.
-    if (!this.playInsteadShown) {
-      this.playInsteadOpen = false;
-      this.playInsteadStep = undefined;
-    }
+    // A name prompt that was still queued went with it, and so did a PLAY INSTEAD waiting for it.
     if (!this.namePromptShown) {
       this.namePromptOpen = false;
       this.namePromptStep = undefined;
+      if (this.playInsteadAwaitsName) this.cancelPlayInstead();
     }
     // Sounds still in the queue go with it; so does a vote tally that has not sounded yet.
     this.soundTimers.forEach(clearTimeout);

@@ -144,8 +144,10 @@
 }
 
 /* The page's buttons keep App.css's look; the layouts size them. The shadow, at the foot of the
-   box, takes no room, as it did when it was drawn outside the box. */
-.lobby-main button {
+   box, takes no room, as it did when it was drawn outside the box. SIGN IN TO PLAY is a link in
+   the same look (App.css's .button-link). */
+.lobby-main button,
+.lobby-main .button-link {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -217,8 +219,9 @@
 }
 
 /* A neutral grey variant of App.css's button, which the login page's CHANGE NAME and TEST SIGN-IN
-   share. */
+   share, and SIGN IN TO PLAY, a link. */
 .lobby-secondary button,
+.lobby-secondary .button-link,
 .login-card .login-grey {
     --button-face: #6e655e;
     --button-shadow: #4b4440;
@@ -227,6 +230,9 @@
 .lobby-secondary button:not(:disabled):hover,
 .lobby-secondary button:not(:disabled):focus,
 .lobby-secondary button:not(:disabled):focus-visible,
+.lobby-secondary .button-link:hover,
+.lobby-secondary .button-link:focus,
+.lobby-secondary .button-link:focus-visible,
 .login-card .login-grey:not(:disabled):hover,
 .login-card .login-grey:not(:disabled):focus,
 .login-card .login-grey:not(:disabled):focus-visible {
@@ -234,6 +240,7 @@
 }
 
 .lobby-secondary button:not(:disabled):active,
+.lobby-secondary .button-link:active,
 .login-card .login-grey:not(:disabled):active {
     --button-face: #6e655e;
 }
@@ -244,7 +251,9 @@
     color: rgba(255, 255, 255, 0.45);
 }
 
-.lobby-full-note {
+/* The one note under a spectator's buttons: a full lobby, PLAY INSTEAD's error, a failed sign-in or
+   a server without sign-in. */
+.lobby-note {
     max-width: var(--card-width);
     margin: 0;
     font-family: var(--textFont);
@@ -319,7 +328,8 @@
         font-size: 16px;
     }
 
-    .lobby-main button {
+    .lobby-main button,
+    .lobby-main .button-link {
         min-width: 44px;
         min-height: calc(44px + var(--button-depth));
     }
@@ -334,8 +344,11 @@
         padding: 0.3em 0.6em;
     }
 
-    /* The grey buttons share one row, down to 320px wide: the switch icons go. Each is its label's
-       width plus an equal share of what is left, so WATCH INSTEAD, the longest, gets the most room.
+    /* A spectator's two grey buttons share one row, down to 320px wide: the switch icons go. Each
+       is its label's width plus an equal share of what is left. A player's four are two rows of
+       two, in equal columns: CHANGE NAME and CHANGE LOOK, then WATCH INSTEAD and LEAVE LOBBY. The
+       first row's shadows (5px, App.css's --button-depth) take no room, so the rows are 11px
+       apart, leaving 6px between a shadow and the face below, as between the columns.
        Linux draws Germania One wider than macOS; there every label keeps about 15% of its width
        spare. */
     .lobby-secondary {
@@ -343,7 +356,14 @@
         gap: 6px;
     }
 
-    .lobby-secondary button {
+    .lobby-player-buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 11px 6px;
+    }
+
+    .lobby-secondary button,
+    .lobby-secondary .button-link {
         flex: 1 1 auto;
         min-width: 0;
         padding: 0.4em 0.2em;
@@ -409,7 +429,8 @@
         font-size: max(16px, 1em);
     }
 
-    .lobby-main button {
+    .lobby-main button,
+    .lobby-main .button-link {
         min-height: calc(44px + var(--button-depth));
     }
 }

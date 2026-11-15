@@ -12,6 +12,10 @@ const lg = (n: number) => `Long Guest ${n}`;
 const TEN = [HOST, ...Array.from({ length: 9 }, (_, i) => lg(i + 1))];
 const LINK = "https://example.test/?lobby=HBIA";
 const FULL_NOTE = "The lobby is full (10 / 10). You can play when a seat frees up.";
+const SIGN_IN_HREF = "/auth/discord?lobby=HBIA";
+const NOT_SET_UP = "Sign-in is not set up on this server.";
+const SIGN_IN_FAILED = "Signing in with Discord failed. Please try again.";
+const NINE = TEN.slice(0, 9);
 
 /** Picking players keep the default portrait; everyone else gets p1, p2, … */
 function icons(players: string[], picking: string[] = []): Record<string, string> {
@@ -31,7 +35,12 @@ function renderLobby(overrides: Partial<LobbyScreenProps> = {}) {
     user: HOST,
     spectator: false,
     spectatorCount: 0,
+    signedIn: true,
+    discord: true,
+    signInHref: SIGN_IN_HREF,
+    spectatorError: "",
     onStartGame: vi.fn(),
+    onChangeName: vi.fn(),
     onChangeLook: vi.fn(),
     onWatchInstead: vi.fn(),
     onPlayInstead: vi.fn(),
@@ -43,10 +52,18 @@ function renderLobby(overrides: Partial<LobbyScreenProps> = {}) {
   return props;
 }
 
-/** The page's own actions, in order (the header's sound control is not one of them). */
+/** The page's own actions, buttons and links drawn as buttons, in order (not the header's sound control). */
 const buttons = () =>
-  Array.from(document.querySelectorAll(".lobby-main button"), (b) => b.textContent);
+  Array.from(
+    document.querySelectorAll(".lobby-main button, .lobby-main .button-link"),
+    (b) => b.textContent
+  );
 const button = (name: string) => screen.getByRole("button", { name });
+/** The note under a spectator's buttons, or null. */
+const note = () => document.querySelector<HTMLElement>(".lobby-note");
+/** A spectator in a lobby with a free seat. */
+const watching = (overrides: Partial<LobbyScreenProps> = {}) =>
+  renderLobby({ usernames: NINE, icons: icons(NINE), user: "", spectator: true, ...overrides });
 const rows = () => Array.from(document.querySelectorAll<HTMLElement>(".lobby-players li.roster-row"));
 const row = (name: string) => document.querySelector<HTMLElement>(`li.roster-row[data-player="${name}"]`)!;
 const statusText = () => document.getElementById("lobby-status-text")!.textContent;
@@ -54,7 +71,14 @@ const statusText = () => document.getElementById("lobby-status-text")!.textConte
 describe("LobbyScreen", () => {
   it("the host's buttons", () => {
     renderLobby();
-    expect(buttons()).toEqual(["COPY", "START GAME", "CHANGE LOOK", "WATCH INSTEAD", "LEAVE LOBBY"]);
+    expect(buttons()).toEqual([
+      "COPY",
+      "START GAME",
+      "CHANGE NAME",
+      "CHANGE LOOK",
+      "WATCH INSTEAD",
+      "LEAVE LOBBY",
+    ]);
   });
 
   it("START GAME waits for every portrait", () => {
@@ -78,19 +102,89 @@ describe("LobbyScreen", () => {
 
   it("a guest's buttons", () => {
     const props = renderLobby({ user: lg(1) });
-    expect(buttons()).toEqual(["COPY", "CHANGE LOOK", "WATCH INSTEAD", "LEAVE LOBBY"]);
+    expect(buttons()).toEqual(["COPY", "CHANGE NAME", "CHANGE LOOK", "WATCH INSTEAD", "LEAVE LOBBY"]);
+    fireEvent.click(button("CHANGE NAME"));
     fireEvent.click(button("CHANGE LOOK"));
     fireEvent.click(button("WATCH INSTEAD"));
     fireEvent.click(button("LEAVE LOBBY"));
+    expect(props.onChangeName).toHaveBeenCalledTimes(1);
     expect(props.onChangeLook).toHaveBeenCalledTimes(1);
     expect(props.onWatchInstead).toHaveBeenCalledTimes(1);
     expect(props.onLeave).toHaveBeenCalledTimes(1);
   });
 
-  it("a spectator's buttons", () => {
-    renderLobby({ user: "", spectator: true });
+  it("a player's grey buttons are the ones phones lay out two by two; a spectator's are not", () => {
+    renderLobby({ user: lg(1) });
+    const grey = document.querySelector(".lobby-secondary")!;
+    expect(grey).toHaveClass("lobby-player-buttons");
+    expect(grey.children).toHaveLength(4);
+    cleanup();
+
+    for (const signedIn of [true, false]) {
+      watching({ signedIn });
+      const row = document.querySelector(".lobby-secondary")!;
+      expect(row).not.toHaveClass("lobby-player-buttons");
+      expect(row.children).toHaveLength(2);
+      cleanup();
+    }
+  });
+
+  it("a player has no note, whatever a spectator's would say", () => {
+    renderLobby({ user: lg(1), discord: false, spectatorError: SIGN_IN_FAILED });
+    expect(note()).toBeNull();
+    expect(screen.queryByText(SIGN_IN_FAILED)).toBeNull();
+  });
+
+  it("a signed-in spectator's buttons", () => {
+    watching();
     expect(buttons()).toEqual(["COPY", "PLAY INSTEAD", "LEAVE LOBBY"]);
+    expect(screen.queryByRole("link", { name: "SIGN IN TO PLAY" })).toBeNull();
     expect(document.querySelector(".is-user")).toBeNull();
+    expect(note()).toBeNull();
+  });
+
+  it("a signed-out spectator gets SIGN IN TO PLAY, a link that signs in and comes back here", () => {
+    const props = watching({ signedIn: false });
+    expect(buttons()).toEqual(["COPY", "SIGN IN TO PLAY", "LEAVE LOBBY"]);
+    const link = screen.getByRole("link", { name: "SIGN IN TO PLAY" });
+    expect(link).toHaveAttribute("href", SIGN_IN_HREF);
+    expect(link).toHaveClass("button-link");
+    expect(link).not.toHaveAttribute("target"); // the same tab, which comes back to this lobby
+    expect(link.closest(".lobby-secondary")).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "PLAY INSTEAD" })).toBeNull();
+    expect(document.querySelector(".is-user")).toBeNull();
+    expect(note()).toBeNull();
+    fireEvent.click(button("LEAVE LOBBY"));
+    expect(props.onLeave).toHaveBeenCalledTimes(1);
+  });
+
+  it("SIGN IN TO PLAY is off where sign-in is not set up, and the note says so", () => {
+    watching({ signedIn: false, discord: false });
+    expect(screen.queryByRole("link", { name: "SIGN IN TO PLAY" })).toBeNull();
+    const off = button("SIGN IN TO PLAY");
+    expect(off).toBeDisabled();
+    expect(off).toHaveAccessibleDescription(NOT_SET_UP);
+    expect(buttons()).toEqual(["COPY", "SIGN IN TO PLAY", "LEAVE LOBBY"]);
+    expect(note()).toHaveTextContent(NOT_SET_UP);
+    expect(note()).toHaveAttribute("role", "status");
+  });
+
+  it("a failed sign-in shows in the note, in place of the not-set-up line", () => {
+    watching({ signedIn: false, spectatorError: SIGN_IN_FAILED });
+    expect(note()).toHaveTextContent(SIGN_IN_FAILED);
+    cleanup();
+
+    watching({ signedIn: false, discord: false, spectatorError: SIGN_IN_FAILED });
+    expect(document.querySelectorAll(".lobby-note")).toHaveLength(1);
+    expect(note()).toHaveTextContent(SIGN_IN_FAILED);
+    expect(screen.queryByText(NOT_SET_UP)).toBeNull();
+  });
+
+  it("PLAY INSTEAD's error shows in the note", () => {
+    watching({ spectatorError: "The lobby is currently in a game." });
+    expect(note()).toHaveTextContent("The lobby is currently in a game.");
+    expect(note()).toHaveAttribute("role", "status");
+    expect(button("PLAY INSTEAD")).toBeEnabled();
   });
 
   it("the switch buttons carry the icon phones hide, and COPY keeps its own", () => {
@@ -109,17 +203,34 @@ describe("LobbyScreen", () => {
     expect(document.querySelector(".is-user")).toBeNull();
   });
 
-  it("PLAY INSTEAD is off in a full lobby", () => {
+  it("PLAY INSTEAD is off in a full lobby, which keeps its note for a signed-in spectator", () => {
     renderLobby({ user: "", spectator: true });
     expect(button("PLAY INSTEAD")).toBeDisabled();
-    expect(document.querySelector(".lobby-full-note")).toHaveTextContent(FULL_NOTE);
+    expect(note()).toHaveTextContent(FULL_NOTE);
+    expect(note()).toHaveClass("lobby-full-note");
+    cleanup();
+
+    // The button is off, so an error from an earlier press has nothing more to say.
+    renderLobby({ user: "", spectator: true, spectatorError: "The lobby is currently full." });
+    expect(document.querySelectorAll(".lobby-note")).toHaveLength(1);
+    expect(note()).toHaveTextContent(FULL_NOTE);
+  });
+
+  it("a signed-out spectator in a full lobby can still sign in, under the full lobby's note", () => {
+    renderLobby({ user: "", spectator: true, signedIn: false });
+    expect(screen.getByRole("link", { name: "SIGN IN TO PLAY" })).toHaveAttribute("href", SIGN_IN_HREF);
+    expect(note()).toHaveTextContent(FULL_NOTE);
+    cleanup();
+
+    renderLobby({ user: "", spectator: true, signedIn: false, spectatorError: SIGN_IN_FAILED });
+    expect(document.querySelectorAll(".lobby-note")).toHaveLength(1);
+    expect(note()).toHaveTextContent(SIGN_IN_FAILED);
   });
 
   it("PLAY INSTEAD is on while a seat is free", () => {
-    const nine = TEN.slice(0, 9);
-    const props = renderLobby({ usernames: nine, icons: icons(nine), user: "", spectator: true });
+    const props = watching();
     expect(button("PLAY INSTEAD")).toBeEnabled();
-    expect(document.querySelector(".lobby-full-note")).toBeNull();
+    expect(note()).toBeNull();
     fireEvent.click(button("PLAY INSTEAD"));
     expect(props.onPlayInstead).toHaveBeenCalledTimes(1);
   });

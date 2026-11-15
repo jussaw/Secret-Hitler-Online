@@ -17,12 +17,24 @@ export type LobbyScreenProps = {
   inviteLink: string;
   usernames: string[];
   icons: Record<string, string>;
-  /** The viewer's name, "" for a spectator. */
+  /** The viewer's name (the packets' `you`), "" for a spectator. */
   user: string;
   spectator: boolean;
   /** How many spectators are watching, shown in the header when above zero. */
   spectatorCount: number;
+  /** Whether the page is signed in: a spectator gets PLAY INSTEAD signed in, SIGN IN TO PLAY not. */
+  signedIn: boolean;
+  /** Whether the server has Discord sign-in: without it, SIGN IN TO PLAY is off. */
+  discord: boolean;
+  /** SIGN IN TO PLAY's link: signing in with Discord, which comes back to watching this lobby. */
+  signInHref: string;
+  /**
+   * A spectator's error line ("" for none): signed in, why PLAY INSTEAD took no seat; signed out,
+   * a failed sign-in.
+   */
+  spectatorError: string;
   onStartGame: () => void;
+  onChangeName: () => void;
   onChangeLook: () => void;
   onWatchInstead: () => void;
   onPlayInstead: () => void;
@@ -31,10 +43,27 @@ export type LobbyScreenProps = {
   onCopied: (ok: boolean) => void;
 };
 
+const FULL_NOTE = `The lobby is full (${MAX_PLAYERS} / ${MAX_PLAYERS}). You can play when a seat frees up.`;
+const NOT_SET_UP = "Sign-in is not set up on this server.";
+
+/**
+ * The one note under a spectator's buttons ("" for none). Signed in: the full lobby's note while
+ * PLAY INSTEAD is off for it, otherwise PLAY INSTEAD's error. Signed out: a failed sign-in, then
+ * a server without Discord sign-in, then the full lobby's note.
+ */
+function spectatorNote(props: LobbyScreenProps, full: boolean): string {
+  if (props.signedIn) return full ? FULL_NOTE : props.spectatorError;
+  if (props.spectatorError) return props.spectatorError;
+  if (!props.discord) return NOT_SET_UP;
+  return full ? FULL_NOTE : "";
+}
+
 /**
  * The lobby page below the prompts: the game's header, the roster of players beside (or, in tall
  * windows and on phones, above) the code card, the status line, the buttons and the footer links.
- * Spectators get PLAY INSTEAD in place of the players' buttons.
+ * A player gets CHANGE NAME, CHANGE LOOK, WATCH INSTEAD and LEAVE LOBBY (the host START GAME above
+ * them); a spectator PLAY INSTEAD signed in, SIGN IN TO PLAY signed out, and LEAVE LOBBY, with a
+ * note under them when there is something to say.
  */
 export default function LobbyScreen(props: LobbyScreenProps) {
   const { usernames, icons, user, spectator } = props;
@@ -43,6 +72,7 @@ export default function LobbyScreen(props: LobbyScreenProps) {
   const everyonePicked = usernames.every((name) => !isPicking(name, icons));
   const full = usernames.length >= MAX_PLAYERS;
   const status = lobbyStatus(usernames, icons, { user, spectator });
+  const note = spectator ? spectatorNote(props, full) : "";
 
   const copy = async () => {
     props.onCopied(await copyText(props.inviteLink, linkField.current));
@@ -110,14 +140,13 @@ export default function LobbyScreen(props: LobbyScreenProps) {
                 START GAME
               </button>
             )}
-            <div className="lobby-secondary">
-              {spectator ? (
-                <button type="button" disabled={full} onClick={props.onPlayInstead}>
-                  <UserPlus className="lobby-button-icon lobby-switch-icon" aria-hidden="true" />
-                  PLAY INSTEAD
-                </button>
-              ) : (
+            {/* A player's four make two rows of two on phones (lobby-player-buttons). */}
+            <div className={spectator ? "lobby-secondary" : "lobby-secondary lobby-player-buttons"}>
+              {!spectator ? (
                 <>
+                  <button type="button" onClick={props.onChangeName}>
+                    CHANGE NAME
+                  </button>
                   <button type="button" onClick={props.onChangeLook}>
                     CHANGE LOOK
                   </button>
@@ -126,6 +155,19 @@ export default function LobbyScreen(props: LobbyScreenProps) {
                     WATCH INSTEAD
                   </button>
                 </>
+              ) : props.signedIn ? (
+                <button type="button" disabled={full} onClick={props.onPlayInstead}>
+                  <UserPlus className="lobby-button-icon lobby-switch-icon" aria-hidden="true" />
+                  PLAY INSTEAD
+                </button>
+              ) : props.discord ? (
+                <a className="button-link" href={props.signInHref}>
+                  SIGN IN TO PLAY
+                </a>
+              ) : (
+                <button type="button" disabled aria-describedby="lobby-note">
+                  SIGN IN TO PLAY
+                </button>
               )}
               <button type="button" onClick={props.onLeave}>
                 LEAVE LOBBY
@@ -133,9 +175,13 @@ export default function LobbyScreen(props: LobbyScreenProps) {
             </div>
           </div>
 
-          {spectator && full && (
-            <p className="lobby-full-note">
-              {`The lobby is full (${MAX_PLAYERS} / ${MAX_PLAYERS}). You can play when a seat frees up.`}
+          {note && (
+            <p
+              id="lobby-note"
+              className={note === FULL_NOTE ? "lobby-note lobby-full-note" : "lobby-note"}
+              role="status"
+            >
+              {note}
             </p>
           )}
 
