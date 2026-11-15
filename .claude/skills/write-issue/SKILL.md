@@ -138,6 +138,8 @@ Then check the draft, line by line:
   gives), the one label (`bug` or `enhancement`), backticks, upstream issues in backticks.
 - [ ] The commit is what `rev-parse --short HEAD` printed in step 2. A placeholder (`<sha>`,
   `<commit>`, "not recorded") is a failure: go back and run the command.
+- [ ] The commit appears once, in the provenance (or, in an enhancement, in the first paragraph),
+  and no other sentence names it.
 - [ ] A bug opens with its **Provenance**, as `formats.md` gives it: where it was found or seen,
   then the run's sentence in the form step 4 picked, word for word. "Reproduced" stands only
   beside a run that showed the bug. A bug seen on the home server that did not show here says the
@@ -151,8 +153,9 @@ Then check the draft, line by line:
 
 Before you show anything, since a wait for the user can last hours: delete the throwaway tests,
 `git -C <parent> worktree remove --force <checkout>`, then `rmdir <parent>/.claude/worktrees` if it
-is empty. Remove only the checkout this run made in step 2, never another `issue-draft-*`. Check
-`git -C <parent> worktree list` and `git -C <parent> status --short`.
+is empty. Remove only the checkout this run made (in step 2, or in step 7 for an edit), never
+another `issue-draft-*`. Check `git -C <parent> worktree list` and `git -C <parent> status
+--short`.
 
 ## 7. Show and post
 
@@ -175,11 +178,11 @@ Two or more issues are dispatched, one subagent per issue (the Agent tool), so e
 from its own reading and your context holds only the drafts. This is not optional. Search (step 1)
 and check out (step 2) first; then read no code for any of them yourself. Start the next subagent
 only when the last has come back, never two at once (one Gradle build and one port 4545 at a
-time). Give each one its issue in the user's words, the checkout's path, the commit, the
-scratchpad file for its draft, and steps 3 to 5 of this skill with **The two rules** and **Nothing
-to file**. It brings back its draft or its Nothing to file finding, with the commands it ran and
-their results. It makes no checkout, posts nothing and removes nothing. You clean up, show all of
-them together and post.
+time). Give each one its issue in the user's words, the checkout's path, the commit, the file for
+its draft (in the scratchpad, or in the `mktemp -d` directory of a session without one), and steps
+3 to 5 of this skill with **The two rules** and **Nothing to file**. It brings back its draft or
+its Nothing to file finding, with the commands it ran and their results. It makes no checkout,
+posts nothing and removes nothing. You clean up, show all of them together and post.
 
 If you cannot dispatch subagents, take the issues one after another yourself. That is only for a
 session with no Agent tool: steps 3 to 5 for the first issue, to its draft or its Nothing to file
@@ -228,8 +231,8 @@ wrote, or a case the review found. The line under each is the answer.
     facts** in `formats.md`). Under `## Open questions` it would send a bug to design, and it would
     never be built.
 - The user answered an open question in chat, so the draft just drops the question.
-  - The answer is lost that way. Write it in as **Decided** in `formats.md` says, and keep as
-    questions only the choices still unmade.
+  - The answer is lost that way. Write it in as decided, as **Decided** in `formats.md` says, and
+    keep as questions only the choices still unmade.
 - "Do you want me to … add a comment to it"
   - Out of scope. Point at the open issue and stop.
 - "I ran the two things myself, one after another, rather than through subagents (the skill allows
