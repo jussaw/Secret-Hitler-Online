@@ -33,7 +33,8 @@ these rules is violating their spirit.
   so the same code runs here.
 - A probe that failed in its own setup never ran its check. Fix it and run it again.
 - "Reproduced" is written only after a run that showed the bug, with that run's command and
-  result. Anything else is "Not reproduced".
+  result. Every other run gives one of the "Not reproduced" forms under **Provenance** in
+  `formats.md`.
 
 ## 1. Split and search
 
@@ -95,11 +96,10 @@ Write down what happened in plain numbers, as #63 does ("Ann's next lobby packet
    Safari, a phone's own browser; Playwright's phone projects emulate Chromium). The home server
    is not one: it runs the image CI builds from `development`. No run here reaches such a bug,
    whatever a mock or another browser shows, so it never goes to **Nothing to file**. Run what
-   can be run here (the code path in Vitest, the page in Playwright), then draft it as not
-   reproduced. The draft says so, why, and what was tried: "Not reproduced: it needs <device>.
-   Tried: <command>, <what it showed>."
-2. The run showed the bug: draft it with "Reproduced on `development` (<commit>) with
-   `<command>`: <what happened>." as the reproduced fact of its provenance.
+   can be run here (the code path in Vitest, the page in Playwright), then draft it with the
+   device form of "Not reproduced" (**Provenance** in `formats.md`): what it needs, and what was
+   tried.
+2. The run showed the bug: draft it with the "Reproduced" form of **Provenance**.
 3. The run reached the bug's conditions and it did not show: go to **Nothing to file**.
 
 ## Nothing to file
@@ -133,10 +133,9 @@ Then check the draft, line by line:
   gives), the one label (`bug` or `enhancement`), backticks, upstream issues in backticks.
 - [ ] The commit is what `rev-parse --short HEAD` printed in step 2. A placeholder (`<sha>`,
   `<commit>`, "not recorded") is a failure: go back and run the command.
-- [ ] A bug's provenance is its first sentences (the first of `## Description` in skeleton 2):
-  where it was found or seen, then the sentence step 4 or **Nothing to file** gives, "Reproduced
-  on …" or "Not reproduced …" with its "Tried: <command>, <what it showed>.", then the commit.
-- [ ] "Reproduced" only beside a run that showed the bug.
+- [ ] A bug opens with its **Provenance**, as `formats.md` gives it: where it was found or seen,
+  then the run's sentence in the form step 4 picked, word for word. "Reproduced" stands only
+  beside a run that showed the bug.
 - [ ] **Public repo** in `formats.md`, word by word, even for what the user's own words carry (a
   host name among them).
 - [ ] **Open questions**, **Unknown facts** and **Decided** in `formats.md`, each as it states

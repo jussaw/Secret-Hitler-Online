@@ -19,10 +19,21 @@ every slot marked REQUIRED in the order given, and keep the example's shape.
 - **Backticks:** every code, file, function, command, class and project name (`Lobby.removeUser`,
   `e2e/no-scroll.spec.ts`, `firefox`).
 - **References:** a code reference is `path:line` (or `path:from-to`) and says the commit it was
-  read at, once, in the first paragraph. Related issues and PRs go by number (#41). An issue
-  from `ShrimpCryptid/Secret-Hitler-Online` goes in backticks too
+  read at, once, in the first paragraph (in a bug, in its provenance). Related issues and PRs go
+  by number (#41). An issue from `ShrimpCryptid/Secret-Hitler-Online` goes in backticks too
   (`ShrimpCryptid/Secret-Hitler-Online#179`), so upstream is not pinged. Name the `CLAUDE.md`
   constraints the issue touches ("see Constraints in `CLAUDE.md`").
+- **Provenance:** every bug opens with it, in the first sentences of the body (of
+  `## Description` in skeleton 2), one fact each: where it was found or seen ("Found in review of
+  #43 (PR #62), by reading the code.", "Seen twice on the home server."), then what the run on
+  `development` showed. Every bug gets a run, so there is no "not reproduced yet", and
+  "Reproduced" stands only beside a run that showed the bug. The run's commit is the one the
+  issue's `path:line` references are read at, so no other sentence names a commit. The run's
+  sentence takes one of these forms, word for word:
+  - "Reproduced on `development` (<short sha>) with `<command>`: <what happened>."
+  - "Not reproduced on `development` (<short sha>). Tried: `<command>`, <what it showed>."
+  - For a bug seen only on a device or browser no run here reaches: "Not reproduced on
+    `development` (<short sha>): it needs <device>. Tried: `<command>`, <what it showed>."
 - **Open questions:** an issue with a choice the user has not made has a `## Open questions`
   section, whatever its skeleton: one plain question per bullet, and only product or design
   choices. `implement-issue` builds nothing for an issue with open questions, so the section sends
@@ -49,9 +60,8 @@ every slot marked REQUIRED in the order given, and keep the example's shape.
 For a bug found in review or while reading code. No `##` headings, except `## Open questions`
 when a choice is open: it goes just before **Possible fix:**. REQUIRED, in order:
 
-1. **Provenance**, in the first sentences of the body, one fact each: where it was found, then
-   "Not reproduced yet." or "Reproduced at `<short sha>`: <what happened>.", then the commit the
-   line numbers come from.
+1. **Provenance**, in the first sentences of the body, as the rule above gives it: where it was
+   found, then the run's sentence with its commit.
 2. **The mechanism:** what runs, where (`path:line`), why it goes wrong.
 3. **A concrete case**, as a numbered list of steps (with times or values when they matter).
 4. **How narrow it is,** and what stays correct.
@@ -60,31 +70,31 @@ when a choice is open: it goes just before **Possible fix:**. REQUIRED, in order
    show the bug, naming the existing helpers it can use. When no fix is known, it says "No fix
    known yet." and still gives the test. Nothing follows it.
 
-Example, trimmed from #64:
+Example, adapted from #63:
 
 ````markdown
-Found in review of #43 (PR #62), by reading the code. Not reproduced yet. Line numbers are from
-`development` at 79b5bb2.
+Found in review of #43 (PR #62), by reading the code. Reproduced on `development` (79b5bb2) with
+`./gradlew test --tests server.BlankNameReproTest`: the refused socket joined the lobby.
 
-`removeInactiveLobbies` (`backend/src/main/java/server/SecretHitlerServer.java:216-239`) runs on
-the update timer every 60 s, without any lobby's lock. It closes a copy of each timed-out lobby's
-connections, then removes the lobby from `codeToLobby`.
+`onWebsocketConnect` (`backend/src/main/java/server/SecretHitlerServer.java:539-542`) closes a
+player's socket whose `name` is empty or blank with 1002 "Lobby and name must be specified.", but
+it has no `return`. The handler carries on into `Lobby.joinRefusal` and `Lobby.addUser`. A blank
+name is not taken, so the dead connection is added to the lobby.
 
-The handlers find a lobby in three separate steps: `containsKey`, then `get`, then the lobby's
-lock (`onWebsocketConnect`, `:545`, `:551`, `:561`). A sweep can land between any two of them:
-1. Between `containsKey` and `get`, `get` returns null and `synchronized (lobby)` throws
-   `NullPointerException`. Javalin closes the socket with 1011.
-2. After `get`, a connection added after the sweep copied the connections is never closed. Its
-   next message is closed with 1002 "The lobby does not exist."
+What happened with a lobby holding Ann:
+1. A socket opened with `name=%20%20` was closed with 1002, as intended.
+2. Ann's next lobby packet listed `["Ann","  "]`.
+3. 10 s later the lobby still counted 2 users, with a live connection under `"  "`.
 
-Either way the connection ends up where it would have anyway: the lobby had timed out. Only the
-path there is wrong. The window is narrow: a connection has to arrive within a moment of a sweep.
-`onWebsocketConnect` is the handler #63 fixes the blank-name case in.
+The close is handled before the add, so `onWebSocketClose` finds nothing to remove, and the grace
+window never starts. The phantom player holds a seat until the lobby times out, which never
+happens while a real player pings, and START GAME stays off for the host. The page never sends a
+blank name (`normalizeName`, and `/check-login` answers 400), so only a hand-made client reaches
+this. #64, from the same review, is a race in the same handler.
 
-**Possible fix:** look the lobby up once (`get` and a null check, as `connectSpectator` does), and
-have the handlers refuse a closed lobby under its lock. A backend test can stand in for a sweep by
-removing a lobby while a connection is held between its lookup and its add. A `Lobby` subclass can
-hold `addUser`, as `RejoinServerTest`'s `RacingLobby` does.
+**Possible fix:** `return` after that close, as every other refusal in the handler does. A backend
+test can open a `TestSocket` with a blank name, then check that it is closed with 1002 and that the
+lobby still counts only its players (`RejoinServerTest` has the helpers).
 ````
 
 ## 2. Bug seen in play or in CI
@@ -93,10 +103,9 @@ For a bug someone saw: in a game, in the browser, in a failing test. The repo's 
 headings, these four in this order, and no other heading except `## Open questions` when a choice
 is open. REQUIRED:
 
-- `## Description`. Its first sentences are the provenance, one fact each: where it was seen (or
-  which run failed), whether it was reproduced, and the commit (`development` at `<short sha>`)
-  the line numbers come from. Then what is known of the cause, and the numbers: how often, which
-  project, the exact output in backticks.
+- `## Description`. Its first sentences are the provenance, as the rule above gives it: where it
+  was seen (or which run failed), then the run's sentence with its commit. Then what is known of
+  the cause, and the numbers: how often, which project, the exact output in backticks.
 - `## Expected Behavior`: one or two sentences.
 - `## Reproduction`: a fenced block holding the command or the script that shows it (a
   `npx playwright test ...` line for a browser test). If it did not reproduce, say what was
@@ -110,13 +119,13 @@ Between `## Reproduction` and `## Device Info`, put one of:
 
 `## Open questions`, when there is one, goes after that paragraph and before `## Device Info`.
 
-Example, trimmed from #58:
+Example, adapted from #58:
 
 ````markdown
 ## Description
 
 Found while CI ran #57: its `test` job failed in `frontend/src/game/GameScreen.test.tsx:159`.
-Reproduced in Node (see below). Line numbers are from `development` at 2d86798. The test expects
+Reproduced on `development` (2d86798) with `node repro.js`: it printed 8, not 7. The test expects
 a 7 s countdown to read 7, but it read 8. #57 changes no frontend code and the test passes
 locally, so it is flaky on `development` too.
 
@@ -133,8 +142,9 @@ returns.
 ## Reproduction
 
 ```js
+// repro.js
 const now = 4595.786694409205; // any performance.now() value
-Math.ceil((now + 7000 - now) / 1000); // 8, not 7
+console.log(Math.ceil((now + 7000 - now) / 1000)); // 8, not 7
 ```
 
 **Possible fix:** keep the time left as `remainingMs - (performance.now() - start)`, which is
@@ -159,7 +169,7 @@ choice is open: it goes after **Notes:**. REQUIRED, in order:
    the change shows on screen. It names `e2e/` specs with their projects (`desktop`, `firefox`,
    `phone-360`, `phone-412`) when it asks for a test.
 
-Example, trimmed from #25:
+Example, adapted from #25:
 
 ````markdown
 The portrait picker (`IconSelection`, `frontend/src/custom-alert/IconSelection.tsx`) is a
@@ -196,7 +206,7 @@ For work with several parts, or one that will not fit one session. REQUIRED, in 
    code" (a design and a per-phase plan first, one pull request per phase). Name the
    constraints in `CLAUDE.md` it changes.
 
-Example, trimmed from #30:
+Example, adapted from #30:
 
 ````markdown
 Add user accounts. The only way to sign in is with Discord (OAuth2): no passwords and no other
