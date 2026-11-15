@@ -22,7 +22,10 @@ export const ME_USERNAME = "/me/username";
 export const AUTH_DISCORD = "/auth/discord";
 export const AUTH_SIGN_OUT = "/auth/sign-out";
 export const AUTH_TEST_SIGN_IN = "/auth/test-sign-in";
-/** In the /check-login query for a player: the name the page thinks it plays under. */
+/**
+ * In every lobby and game packet a player gets: their own name, or their seat's in a game. A
+ * spectator's packets have none, and the page never sends it.
+ */
 export const PARAM_YOU = "you";
 /** "true" in the /game and /check-login query makes a spectator, who needs no name. */
 export const PARAM_SPECTATOR = "spectator";

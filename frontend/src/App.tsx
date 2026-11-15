@@ -688,8 +688,8 @@ class App extends Component<{}, AppState> {
     }
 
     if (this.reconnectOnConnectionClosed && event?.code === CLOSE_REFUSED && !this.socketAnswered) {
-      // Refused outright (the lobby is gone, full or playing without us, or another page has the
-      // name): every attempt would be refused alike.
+      // Refused outright (the lobby is gone, full or playing without us, another tab has the
+      // account there, or the session ended): every attempt would be refused alike.
       this.toLoginPage(DISCONNECTED_ERROR);
       return;
     }
