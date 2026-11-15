@@ -57,16 +57,20 @@ number,title,state,labels`.
 One throwaway checkout for the whole run, so the session's own changes never colour a repro or a
 line number. Its parent is the session's own worktree when the session runs inside
 `.claude/worktrees/` (the path `git -C <working directory> rev-parse --show-toplevel` prints), else
-the main checkout (the first line of `git worktree list`).
+the main checkout (the first line of `git worktree list`). Its name is this run's own, so two runs
+never share one.
 
-1. `git -C <parent> fetch origin`
-2. `git -C <parent> worktree add --detach <parent>/.claude/worktrees/issue-draft origin/development`
-   If `issue-draft` exists already, it is most likely from a run that ended before its clean-up.
-   Check whether anything holds it: a `locked` entry in `git -C <parent> worktree list`, or a
-   running process with files open there (`lsof +D <parent>/.claude/worktrees/issue-draft`).
-   Nothing does: remove it as in step 6 and add it again. Something does: ask before touching it.
-3. `git -C <parent>/.claude/worktrees/issue-draft rev-parse --short HEAD`: the commit every draft
-   names. Write down what it prints.
+1. `date +%H%M%S`, in a call of its own. The checkout is
+   `<parent>/.claude/worktrees/issue-draft-<what it printed>`, written `<checkout>` below. Write
+   that path down.
+2. `git -C <parent> fetch origin`
+3. `git -C <parent> worktree add --detach <checkout> origin/development`. If the path exists
+   already, go back to 1 for a new name.
+4. `git -C <checkout> rev-parse --short HEAD`: the commit every draft names. Write down what it
+   prints.
+
+Any other `issue-draft-*` in `git -C <parent> worktree list` belongs to another run, finished or
+not. Never remove or touch it: name it to the user in step 7, so they can remove it.
 
 **Two or more issues left after the search?** Steps 3 to 5 run as **A batch** (below): one
 subagent per issue, one after another. Steps 3 to 5 here are for one issue.
@@ -146,16 +150,20 @@ Then check the draft, line by line:
 ## 6. Clean up
 
 Before you show anything, since a wait for the user can last hours: delete the throwaway tests,
-`git -C <parent> worktree remove --force <parent>/.claude/worktrees/issue-draft`, then `rmdir
-<parent>/.claude/worktrees` if it is empty. Check `git -C <parent> worktree list` and `git -C
-<parent> status --short`. An edit that needs the code again gets a new checkout at the same commit.
+`git -C <parent> worktree remove --force <checkout>`, then `rmdir <parent>/.claude/worktrees` if it
+is empty. Remove only the checkout this run made in step 2, never another `issue-draft-*`. Check
+`git -C <parent> worktree list` and `git -C <parent> status --short`.
 
 ## 7. Show and post
 
-In one message: each draft's title, label and body in full, as it will post, and each Nothing to
-file finding with its question. Ask which drafts to post. Then wait.
+In one message: each draft's title, label and body in full, as it will post, each Nothing to file
+finding with its question, and any other `issue-draft-*` checkout step 2 found. Ask which drafts
+to post. Then wait.
 
-- An edit: make it, show that draft again, and wait for its OK.
+- An edit: make it, show that draft again, and wait for its OK. An edit that needs the code again
+  makes a new checkout at the same commit: a new `date +%H%M%S` for its name, then `git -C <parent>
+  worktree add --detach <checkout> <commit>`. Once the edit is made, remove it as in step 6, before
+  you show the draft again.
 - An answer to one of a draft's open questions is an edit: write the answer in as decided, remove
   that question, show the draft again, and wait for its OK.
 - An OK: `gh issue create --repo … --title "<title>" --label <bug|enhancement> --body-file <file>`
@@ -251,5 +259,7 @@ wrote, or a case the review found. The line under each is the answer.
   you are asking "file it anyway?" instead of drafting it as not reproduced.
 - Two or more issues, and you are reading or running the code yourself instead of dispatching a
   subagent for each.
+- You are about to remove an `issue-draft-*` checkout this run did not make.
+- You are about to show a draft, and this run's checkout is still in `git worktree list`.
 
 All of these mean: stop, and go back to the step that was skipped.
