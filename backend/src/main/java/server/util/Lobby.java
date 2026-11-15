@@ -886,6 +886,14 @@ public class Lobby implements Serializable {
     }
 
     /**
+     * @return whether this lobby was restored from a backup written before accounts, which has no
+     *         account maps: its game's seats belong to typed names that no account can take back.
+     */
+    synchronized public boolean wasBackedUpBeforeAccounts() {
+        return backedUpBeforeAccounts;
+    }
+
+    /**
      * Starts a new SecretHitlerGame with the connected users as players.
      * 
      * @throws RuntimeException if there are an insufficient number of players to

@@ -467,7 +467,18 @@ public class SecretHitlerServer {
             stmt.executeUpdate("UPDATE backup SET attempts = attempts + 1 WHERE id = 0;");
         }
         try (ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(lobbyBytes))) {
-            return (ConcurrentHashMap<String, Lobby>) in.readObject();
+            ConcurrentHashMap<String, Lobby> lobbies = (ConcurrentHashMap<String, Lobby>) in.readObject();
+            // A game backed up before accounts has seats that belong to typed names, which no
+            // account can take back; an idle lobby from then is kept.
+            lobbies.entrySet().removeIf(entry -> {
+                Lobby lobby = entry.getValue();
+                if (lobby.wasBackedUpBeforeAccounts() && lobby.isInGame()) {
+                    logger.warn("Dropped lobby " + entry.getKey() + ": its game was backed up before accounts.");
+                    return true;
+                }
+                return false;
+            });
+            return lobbies;
         }
     }
 
