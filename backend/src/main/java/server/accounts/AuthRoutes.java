@@ -148,17 +148,18 @@ public final class AuthRoutes {
     }
 
     /**
-     * {@code POST /auth/sign-out}: ends the request's session, if it has one, and clears the
-     * cookie. 204, also when there was no session; 415 not sent as JSON. Connections already open
-     * stay open until they close.
+     * {@code POST /auth/sign-out}: clears the cookie and ends the request's session, if it has
+     * one. 204, also when there was no session; 415 not sent as JSON. The cookie is cleared first,
+     * so the browser is signed out even when the store fails to delete the row (a 500). Connections
+     * already open stay open until they close.
      */
     public static void postSignOut(Context ctx) {
         if (!isJson(ctx)) {
             refuse(ctx, 415, NOT_JSON);
             return;
         }
-        SecretHitlerServer.accounts.deleteSession(ctx.cookie(SESSION_COOKIE));
         setSessionCookie(ctx, "", 0);
+        SecretHitlerServer.accounts.deleteSession(ctx.cookie(SESSION_COOKIE));
         ctx.status(204);
     }
 

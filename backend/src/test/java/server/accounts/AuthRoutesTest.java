@@ -444,6 +444,23 @@ public class AuthRoutesTest {
     }
 
     @Test
+    public void aFailedSignOutStillClearsTheCookie() throws Exception {
+        String token = TestAccounts.signIn(store, "1", "Rowan");
+        store.close(); // every call to the store fails from now on
+        try {
+            HttpResponse<String> response = postJson("/auth/sign-out", token, "");
+            assertEquals(500, response.statusCode()); // the row could not be deleted
+            Map<String, String> cleared = sessionCookie(response);
+            assertSessionCookieAttributes(cleared);
+            assertEquals("", cleared.get("value"));
+            assertEquals("0", cleared.get("max-age")); // but the browser is signed out
+        } finally {
+            store = AccountStore.open(null, now::get); // for stopServer() to close
+            SecretHitlerServer.accounts = store;
+        }
+    }
+
+    @Test
     public void signingOutNeedsAJsonContentType() throws Exception {
         String token = TestAccounts.signIn(store, "1", "Rowan");
         for (String type : Arrays.asList(null, "text/plain", "application/x-www-form-urlencoded")) {
