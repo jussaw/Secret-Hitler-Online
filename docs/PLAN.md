@@ -679,7 +679,7 @@ Issue #30: playing needs an account, made by signing in with Discord; each accou
 - [x] `frontend/src/login/LoginScreen.tsx`: the account card, CHOOSE A NAME and CHANGE NAME
 - [x] `frontend/src/lobby/LobbyScreen.tsx`: CHANGE NAME, SIGN IN TO PLAY, PLAY INSTEAD with no prompt
 - [x] The browser tests run on accounts, and the login page and lobby fit every tested size
-- [ ] `frontend/e2e/accounts.spec.ts`: signing in, naming, renaming and watching in the browser
+- [x] `frontend/e2e/accounts.spec.ts`: signing in, naming, renaming and watching in the browser
 - [ ] `CLAUDE.md`, `README.md` and `DEVELOPMENT.md` describe accounts; the pull request shows the login page and lobby before and after, and closes #30
 
 **Phase 12 acceptance**
