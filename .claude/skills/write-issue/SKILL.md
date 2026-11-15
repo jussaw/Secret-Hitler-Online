@@ -137,22 +137,10 @@ Then check the draft, line by line:
   where it was found or seen, then the sentence step 4 or **Nothing to file** gives, "Reproduced
   on …" or "Not reproduced …" with its "Tried: <command>, <what it showed>.", then the commit.
 - [ ] "Reproduced" only beside a run that showed the bug.
-- [ ] Only what the repo, its issues, your runs and the user's own words show. Nothing from memory
-  notes or other private context, and never a memory note's name. No guess at the host's setup.
-  Nothing about the user that they did not say: "seen twice on the home server", not "reported by
-  the repo owner".
-- [ ] No infrastructure, even when the user's words carry it: none of the list under Constraints
-  in `CLAUDE.md` (machine and host names, hardware, deploy and update tools, LAN addresses, ports,
-  host paths, domains, the proxy, tunnel and monitoring setup). Write "the home server" or "the
-  host".
-- [ ] `## Open questions` holds only product or design choices the user has not made, each a plain
-  question, and no line of Want:, Notes: or Scope answers one or leans on an answer. That section
-  sends the issue to design: `implement-issue` builds nothing for an issue with open questions.
-- [ ] A fact nobody knows yet (how long the count stayed up, which page showed it) is not a
-  choice. It goes in the body as "Unknown: …", in `## Description` or under `## Reproduction` (an
-  unknown about the device goes in `## Device Info`), never under `## Open questions`.
-- [ ] A choice the user settled in chat is written in as decided (under `## Decided` in skeleton
-  4, or in Want: or Notes:), and its question is gone.
+- [ ] **Public repo** in `formats.md`, word by word, even for what the user's own words carry (a
+  host name among them).
+- [ ] **Open questions**, **Unknown facts** and **Decided** in `formats.md`, each as it states
+  them.
 
 ## 6. Clean up
 
@@ -225,11 +213,12 @@ wrote, or a case the review found. The line under each is the answer.
     else in the body answers it.
 - A draft whose `## Open questions` asks "Does the count stay up for good, or does it drop after
   about 30 s?"
-  - That is a fact nobody knows yet, not a choice. Write it as "Unknown: …" in the body. Under
-    `## Open questions` it would send a bug to design, and it would never be built.
+  - That is a fact nobody knows yet, not a choice. Write it as "Unknown: …" in the body (**Unknown
+    facts** in `formats.md`). Under `## Open questions` it would send a bug to design, and it would
+    never be built.
 - The user answered an open question in chat, so the draft just drops the question.
-  - The answer is lost that way. Write it in as decided (`## Decided`, or Want: or Notes:), and keep
-    as questions only the choices still unmade.
+  - The answer is lost that way. Write it in as **Decided** in `formats.md` says, and keep as
+    questions only the choices still unmade.
 - "Do you want me to … add a comment to it"
   - Out of scope. Point at the open issue and stop.
 - "I ran the two things myself, one after another, rather than through subagents (the skill allows

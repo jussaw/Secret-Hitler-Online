@@ -24,13 +24,25 @@ every slot marked REQUIRED in the order given, and keep the example's shape.
   (`ShrimpCryptid/Secret-Hitler-Online#179`), so upstream is not pinged. Name the `CLAUDE.md`
   constraints the issue touches ("see Constraints in `CLAUDE.md`").
 - **Open questions:** an issue with a choice the user has not made has a `## Open questions`
-  section, whatever its skeleton: one question per bullet. Write only what the notes and the code
-  settle. A choice nobody has made, such as where a new page is reached from, is a question, never
-  a bullet under Scope or a line in the body. A small call that does not need the user is written
-  as a suggestion (**Possible fix:**, or a bullet under **Notes:**). Each skeleton below says
-  where `## Open questions` goes.
-- **Public repo:** no machine, host, domain, port, LAN address or deploy-tool names. Write "the
-  home server" or "the host".
+  section, whatever its skeleton: one plain question per bullet, and only product or design
+  choices. `implement-issue` builds nothing for an issue with open questions, so the section sends
+  it to design. Write only what the notes and the code settle. A choice nobody has made, such as
+  where a new page is reached from, is a question, never a bullet under Scope or a line in the
+  body, and no line of **Want:**, **Notes:** or **Scope:** answers one or leans on an answer. A
+  small call that does not need the user is written as a suggestion (**Possible fix:**, or a
+  bullet under **Notes:**). Each skeleton below says where `## Open questions` goes.
+- **Unknown facts:** a fact nobody knows yet (how long the count stayed up, which page showed it)
+  is not a choice. It goes in the body as "Unknown: …": in skeleton 2 in `## Description` or under
+  `## Reproduction` (an unknown about the device in `## Device Info`), in skeleton 1 in the
+  paragraph it belongs to. Never under `## Open questions`.
+- **Decided:** a choice the user settled in chat is written in as decided (under `## Decided` in
+  skeleton 4, or in **Want:** or **Notes:**), and its question is gone.
+- **Public repo:** none of the personal infrastructure listed under Constraints in `CLAUDE.md`,
+  even when the user's own words carry it. Write "the home server" or "the host". Nothing from
+  memory notes or other private context either, and never a memory note's name: only what the
+  repo, its issues, the runs and the user's own words show. No guess at the host's setup, and
+  nothing about the user they did not say ("seen twice on the home server", not "reported by the
+  repo owner").
 
 ## 1. Bug found by reading the code
 
