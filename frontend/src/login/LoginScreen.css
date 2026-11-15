@@ -11,13 +11,15 @@
    --control and --card-gap are the same lengths wherever they are used, whatever the font size
    there. --control is the height of the fields and of the buttons' faces, a touch target at the
    least. Below 786px tall --control is that 44px, more of the window the shorter it is, so the
-   gaps between the cards close from 18px at 900px tall to 10px at 700px: signed in, with every
-   error line showing, the page then still fits 800x700. */
+   gaps between the cards close from 18px at 900px tall to 10px at 700px. Signed in, the widest
+   Discord username (32 m's) takes the account's line to three lines, and with every error line
+   showing the page fills about the whole window from 786px to 950px tall, where everything scales
+   with the window: half an em between a card's lines leaves it room at every tested size. */
 .login-body {
     --login-font: clamp(13px, 2vh, 19px);
     --card-width: calc(var(--login-font) * 30);
     --control: max(44px, calc(var(--login-font) * 2.8));
-    --card-gap: calc(var(--login-font) * 0.6);
+    --card-gap: calc(var(--login-font) * 0.5);
     --page-gap: clamp(10px, 4vh - 18px, 18px);
     display: flex;
     flex-direction: column;
