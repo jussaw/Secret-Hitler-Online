@@ -27,7 +27,7 @@ class Opened {
 /** A sign-in link to Discord for `code`: the client's own origin (an absolute URL), then the path. */
 const discordLink = (code: string) => new RegExp(`^https?://[^/]+/auth/discord\\?lobby=${code}$`);
 
-const prompt =(page: Page) => page.locator("#alert-box.appear-custom-alert");
+const prompt = (page: Page) => page.locator("#alert-box.appear-custom-alert");
 
 test("a signed-out visitor can only watch", async ({ page, browser }) => {
   const opened = new Opened();
