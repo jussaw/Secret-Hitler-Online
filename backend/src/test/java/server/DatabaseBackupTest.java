@@ -5,6 +5,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import game.datastructures.Player;
 import java.io.File;
 import java.io.InputStream;
@@ -20,6 +22,7 @@ import java.util.stream.Collectors;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.slf4j.LoggerFactory;
 import server.util.FakeSocket;
 import server.util.Lobby;
 
@@ -115,10 +118,24 @@ public class DatabaseBackupTest {
         try (InputStream fixture = getClass().getResourceAsStream("/backup-before-spectators.db")) {
             Files.copy(fixture, new File(dbPath()).toPath());
         }
-        ConcurrentHashMap<String, Lobby> loaded = load();
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger) LoggerFactory
+                .getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+        root.addAppender(appender);
+        ConcurrentHashMap<String, Lobby> loaded;
+        try {
+            loaded = load();
+        } finally {
+            root.detachAppender(appender);
+        }
 
         assertEquals(Set.of("WXYZ"), loaded.keySet());
+        assertEquals(1, appender.list.stream().filter(
+                e -> e.getFormattedMessage().equals("Dropped lobby ABCD: its game was backed up before accounts."))
+                .count());
         Lobby idle = loaded.get("WXYZ");
+        assertTrue(idle.wasBackedUpBeforeAccounts());
         assertFalse(idle.isInGame());
         assertEquals(0, idle.getSpectatorCount());
         assertNull(idle.joinRefusal("acct-Ann", null));
