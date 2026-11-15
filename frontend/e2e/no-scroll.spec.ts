@@ -493,7 +493,7 @@ function measureLobby(page: Page) {
  * Every lobby check at one window size. Windows 5:4 or wider put the roster in the column at the
  * left; narrower ones put it across the top, and are touch screens.
  */
-async function checkLobby(page: Page, size: Size, viewer: string) {
+async function checkLobby(page: Page, size: Size, viewer: string, players: number) {
   await page.setViewportSize(size);
   const at = `${size.width}x${size.height} for the ${viewer}`;
 
@@ -503,7 +503,7 @@ async function checkLobby(page: Page, size: Size, viewer: string) {
   expect(overflow.offscreen, `past the edge at ${at}`).toEqual([]);
 
   const lobby = await measureLobby(page);
-  expect(lobby.rows, `roster rows at ${at}`).toBe(10);
+  expect(lobby.rows, `roster rows at ${at}`).toBe(players);
   // The status card keeps two lines' height, so the longest line does not grow it.
   const status = await lobbyStatusCard(page);
   expect(
@@ -534,8 +534,8 @@ test("the lobby fits every desktop size and narrow window, for the host, a guest
 }) => {
   test.setTimeout(240_000);
   // Each viewer has a page (and cookies) of its own, with the project's browser settings.
-  const others = await Promise.all(Array.from({ length: 4 }, () => browser.newPage()));
-  const [guest, signedIn, signedOut, noDiscord] = others;
+  const others = await Promise.all(Array.from({ length: 5 }, () => browser.newPage()));
+  const [guest, signedIn, signedOut, noDiscord, failed] = others;
   try {
     const { sockets, viewers } = await longestLineViewers(baseURL!, {
       host: page,
@@ -543,14 +543,17 @@ test("the lobby fits every desktop size and narrow window, for the host, a guest
       signedIn,
       signedOut,
       noDiscord,
+      failed,
     });
     try {
-      for (const { viewer, page: viewerPage, buttons } of viewers) {
+      for (const { viewer, page: viewerPage, players, buttons, note } of viewers) {
         expect(await actionLabels(viewerPage), `the ${viewer}'s buttons`).toEqual(buttons);
         await settle(viewerPage);
         for (const size of [...DESKTOP_SIZES, ...SQUARE_DESKTOPS, ...NARROW_WINDOWS]) {
-          await checkLobby(viewerPage, size, viewer);
+          await checkLobby(viewerPage, size, viewer, players);
         }
+        // The note measured is the one meant.
+        if (note !== undefined) await expect(viewerPage.locator("#lobby-note")).toHaveText(note);
       }
     } finally {
       sockets.forEach((ws) => ws.close());

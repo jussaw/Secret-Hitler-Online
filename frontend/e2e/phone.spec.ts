@@ -115,8 +115,8 @@ for (const narrow of [false, true]) {
     test.setTimeout(120_000);
     if (narrow) await narrowPhone(page);
     // Each viewer has a page (and cookies) of its own, with the project's phone settings.
-    const others = await Promise.all(Array.from({ length: 4 }, () => browser.newPage()));
-    const [host, signedIn, signedOut, noDiscord] = others;
+    const others = await Promise.all(Array.from({ length: 5 }, () => browser.newPage()));
+    const [host, signedIn, signedOut, noDiscord, failed] = others;
     try {
       const { width, height } = page.viewportSize()!;
       for (const other of others) await other.setViewportSize({ width, height });
@@ -126,10 +126,12 @@ for (const narrow of [false, true]) {
         signedIn,
         signedOut,
         noDiscord,
+        failed,
       });
       try {
-        for (const { viewer, page: viewerPage, buttons } of viewers) {
+        for (const { viewer, page: viewerPage, buttons, note } of viewers) {
           expect(await actionLabels(viewerPage), `the ${viewer}'s buttons`).toEqual(buttons);
+          if (note !== undefined) await expect(viewerPage.locator("#lobby-note")).toHaveText(note);
           await settle(viewerPage);
           // The 320px phone may scroll down, never sideways, and its status line may take a third
           // line.

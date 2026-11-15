@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { CONTACT_ERROR } from "../src/lobby/joinError";
 import type { Box } from "./layout";
 import {
   LONGEST_DISCORD_NAME,
@@ -227,39 +228,103 @@ export async function longestLineLobby(
   }
 }
 
-/** One viewer of a lobby layout test: who it is, its page, and the buttons it gets (actionLabels). */
-export type LobbyViewer = { viewer: string; page: Page; buttons: string[] };
+/**
+ * One viewer of a lobby layout test: who it is, its page, the players its lobby has, the buttons it
+ * gets (actionLabels) and, for a spectator, the note under them (#lobby-note, "" for none).
+ */
+export type LobbyViewer = { viewer: string; page: Page; players: number; buttons: string[]; note?: string };
 
 const PLAYER_BUTTONS = ["CHANGE NAME", "CHANGE LOOK", "WATCH INSTEAD", "LEAVE LOBBY"];
+const FULL_NOTE = "The lobby is full (10 / 10). You can play when a seat frees up.";
+
+/**
+ * A signed-in spectator's longest note, on `page`: PLAY INSTEAD's CONTACT_ERROR, from a
+ * /check-login that never answers, in a lobby with a seat free, where the note is not the full
+ * lobby's. The lobby has nine raw guests, all still picking a look, so the spectator reads the
+ * longest line too ("You are watching. Waiting for <the first guest> and 8 others to pick a
+ * look."); a raw account that never joins makes it. Returns the guests' sockets, which the caller
+ * closes.
+ */
+async function failedPlayInstead(baseURL: string, page: Page): Promise<WebSocket[]> {
+  const maker = await signInRaw(baseURL, uniqueName("Maker"));
+  const made = await fetch(new URL("/new-lobby", baseURL), { headers: { Cookie: maker } });
+  if (made.status !== 200) throw new Error(`/new-lobby answered ${made.status}: ${await made.text()}`);
+  const lobby = await made.text();
+  const guests = await joinGuests(baseURL, lobby, 9, { pickLooks: false });
+  try {
+    await signInPage(page, uniqueName("Watcher"));
+    await watchLobby(page, lobby);
+    await waitForPlayers(page, 9);
+    await expect(page.locator("#lobby-status-text")).toHaveText(
+      `You are watching. Waiting for ${guests[0].name} and 8 others to pick a look.`
+    );
+    await page.route("**/check-login?**", (route) => route.abort());
+    await page.getByRole("button", { name: "PLAY INSTEAD" }).click();
+    await expect(page.locator("#lobby-note")).toHaveText(CONTACT_ERROR);
+    return guests;
+  } catch (error) {
+    guests.forEach((ws) => ws.close());
+    throw error;
+  }
+}
 
 /**
  * longestLineLobby, seen by every kind of viewer, each on a page of its own: the host and a guest
  * (the four player buttons, the host START GAME above them), and three spectators, signed in
  * (PLAY INSTEAD, off in the full lobby), signed out on a server with Discord sign-in (SIGN IN TO
  * PLAY, a link), and signed out on one without (SIGN IN TO PLAY off); both signed-out pages' /me
- * are stubbed. Returns the raw guests' sockets, which the caller closes.
+ * are stubbed. A sixth, `failed`, is a signed-in spectator of another lobby, with a seat free,
+ * whose PLAY INSTEAD could not reach the server: the longest note a spectator gets
+ * (failedPlayInstead). Returns the raw guests' sockets, which the caller closes.
  */
 export async function longestLineViewers(
   baseURL: string,
-  pages: { host: Page; guest: Page; signedIn: Page; signedOut: Page; noDiscord: Page }
+  pages: { host: Page; guest: Page; signedIn: Page; signedOut: Page; noDiscord: Page; failed: Page }
 ): Promise<{ sockets: WebSocket[]; viewers: LobbyViewer[] }> {
-  const { host, guest, signedIn, signedOut, noDiscord } = pages;
+  const { host, guest, signedIn, signedOut, noDiscord, failed } = pages;
   await signInPage(signedIn, uniqueName("Watcher"));
   // Both signed-out pages' /me are stubbed, so the server's own Discord setting decides neither.
   await stubMe(signedOut, signedOutMe({ discord: true }));
   await stubMe(noDiscord, signedOutMe({ discord: false }));
   const { sockets } = await longestLineLobby(baseURL, { host, guest, spectators: [signedIn, signedOut, noDiscord] });
+  try {
+    sockets.push(...(await failedPlayInstead(baseURL, failed)));
+  } catch (error) {
+    sockets.forEach((ws) => ws.close());
+    throw error;
+  }
   return {
     sockets,
     viewers: [
-      { viewer: "host", page: host, buttons: ["START GAME", ...PLAYER_BUTTONS] },
-      { viewer: "guest", page: guest, buttons: PLAYER_BUTTONS },
-      { viewer: "signed-in spectator", page: signedIn, buttons: ["PLAY INSTEAD", "LEAVE LOBBY"] },
-      { viewer: "signed-out spectator", page: signedOut, buttons: ["SIGN IN TO PLAY", "LEAVE LOBBY"] },
+      { viewer: "host", page: host, players: 10, buttons: ["START GAME", ...PLAYER_BUTTONS] },
+      { viewer: "guest", page: guest, players: 10, buttons: PLAYER_BUTTONS },
+      {
+        viewer: "signed-in spectator",
+        page: signedIn,
+        players: 10,
+        buttons: ["PLAY INSTEAD", "LEAVE LOBBY"],
+        note: FULL_NOTE,
+      },
+      {
+        viewer: "signed-out spectator",
+        page: signedOut,
+        players: 10,
+        buttons: ["SIGN IN TO PLAY", "LEAVE LOBBY"],
+        note: FULL_NOTE,
+      },
       {
         viewer: "signed-out spectator without Discord",
         page: noDiscord,
+        players: 10,
         buttons: ["SIGN IN TO PLAY", "LEAVE LOBBY"],
+        note: "Sign-in is not set up on this server.",
+      },
+      {
+        viewer: "signed-in spectator whose PLAY INSTEAD failed",
+        page: failed,
+        players: 9,
+        buttons: ["PLAY INSTEAD", "LEAVE LOBBY"],
+        note: CONTACT_ERROR,
       },
     ],
   };
