@@ -244,6 +244,8 @@ public class Lobby implements Serializable {
 
     /** Why the lobby refuses a player's connection under a name ({@code joinRefusal}). */
     public enum JoinRefusal {
+        /** The name is empty or only whitespace, which the page never sends (#63). */
+        BLANK_NAME,
         /** Another live connection holds the name, and this one does not bring its rejoin key. */
         NAME_TAKEN,
         /** Every seat is taken, and the name is not taking back its own. */
@@ -262,10 +264,13 @@ public class Lobby implements Serializable {
      *
      * @param name      the name of the user.
      * @param rejoinKey the key the connection brings, or null for none (never empty).
-     * @return the first refusal that applies, in the order {@code NAME_TAKEN}, {@code FULL},
-     *         {@code IN_GAME}, or null.
+     * @return the first refusal that applies, in the order {@code BLANK_NAME}, {@code NAME_TAKEN},
+     *         {@code FULL}, {@code IN_GAME}, or null.
      */
     synchronized public JoinRefusal joinRefusal(String name, String rejoinKey) {
+        if (name.isBlank()) {
+            return JoinRefusal.BLANK_NAME;
+        }
         // The page whose connection holds this name, reconnecting: its old connection is dead, though
         // the server may not see that for up to the idle timeout (a phone that changed networks).
         boolean reclaiming = hasLiveConnectionWithKey(name, rejoinKey);

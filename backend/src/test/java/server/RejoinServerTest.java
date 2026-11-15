@@ -40,7 +40,8 @@ import server.util.Lobby;
  * a page whose network dropped without the server noticing takes its name back from its own dead
  * connection by bringing the same rejoin key (#26), which no other connection can do. Two
  * connections that arrive at once for one name, or for the last seat, are checked and added one at
- * a time, so the second gets what it would get had it come later (#43). Over real sockets.
+ * a time, so the second gets what it would get had it come later (#43). A connection with a blank
+ * name is refused and never joins (#63). Over real sockets.
  */
 public class RejoinServerTest {
     private static Javalin app;
@@ -99,6 +100,13 @@ public class RejoinServerTest {
         TestSocket socket = TestSocket.connect(port, query);
         sockets.add(socket);
         return socket;
+    }
+
+    /** Opens a player's socket with {@code query}, and checks the server refuses it: 1002 and {@code reason}. */
+    private void assertRefused(String query, String reason) throws Exception {
+        TestSocket.CloseInfo refused = connect(query).awaitClose();
+        assertEquals(query, 1002, refused.code);
+        assertEquals(query, reason, refused.reason);
     }
 
     private static JSONObject command(String code, String name, String command) {
@@ -202,9 +210,7 @@ public class RejoinServerTest {
         List<TestSocket> players = startGame(code, "Ann", "Bob", "Cat", "Dan", "Eve");
 
         assertEquals(488, checkLogin("lobby=" + code + "&name=Ann").statusCode());
-        TestSocket.CloseInfo refused = connect("lobby=" + code + "&name=Ann").awaitClose();
-        assertEquals(1002, refused.code);
-        assertEquals("A user with the name Ann is already in the lobby.", refused.reason);
+        assertRefused("lobby=" + code + "&name=Ann", "A user with the name Ann is already in the lobby.");
         assertTrue("the first connection is untouched", players.get(0).isOpen());
         assertTrue(lobby.hasUserWithName("Ann"));
 
@@ -213,8 +219,7 @@ public class RejoinServerTest {
         TestSocket rejoined = connect("lobby=" + code + "&name=Ann");
         rejoined.nextState("CHANCELLOR_NOMINATION");
         assertEquals(488, checkLogin("lobby=" + code + "&name=Ann").statusCode());
-        refused = connect("lobby=" + code + "&name=Ann").awaitClose();
-        assertEquals("A user with the name Ann is already in the lobby.", refused.reason);
+        assertRefused("lobby=" + code + "&name=Ann", "A user with the name Ann is already in the lobby.");
         assertTrue(rejoined.isOpen());
     }
 
@@ -370,9 +375,7 @@ public class RejoinServerTest {
         List<TestSocket> players = startGame(code, "Ann", "Bob", "Cat", "Dan", "Eve");
 
         for (String key : List.of("&rejoinKey=" + keyOf("Bob"), "&rejoinKey=", "")) {
-            TestSocket.CloseInfo refused = connect("lobby=" + code + "&name=Ann" + key).awaitClose();
-            assertEquals(key, 1002, refused.code);
-            assertEquals(key, "A user with the name Ann is already in the lobby.", refused.reason);
+            assertRefused("lobby=" + code + "&name=Ann" + key, "A user with the name Ann is already in the lobby.");
         }
         assertTrue("Ann's connection is untouched", players.get(0).isOpen());
         assertTrue(lobby.hasUserWithName("Ann"));
@@ -386,9 +389,8 @@ public class RejoinServerTest {
         TestSocket ann = connect("lobby=" + code + "&name=Ann");
         ann.next("lobby");
 
-        TestSocket.CloseInfo refused = connect("lobby=" + code + "&name=Ann&rejoinKey=" + keyOf("Ann"))
-                .awaitClose();
-        assertEquals("A user with the name Ann is already in the lobby.", refused.reason);
+        assertRefused("lobby=" + code + "&name=Ann&rejoinKey=" + keyOf("Ann"),
+                "A user with the name Ann is already in the lobby.");
         assertTrue(ann.isOpen());
     }
 
@@ -414,16 +416,44 @@ public class RejoinServerTest {
         String full = "RJAP";
         lobby(full);
         players(full, "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10");
-        TestSocket.CloseInfo refused = connect("lobby=" + full + "&name=Zed").awaitClose();
-        assertEquals(1002, refused.code);
-        assertEquals("The lobby " + full + " is currently full.", refused.reason);
+        assertRefused("lobby=" + full + "&name=Zed", "The lobby " + full + " is currently full.");
 
         String playing = "RJAQ";
         lobby(playing);
         startGame(playing, "Ann", "Bob", "Cat", "Dan", "Eve");
-        refused = connect("lobby=" + playing + "&name=Zed").awaitClose();
-        assertEquals(1002, refused.code);
-        assertEquals("The lobby " + playing + " is currently in a game..", refused.reason);
+        assertRefused("lobby=" + playing + "&name=Zed", "The lobby " + playing + " is currently in a game..");
+    }
+
+    /**
+     * #63: the refusal of a blank name had no return, so the closed connection was added anyway,
+     * and as its close had come first nothing ever took it out: a seat, a roster row and a portrait
+     * never picked, for as long as the lobby lived. Each blank name here, the page's rejoin key
+     * included, got in before the fix, as none of them was taken yet.
+     */
+    @Test
+    public void aBlankNameIsRefusedAndNeverJoins() throws Exception {
+        String code = "RJAR";
+        Lobby lobby = lobby(code);
+        TestSocket ann = players(code, "Ann").get(0);
+
+        for (String nameAndKey : List.of("%20%20&rejoinKey=a-key", "", "%20%20")) {
+            assertRefused("lobby=" + code + "&name=" + nameAndKey, "Lobby and name must be specified.");
+        }
+
+        // Bob joins after every refusal, so the packets of his join show whether any of them got in.
+        TestSocket bob = connect("lobby=" + code + "&name=Bob");
+        assertEquals(List.of("Ann", "Bob"), usernames(bob.next("lobby")));
+        while (!usernames(ann.next("lobby")).contains("Bob")) {
+            // skip Ann's packets from before Bob's join
+        }
+        for (JSONObject packet : ann.received()) {
+            if ("lobby".equals(packet.optString("type"))) {
+                assertTrue(packet.toString(), usernames(packet).stream().noneMatch(String::isBlank));
+            }
+        }
+        assertEquals(2, lobby.getUserCount());
+        assertFalse(lobby.hasUserWithName(""));
+        assertFalse(lobby.hasUserWithName("  "));
     }
 
     /** How long the first add of a race waits for the second connection: long enough for a slow run. */

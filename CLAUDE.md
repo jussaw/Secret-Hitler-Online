@@ -64,7 +64,10 @@ keeps credit to upstream and to the board game's creators.
   `Lobby.addUser` enforces it too. `onWebsocketConnect` asks it and adds the connection in one
   step under the lobby's lock, so of two connections arriving at once for one name or for the
   last seat, the second is refused with 1002 and the reason it would get had it arrived later,
-  not failed with 1011 by the add (`RejoinServerTest`).
+  not failed with 1011 by the add (`RejoinServerTest`). Its first refusal is a blank name
+  (`BLANK_NAME`, "Lobby and name must be specified."), which the page never sends: a socket the
+  handler closed but went on to add would hold a seat for good, as its close came before the add
+  (`LobbyBlankNameTest`, `RejoinServerTest`, issue #63).
 - `frontend/`: React 18 and TypeScript 5, built with Vite and tested with Vitest. The entry is
   `src/main.tsx`, with `index.html` at the `frontend/` root, whose description is one plain line
   and which has no preview image, so an invite link previews as that line (`linkPreview.test.ts`).
