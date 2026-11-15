@@ -1,5 +1,14 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { createLobby, joinGuests, joinLobby, lobbyCode, waitForPlayers, watchLobby } from "./lobby";
+import {
+  codeField,
+  createLobby,
+  joinGuests,
+  joinLobby,
+  lobbyCode,
+  nameField,
+  waitForPlayers,
+  watchLobby,
+} from "./lobby";
 
 /**
  * What a test opened, so `finally` closes it even when setup fails half way. `browser.newPage()`
@@ -171,8 +180,8 @@ test("a reload keeps each switch, and coming back as Sam keeps the look", async 
     );
 
     await page.reload();
-    await expect(page.getByRole("textbox", { name: "Your Name" }).first()).toHaveValue("Sam");
-    await expect(page.getByRole("textbox", { name: "Lobby" })).toHaveValue(code);
+    await expect(nameField(page)).toHaveValue("Sam");
+    await expect(codeField(page)).toHaveValue(code);
     expect(await lobbyCode(page)).toBe(code);
   } finally {
     await opened.close();

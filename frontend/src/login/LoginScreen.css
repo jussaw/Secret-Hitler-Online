@@ -1,0 +1,175 @@
+@import '../variables.css';
+
+/* The login page in the lobby's look: the game's header (GameScreen.css lists .login-screen beside
+   the lobby and the game for the page and its header), then the cards and the footer, in one
+   column centred both ways. On phones the column starts at the top and takes the window's width.
+   LobbyScreen.css lists this page's selectors beside the lobby's for the cards' look, the fields'
+   focus, the centring and the footer; this file holds what only the login page has. */
+
+/* --login-font is the column's text size, set in px and window units only, so --card-width,
+   --control and --card-gap are the same lengths wherever they are used, whatever the font size
+   there. --control is the height of the fields and of the buttons' faces, a touch target at the
+   least. */
+.login-body {
+    --login-font: clamp(13px, 2vh, 19px);
+    --card-width: calc(var(--login-font) * 30);
+    --control: max(44px, calc(var(--login-font) * 2.8));
+    --card-gap: calc(var(--login-font) * 0.6);
+    --page-gap: clamp(10px, 2vh, 18px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--page-gap);
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 0;
+    padding: 16px;
+    font-family: var(--textFont);
+    font-size: var(--login-font);
+}
+
+.login-cards {
+    display: flex;
+    flex-direction: column;
+    gap: var(--page-gap);
+    width: min(100%, var(--card-width));
+}
+
+.login-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--card-gap);
+    padding: 1em 1.6em 1.2em;
+}
+
+/* App.css's h2, sized for the card. In YOUR NAME the heading is the field's label. */
+.login-card h2 {
+    margin: 0;
+    font-size: 1.6em;
+    line-height: 1.1;
+    letter-spacing: 0.04em;
+}
+
+/* App.css's input look (white, with the dark text), sized for the card. 16px text at the least, so
+   iOS Safari does not zoom into a field. */
+.login-card input {
+    box-sizing: border-box;
+    min-width: 0;
+    height: var(--control);
+    min-height: 0;
+    margin: 0;
+    padding: 0 0.7em;
+    font-size: max(16px, calc(var(--login-font) * 1.1));
+    font-weight: 500;
+    border-radius: 0.4em;
+}
+
+#login-name-field {
+    width: min(100%, calc(var(--login-font) * 17));
+}
+
+/* Wide enough for its placeholder, in its own text size. */
+#login-lobby-field {
+    flex: none;
+    width: 7.6em;
+}
+
+/* The code, JOIN and WATCH share a row, the code at the left. A window too narrow for the row puts
+   JOIN and WATCH together on the next line. */
+.login-join-row,
+.login-join-buttons {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: var(--card-gap) calc(var(--login-font) * 0.6);
+}
+
+.login-join-row {
+    flex-wrap: wrap;
+    max-width: 100%;
+}
+
+/* App.css's button, its face as tall as the fields. Its shadow is part of its box (App.css), and
+   here takes its room in the card. */
+.login-card button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: calc(var(--control) + var(--button-depth));
+    min-height: 0;
+    margin: 0;
+    padding: 0 0.7em;
+    font-size: 1.5em;
+}
+
+.login-start button {
+    padding: 0 1.1em;
+}
+
+.login-hint {
+    margin: 0;
+    font-size: 0.85em;
+    font-weight: 500;
+    line-height: 1.3;
+    color: #b9ab9f;
+}
+
+/* Each error line stays in the page, empty, so screen readers hear it when it changes. Empty, a
+   negative margin takes back the card's gap above it, so it takes no room. */
+.login-error {
+    margin: 0;
+    font-size: 0.9em;
+    font-weight: 700;
+    line-height: 1.3;
+    color: #f08a5d;
+}
+
+.login-error:empty {
+    margin-top: calc(-1 * var(--card-gap));
+}
+
+.login-footer {
+    width: min(100%, var(--card-width));
+    line-height: 1.45;
+}
+
+.login-footer p {
+    margin: 0;
+    font-size: inherit;
+    font-weight: 500;
+    color: inherit;
+}
+
+.login-footer .login-credit {
+    margin-top: 0.5em;
+    font-size: 0.9em;
+}
+
+/* Phones only: the column from the top, as wide as the window less a gutter, with sizes that follow
+   the window's width. The query is GameScreen.css's phone-only one. The page is as tall as its
+   column and scrolls if it must (at 320x568). */
+@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
+    .login-body {
+        --login-font: clamp(13px, 4vw, 16px);
+        --card-width: 100%;
+        --page-gap: 12px;
+        padding: 12px 12px 16px;
+    }
+
+    .login-card {
+        padding: 0.8em 0.8em 1em;
+    }
+
+    /* The code, JOIN and WATCH keep one row down to 360px wide, where Linux, which draws Germania
+       One wider than macOS, still leaves the row some room. At 320px JOIN and WATCH may take the
+       next line. */
+    .login-card button {
+        padding: 0 0.6em;
+        font-size: 1.35em;
+    }
+
+    .login-start button {
+        padding: 0 1em;
+    }
+}

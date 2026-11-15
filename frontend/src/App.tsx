@@ -1,7 +1,6 @@
 import React, { Component } from "react";
 import "./App.css";
 import "./fonts.css";
-import MaxLengthTextField from "./util/MaxLengthTextField";
 import CustomAlert, { ALERT_FADE_OUT_MS } from "./custom-alert/CustomAlert";
 import RoleAlert from "./custom-alert/RoleAlert";
 import EventBar from "./event-bar/EventBar";
@@ -20,7 +19,6 @@ import {
   SERVER_ADDRESS,
   WEBSOCKET,
   PARAM_USERNAMES,
-  LOBBY_CODE_LENGTH,
   PARAM_STATE,
   STATE_CHANCELLOR_NOMINATION,
   STATE_CHANCELLOR_VOTING,
@@ -54,7 +52,6 @@ import {
   PARAM_INVESTIGATION,
   PARAM_SPECTATOR,
   PARAM_SPECTATOR_COUNT,
-  MAX_NAME_LENGTH,
 } from "./constants";
 
 import PlayerDisplay, {
@@ -82,9 +79,7 @@ import VictoryLiberalHeader from "./assets/victory-liberal-header.png";
 import IconSelection from "./custom-alert/IconSelection";
 import { defaultPortrait } from "./assets";
 import LobbyScreen from "./lobby/LobbyScreen";
-import LoginPageContent from "./LoginPageContent";
 import Cookies from "js-cookie";
-import AnnouncementBox from "./util/AnnouncementBox";
 import {
   GameState,
   LobbyState,
@@ -96,7 +91,9 @@ import {
 import { sounds, type SoundName } from "./sound/SoundManager";
 import SoundControl from "./sound/SoundControl";
 import { CONNECT_ERROR, CONTACT_ERROR, joinErrorMessage } from "./lobby/joinError";
+import { normalizeCode } from "./lobby/normalizeCode";
 import { normalizeName } from "./lobby/normalizeName";
+import LoginScreen from "./login/LoginScreen";
 import PlayInsteadPrompt from "./custom-alert/PlayInsteadPrompt";
 import { lobbySounds, SOUND_CUES, soundEvents, type Cue } from "./sound/soundEvents";
 import {
@@ -167,10 +164,13 @@ if (DEBUG) {
 // TODO: Remove this type and replace with actual state variables.
 type AppState = {
   page: PAGE;
-  joinName: string;
+  /** The login page's one name field, shared by JOIN and CREATE LOBBY. */
+  loginName: string;
+  /** The JOIN A GAME card's code field, shared by JOIN and WATCH. */
   joinLobby: string;
+  /** The JOIN A GAME card's error line. */
   joinError: string;
-  createLobbyName: string;
+  /** The OR START ONE card's error line. */
   createLobbyError: string;
   name: string;
   lobby: string;
@@ -200,13 +200,17 @@ type AppState = {
   allAnimationsFinished: boolean;
 };
 
+/** The login page's fields and error lines, which are filled and emptied together. */
+type LoginForm = Pick<AppState, "loginName" | "joinLobby" | "joinError" | "createLobbyError">;
+
+/** The login page's fields as given, and its error lines empty unless JOIN's is given. */
+function loginForm(name = "", lobby = "", joinError = ""): LoginForm {
+  return { loginName: name, joinLobby: lobby, joinError, createLobbyError: "" };
+}
+
 const defaultAppState: AppState = {
   page: PAGE.LOGIN,
-  joinName: "",
-  joinLobby: "",
-  joinError: "",
-  createLobbyName: "",
-  createLobbyError: "",
+  ...loginForm(),
   name: "P1",
   lobby: "AAAAAA",
   spectator: false,
@@ -291,14 +295,12 @@ class App extends Component<{}, AppState> {
 
     let name = Cookies.get(COOKIE_NAME) ? Cookies.get(COOKIE_NAME) : "";
     let lobby = Cookies.get(COOKIE_LOBBY) ? Cookies.get(COOKIE_LOBBY) : "";
-    // A lobby link (?lobby=CODE) fills the Lobby field in place of the saved lobby.
+    // A lobby link (?lobby=CODE) fills the code field in place of the saved lobby.
     const linked = new URLSearchParams(window.location.search).get("lobby");
 
     this.state = {
       ...defaultAppState,
-      joinName: name || "",
-      joinLobby: linked !== null ? linked.toUpperCase().substring(0, 4) : lobby || "",
-      createLobbyName: name || "",
+      ...loginForm(name || "", linked !== null ? normalizeCode(linked) : lobby || ""),
     };
 
     // These are necessary for handling class fields safely (ex: websocket)
@@ -382,7 +384,7 @@ class App extends Component<{}, AppState> {
     document.addEventListener("visibilitychange", this.onVisibilityChange);
     const lobby = Cookies.get(COOKIE_LOBBY);
     const linked = new URLSearchParams(window.location.search).get("lobby");
-    const otherLobby = linked !== null && linked.toUpperCase().substring(0, 4) !== lobby;
+    const otherLobby = linked !== null && normalizeCode(linked) !== lobby;
     if (Cookies.get(COOKIE_SPECTATOR) === "true" && lobby && !otherLobby) {
       this.watch(lobby);
     }
@@ -497,11 +499,7 @@ class App extends Component<{}, AppState> {
       name: name,
       lobby: lobby,
       spectator: spectator,
-      joinName: "",
-      joinLobby: "",
-      joinError: "",
-      createLobbyName: "",
-      createLobbyError: "",
+      ...loginForm(),
     });
     ws.onmessage = (msg) => this.onWebSocketMessage(msg);
     ws.onclose = (event) => {
@@ -655,7 +653,7 @@ class App extends Component<{}, AppState> {
    * Leaves for the login page with the lobby code and the name to rejoin under filled in: stops the
    * ping and any waiting reconnect, closes the alert and any PLAY INSTEAD prompt, and empties the
    * animation queue.
-   * @param error the message under JOIN ("" for none).
+   * @param error the message under JOIN and WATCH ("" for none).
    */
   toLoginPage(error: string) {
     if (this.pingInterval) {
@@ -665,9 +663,7 @@ class App extends Component<{}, AppState> {
     this.stopReconnecting();
     this.setState({
       page: PAGE.LOGIN,
-      joinName: this.rejoinName(),
-      joinLobby: this.state.lobby,
-      joinError: error,
+      ...loginForm(this.rejoinName(), this.state.lobby, error),
       showAlert: false,
       alertContent: <div />,
     });
@@ -675,7 +671,7 @@ class App extends Component<{}, AppState> {
     this.clearAnimationQueue();
   }
 
-  /** The JOIN form's name after leaving: the player's, or for a spectator (who has none) the saved one. */
+  /** The name field's text after leaving: the player's, or for a spectator (who has none) the saved one. */
   rejoinName(): string {
     return this.state.name || (Cookies.get(COOKIE_NAME) ?? "");
   }
@@ -843,53 +839,22 @@ class App extends Component<{}, AppState> {
   /////////////////// Login Page
   // <editor-fold desc="Login Page">
 
-  /**
-   * Updates the "Name" field under Join Game.
-   * @param text the text to update the text field to.
-   */
-  updateJoinName = (text: string) => {
-    this.setState({
-      joinName: text,
-    });
+  /** Updates the one name field, which JOIN and CREATE LOBBY share. */
+  updateLoginName = (text: string) => {
+    this.setState({ loginName: text });
   };
 
-  /**
-   * Updates the Lobby field under Join Game.
-   * @param text the text to update the text field to.
-   */
+  /** Updates the lobby code field, which JOIN and WATCH share. */
   updateJoinLobby = (text: string) => {
-    this.setState({
-      joinLobby: text,
-    });
+    this.setState({ joinLobby: text });
   };
-
-  /**
-   * Updates the Name field under Create Lobby.
-   * @param text the text to update the text field to.
-   */
-  updateCreateLobbyName = (text: string) => {
-    this.setState({
-      createLobbyName: text,
-    });
-  };
-
-  shouldJoinButtonBeEnabled() {
-    return (
-      this.state.joinLobby.length === LOBBY_CODE_LENGTH &&
-      normalizeName(this.state.joinName) !== ""
-    );
-  }
-
-  shouldCreateLobbyButtonBeEnabled() {
-    return normalizeName(this.state.createLobbyName) !== "";
-  }
 
   /**
    * Attempts to connect to the lobby via websocket.
    */
   onClickJoin = () => {
     // Capture the form values: tryOpenWebSocket clears them via setState.
-    const name = normalizeName(this.state.joinName);
+    const name = normalizeName(this.state.loginName);
     const lobby = this.state.joinLobby;
     this.setState({ joinError: "Connecting..." });
     this.tryLogin(name, lobby)
@@ -911,7 +876,7 @@ class App extends Component<{}, AppState> {
       });
   };
 
-  /** Watches the lobby in the Lobby field as a spectator: no name needed. */
+  /** Watches the lobby in the code field as a spectator: no name needed. */
   onClickWatch = () => {
     this.watch(this.state.joinLobby);
   };
@@ -1024,7 +989,7 @@ class App extends Component<{}, AppState> {
    */
   onClickCreateLobby = () => {
     // Capture the form value: tryOpenWebSocket clears it via setState.
-    const name = normalizeName(this.state.createLobbyName);
+    const name = normalizeName(this.state.loginName);
     this.setState({ createLobbyError: "Connecting..." });
     this.tryCreateLobby()
       .then((response) => {
@@ -1046,95 +1011,17 @@ class App extends Component<{}, AppState> {
 
   renderLoginPage() {
     return (
-      <div className="App">
-        <header className="App-header">
-          SECRET-HITLER
-          <SoundControl />
-        </header>
-        <br />
-        <div style={{ textAlign: "center" }}>
-          {/** TODO: Add reusable announcement component. 
-                    <div style={{backgroundColor: "#222222", width: "50vmin", margin: "0 auto", padding: "20px"}}>
-                        <p>
-                            Hello! Secret Hitler Online is currently undergoing some maintenance.
-                            Sorry for the interruption and please check back in in a few hours! -Shrimp
-                        </p>
-                        <p style={{fontStyle: "italic", fontSize: "calc(8px + 1vmin)"}}>(DATE TIME PM PT)</p>
-
-                    </div>
-                    */}
-          <h2>JOIN A GAME</h2>
-          <MaxLengthTextField
-            label={"Lobby"}
-            onChange={this.updateJoinLobby}
-            value={this.state.joinLobby}
-            maxLength={LOBBY_CODE_LENGTH}
-            showCharCount={false}
-            forceUpperCase={true}
-          />
-
-          <MaxLengthTextField
-            label={"Your Name"}
-            onChange={this.updateJoinName}
-            value={this.state.joinName}
-            maxLength={MAX_NAME_LENGTH}
-          />
-          <p id={"errormessage"}>{this.state.joinError}</p>
-          <button
-            onClick={this.onClickJoin}
-            disabled={!this.shouldJoinButtonBeEnabled()}
-          >
-            JOIN
-          </button>
-          <button
-            onClick={this.onClickWatch}
-            disabled={this.state.joinLobby.length !== LOBBY_CODE_LENGTH}
-          >
-            WATCH
-          </button>
-        </div>
-        <br />
-        <div>
-          <h2>CREATE A LOBBY</h2>
-          <MaxLengthTextField
-            label={"Your Name"}
-            onChange={this.updateCreateLobbyName}
-            value={this.state.createLobbyName}
-            maxLength={MAX_NAME_LENGTH}
-          />
-          <p id={"errormessage"}>{this.state.createLobbyError}</p>
-          <button
-            onClick={this.onClickCreateLobby}
-            disabled={!this.shouldCreateLobbyButtonBeEnabled()}
-          >
-            CREATE LOBBY
-          </button>
-        </div>
-        <AnnouncementBox>
-          <h2>Announcing: BOTS!</h2>
-          <p>
-            You can now start games with only 1-4 players; extra spots will be
-            filled by bots.
-          </p>
-          <p>
-            Bots are still in beta, so{" "}
-            <a
-              href={
-                "https://github.com/ShrimpCryptid/Secret-Hitler-Online/issues/44"
-              }
-              target={"_blank"}
-              rel="noreferrer"
-            >
-              leave feedback on GitHub!
-            </a>
-          </p>
-          <p style={{ fontStyle: "italic", fontSize: "calc(8px + 1vmin)" }}>
-            (Please be nice, they are trying their best.)
-          </p>
-        </AnnouncementBox>
-        <br />
-        <LoginPageContent />
-      </div>
+      <LoginScreen
+        name={this.state.loginName}
+        lobby={this.state.joinLobby}
+        joinError={this.state.joinError}
+        createLobbyError={this.state.createLobbyError}
+        onNameChange={this.updateLoginName}
+        onLobbyChange={this.updateJoinLobby}
+        onJoin={this.onClickJoin}
+        onWatch={this.onClickWatch}
+        onCreateLobby={this.onClickCreateLobby}
+      />
     );
   }
 
