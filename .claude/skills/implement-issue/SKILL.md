@@ -87,8 +87,8 @@ it, so the user can decide whether to close the issue.
 
 Of the choices the issue leaves open, settle the small ones yourself and list each in the PR. Ask
 first about one that is hard to undo: stored data, the players' WebSocket protocol, or removing
-something players use. A different bug found on the way is not fixed here; offer to open an issue
-for it in the final report.
+something players use. A different bug found on the way is not fixed here; offer to write it
+up with `/write-issue` in the final report.
 
 ## 5. Verify
 
@@ -204,9 +204,9 @@ whole change>" --body-file <scratchpad file>`. The body has these sections, in o
 
 The PR link and its green checks. For a merged bug, the merge commit and the image tag. For any
 other issue, the question whether to merge it; after the user's yes and the merge, report the merge
-commit and the image tag the same way. Then what changed, the decisions you made,
-anything not run locally, and any issue you offer to open. Boxes that need a person, such as playing
-on the deployed build, stay for the user.
+commit and the image tag the same way. Then what changed, the decisions you made, anything not run
+locally, and any issue you offer to write up with `/write-issue`. Boxes that need a person, such as
+playing on the deployed build, stay for the user.
 
 ## Needs design
 

@@ -310,7 +310,9 @@ keeps credit to upstream and to the board game's creators.
 - `.claude/skills/`: project skills. `implement-issue` (`/implement-issue N`) takes one GitHub issue
   through the Workflow below to a pull request with green CI, which it merges for an issue labelled
   `bug`, then checks the published image. An issue that needs design gets a pushed spec and plan and
-  a prompt for a new session instead.
+  a prompt for a new session instead. `write-issue` (`/write-issue <what you saw or want>`)
+  writes one or more issues in the house style (`formats.md`), tries every bug on `development`
+  first, and posts each only once the user has read its draft and said yes.
 
 ## Commands
 
@@ -380,8 +382,9 @@ so mount a volume at `/data`.
 ## Commits
 
 Conventional Commits, always with a scope: `type(scope): summary`, lowercase imperative summary,
-no trailing period, at most 72 characters. Scopes in use: `frontend`, `backend`, `docker`, `ci`,
-`plan` (`docs/PLAN.md` and its breakdowns), `docs` (other files under `docs/`), `skills`
+no trailing period, at most 72 characters. Scopes in use: `frontend`, `backend`, `docker`, `ci`
+(CI, `.github/workflows/`), `github` (the rest of `.github/`, such as the issue templates), `plan`
+(`docs/PLAN.md` and its breakdowns), `docs` (other files under `docs/`), `skills`
 (`.claude/skills/`), and for top-level documents the file's name (`readme`, `development`,
 `claude`).
 
