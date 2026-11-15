@@ -88,10 +88,12 @@ export default function NamePrompt({
       <p className="prompt-error left-align" role="alert">
         {error}
       </p>
-      <button onClick={onSecondary}>{secondaryLabel}</button>
-      <button onClick={submit} disabled={!canContinue}>
-        {confirmLabel}
-      </button>
+      <div className="name-prompt-buttons">
+        <button onClick={submit} disabled={!canContinue}>
+          {confirmLabel}
+        </button>
+        <button onClick={onSecondary}>{secondaryLabel}</button>
+      </div>
     </div>
   );
 }

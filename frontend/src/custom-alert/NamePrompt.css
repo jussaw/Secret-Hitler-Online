@@ -16,6 +16,22 @@
   font-size: 16px;
 }
 
+/* The confirm button, then the other, on one row however narrow the window: App.css's margins
+   and padding, narrowed with the window. Each keeps App.css's 44px face on phones. */
+.name-prompt-buttons {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+}
+
+.name-prompt-buttons button {
+  flex: none;
+  margin-left: min(18px, 2.5vw);
+  margin-right: min(18px, 2.5vw);
+  padding-left: min(25px, 4vw);
+  padding-right: min(25px, 4vw);
+}
+
 /* Keeps its height when empty, so an error does not move the buttons. */
 .prompt-error {
   min-height: 1.4em;

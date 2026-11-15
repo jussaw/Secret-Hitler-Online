@@ -165,6 +165,23 @@ describe("NamePrompt", () => {
     expect(onContinue).toHaveBeenCalledWith("Sam");
   });
 
+  test("the confirm button comes first, then the other, in one row", () => {
+    const { container } = setup("Sam", undefined, {
+      title: "CHOOSE A NAME",
+      confirmLabel: "CONTINUE",
+      secondaryLabel: "SIGN OUT",
+    });
+    const row = container.querySelector(".name-prompt-buttons")!;
+    expect([...row.querySelectorAll("button")].map((b) => b.textContent)).toEqual([
+      "CONTINUE",
+      "SIGN OUT",
+    ]);
+    expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
+      "CONTINUE",
+      "SIGN OUT",
+    ]);
+  });
+
   test("SAVE and CANCEL labels", () => {
     const { onCancel, onContinue } = setup("Sam", undefined, {
       title: "CHANGE NAME",
