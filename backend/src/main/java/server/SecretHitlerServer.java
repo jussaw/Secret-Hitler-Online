@@ -22,8 +22,6 @@ import server.accounts.Usernames;
 import server.util.Lobby;
 
 import java.io.*;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.sql.*;
 
 import java.text.SimpleDateFormat;
@@ -823,56 +821,136 @@ public class SecretHitlerServer {
         return account == null ? null : account.username();
     }
 
-    /**
-     * Whether a player's socket comes from the server's own pages. The server's own origin is the
-     * scheme, host and port of {@code DISCORD_REDIRECT_URI} when it is set (TLS may end at a proxy
-     * in front of the server, so only that URI knows them); otherwise the host and port of the
-     * request's {@code Host} header. A port left out is its scheme's default (80, or 443 for https).
-     *
-     * @return true iff the {@code Origin} header is an http or https origin with that host and port
-     *         (and scheme). False when it is missing or cannot be read, as {@code null} (a
-     *         sandboxed page's) cannot.
-     */
+    /** Whether a player's socket comes from the server's own pages: {@link #sameOrigin(String, String)}. */
     static boolean sameOrigin(WsContext ctx) {
-        URI origin = webUri(ctx.header("Origin"));
-        if (origin == null) {
+        return sameOrigin(ctx.header("Origin"), ctx.header("Host"));
+    }
+
+    /**
+     * Whether an {@code Origin} header names the server's own origin. That is the scheme, host and
+     * port of {@code DISCORD_REDIRECT_URI} when it is set (TLS may end at a proxy in front of the
+     * server, so only that URI knows them); otherwise the host and port of the request's
+     * {@code Host} header. Hosts compare ignoring case, a port left out is its scheme's default
+     * (80, or 443 for https), and an IPv6 host keeps its brackets. Each is split by hand, not read
+     * with {@code java.net.URI}, which takes a host that is not a DNS name (one with an
+     * underscore, say) for none. Package-private for the tests.
+     *
+     * @param origin the {@code Origin} header: {@code http} or {@code https}, {@code ://}, a host
+     *               and an optional port, and nothing after them.
+     * @param host   the {@code Host} header: a host and an optional port.
+     * @return false when {@code origin} is missing or is no such origin ({@code null}, a sandboxed
+     *         page's, is none), or the origin it is compared with cannot be read.
+     */
+    static boolean sameOrigin(String origin, String host) {
+        WebOrigin from = webOrigin(origin, false);
+        if (from == null) {
             return false;
         }
         String ownUri = ApplicationConfig.DISCORD_REDIRECT_URI;
         if (ownUri != null && !ownUri.isBlank()) {
-            URI own = webUri(ownUri);
-            return own != null && origin.getScheme().equalsIgnoreCase(own.getScheme())
-                    && origin.getHost().equalsIgnoreCase(own.getHost()) && port(origin) == port(own);
+            WebOrigin own = webOrigin(ownUri, true);
+            return own != null && from.scheme().equals(own.scheme()) && from.sameHostAndPort(own);
         }
-        String host = ctx.header("Host");
-        URI served = host == null ? null : webUri(origin.getScheme() + "://" + host);
-        return served != null && origin.getHost().equalsIgnoreCase(served.getHost())
-                && port(origin) == port(served);
+        WebOrigin served = authority(from.scheme(), host);
+        return served != null && from.sameHostAndPort(served);
     }
 
-    /** The text as an http or https URI with a host, or null if it is not one. */
-    private static URI webUri(String text) {
+    /** An http or https origin: its scheme in lower case, its host, and its port (-1 when left out). */
+    private record WebOrigin(String scheme, String host, int port) {
+        private int portOrDefault() {
+            return port != -1 ? port : scheme.equals("https") ? 443 : 80;
+        }
+
+        private boolean sameHostAndPort(WebOrigin other) {
+            return host.equalsIgnoreCase(other.host) && portOrDefault() == other.portOrDefault();
+        }
+    }
+
+    /**
+     * Reads the origin of an http or https URL: the scheme, {@code ://}, then the host and port up
+     * to the first {@code /}, {@code ?} or {@code #}.
+     *
+     * @param urlAllowed whether a path, query or fragment may follow (a URL, such as the redirect
+     *                   URI) or not (an {@code Origin} header).
+     * @return the origin, or null if the text has none.
+     */
+    private static WebOrigin webOrigin(String text, boolean urlAllowed) {
         if (text == null) {
             return null;
         }
-        try {
-            URI uri = new URI(text.trim());
-            String scheme = uri.getScheme();
-            if (uri.getHost() == null || !("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))) {
-                return null;
-            }
-            return uri;
-        } catch (URISyntaxException e) {
+        String url = text.trim();
+        int separator = url.indexOf("://");
+        if (separator < 0) {
             return null;
         }
+        String scheme = url.substring(0, separator).toLowerCase(Locale.ROOT);
+        if (!scheme.equals("http") && !scheme.equals("https")) {
+            return null;
+        }
+        String rest = url.substring(separator + 3);
+        for (int i = 0; i < rest.length(); i++) {
+            if ("/?#".indexOf(rest.charAt(i)) >= 0) {
+                if (!urlAllowed) {
+                    return null;
+                }
+                rest = rest.substring(0, i);
+                break;
+            }
+        }
+        return authority(scheme, rest);
     }
 
-    /** The URI's port, or its scheme's default: 443 for https, 80 for http. */
-    private static int port(URI uri) {
-        if (uri.getPort() != -1) {
-            return uri.getPort();
+    /**
+     * Reads {@code host[:port]}, an IPv6 host in brackets (which it keeps), as an origin of the
+     * scheme.
+     *
+     * @return the origin, or null for none: no host, a character no host has (whitespace, a
+     *         control, {@code @}, a slash, {@code ?}, {@code #}, a bracket outside an IPv6 host, or
+     *         anything beyond ASCII), or a port that is not a number from 0 to 65535.
+     */
+    private static WebOrigin authority(String scheme, String authority) {
+        if (authority == null) {
+            return null;
         }
-        return "https".equalsIgnoreCase(uri.getScheme()) ? 443 : 80;
+        String host;
+        String port = null;
+        if (authority.startsWith("[")) {
+            int close = authority.indexOf(']');
+            if (close < 2 || !hostCharacters(authority.substring(1, close))) {
+                return null;
+            }
+            host = authority.substring(0, close + 1);
+            String after = authority.substring(close + 1);
+            if (!after.isEmpty()) {
+                if (after.charAt(0) != ':') {
+                    return null;
+                }
+                port = after.substring(1);
+            }
+        } else {
+            int colon = authority.indexOf(':');
+            host = colon < 0 ? authority : authority.substring(0, colon);
+            port = colon < 0 ? null : authority.substring(colon + 1);
+            if (host.isEmpty() || !hostCharacters(host)) {
+                return null;
+            }
+        }
+        int number = -1;
+        if (port != null) {
+            if (port.isEmpty() || port.length() > 5 || !port.chars().allMatch(c -> c >= '0' && c <= '9')) {
+                return null;
+            }
+            number = Integer.parseInt(port);
+            if (number > 65535) {
+                return null;
+            }
+        }
+        return new WebOrigin(scheme, host, number);
+    }
+
+    /** Whether every character of the host is printable ASCII other than {@code @ / \ ? # [ ]}. */
+    private static boolean hostCharacters(String host) {
+        return host.chars().allMatch(c -> c > ' ' && c < 127 && "@/\\?#[]".indexOf(c) < 0);
     }
 
     /** The reason a refused player's socket is closed with, for the lobby {@code code}. */
