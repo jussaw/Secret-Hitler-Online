@@ -123,10 +123,11 @@ public class SecretHitlerServer {
     // put their own here.
     public static AccountStore accounts;
 
-    // Taken by every rename (renameAccount) and every game start (startGame), always before any
-    // lobby's lock and never by a thread that holds a lobby's lock without it, so a game start never
-    // falls between a rename's check for seats and its change to the lobbies. Other commands never
-    // take it. A database call may run under it, but never under a lobby's lock.
+    // Taken by every rename (renameAccount), every player's join (onWebsocketConnect) and every
+    // game start (startGame), and by nothing else: always before any lobby's lock, and never by a
+    // thread that holds a lobby's lock without it. So a game start never falls between a rename's
+    // check for seats and its change to the lobbies, and a join never records a name a rename has
+    // just replaced. A database call may run under it, but never under a lobby's lock.
     static final Object ACCOUNTS_LOCK = new Object();
     // </editor-fold>
 
