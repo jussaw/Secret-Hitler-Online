@@ -406,3 +406,4 @@ no trailing period, at most 72 characters. Scopes in use: `frontend`, `backend`,
   repositories (compose stacks, dotfiles), deploy and update tools, LAN addresses, ports, host
   paths, domains and subdomains, or the proxy, tunnel and monitoring setup. Write "the home server"
   or "the host" instead, and keep plans and acceptance notes generic (`https://<subdomain>/ping`).
+  The one exception is the README's link to the live site, its public address and nothing more.
