@@ -12,8 +12,8 @@ every issue and four skeletons, each with a filled-in example. Both are built te
 `writing-skills` asks: fresh subagents run each scenario without the file (RED), then with it
 (GREEN).
 
-**Tech Stack:** Markdown skill files, `gh`, git worktrees, the repo's own test tools (Gradle/JUnit 4,
-Vitest, Playwright) for reproducing bugs.
+**Tech Stack:** Markdown skill files, `gh`, git worktrees, the repo's own test tools (Gradle/JUnit
+4, Vitest, Playwright) for reproducing bugs.
 
 **Spec:** `docs/superpowers/specs/2026-11-14-write-issue-skill-design.md`
 
@@ -95,9 +95,10 @@ issue is the oracle:
 
 Assertions (`T` is the title, `B` the body):
 
-- All: `T` matches `^(backend|frontend|e2e|ci|docker|docs)(, (backend|frontend|e2e|ci|docker|docs))*: `
-  and the word after the colon is lowercase unless it is a code name; the label is exactly `bug`
-  (F1, F2) or `enhancement` (F3, F4); every code, file and function name is in backticks.
+- All: `T` matches
+  `^(backend|frontend|e2e|ci|docker|docs)(, (backend|frontend|e2e|ci|docker|docs))*: ` and the
+  word after the colon is lowercase unless it is a code name; the label is exactly `bug` (F1, F2)
+  or `enhancement` (F3, F4); every code, file and function name is in backticks.
 - F1: `B` has no `##` heading; its first sentence says where it was found and "Not reproduced yet";
   the case is a numbered list of the three times; `B` links #10, #41 and #26; it ends with a
   paragraph starting `**Possible fix:**` that names a test.
@@ -217,9 +218,9 @@ conditions:
   was found, with references, and ask whether to file anyway. Draft nothing until the user answers.
 - **Draft:** pick the `formats.md` skeleton, write the body to a scratchpad file, check it against
   the Global Constraints.
-- **Show and post:** show each draft's title, label and body; apply the user's edits and show the
-  draft again; post each draft the user OKs, and only those, with `gh issue create --repo … --title
-  "…" --label <bug|enhancement> --body-file <file>`; give the links.
+- **Show and post:** show each draft's title, label and body; apply the user's edits and show
+  the draft again; post each draft the user OKs, and only those, with `gh issue create --repo …
+  --title "…" --label <bug|enhancement> --body-file <file>`; give the links.
 - **Batch:** one subagent per issue, one after another, each with the checkout's path, the commit
   and these steps up to the draft; the main agent shows the drafts together and posts.
 - **Clean up:** delete the throwaway tests, `git -C <parent> worktree remove --force <path>`, then
@@ -263,9 +264,9 @@ Expected: `5:labels: "new feature"`; the lines around 73 and 140.
 
 - `feature_request.md`: `labels: "enhancement"`.
 - `CLAUDE.md`: add a sentence to the `.claude/skills/` bullet, wrapped at 100 columns:
-  "`write-issue` (`/write-issue <what you saw or want>`) writes one or more issues in the house style
-  (`formats.md`), tries every bug on `development` first, and posts each only once the user has read
-  its draft and said yes."
+  "`write-issue` (`/write-issue <what you saw or want>`) writes one or more issues in the house
+  style (`formats.md`), tries every bug on `development` first, and posts each only once the user
+  has read its draft and said yes."
 - `implement-issue`: "offer to open an issue for it in the final report" becomes "offer to write it
   up with `/write-issue` in the final report", and "any issue you offer to open" becomes "any issue
   you offer to write up with `/write-issue`".
@@ -299,11 +300,11 @@ no change; re-run the scenarios a fix touches.
 
 - [ ] **Step 2: Push and open the PR**
 
-`git -C <worktree> push -u origin write-issue-skill`, then `gh pr create --repo … --base development
---head write-issue-skill --title "feat(skills): add the write-issue skill" --body-file <scratchpad
-file>`. The body: "This PR changes nothing on screen."; Changes; Decisions (the "my call" items of
-the spec); Review (each finding and what was done); Tests (each scenario's RED and GREEN result);
-Docs.
+`git -C <worktree> push -u origin write-issue-skill`, then `gh pr create --repo … --base
+development --head write-issue-skill --title "feat(skills): add the write-issue skill" --body-file
+<scratchpad file>`. The body: "This PR changes nothing on screen."; Changes; Decisions (the "my
+call" items of the spec); Review (each finding and what was done); Tests (each scenario's RED and
+GREEN result); Docs.
 
 - [ ] **Step 3: CI and merge**
 
