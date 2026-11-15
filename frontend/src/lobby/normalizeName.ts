@@ -6,15 +6,15 @@ function collapseSpaces(text: string): string {
 }
 
 /**
- * The name a player joins under: runs of whitespace collapsed to one space, then trimmed. JOIN,
- * CREATE LOBBY and PLAY INSTEAD all use it, so a name means the same seat on every path.
+ * A name as it is saved: runs of whitespace collapsed to one space, then trimmed. The server
+ * applies the same rule, so a name means the same on both sides.
  */
 export function normalizeName(name: string): string {
   return collapseSpaces(name).trim();
 }
 
 /**
- * A name as it is being typed into the login page's field: runs of whitespace collapsed to one
+ * A name as it is being typed into the name prompt's field: runs of whitespace collapsed to one
  * space, none at the start, and at most MAX_NAME_LENGTH characters. Its end is left alone, since
  * a space there may be followed by more of the name; normalizeName trims it on the way out.
  */

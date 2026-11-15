@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MAX_NAME_LENGTH } from "../constants";
 import { CONTACT_ERROR } from "../lobby/joinError";
-import { normalizeName } from "../lobby/normalizeName";
+import { normalizeName, typedName } from "../lobby/normalizeName";
 import "./NamePrompt.css";
 
 type NamePromptProps = {
@@ -74,7 +74,7 @@ export default function NamePrompt({
           maxLength={MAX_NAME_LENGTH}
           autoComplete="off"
           onChange={(e) => {
-            setName(e.target.value);
+            setName(typedName(e.target.value));
             setError("");
           }}
           onKeyDown={(e) => {

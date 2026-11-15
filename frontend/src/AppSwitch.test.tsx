@@ -22,6 +22,7 @@ import { LobbyState, Role, WSCommandType } from "./types";
 import IconSelection from "./custom-alert/IconSelection";
 import NamePrompt from "./custom-alert/NamePrompt";
 import { defaultPortrait } from "./assets";
+import type { Me } from "./account/account";
 
 class FakeSocket {
   static instances: FakeSocket[] = [];
@@ -64,23 +65,43 @@ class FakeSocket {
 let checkStatus = 200;
 let checkRejects = false;
 
+/** A signed-in account with a name, as GET /me describes it. */
+const account = (username: string): Me => ({
+  signedIn: true,
+  id: "id-" + username,
+  username,
+  discordUsername: username.toLowerCase(),
+  test: false,
+  discord: true,
+  testSignIn: false,
+});
+
+/** What GET /me answers: the page's account. */
+let me: Me = account("Ann");
+
+/** GET /me's answer. */
+const meResponse = () => new Response(JSON.stringify(me), { status: 200 });
+
 beforeEach(() => {
   FakeSocket.instances = [];
   FakeSocket.failNext = false;
   FakeSocket.connecting = false;
   checkStatus = 200;
   checkRejects = false;
+  me = account("Ann");
   vi.stubGlobal("WebSocket", FakeSocket);
   vi.stubGlobal(
     "fetch",
     vi.fn((url: string) =>
-      String(url).includes("check-login") && checkRejects
-        ? Promise.reject(new Error("down"))
-        : Promise.resolve(
-            new Response(null, {
-              status: String(url).includes("check-login") ? checkStatus : 200,
-            })
-          )
+      String(url).endsWith("/me")
+        ? Promise.resolve(meResponse())
+        : String(url).includes("check-login") && checkRejects
+          ? Promise.reject(new Error("down"))
+          : Promise.resolve(
+              new Response(null, {
+                status: String(url).includes("check-login") ? checkStatus : 200,
+              })
+            )
     )
   );
 });
@@ -103,10 +124,22 @@ const lobbyPacket = {
   [PARAM_ICON]: { Ann: "p1", Ben: "p2" },
 };
 
-async function playerInLobby() {
+/** Renders the page and lets its GET /me answer come in. */
+async function renderApp() {
   const ref = createRef<App>();
   render(<App ref={ref} />);
   const app = ref.current!;
+  for (let i = 0; i < 50 && app.state.account === undefined; i++) {
+    await act(async () => {
+      await Promise.resolve();
+    });
+  }
+  expect(app.state.account).toEqual(me);
+  return app;
+}
+
+async function playerInLobby() {
+  const app = await renderApp();
   act(() => {
     app.tryOpenWebSocket("Ann", "HBIA");
   });
@@ -115,11 +148,9 @@ async function playerInLobby() {
 }
 
 async function spectatorInLobby() {
-  Cookies.set("name", "Sam");
+  me = account("Sam");
   Cookies.set("spectator", "true");
-  const ref = createRef<App>();
-  render(<App ref={ref} />);
-  const app = ref.current!;
+  const app = await renderApp();
   act(() => {
     app.tryOpenWebSocket("", "HBIA", true);
   });
@@ -153,7 +184,6 @@ function loseConnectionForGood(app: App) {
 }
 
 test("WATCH INSTEAD opens a spectator socket and remembers it", async () => {
-  Cookies.set("name", "Ann");
   const app = await playerInLobby();
   act(() => app.onClickWatchInstead());
   expect(lastUrl()).toContain("spectator=true");
@@ -161,7 +191,6 @@ test("WATCH INSTEAD opens a spectator socket and remembers it", async () => {
   expect(lastUrl()).not.toContain("name=");
   expect(FakeSocket.instances[0].closed).toBe(true);
   expect(Cookies.get("spectator")).toBe("true");
-  expect(Cookies.get("name")).toBe("Ann");
   expect(app.state.spectator).toBe(true);
   expect(app.state.page).toBe("lobby");
 });
@@ -198,7 +227,7 @@ test("the old socket closing stays in the lobby", async () => {
   expect(app.state.page).toBe("lobby");
 });
 
-test("PLAY INSTEAD seats the spectator", async () => {
+test("PLAY INSTEAD seats the spectator under the account's name", async () => {
   const app = await spectatorInLobby();
   act(() => app.onClickPlayInstead());
   expect(app.state.showAlert).toBe(true);
@@ -208,8 +237,10 @@ test("PLAY INSTEAD seats the spectator", async () => {
     result = await app.playInstead("Sam");
   });
   expect(result).toBe("");
-  expect(lastUrl()).toContain("name=Sam");
-  expect(Cookies.get("name")).toBe("Sam");
+  expect(lastUrl()).not.toContain("spectator=true");
+  expect(lastUrl()).not.toContain("name=");
+  expect(app.state.name).toBe("Sam");
+  expect(Cookies.get("name")).toBeUndefined();
   expect(Cookies.get("lobby")).toBe("HBIA");
   expect(Cookies.get("spectator")).toBeUndefined();
   expect(app.state.showAlert).toBe(false);
@@ -224,7 +255,7 @@ test("a seat refused after its check leaves the person watching", async () => {
     expect(await app.playInstead("Sam")).toBe("");
   });
   const seat = FakeSocket.instances[FakeSocket.instances.length - 1];
-  expect(seat.url).toContain("name=Sam");
+  expect(seat.url).not.toContain("spectator=true");
   // The game started (or the last seat went) between the check and the join: the server closes it.
   act(() => seat.onclose?.());
   expect(lastUrl()).toContain("spectator=true");
@@ -256,7 +287,7 @@ test("a seat that has delivered a packet reconnects as a player when it closes",
   });
   await deliver(app, { ...lobbyPacket, [PARAM_USERNAMES]: ["Ann", "Ben", "Sam"] });
   act(() => FakeSocket.instances[FakeSocket.instances.length - 1].onclose?.());
-  expect(lastUrl()).toContain("name=Sam");
+  expect(lastUrl()).toContain("rejoinKey=");
   expect(lastUrl()).not.toContain("spectator=true");
   expect(app.reconnectAttempts).toBe(1);
   expect(app.state.spectator).toBe(false);
@@ -629,7 +660,7 @@ test("a join after giving up still retries a socket that closes before its first
   expect(app.state.page).toBe("login");
   expect(app.reconnectAttempts).toBeGreaterThan(0);
   await act(async () => {
-    app.setState({ loginName: "Ann", joinLobby: "HBIA" });
+    app.setState({ joinLobby: "HBIA" });
     app.onClickJoin();
   });
   const before = FakeSocket.instances.length;
@@ -638,12 +669,11 @@ test("a join after giving up still retries a socket that closes before its first
   expect(app.state.page).toBe("lobby");
 });
 
-test("JOIN checks and joins under the normalized name", async () => {
-  const ref = createRef<App>();
-  render(<App ref={ref} />);
-  const app = ref.current!;
+test("JOIN checks and joins as the account, sending no name", async () => {
+  me = account("Sam");
+  const app = await renderApp();
   await act(async () => {
-    app.setState({ loginName: "Sam ", joinLobby: "HBIA" });
+    app.setState({ joinLobby: "HBIA" });
   });
   await act(async () => {
     app.onClickJoin();
@@ -652,36 +682,58 @@ test("JOIN checks and joins under the normalized name", async () => {
     .mocked(fetch)
     .mock.calls.map(([url]) => new URL(String(url), "http://host"))
     .find((url) => url.pathname.endsWith("/check-login"));
-  expect(check?.searchParams.get("name")).toBe("Sam");
-  expect(new URL(lastUrl(), "http://host").searchParams.get("name")).toBe("Sam");
-  expect(Cookies.get("name")).toBe("Sam");
+  expect(check?.search).toBe("?lobby=HBIA");
+  const socket = new URL(lastUrl(), "http://host").searchParams;
+  expect([...socket.keys()]).toEqual(["lobby", "rejoinKey"]);
+  expect(socket.get("lobby")).toBe("HBIA");
+  expect(app.state.name).toBe("Sam");
+  expect(app.state.page).toBe("lobby");
+  expect(Cookies.get("lobby")).toBe("HBIA");
+  expect(Cookies.get("name")).toBeUndefined();
 });
 
-test("CREATE LOBBY joins under the normalized name", async () => {
+test("CREATE LOBBY joins the new lobby as the account, sending no name", async () => {
+  me = account("Sam Lee");
   vi.stubGlobal(
     "fetch",
-    vi.fn(() => Promise.resolve(new Response("HBIA", { status: 200 })))
+    vi.fn((url: string) =>
+      Promise.resolve(String(url).endsWith("/me") ? meResponse() : new Response("HBIA", { status: 200 }))
+    )
   );
-  const ref = createRef<App>();
-  render(<App ref={ref} />);
-  const app = ref.current!;
-  await act(async () => {
-    app.setState({ loginName: "Sam  Lee " });
-  });
+  const app = await renderApp();
   await act(async () => {
     app.onClickCreateLobby();
   });
-  expect(new URL(lastUrl(), "http://host").searchParams.get("name")).toBe("Sam Lee");
-  expect(Cookies.get("name")).toBe("Sam Lee");
+  const socket = new URL(lastUrl(), "http://host").searchParams;
+  expect([...socket.keys()]).toEqual(["lobby", "rejoinKey"]);
+  expect(socket.get("lobby")).toBe("HBIA");
+  expect(app.state.name).toBe("Sam Lee");
+  expect(Cookies.get("name")).toBeUndefined();
 });
 
-test("LEAVE LOBBY puts the player's name and the code back in the login page's fields", async () => {
+test("LEAVE LOBBY puts the code back in the login page's field", async () => {
   const app = await playerInLobby();
   act(() => app.onClickLeaveLobby());
   act(() => lastSocket().onclose?.({ code: 1000 }));
   expect(app.state.page).toBe("login");
-  expect(app.state.loginName).toBe("Ann");
   expect(app.state.joinLobby).toBe("HBIA");
+  expect(document.getElementById("login-lobby-field")).toHaveValue("HBIA");
+});
+
+test("a reload rejoins as before: the lobby cookie fills the code, and JOIN takes the seat", async () => {
+  me = account("Sam");
+  Cookies.set("lobby", "HBIA");
+  const app = await renderApp();
+  expect(document.getElementById("login-lobby-field")).toHaveValue("HBIA");
+  const join = document.querySelector(".login-join-buttons button") as HTMLButtonElement;
+  expect(join).toHaveTextContent("JOIN");
+  expect(join).toBeEnabled();
+  await act(async () => {
+    fireEvent.click(join);
+  });
+  expect(app.state.page).toBe("lobby");
+  expect(app.state.name).toBe("Sam");
+  expect(new URL(lastUrl(), "http://host").searchParams.get("lobby")).toBe("HBIA");
 });
 
 test("START GAME on a socket still connecting is sent once it opens", async () => {
@@ -798,7 +850,7 @@ test("an OK listener from before a lost connection does not close the next lobby
   loseConnectionForGood(app);
   expect(app.state.page).toBe("login");
   await act(async () => {
-    app.setState({ loginName: "Ann", joinLobby: "HBIA" });
+    app.setState({ joinLobby: "HBIA" });
   });
   await act(async () => {
     app.onClickJoin();
@@ -867,7 +919,7 @@ test("reconnects wait longer each time, then give up on the login page", async (
     expect(app.state.page).toBe("lobby");
     act(() => vi.advanceTimersByTime(1));
     expect(FakeSocket.instances, `after ${delay} ms`).toHaveLength(before + 1);
-    expect(lastUrl()).toContain("name=Ann");
+    expect(lastUrl()).toContain("rejoinKey="); // a player's socket again
   }
   act(() => lastSocket().onclose?.());
   expect(app.state.page).toBe("login");
@@ -953,7 +1005,7 @@ test("a socket with no pong within REPLY_TIMEOUT of a ping is dropped and reopen
   act(() => vi.advanceTimersByTime(1));
   expect(live.closed).toBe(true);
   expect(FakeSocket.instances).toHaveLength(2);
-  expect(lastUrl()).toContain("name=Ann");
+  expect(lastUrl()).toContain("rejoinKey="); // a player's socket again
   expect(app.state.page).toBe("game");
 });
 

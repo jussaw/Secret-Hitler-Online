@@ -4,7 +4,8 @@
    the lobby and the game for the page and its header), then the cards and the footer, in one
    column centred both ways. On phones the column starts at the top and takes the window's width.
    LobbyScreen.css lists this page's selectors beside the lobby's for the cards' look, the fields'
-   focus, the centring and the footer; this file holds what only the login page has. */
+   focus, the centring, the grey buttons and the footer; this file holds what only the login page
+   has. */
 
 /* --login-font is the column's text size, set in px and window units only, so --card-width,
    --control and --card-gap are the same lengths wherever they are used, whatever the font size
@@ -43,7 +44,7 @@
     padding: 1em 1.6em 1.2em;
 }
 
-/* App.css's h2, sized for the card. In YOUR NAME the heading is the field's label. */
+/* App.css's h2, sized for the card. */
 .login-card h2 {
     margin: 0;
     font-size: 1.6em;
@@ -63,10 +64,6 @@
     font-size: max(16px, calc(var(--login-font) * 1.1));
     font-weight: 500;
     border-radius: 0.4em;
-}
-
-#login-name-field {
-    width: min(100%, calc(var(--login-font) * 17));
 }
 
 /* Wide enough for its placeholder, in its own text size. */
@@ -91,8 +88,9 @@
 }
 
 /* App.css's button, its face as tall as the fields. Its shadow is part of its box (App.css), and
-   here takes its room in the card. */
-.login-card button {
+   here takes its room in the card. SIGN IN WITH DISCORD is a link in the same look. */
+.login-card button,
+.login-card .button-link {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -105,6 +103,92 @@
 
 .login-start button {
     padding: 0 1.1em;
+}
+
+/* The account card. Signed out, SIGN IN WITH DISCORD (and TEST SIGN-IN, on servers that have it)
+   share a row, which wraps in a narrow window. */
+.login-account-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--card-gap) calc(var(--login-font) * 0.6);
+    max-width: 100%;
+}
+
+/* Signed in: the name, CHANGE NAME (a grey button, smaller than the page's others) and who the
+   account is, with Sign out. */
+.login-account-name {
+    margin: 0;
+    max-width: 100%;
+    font-size: 1.3em;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #ffffff;
+    overflow-wrap: anywhere;
+}
+
+.login-card .login-change-name {
+    font-size: 1.2em;
+}
+
+/* A Discord username has up to 32 characters, and a test account's ID 37, with no space to break
+   at. */
+.login-account-line {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+.login-discord-name {
+    font-weight: 700;
+    color: #ffffff;
+}
+
+/* Sign out: a button in the look of the page's links (App.css's a), inside its line. */
+.login-card .login-sign-out {
+    display: inline;
+    height: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font: inherit;
+    color: var(--buttonHoverFill);
+    text-decoration: underline;
+    vertical-align: baseline;
+}
+
+.login-card .login-sign-out:active {
+    border-width: 0;
+}
+
+.login-card .login-sign-out::before {
+    content: none;
+}
+
+.login-card .login-sign-out:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+/* Until /me answers, and while a first sign-in chooses its name, the card keeps the signed-in
+   card's height: blank lines and a stand-in as tall as CHANGE NAME (App.css's --button-depth is
+   5px). An error is drawn over them, centred. */
+.login-account-blank {
+    position: relative;
+}
+
+.login-account-button {
+    display: block;
+    height: calc(var(--control) + 5px);
+}
+
+.login-account-message {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 1.6em;
 }
 
 .login-hint {
@@ -164,12 +248,27 @@
     /* The code, JOIN and WATCH keep one row down to 360px wide, where Linux, which draws Germania
        One wider than macOS, still leaves the row some room. At 320px JOIN and WATCH may take the
        next line. */
-    .login-card button {
+    .login-card button,
+    .login-card .button-link {
         padding: 0 0.6em;
         font-size: 1.35em;
     }
 
     .login-start button {
         padding: 0 1em;
+    }
+
+    .login-card .login-change-name {
+        font-size: 1.15em;
+    }
+
+    /* Sign out is a 44px target, reaching past its line without making the line taller. */
+    .login-card .login-sign-out {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 44px;
+        min-height: 44px;
+        margin: -14px 0;
     }
 }

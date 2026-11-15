@@ -76,6 +76,14 @@ describe("NamePrompt", () => {
     expect(onContinue).toHaveBeenCalledWith("Sam Lee");
   });
 
+  test("typed names lose leading and doubled spaces and stop at twelve characters", () => {
+    setup("");
+    fireEvent.change(field(), { target: { value: "  Sam   Lee" } });
+    expect(field().value).toBe("Sam Lee");
+    fireEvent.change(field(), { target: { value: "Wolfgang Maxwell" } });
+    expect(field().value).toBe("Wolfgang Max");
+  });
+
   test("Enter acts as CONTINUE", () => {
     const { onContinue } = setup("Sam");
     fireEvent.keyDown(field(), { key: "Enter" });

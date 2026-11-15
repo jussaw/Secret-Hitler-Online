@@ -6,7 +6,7 @@
    lobby's selectors beside the game's (.lobby-screen, .lobby-body, .lobby-players), so the roster
    stays put when the game starts. This file holds what only the lobby has, and lists the login
    page's selectors (LoginScreen.css) beside the lobby's for the cards' look, the fields' focus, the
-   centred column and the footer, so the two pages cannot drift apart. */
+   centred column, the grey buttons and the footer, so the two pages cannot drift apart. */
 
 /* The roster column: the heading, then the rows, on the game's darker band (GameScreen.css). */
 .lobby-players {
@@ -216,19 +216,25 @@
     margin-bottom: 5px; /* room for the buttons' shadow */
 }
 
-/* A neutral grey variant of App.css's button. */
-.lobby-secondary button {
+/* A neutral grey variant of App.css's button, which the login page's CHANGE NAME and TEST SIGN-IN
+   share. */
+.lobby-secondary button,
+.login-card .login-grey {
     --button-face: #6e655e;
     --button-shadow: #4b4440;
 }
 
 .lobby-secondary button:not(:disabled):hover,
 .lobby-secondary button:not(:disabled):focus,
-.lobby-secondary button:not(:disabled):focus-visible {
+.lobby-secondary button:not(:disabled):focus-visible,
+.login-card .login-grey:not(:disabled):hover,
+.login-card .login-grey:not(:disabled):focus,
+.login-card .login-grey:not(:disabled):focus-visible {
     --button-face: #857b73;
 }
 
-.lobby-secondary button:not(:disabled):active {
+.lobby-secondary button:not(:disabled):active,
+.login-card .login-grey:not(:disabled):active {
     --button-face: #6e655e;
 }
 

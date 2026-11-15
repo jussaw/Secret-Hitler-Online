@@ -92,9 +92,16 @@ import { sounds, type SoundName } from "./sound/SoundManager";
 import SoundControl from "./sound/SoundControl";
 import { CONNECT_ERROR, CONTACT_ERROR, joinErrorMessage } from "./lobby/joinError";
 import { normalizeCode } from "./lobby/normalizeCode";
-import { normalizeName } from "./lobby/normalizeName";
 import LoginScreen from "./login/LoginScreen";
 import NamePrompt from "./custom-alert/NamePrompt";
+import {
+  discordSignInHref,
+  fetchMe,
+  saveUsername,
+  signOut,
+  testSignIn,
+  type Me,
+} from "./account/account";
 import { lobbySounds, SOUND_CUES, soundEvents, type Cue } from "./sound/soundEvents";
 import {
   VICTORY_TEXT,
@@ -131,7 +138,6 @@ const DEFAULT_GAME_STATE: GameState = {
   icon: {},
 };
 
-const COOKIE_NAME = "name";
 const COOKIE_LOBBY = "lobby";
 /** "true" while this browser watches COOKIE_LOBBY as a spectator, so a refresh goes back to it. */
 const COOKIE_SPECTATOR = "spectator";
@@ -145,6 +151,11 @@ const RETRYING = "Lost connection to the server: retrying...";
 const CLOSE_REFUSED = 1002;
 /** How long a spectator's status line shows what happened, in place of a player's alert. */
 const SPECTATOR_RESULT_MS = 3000;
+/** The account card's line after a failed Discord sign-in (the server sends the page to ?signin=failed). */
+const SIGN_IN_FAILED = "Signing in with Discord failed. Please try again.";
+
+/** The account's name prompt: CHOOSE A NAME after a first sign-in, or CHANGE NAME. */
+type NamePromptKind = "choose" | "change";
 
 /** A random PARAM_REJOIN_KEY: 128 bits as hex. getRandomValues works on plain http pages too. */
 function newRejoinKey(): string {
@@ -164,8 +175,10 @@ if (DEBUG) {
 // TODO: Remove this type and replace with actual state variables.
 type AppState = {
   page: PAGE;
-  /** The login page's one name field, shared by JOIN and CREATE LOBBY. */
-  loginName: string;
+  /** GET /me's answer: undefined until it comes, and when it failed (accountError says so). */
+  account?: Me;
+  /** The account card's error line: CONTACT_ERROR when /me failed, or a failed Discord sign-in. */
+  accountError: string;
   /** The JOIN A GAME card's code field, shared by JOIN and WATCH. */
   joinLobby: string;
   /** The JOIN A GAME card's error line. */
@@ -200,16 +213,17 @@ type AppState = {
   allAnimationsFinished: boolean;
 };
 
-/** The login page's fields and error lines, which are filled and emptied together. */
-type LoginForm = Pick<AppState, "loginName" | "joinLobby" | "joinError" | "createLobbyError">;
+/** The login page's code field and error lines, which are filled and emptied together. */
+type LoginForm = Pick<AppState, "joinLobby" | "joinError" | "createLobbyError">;
 
-/** The login page's fields as given, and its error lines empty unless JOIN's is given. */
-function loginForm(name = "", lobby = "", joinError = ""): LoginForm {
-  return { loginName: name, joinLobby: lobby, joinError, createLobbyError: "" };
+/** The login page's code field as given, and its error lines empty unless JOIN's is given. */
+function loginForm(lobby = "", joinError = ""): LoginForm {
+  return { joinLobby: lobby, joinError, createLobbyError: "" };
 }
 
 const defaultAppState: AppState = {
   page: PAGE.LOGIN,
+  accountError: "",
   ...loginForm(),
   name: "P1",
   lobby: "AAAAAA",
@@ -288,19 +302,34 @@ class App extends Component<{}, AppState> {
   alertShowCount = 0;
   /** The alertShowCount at which the portrait picker was shown: it is on screen while this matches. */
   pickerShownAt = -1;
+  /** True from the name prompt (CHOOSE A NAME or CHANGE NAME) being queued until it closes. */
+  namePromptOpen = false;
+  /** True while the name prompt is on screen (not just queued). */
+  namePromptShown = false;
+  /** Which name prompt is open, while one is. */
+  namePromptKind: NamePromptKind = "choose";
+  /** The queued step that shows the name prompt, so a prompt closed before it shows can be dropped. */
+  namePromptStep?: () => void = undefined;
+  /** Counts the name prompt's openings, so a reply that began under an earlier one touches no later one. */
+  namePromptSession = 0;
+  /** Counts the requests that set the account (/me, test sign-in), so only the latest one's answer shows. */
+  accountRequest = 0;
+  /** Whether the page opened on ?signin=failed (componentDidMount takes it out of the address). */
+  readonly signInFailed: boolean;
 
   // noinspection DuplicatedCode
   constructor(props: any) {
     super(props);
 
-    let name = Cookies.get(COOKIE_NAME) ? Cookies.get(COOKIE_NAME) : "";
     let lobby = Cookies.get(COOKIE_LOBBY) ? Cookies.get(COOKIE_LOBBY) : "";
+    const query = new URLSearchParams(window.location.search);
     // A lobby link (?lobby=CODE) fills the code field in place of the saved lobby.
-    const linked = new URLSearchParams(window.location.search).get("lobby");
+    const linked = query.get("lobby");
+    this.signInFailed = query.get("signin") === "failed";
 
     this.state = {
       ...defaultAppState,
-      ...loginForm(name || "", linked !== null ? normalizeCode(linked) : lobby || ""),
+      ...loginForm(linked !== null ? normalizeCode(linked) : lobby || ""),
     };
 
     // These are necessary for handling class fields safely (ex: websocket)
@@ -328,6 +357,8 @@ class App extends Component<{}, AppState> {
     this.showChangeIconAlert = this.showChangeIconAlert.bind(this);
     this.updateChangeIconAlert = this.updateChangeIconAlert.bind(this);
     this.onClickChangeIcon = this.onClickChangeIcon.bind(this);
+    this.closeNamePrompt = this.closeNamePrompt.bind(this);
+    this.dropNamePrompt = this.dropNamePrompt.bind(this);
 
     // Ping the server to wake it up if it's not currently being used
     // This reduces the delay users experience when starting lobbies
@@ -346,20 +377,13 @@ class App extends Component<{}, AppState> {
   }
 
   /**
-   * Checks if the login is valid.
-   * @param name the name of the user.
+   * Checks that this page's account can play in the lobby. The server knows the account by the
+   * session cookie, so no name is sent.
    * @param lobby the lobby code.
    * @return {Promise<Response>} The response from the server.
    */
-  async tryLogin(name: string, lobby: string) {
-    return await fetch(
-      SERVER_ADDRESS_HTTP +
-        CHECK_LOGIN +
-        "?name=" +
-        encodeURIComponent(name) +
-        "&lobby=" +
-        encodeURIComponent(lobby)
-    );
+  async tryLogin(lobby: string) {
+    return await fetch(SERVER_ADDRESS_HTTP + CHECK_LOGIN + "?lobby=" + encodeURIComponent(lobby));
   }
 
   /**
@@ -379,9 +403,19 @@ class App extends Component<{}, AppState> {
     );
   }
 
-  /** A spectator who reloads goes straight back to watching their lobby (COOKIE_SPECTATOR). */
+  /**
+   * Asks who the page is signed in as, taking a failed Discord sign-in's ?signin=failed out of the
+   * address (a lobby link's ?lobby= stays). A spectator who reloads goes straight back to watching
+   * their lobby (COOKIE_SPECTATOR).
+   */
   componentDidMount() {
     document.addEventListener("visibilitychange", this.onVisibilityChange);
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("signin")) {
+      url.searchParams.delete("signin");
+      window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+    }
+    this.loadAccount(this.signInFailed ? SIGN_IN_FAILED : "");
     const lobby = Cookies.get(COOKIE_LOBBY);
     const linked = new URLSearchParams(window.location.search).get("lobby");
     const otherLobby = linked !== null && normalizeCode(linked) !== lobby;
@@ -435,10 +469,11 @@ class App extends Component<{}, AppState> {
   }
 
   /**
-   * Attempts to open a WebSocket with the server.
-   * @param name the name of the user to connect with ("" for a spectator).
+   * Attempts to open a WebSocket with the server. A player's socket is the account of the page's
+   * session cookie, so no name is sent.
+   * @param name the name the page shows as the player's ("" for a spectator).
    * @param lobby the lobby to connect with.
-   * @param spectator whether to watch without a seat (no name is sent).
+   * @param spectator whether to watch without a seat.
    * @effects If a connection was successfully established, sets the state with the {@code name}, {@code lobby},
    *          and {@code ws} parameters. The WebSocket has a message callback to this.onWebSocketMessage().
    * @return {boolean} true if the connection was opened successfully. Otherwise, returns false.
@@ -453,11 +488,11 @@ class App extends Component<{}, AppState> {
       WEBSOCKET_HEADER +
       SERVER_ADDRESS +
       WEBSOCKET +
-      (spectator ? "?" + PARAM_SPECTATOR + "=true" : "?name=" + encodeURIComponent(name)) +
-      "&lobby=" +
+      (spectator ? "?" + PARAM_SPECTATOR + "=true&" : "?") +
+      "lobby=" +
       encodeURIComponent(lobby);
-    // A player's socket brings the page's key, so a reconnect can take the name back from a socket
-    // the server has not yet seen die. A spectator has no name to take back.
+    // A player's socket brings the page's key, so a reconnect can take the seat back from a socket
+    // the server has not yet seen die. A spectator has no seat to take back.
     const url = spectator ? shownUrl : shownUrl + "&" + PARAM_REJOIN_KEY + "=" + this.rejoinKey;
     if (DEBUG) {
       console.trace("TryOpenWebsocket URL: " + shownUrl);
@@ -527,21 +562,21 @@ class App extends Component<{}, AppState> {
   }
 
   /**
-   * Opens a player's socket and remembers the login (name for 7 days, lobby), as every join does.
+   * Opens a player's socket, under the account's name, and remembers the lobby, as every join
+   * does: a reload fills the code field with it, and JOIN takes the seat back.
    * @return {boolean} whether the socket opened.
    */
-  openSeat(name: string, lobby: string): boolean {
+  openSeat(lobby: string): boolean {
     this.stopReconnecting(); // a user action starts a fresh connection
     this.reconnectAttempts = 0;
-    if (!this.tryOpenWebSocket(name, lobby)) return false;
-    Cookies.set(COOKIE_NAME, name, { expires: 7 });
+    if (!this.tryOpenWebSocket(this.accountName(), lobby)) return false;
     Cookies.set(COOKIE_LOBBY, lobby);
     Cookies.remove(COOKIE_SPECTATOR);
     return true;
   }
 
   /**
-   * Opens a spectator's socket and remembers it (COOKIE_SPECTATOR); the name cookie stays.
+   * Opens a spectator's socket and remembers it (COOKIE_SPECTATOR).
    * @return {boolean} whether the socket opened.
    */
   openWatch(lobby: string): boolean {
@@ -650,9 +685,9 @@ class App extends Component<{}, AppState> {
   }
 
   /**
-   * Leaves for the login page with the lobby code and the name to rejoin under filled in: stops the
-   * ping and any waiting reconnect, closes the alert and any PLAY INSTEAD prompt, and empties the
-   * animation queue.
+   * Leaves for the login page with the lobby code filled in: stops the ping and any waiting
+   * reconnect, closes the alert and any prompt, and empties the animation queue. An account still
+   * without a name gets CHOOSE A NAME again there.
    * @param error the message under JOIN and WATCH ("" for none).
    */
   toLoginPage(error: string) {
@@ -663,17 +698,14 @@ class App extends Component<{}, AppState> {
     this.stopReconnecting();
     this.setState({
       page: PAGE.LOGIN,
-      ...loginForm(this.rejoinName(), this.state.lobby, error),
+      ...loginForm(this.state.lobby, error),
       showAlert: false,
       alertContent: <div />,
     });
     this.dropPlayInstead();
+    this.dropNamePrompt();
     this.clearAnimationQueue();
-  }
-
-  /** The name field's text after leaving: the player's, or for a spectator (who has none) the saved one. */
-  rejoinName(): string {
-    return this.state.name || (Cookies.get(COOKIE_NAME) ?? "");
+    this.askForName();
   }
 
   async onWebSocketMessage(msg: MessageEvent) {
@@ -839,10 +871,153 @@ class App extends Component<{}, AppState> {
   /////////////////// Login Page
   // <editor-fold desc="Login Page">
 
-  /** Updates the one name field, which JOIN and CREATE LOBBY share. */
-  updateLoginName = (text: string) => {
-    this.setState({ loginName: text });
+  /** The account's name ("" signed out or before one is chosen): the name a seat is taken under. */
+  accountName(): string {
+    const account = this.state.account;
+    return account?.signedIn ? account.username ?? "" : "";
+  }
+
+  /**
+   * Asks the server who the page is signed in as (GET /me); a first sign-in then gets CHOOSE A
+   * NAME. Only the latest request that sets the account is shown.
+   * @param error the account card's error line once /me answers ("" for none).
+   */
+  async loadAccount(error = "") {
+    const request = ++this.accountRequest;
+    try {
+      const me = await fetchMe();
+      if (request === this.accountRequest) this.setAccount(me, error);
+    } catch {
+      if (request === this.accountRequest) {
+        this.setState({ account: undefined, accountError: CONTACT_ERROR });
+      }
+    }
+  }
+
+  /** Shows the account, and asks a signed-in account with no name for one. */
+  setAccount(me: Me, error = "") {
+    this.setState({ account: me, accountError: error }, () => this.askForName());
+  }
+
+  /** Queues CHOOSE A NAME for a signed-in account with no name, unless a name prompt is open. */
+  askForName() {
+    const account = this.state.account;
+    if (account?.signedIn && account.username === null) this.queueNamePrompt("choose");
+  }
+
+  /** TEST SIGN-IN (servers with test sign-in only): signs the page in as a new test account. */
+  onClickTestSignIn = async () => {
+    const request = ++this.accountRequest;
+    try {
+      const me = await testSignIn();
+      if (request === this.accountRequest) this.setAccount(me);
+    } catch {
+      if (request === this.accountRequest) this.setState({ accountError: CONTACT_ERROR });
+    }
   };
+
+  /** CHANGE NAME: the name prompt, filled with the name. */
+  onClickChangeName = () => {
+    this.queueNamePrompt("change");
+  };
+
+  /** Sign out: ends the session, then shows what the server says the page is now. */
+  onClickSignOut = async () => {
+    let failed = false;
+    try {
+      await signOut();
+    } catch {
+      failed = true;
+    }
+    await this.loadAccount(failed ? CONTACT_ERROR : "");
+  };
+
+  /**
+   * Queues the name prompt: CHOOSE A NAME (CONTINUE, SIGN OUT), which nothing else puts away, or
+   * CHANGE NAME (SAVE, CANCEL), filled with the name. One is open at a time.
+   */
+  queueNamePrompt(kind: NamePromptKind) {
+    if (this.namePromptOpen) return;
+    this.namePromptOpen = true;
+    this.namePromptKind = kind;
+    const session = ++this.namePromptSession;
+    const choose = kind === "choose";
+    const show = () => {
+      this.namePromptStep = undefined;
+      this.namePromptShown = true;
+      this.alertShowCount += 1;
+      this.setState({
+        showAlert: true,
+        alertContent: (
+          <NamePrompt
+            key={this.alertShowCount}
+            title={choose ? "CHOOSE A NAME" : "CHANGE NAME"}
+            initialName={choose ? "" : this.accountName()}
+            confirmLabel={choose ? "CONTINUE" : "SAVE"}
+            secondaryLabel={choose ? "SIGN OUT" : "CANCEL"}
+            onConfirm={(name) => this.saveName(name, session)}
+            onSecondary={() => {
+              if (session !== this.namePromptSession) return;
+              this.closeNamePrompt();
+              if (choose) this.onClickSignOut();
+            }}
+          />
+        ),
+      });
+    };
+    this.namePromptStep = show;
+    this.addAnimationToQueue(show);
+  }
+
+  /**
+   * Saves the name (POST /me/username) and, if it was saved, shows it on the account and closes the
+   * prompt it came from.
+   * @return {Promise<string>} "" on success or when that prompt has closed meanwhile, otherwise the
+   *         error for the prompt.
+   */
+  async saveName(name: string, session: number): Promise<string> {
+    const account = this.state.account;
+    const id = account?.signedIn ? account.id : undefined;
+    const result = await saveUsername(name);
+    const current = this.namePromptOpen && session === this.namePromptSession;
+    if (!result.ok) return current ? result.error : "";
+    // The name is saved even when its prompt went meanwhile: show it, on the same account only.
+    const now = this.state.account;
+    const sameAccount = now?.signedIn === true && now.id === id;
+    if (sameAccount) {
+      this.setState((state) =>
+        state.account?.signedIn && state.account.id === id
+          ? { account: { ...state.account, username: result.username } }
+          : null
+      );
+    }
+    // A CHOOSE A NAME opened again meanwhile (the page left the lobby for the login page) is
+    // answered too.
+    if (current || (sameAccount && this.namePromptOpen && this.namePromptKind === "choose")) {
+      this.closeNamePrompt();
+    }
+    return "";
+  }
+
+  /**
+   * Closes the name prompt, if it is open.
+   * @param delayExit whether the animation queue waits for the prompt's fade-out.
+   */
+  closeNamePrompt(delayExit = true) {
+    if (!this.namePromptOpen) return;
+    const shown = this.namePromptShown;
+    this.dropNamePrompt();
+    if (shown) this.hideAlertAndFinish(delayExit);
+  }
+
+  /** Forgets the name prompt without touching the alert box: a queued prompt leaves the queue. */
+  dropNamePrompt() {
+    this.namePromptOpen = false;
+    this.namePromptShown = false;
+    const step = this.namePromptStep;
+    this.namePromptStep = undefined;
+    if (step) this.animationQueue = this.animationQueue.filter((queued) => queued !== step);
+  }
 
   /** Updates the lobby code field, which JOIN and WATCH share. */
   updateJoinLobby = (text: string) => {
@@ -850,23 +1025,24 @@ class App extends Component<{}, AppState> {
   };
 
   /**
-   * Attempts to connect to the lobby via websocket.
+   * Checks that the account can play in the lobby, then opens its socket. A 401 means the page's
+   * session has ended (or has no name yet), so the account is asked for again.
    */
   onClickJoin = () => {
-    // Capture the form values: tryOpenWebSocket clears them via setState.
-    const name = normalizeName(this.state.loginName);
+    // Capture the form value: tryOpenWebSocket clears it via setState.
     const lobby = this.state.joinLobby;
     this.setState({ joinError: "Connecting..." });
-    this.tryLogin(name, lobby)
+    this.tryLogin(lobby)
       .then((response) => {
         if (!response.ok) {
           if (DEBUG) {
             console.log("Response is not ok");
           }
           this.setState({ joinError: joinErrorMessage(response.status) });
+          if (response.status === 401) this.loadAccount();
         } else {
-          // Username and lobby were verified. Try to open websocket.
-          if (!this.openSeat(name, lobby)) {
+          // The account and the lobby were verified. Try to open websocket.
+          if (!this.openSeat(lobby)) {
             this.setState({ joinError: CONNECT_ERROR });
           }
         }
@@ -906,8 +1082,8 @@ class App extends Component<{}, AppState> {
 
   /**
    * WATCH INSTEAD (a player in the lobby): reopens the connection as a spectator. The old socket's
-   * onclose is replaced in tryOpenWebSocket, so the login page is not shown. The name cookie stays.
-   * If the spectator socket cannot be built, the person lands on the login page with the lobby code.
+   * onclose is replaced in tryOpenWebSocket, so the login page is not shown. If the spectator socket
+   * cannot be built, the person lands on the login page with the lobby code.
    */
   onClickWatchInstead() {
     if (this.openWatch(this.state.lobby)) return;
@@ -930,7 +1106,7 @@ class App extends Component<{}, AppState> {
           <NamePrompt
             key={this.alertShowCount}
             title="PLAY INSTEAD"
-            initialName={Cookies.get(COOKIE_NAME) ?? ""}
+            initialName={this.accountName()}
             confirmLabel="CONTINUE"
             secondaryLabel="CANCEL"
             onConfirm={this.playInstead}
@@ -964,15 +1140,16 @@ class App extends Component<{}, AppState> {
   }
 
   /**
-   * Checks the name, then reopens the connection as a player.
+   * Checks that the account can play here, then reopens the connection as a player. The server
+   * seats the account under its own name, whatever the prompt's field says.
    * @return {Promise<string>} "" on success, otherwise the error for the prompt. Whoever fails stays watching.
    */
-  async playInstead(name: string): Promise<string> {
+  async playInstead(_name: string): Promise<string> {
     const lobby = this.state.lobby;
     const session = this.playInsteadSession;
     let response: Response | undefined;
     try {
-      response = await this.tryLogin(name, lobby);
+      response = await this.tryLogin(lobby);
     } catch {
       // handled below
     }
@@ -980,7 +1157,7 @@ class App extends Component<{}, AppState> {
     if (!this.playInsteadOpen || session !== this.playInsteadSession) return "";
     if (response === undefined) return CONTACT_ERROR;
     if (!response.ok) return joinErrorMessage(response.status);
-    if (!this.openSeat(name, lobby)) return CONNECT_ERROR;
+    if (!this.openSeat(lobby)) return CONNECT_ERROR;
     this.seatPending = true;
     // Free the alert slot at once: the new socket's lobby packet may queue the portrait picker.
     this.closePlayInstead(false);
@@ -988,21 +1165,23 @@ class App extends Component<{}, AppState> {
   }
 
   /**
-   * Attempts to connect to the server and create a new lobby, and then opens a connection to the lobby.
+   * Asks the server for a new lobby, then opens the account's socket to it. A 401 means the page's
+   * session has ended (or has no name yet), so the account is asked for again.
    */
   onClickCreateLobby = () => {
-    // Capture the form value: tryOpenWebSocket clears it via setState.
-    const name = normalizeName(this.state.loginName);
     this.setState({ createLobbyError: "Connecting..." });
     this.tryCreateLobby()
       .then((response) => {
         if (response.ok) {
           response.text().then((lobbyCode) => {
-            if (!this.openSeat(name, lobbyCode)) {
+            if (!this.openSeat(lobbyCode)) {
               // if the connection failed
               this.setState({ createLobbyError: CONNECT_ERROR });
             }
           });
+        } else if (response.status === 401) {
+          this.setState({ createLobbyError: joinErrorMessage(401) });
+          this.loadAccount();
         } else {
           this.setState({ createLobbyError: CONNECT_ERROR });
         }
@@ -1012,19 +1191,27 @@ class App extends Component<{}, AppState> {
       });
   };
 
+  /** The login page, under the prompt overlay that CHOOSE A NAME and CHANGE NAME open in. */
   renderLoginPage() {
     return (
-      <LoginScreen
-        name={this.state.loginName}
-        lobby={this.state.joinLobby}
-        joinError={this.state.joinError}
-        createLobbyError={this.state.createLobbyError}
-        onNameChange={this.updateLoginName}
-        onLobbyChange={this.updateJoinLobby}
-        onJoin={this.onClickJoin}
-        onWatch={this.onClickWatch}
-        onCreateLobby={this.onClickCreateLobby}
-      />
+      <>
+        <CustomAlert show={this.state.showAlert}>{this.state.alertContent}</CustomAlert>
+        <LoginScreen
+          account={this.state.account}
+          accountError={this.state.accountError}
+          discordHref={discordSignInHref(this.state.joinLobby)}
+          lobby={this.state.joinLobby}
+          joinError={this.state.joinError}
+          createLobbyError={this.state.createLobbyError}
+          onLobbyChange={this.updateJoinLobby}
+          onJoin={this.onClickJoin}
+          onWatch={this.onClickWatch}
+          onCreateLobby={this.onClickCreateLobby}
+          onTestSignIn={this.onClickTestSignIn}
+          onChangeName={this.onClickChangeName}
+          onSignOut={this.onClickSignOut}
+        />
+      </>
     );
   }
 
@@ -1743,10 +1930,14 @@ class App extends Component<{}, AppState> {
     this.animationQueue = [];
     this.animationStep += 1; // the running step is over
     this.okMessageListeners = []; // and so is any prompt waiting for the server's OK
-    // A PLAY INSTEAD prompt that was still queued went with it.
+    // A PLAY INSTEAD or name prompt that was still queued went with it.
     if (!this.playInsteadShown) {
       this.playInsteadOpen = false;
       this.playInsteadStep = undefined;
+    }
+    if (!this.namePromptShown) {
+      this.namePromptOpen = false;
+      this.namePromptStep = undefined;
     }
     // Sounds still in the queue go with it; so does a vote tally that has not sounded yet.
     this.soundTimers.forEach(clearTimeout);
