@@ -49,9 +49,12 @@ public class DiscordSignInTest {
     /**
      * How the fake answers. STALL sends the headers and part of the body, then waits (the
      * request's own timeout does not cover that). CRLF_TOKEN answers with an access token that
-     * has a line break in it. BAD_ID and OBJECT_ID give a user id that is not a snowflake.
+     * has a line break in it. BAD_ID, OBJECT_ID, NUMBER_ID (a JSON
+     * number) and LONG_ID (21 digits) give a user id that is not a snowflake.
      */
-    private enum Mode { OK, SERVER_ERROR, STALL, NO_TOKEN, BAD_JSON, NO_ID, BAD_ID, OBJECT_ID, NUMBER_ID, LONG_ID, CRLF_TOKEN }
+    private enum Mode {
+        OK, SERVER_ERROR, STALL, NO_TOKEN, BAD_JSON, NO_ID, BAD_ID, OBJECT_ID, NUMBER_ID, LONG_ID, CRLF_TOKEN
+    }
 
     private static final String CRLF_TOKEN = "crlf-token-value\r\nX-Evil: 1";
 
