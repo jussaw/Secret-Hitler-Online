@@ -64,10 +64,21 @@ keeps credit to upstream and to the board game's creators.
   `Lobby.addUser` enforces it too. `onWebsocketConnect` asks it and adds the connection in one
   step under the lobby's lock, so of two connections arriving at once for one name or for the
   last seat, the second is refused with 1002 and the reason it would get had it arrived later,
-  not failed with 1011 by the add (`RejoinServerTest`). Its first refusal is a blank name
-  (`BLANK_NAME`, "Lobby and name must be specified."), which the page never sends: a socket the
-  handler closed but went on to add would hold a seat for good, as its close came before the add
-  (`LobbyBlankNameTest`, `RejoinServerTest`, issue #63).
+  not failed with 1011 by the add (`RejoinServerTest`). After `CLOSED` (below), its first refusal
+  is a blank name (`BLANK_NAME`, "Lobby and name must be specified."), which the page never sends:
+  a socket the handler closed but went on to add would hold a seat for good, as its close came
+  before the add (`LobbyBlankNameTest`, `RejoinServerTest`, issue #63). A lobby times out after 10
+  minutes with no message from a player (`LOBBY_TIMEOUT_DURATION_IN_MIN`). The sweep
+  (`removeInactiveLobbies`), every 60 s and before each new lobby, holds no handler's lock: it
+  closes each lobby that has timed out under the lobby's own lock (`Lobby.closeIfTimedOut`),
+  removes it from `codeToLobby` and closes its connections, which stay in `userToLobby` until
+  their close handlers run, so a spectator's message on its way is still known as a spectator's.
+  Every handler looks a lobby up once and treats a closed one as gone: a join or a message is
+  closed with 1002 and "The lobby 'CODE' does not exist." (`JoinRefusal.CLOSED` for a player's
+  join), checked under the lobby's lock, and `/check-login` answers 404. So a sweep that lands
+  between a handler's lookup and its work makes no handler throw and leaves no connection in a
+  removed lobby (`LobbyTimeoutServerTest`, which runs the real sweep just before or just after a
+  handler's lookup, and while a join holds the lock; `LobbyCloseTest`).
 - `frontend/`: React 18 and TypeScript 5, built with Vite and tested with Vitest. The entry is
   `src/main.tsx`, with `index.html` at the `frontend/` root, whose description is one plain line
   and which has no preview image, so an invite link previews as that line (`linkPreview.test.ts`).
