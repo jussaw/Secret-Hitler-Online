@@ -40,7 +40,8 @@ want>` turns a few words into an issue written the way the last 27 were. Nothing
 - Only two labels: `bug` or `enhancement`, exactly one per issue. `implement-issue` merges a `bug`
   by itself once CI is green.
 - Reproducing needs Java 17 for the backend and `npm ci` for the frontend. Browser runs build and
-  serve the app on port 4545, so only one runs at a time.
+  serve the app on a port of their own (`E2E_PORT`, a free one from 4546 to 4999, as
+  `implement-issue` picks), since a run on a port another session serves tests that session's code.
 - In a worktree session, git runs as `git -C <absolute path>`, one command per call, and new
   worktrees nest under the session's own.
 - Throwaway repro tests are never committed.
@@ -99,7 +100,7 @@ want>` turns a few words into an issue written the way the last 27 were. Nothing
 7. **Show** every draft. Make the changes you ask for, and post each on your OK with
    `gh issue create --repo … --title … --label … --body-file …`. Give the links.
 
-A batch runs one subagent per issue, one after another (port 4545, and one Gradle build at a time),
+A batch runs one subagent per issue, one after another (one checkout, port and Gradle build),
 each bringing back a draft. The drafts are shown together. My call. A session with no Agent tool
 takes the issues one after another itself.
 
