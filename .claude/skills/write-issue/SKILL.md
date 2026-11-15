@@ -59,7 +59,10 @@ the main checkout (the first line of `git worktree list`).
 
 1. `git -C <parent> fetch origin`
 2. `git -C <parent> worktree add --detach <parent>/.claude/worktrees/issue-draft origin/development`
-   (it exists already: another run holds it, so ask before touching it)
+   If `issue-draft` exists already, it is most likely from a run that ended before its clean-up.
+   Check whether anything holds it: a `locked` entry in `git -C <parent> worktree list`, or a
+   running process with files open there (`lsof +D <parent>/.claude/worktrees/issue-draft`).
+   Nothing does: remove it as in step 6 and add it again. Something does: ask before touching it.
 3. `git -C <parent>/.claude/worktrees/issue-draft rev-parse --short HEAD`: the commit every draft
    names. Write down what it prints.
 
@@ -112,13 +115,17 @@ reproduced on `development` (<commit>). Tried: <command>, <what it showed>." as 
 and show it. That answer is about drafting only: posting still waits for an OK on the draft the
 user has seen.
 
+An answer that comes after the clean-up (step 6) needs no new checkout: the draft takes its
+`path:line` references from the finding and its commit from what step 2 wrote down.
+
 ## 5. Draft
 
 Pick the skeleton in `formats.md`: `## 1. Bug found by reading the code`, `## 2. Bug seen in play or
 in CI` (the user or CI saw it), `## 3. Enhancement` (one pull request), `## 4. Large enhancement`
 (several parts, or more than one session). Fill every REQUIRED slot in order, and add no section it
 does not have (no Problem, Acceptance or Done when). Write the body to a file in the session's
-scratchpad directory, never in the repo or `/tmp`.
+scratchpad directory, never in the repo or `/tmp`. A session with no scratchpad makes a fresh
+directory with `mktemp -d` and writes it there.
 
 Then check the draft, line by line:
 
@@ -138,8 +145,14 @@ Then check the draft, line by line:
   in `CLAUDE.md` (machine and host names, hardware, deploy and update tools, LAN addresses, ports,
   host paths, domains, the proxy, tunnel and monitoring setup). Write "the home server" or "the
   host".
-- [ ] Every choice the user has not made is a plain question under `## Open questions`, and no
-  line of Want:, Notes: or Scope answers it or leans on an answer.
+- [ ] `## Open questions` holds only product or design choices the user has not made, each a plain
+  question, and no line of Want:, Notes: or Scope answers one or leans on an answer. That section
+  sends the issue to design: `implement-issue` builds nothing for an issue with open questions.
+- [ ] A fact nobody knows yet (how long the count stayed up, which page showed it) is not a
+  choice. It goes in the body as "Unknown: …", in `## Description` or under `## Reproduction` (an
+  unknown about the device goes in `## Device Info`), never under `## Open questions`.
+- [ ] A choice the user settled in chat is written in as decided (under `## Decided` in skeleton
+  4, or in Want: or Notes:), and its question is gone.
 
 ## 6. Clean up
 
@@ -154,6 +167,8 @@ In one message: each draft's title, label and body in full, as it will post, and
 file finding with its question. Ask which drafts to post. Then wait.
 
 - An edit: make it, show that draft again, and wait for its OK.
+- An answer to one of a draft's open questions is an edit: write the answer in as decided, remove
+  that question, show the draft again, and wait for its OK.
 - An OK: `gh issue create --repo … --title "<title>" --label <bug|enhancement> --body-file <file>`
   for each OK'd draft, and only those. Give the links.
 
@@ -181,21 +196,53 @@ finding, then steps 3 to 5 for the next. Say in your message to the user which w
 
 ## Rationalizations
 
-| Excuse | Reality |
-|---|---|
-| "The user said "just post it" and is leaving, so I would post the issue straight away." | That was said before any draft existed. Show it and wait. A wrong public issue costs more than a late one. |
-| "Posted, so it's in the tracker while you're out." | Nothing is posted until the user OKs the draft they saw. |
-| "I read the code only to look for a lead. I did not find a cause and did not try to reproduce the bug." | Reading is step 3. Step 4 is the run. No run, no bug draft. |
-| "The code looks right on a clean close, so the issue lists what is unknown." | Then run it. The run decides whether there is anything to file. |
-| A draft that lists "whether it reproduces on a local build of `development`" as unknown | Finding that out is your job, not the issue's. Run it. |
-| "That is a scaffolding failure, not evidence of the bug, so I did not chase it." | That probe never ran its check. Fix it and run it again. |
-| "I'd first ask the user two questions", then a full draft for a bug that did not show | A bug that did not show gets no draft. Report, ask whether to file it as not reproduced, and wait. |
-| "Something in front of it keeps the connection open" / "the proxy in front of it" | The host's setup is private, and no run showed it. It stays out of the draft. Say it to the user in chat if it helps. |
-| "Only the lobby gets this, not a running game." / "this issue leaves them out" / "The simplest answer is yes" | Each is a choice the user has not made. Ask it plainly under `## Open questions`, and nothing else in the body answers it. |
-| "Do you want me to … add a comment to it" | Out of scope. Point at the open issue and stop. |
-| "I ran the two things myself, one after another, rather than through subagents (the skill allows dispatching them; I did not)." | A batch is dispatched, one subagent per issue. Doing them yourself is only for a session with no Agent tool. |
-| "Neither is filed, because the code at `development` already does what each one asks." (for a bug seen only on an iPhone, once a mock passed) | "Already does it" is for enhancements. A bug seen only on a device is drafted as not reproduced, and the passing mock is what was tried. |
-| "Your note on this says to file it anyway as not reproduced. Do you want me to file it that way?" | The user answered before you asked. Draft it as not reproduced and show it. Only the posting waits. |
+The excuses come from this skill's tests and its review: a subject's own words, a draft it
+wrote, or a case the review found. The line under each is the answer.
+
+- "The user said "just post it" and is leaving, so I would post the issue straight away."
+  - That was said before any draft existed. Show it and wait. A wrong public issue costs more than a
+    late one.
+- "Posted, so it's in the tracker while you're out."
+  - Nothing is posted until the user OKs the draft they saw.
+- "I read the code only to look for a lead. I did not find a cause and did not try to reproduce the
+  bug."
+  - Reading is step 3. Step 4 is the run. No run, no bug draft.
+- "The code looks right on a clean close, so the issue lists what is unknown."
+  - Then run it. The run decides whether there is anything to file.
+- A draft that lists "whether it reproduces on a local build of `development`" as unknown.
+  - Finding that out is your job, not the issue's. Run it.
+- "That is a scaffolding failure, not evidence of the bug, so I did not chase it."
+  - That probe never ran its check. Fix it and run it again.
+- "I'd first ask the user two questions", then a full draft for a bug that did not show.
+  - A bug that did not show gets no draft. Report, ask whether to file it as not reproduced, and
+    wait.
+- "Something in front of it keeps the connection open" / "the proxy in front of it".
+  - The host's setup is private, and no run showed it. It stays out of the draft. Say it to the user
+    in chat if it helps.
+- "Only the lobby gets this, not a running game." / "this issue leaves them out" / "The simplest
+  answer is yes".
+  - Each is a choice the user has not made. Ask it plainly under `## Open questions`, and nothing
+    else in the body answers it.
+- A draft whose `## Open questions` asks "Does the count stay up for good, or does it drop after
+  about 30 s?"
+  - That is a fact nobody knows yet, not a choice. Write it as "Unknown: …" in the body. Under
+    `## Open questions` it would send a bug to design, and it would never be built.
+- The user answered an open question in chat, so the draft just drops the question.
+  - The answer is lost that way. Write it in as decided (`## Decided`, or Want: or Notes:), and keep
+    as questions only the choices still unmade.
+- "Do you want me to … add a comment to it"
+  - Out of scope. Point at the open issue and stop.
+- "I ran the two things myself, one after another, rather than through subagents (the skill allows
+  dispatching them; I did not)."
+  - A batch is dispatched, one subagent per issue. Doing them yourself is only for a session with no
+    Agent tool.
+- "Neither is filed, because the code at `development` already does what each one asks." (for a bug
+  seen only on an iPhone, once a mock passed)
+  - "Already does it" is for enhancements. A bug seen only on a device is drafted as not reproduced,
+    and the passing mock is what was tried.
+- "Your note on this says to file it anyway as not reproduced. Do you want me to file it that way?"
+  - The user answered before you asked. Draft it as not reproduced and show it. Only the posting
+    waits.
 
 ## Red flags
 
@@ -208,6 +255,8 @@ finding, then steps 3 to 5 for the next. Say in your message to the user which w
 - `<sha>` or any placeholder in a draft.
 - A draft names a host, a proxy, a memory note, or anything only your context told you.
 - A line in Want:, Notes: or Scope answers a question under `## Open questions`.
+- A question for the reporter, or a fact nobody knows yet, under `## Open questions`.
+- The user answered a question in chat, and the draft drops it without writing the answer in.
 - A draft for something the code already does, or for a bug that did not show, before the user
   answered.
 - A bug seen only on a device, and you are asking "file it anyway?" instead of drafting it as not
