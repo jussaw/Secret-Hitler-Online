@@ -155,6 +155,8 @@ const CLOSE_REFUSED = 1002;
 const SPECTATOR_RESULT_MS = 3000;
 /** The account card's line after a failed Discord sign-in (the server sends the page to ?signin=failed). */
 const SIGN_IN_FAILED = "Signing in with Discord failed. Please try again.";
+/** How long PLAY INSTEAD waits for the page's own closing player socket to close before it checks. */
+const SEAT_CLOSE_WAIT_MS = 2000;
 
 /** The account's name prompt: CHOOSE A NAME after a first sign-in, or CHANGE NAME. */
 type NamePromptKind = "choose" | "change";
@@ -260,6 +262,14 @@ const defaultAppState: AppState = {
 
 class App extends Component<{}, AppState> {
   websocket?: WebSocket = undefined;
+  /** Whether this.websocket is a player's socket (not a spectator's), and the lobby it is in. */
+  websocketSeat?: { lobby: string } = undefined;
+  /**
+   * The page's own player socket that the page closed (WATCH INSTEAD, say), until its close event:
+   * until then the server may still count it as the account's connection in that lobby, and
+   * /check-login would answer 403, as if another tab had the seat. PLAY INSTEAD waits for it.
+   */
+  closingSeat?: { lobby: string; closed: Promise<void> } = undefined;
   /** Reconnects tried since the last message; each waits its RECONNECT_DELAYS entry. */
   reconnectAttempts: number = 0;
   /** A reconnect waiting its turn after a lost socket; this.websocket is undefined meanwhile. */
@@ -526,6 +536,7 @@ class App extends Component<{}, AppState> {
 
     console.log("Websocket created for " + shownUrl);
     this.websocket = ws;
+    this.websocketSeat = spectator ? undefined : { lobby };
     this.socketAnswered = false;
     this.awaitReply(); // the server sends the state as soon as it takes the socket
     this.seatPending = false;
@@ -566,15 +577,44 @@ class App extends Component<{}, AppState> {
     return true;
   }
 
-  /** Closes the current socket without the reconnect or leave path of onWebSocketClose. */
+  /**
+   * Closes the current socket without the reconnect or leave path of onWebSocketClose. A player's
+   * socket is remembered as closingSeat until its close event.
+   */
   closeSocket() {
     this.clearReplyTimer();
-    if (this.websocket) {
-      // Clear onClose event to prevent reconnection
-      this.websocket.onclose = () => {};
-      this.websocket.close();
+    const ws = this.websocket;
+    if (ws) {
+      const seat = this.websocketSeat;
+      if (seat) {
+        let closed: () => void = () => {};
+        const closing = { lobby: seat.lobby, closed: new Promise<void>((resolve) => (closed = resolve)) };
+        this.closingSeat = closing;
+        // No reconnect: the close only tells PLAY INSTEAD the server is done with this socket.
+        ws.onclose = () => {
+          if (this.closingSeat === closing) this.closingSeat = undefined;
+          closed();
+        };
+      } else {
+        // Clear onClose event to prevent reconnection
+        ws.onclose = () => {};
+      }
+      ws.close();
       this.websocket = undefined;
+      this.websocketSeat = undefined;
     }
+  }
+
+  /**
+   * While the page's own player socket in `lobby` is still closing (closingSeat), a promise that
+   * resolves once it has closed, or after SEAT_CLOSE_WAIT_MS at the most; otherwise undefined.
+   */
+  seatClosed(lobby: string): Promise<void> | undefined {
+    const closing = this.closingSeat;
+    if (closing === undefined || closing.lobby !== lobby) return undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const bound = new Promise<void>((resolve) => (timer = setTimeout(resolve, SEAT_CLOSE_WAIT_MS)));
+    return Promise.race([closing.closed, bound]).then(() => clearTimeout(timer));
   }
 
   /**
@@ -1223,6 +1263,13 @@ class App extends Component<{}, AppState> {
    */
   async playInstead(session: number, name = this.accountName()) {
     const lobby = this.state.lobby;
+    // Just after WATCH INSTEAD, the server may still count the closing player socket as the
+    // account's connection here: the check waits for its close (2 s at the most).
+    const seatClosed = this.seatClosed(lobby);
+    if (seatClosed) {
+      await seatClosed;
+      if (session !== this.playInsteadPending) return; // left, or a game started, meanwhile
+    }
     let response: Response | undefined;
     try {
       response = await this.tryLogin(lobby);

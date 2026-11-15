@@ -315,6 +315,83 @@ test("the old socket closing stays in the lobby", async () => {
   expect(app.state.page).toBe("lobby");
 });
 
+// Until the old player socket's close has reached the server, the server still counts it as the
+// account's connection, and /check-login would answer 403 (another tab). PLAY INSTEAD waits for it.
+
+/** A player who has just pressed WATCH INSTEAD: the old player socket is closing, not yet closed. */
+async function watchingInstead() {
+  const app = await playerInLobby();
+  const seat = lastSocket();
+  act(() => app.onClickWatchInstead());
+  await deliver(app, lobbyPacket);
+  expect(app.state.spectator).toBe(true);
+  expect(seat.closed).toBe(true);
+  return { app, seat };
+}
+
+test("after WATCH INSTEAD, PLAY INSTEAD checks only once the old seat's socket has closed", async () => {
+  const { app, seat } = await watchingInstead();
+  const pending = app.onClickPlayInstead();
+  await settle();
+  expect(playerChecks()).toHaveLength(0);
+  act(() => seat.onclose?.({ code: 1000 })); // the server has the close and has answered it
+  await act(() => pending);
+  expect(playerChecks()).toHaveLength(1);
+  expect(app.state.spectator).toBe(false);
+  expect(lastUrl()).toContain("rejoinKey=");
+});
+
+test("after WATCH INSTEAD, PLAY INSTEAD checks anyway once 2 s pass with no close event", async () => {
+  vi.useFakeTimers();
+  const { app } = await watchingInstead();
+  const pending = app.onClickPlayInstead();
+  await act(async () => {
+    vi.advanceTimersByTime(1999);
+  });
+  await settle();
+  expect(playerChecks()).toHaveLength(0);
+  await act(async () => {
+    vi.advanceTimersByTime(1);
+  });
+  await act(() => pending);
+  expect(playerChecks()).toHaveLength(1);
+  expect(app.state.spectator).toBe(false);
+});
+
+test("LEAVE LOBBY while PLAY INSTEAD waits for the old seat to close sends no check", async () => {
+  vi.useFakeTimers();
+  const { app, seat } = await watchingInstead();
+  const watching = lastSocket();
+  const pending = app.onClickPlayInstead();
+  act(() => app.onClickLeaveLobby());
+  act(() => seat.onclose?.({ code: 1000 }));
+  await act(async () => {
+    vi.advanceTimersByTime(2000);
+  });
+  await act(() => pending);
+  expect(playerChecks()).toHaveLength(0);
+  act(() => watching.onclose?.({ code: 1000 }));
+  expect(app.state.page).toBe("login");
+  expect(lastSocket()).toBe(watching);
+});
+
+test("PLAY INSTEAD with no earlier player socket checks at once", async () => {
+  const app = await spectatorInLobby(); // watching from the start
+  const pending = app.onClickPlayInstead();
+  expect(playerChecks()).toHaveLength(1); // before any await
+  await act(() => pending);
+  expect(app.state.spectator).toBe(false);
+});
+
+test("PLAY INSTEAD after the old seat's socket has closed checks at once", async () => {
+  const { app, seat } = await watchingInstead();
+  act(() => seat.onclose?.({ code: 1000 }));
+  const pending = app.onClickPlayInstead();
+  expect(playerChecks()).toHaveLength(1); // before any await
+  await act(() => pending);
+  expect(app.state.spectator).toBe(false);
+});
+
 test("PLAY INSTEAD takes a seat under the account's name at once, with no prompt", async () => {
   const app = await spectatorInLobby();
   const watching = lastSocket();
