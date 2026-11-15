@@ -383,6 +383,24 @@ test("PLAY INSTEAD with no earlier player socket checks at once", async () => {
   expect(app.state.spectator).toBe(false);
 });
 
+test("PLAY INSTEAD in another lobby checks at once while this lobby's old seat is still closing", async () => {
+  const app = await playerInLobby(); // a player in HBIA
+  const seat = lastSocket();
+  // Watching KQMX now, with HBIA's player socket closed by the page but its close event not yet
+  // come (a dead socket's close can take minutes).
+  act(() => {
+    app.openWatch("KQMX");
+  });
+  await deliver(app, lobbyPacket);
+  expect(seat.closed).toBe(true);
+  expect(app.state.lobby).toBe("KQMX");
+  expect(app.state.spectator).toBe(true);
+  const pending = app.onClickPlayInstead();
+  expect(playerChecks().map((url) => url.search)).toEqual(["?lobby=KQMX"]); // before any await
+  await act(() => pending);
+  expect(app.state.spectator).toBe(false);
+});
+
 test("PLAY INSTEAD after the old seat's socket has closed checks at once", async () => {
   const { app, seat } = await watchingInstead();
   act(() => seat.onclose?.({ code: 1000 }));
