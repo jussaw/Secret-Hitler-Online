@@ -14,6 +14,12 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +51,8 @@ public final class DiscordSignIn {
     private static final String STATE_PATH = "/auth";
     private static final int STATE_MAX_AGE_SECONDS = 600;
     private static final SecureRandom RANDOM = new SecureRandom();
+    private static final String USER_AGENT = "secret-hitler-online";
+    private static final Pattern SNOWFLAKE = Pattern.compile("[0-9]{1,20}");
     private static final String FAILED = "/?signin=failed";
 
     private static HttpClient client;
@@ -130,15 +138,19 @@ public final class DiscordSignIn {
             }
             String token = exchange(code);
             JSONObject user = readUser(token);
-            String id = user.optString("id", "");
-            if (id.isEmpty()) {
-                throw new Failure("Discord's user had no id");
+            Object id = user.opt("id");
+            if (!(id instanceof String) || !SNOWFLAKE.matcher((String) id).matches()) {
+                throw new Failure("Discord's user had no valid id");
             }
             String username = user.optString("username", "");
             String avatar = user.isNull("avatar") ? null : user.optString("avatar", null);
-            Account account = SecretHitlerServer.accounts.upsertDiscordAccount(id,
-                    username.isEmpty() ? id : username, avatar);
-            AuthRoutes.startSession(ctx, account.id());
+            try {
+                Account account = SecretHitlerServer.accounts.upsertDiscordAccount((String) id,
+                        username.isEmpty() ? (String) id : username, avatar);
+                AuthRoutes.startSession(ctx, account.id());
+            } catch (RuntimeException e) {
+                throw new Failure("saving the account failed: " + e.getClass().getSimpleName());
+            }
             ctx.redirect(lobby == null ? "/" : "/?lobby=" + lobby);
         } catch (Failure e) {
             LOG.info("Discord sign-in failed: {}", e.getMessage());
@@ -153,13 +165,11 @@ public final class DiscordSignIn {
                 + "&redirect_uri=" + encode(ApplicationConfig.DISCORD_REDIRECT_URI)
                 + "&client_id=" + encode(ApplicationConfig.DISCORD_CLIENT_ID)
                 + "&client_secret=" + encode(ApplicationConfig.DISCORD_CLIENT_SECRET);
-        HttpRequest request = HttpRequest.newBuilder(uri(apiBase + "/oauth2/token"))
-                .timeout(TIMEOUT)
+        JSONObject answer = call("the token exchange", () -> HttpRequest
+                .newBuilder(URI.create(apiBase + "/oauth2/token"))
                 .header("Content-Type", "application/x-www-form-urlencoded")
-                .header("Accept", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(form))
-                .build();
-        String token = call(request, "the token exchange").optString("access_token", "");
+                .POST(HttpRequest.BodyPublishers.ofString(form)));
+        String token = answer.optString("access_token", "");
         if (token.isEmpty()) {
             throw new Failure("the token exchange gave no access token");
         }
@@ -167,38 +177,53 @@ public final class DiscordSignIn {
     }
 
     private static JSONObject readUser(String token) throws Failure {
-        HttpRequest request = HttpRequest.newBuilder(uri(apiBase + "/users/@me"))
-                .timeout(TIMEOUT)
+        return call("reading the user", () -> HttpRequest.newBuilder(URI.create(apiBase + "/users/@me"))
                 .header("Authorization", "Bearer " + token)
-                .header("Accept", "application/json")
-                .GET()
-                .build();
-        return call(request, "reading the user");
+                .GET());
     }
 
-    /** Sends the request and parses a 2xx answer as a JSON object. Logs no body. */
-    private static JSONObject call(HttpRequest request, String what) throws Failure {
+    /**
+     * Builds and sends the request and parses a 2xx answer as a JSON object, all within one
+     * deadline of {@code TIMEOUT} that covers connecting, the headers and the whole body (the
+     * request's own timeout stops once the headers arrive). Any failure, including a
+     * RuntimeException from building the request, is a Failure that names only its class and
+     * logs no body and no header.
+     */
+    private static JSONObject call(String what, Supplier<HttpRequest.Builder> builder) throws Failure {
+        CompletableFuture<HttpResponse<String>> future = null;
         try {
-            HttpResponse<String> response = client().send(request, HttpResponse.BodyHandlers.ofString());
+            HttpRequest request = builder.get()
+                    .timeout(TIMEOUT)
+                    .header("Accept", "application/json")
+                    .header("User-Agent", USER_AGENT)
+                    .build();
+            future = client().sendAsync(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = future.get(TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
             if (response.statusCode() / 100 != 2) {
                 throw new Failure(what + " answered " + response.statusCode());
             }
             return new JSONObject(response.body());
         } catch (InterruptedException e) {
+            cancel(future);
             Thread.currentThread().interrupt();
             throw new Failure(what + " was interrupted");
+        } catch (TimeoutException e) {
+            cancel(future);
+            throw new Failure(what + " timed out");
         } catch (Failure e) {
             throw e;
-        } catch (Exception e) {
+        } catch (ExecutionException e) {
+            Throwable cause = e.getCause() == null ? e : e.getCause();
+            throw new Failure(what + " failed: " + cause.getClass().getSimpleName());
+        } catch (RuntimeException e) {
+            cancel(future);
             throw new Failure(what + " failed: " + e.getClass().getSimpleName());
         }
     }
 
-    private static URI uri(String text) throws Failure {
-        try {
-            return URI.create(text);
-        } catch (IllegalArgumentException e) {
-            throw new Failure("the Discord address is not valid");
+    private static void cancel(CompletableFuture<?> future) {
+        if (future != null) {
+            future.cancel(true);
         }
     }
 
