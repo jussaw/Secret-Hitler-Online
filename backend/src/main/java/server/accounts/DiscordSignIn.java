@@ -160,15 +160,16 @@ public final class DiscordSignIn {
 
     /** Trades the authorization code for an access token. */
     private static String exchange(String code) throws Failure {
-        String form = "grant_type=authorization_code"
-                + "&code=" + encode(code)
-                + "&redirect_uri=" + encode(ApplicationConfig.DISCORD_REDIRECT_URI)
-                + "&client_id=" + encode(ApplicationConfig.DISCORD_CLIENT_ID)
-                + "&client_secret=" + encode(ApplicationConfig.DISCORD_CLIENT_SECRET);
-        JSONObject answer = call("the token exchange", () -> HttpRequest
-                .newBuilder(URI.create(apiBase + "/oauth2/token"))
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .POST(HttpRequest.BodyPublishers.ofString(form)));
+        JSONObject answer = call("the token exchange", () -> {
+            String form = "grant_type=authorization_code"
+                    + "&code=" + encode(code)
+                    + "&redirect_uri=" + encode(ApplicationConfig.DISCORD_REDIRECT_URI)
+                    + "&client_id=" + encode(ApplicationConfig.DISCORD_CLIENT_ID)
+                    + "&client_secret=" + encode(ApplicationConfig.DISCORD_CLIENT_SECRET);
+            return HttpRequest.newBuilder(URI.create(apiBase + "/oauth2/token"))
+                    .header("Content-Type", "application/x-www-form-urlencoded")
+                    .POST(HttpRequest.BodyPublishers.ofString(form));
+        });
         String token = answer.optString("access_token", "");
         if (token.isEmpty()) {
             throw new Failure("the token exchange gave no access token");

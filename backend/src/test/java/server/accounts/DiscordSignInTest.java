@@ -51,7 +51,7 @@ public class DiscordSignInTest {
      * request's own timeout does not cover that). CRLF_TOKEN answers with an access token that
      * has a line break in it. BAD_ID and OBJECT_ID give a user id that is not a snowflake.
      */
-    private enum Mode { OK, SERVER_ERROR, STALL, NO_TOKEN, BAD_JSON, NO_ID, BAD_ID, OBJECT_ID, CRLF_TOKEN }
+    private enum Mode { OK, SERVER_ERROR, STALL, NO_TOKEN, BAD_JSON, NO_ID, BAD_ID, OBJECT_ID, NUMBER_ID, LONG_ID, CRLF_TOKEN }
 
     private static final String CRLF_TOKEN = "crlf-token-value\r\nX-Evil: 1";
 
@@ -117,6 +117,8 @@ public class DiscordSignInTest {
                 case NO_ID -> "";
                 case BAD_ID -> "\"test-1\"";
                 case OBJECT_ID -> "{}";
+                case NUMBER_ID -> "4242";
+                case LONG_ID -> "\"123456789012345678901\"";
                 default -> "\"4242\"";
             };
             String body = "{" + (id.isEmpty() ? "" : "\"id\":" + id + ",") + "\"username\":\"fakeuser\",\"avatar\":"
@@ -431,7 +433,7 @@ public class DiscordSignInTest {
         // The user read failing, after a good exchange.
         mode = Mode.OK;
         for (Mode failing : List.of(Mode.SERVER_ERROR, Mode.STALL, Mode.BAD_JSON, Mode.NO_ID, Mode.BAD_ID,
-                Mode.OBJECT_ID)) {
+                Mode.OBJECT_ID, Mode.NUMBER_ID, Mode.LONG_ID)) {
             userMode = failing;
             userAuthorizations.clear();
             long begin = System.nanoTime();
