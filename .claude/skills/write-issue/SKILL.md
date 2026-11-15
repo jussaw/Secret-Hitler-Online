@@ -23,7 +23,8 @@ these rules is violating their spirit.
   before any draft existed. Show the draft and wait.
 - Not for a draft you changed after the OK. Show it again and wait again.
 - An OK for one draft of a batch posts that draft only.
-- No draft for a thing that reached **Nothing to file** until the user answers its question.
+- No draft for a thing that reached **Nothing to file** until the user answers its question, in
+  the request or after it.
 
 **No bug is drafted without a run in the throwaway checkout that tried to show it.**
 - Not when the code looks right. Code that looks right is why you run it.
@@ -105,6 +106,12 @@ of step 4; never a device-only bug). Report what you found, with `path:line` ref
 commit and the run's command and result, and ask whether to file it anyway (a bug as not
 reproduced). Draft nothing for it until the user answers. The other issues of a batch carry on.
 
+The user's words may answer it already ("if you can't reproduce it, file it anyway as not
+reproduced"). That is their answer: do not ask again. Draft the bug as not reproduced, with "Not
+reproduced on `development` (<commit>). Tried: <command>, <what it showed>." as its provenance,
+and show it. That answer is about drafting only: posting still waits for an OK on the draft the
+user has seen.
+
 ## 5. Draft
 
 Pick the skeleton in `formats.md`: `## 1. Bug found by reading the code`, `## 2. Bug seen in play or
@@ -119,9 +126,14 @@ Then check the draft, line by line:
   gives), the one label (`bug` or `enhancement`), backticks, upstream issues in backticks.
 - [ ] The commit is what `rev-parse --short HEAD` printed in step 2. A placeholder (`<sha>`,
   `<commit>`, "not recorded") is a failure: go back and run the command.
+- [ ] A bug's provenance is its first sentences (the first of `## Description` in skeleton 2):
+  where it was found or seen, then the sentence step 4 or **Nothing to file** gives, "Reproduced
+  on …" or "Not reproduced …" with its "Tried: <command>, <what it showed>.", then the commit.
 - [ ] "Reproduced" only beside a run that showed the bug.
 - [ ] Only what the repo, its issues, your runs and the user's own words show. Nothing from memory
   notes or other private context, and never a memory note's name. No guess at the host's setup.
+  Nothing about the user that they did not say: "seen twice on the home server", not "reported by
+  the repo owner".
 - [ ] No infrastructure, even when the user's words carry it: none of the list under Constraints
   in `CLAUDE.md` (machine and host names, hardware, deploy and update tools, LAN addresses, ports,
   host paths, domains, the proxy, tunnel and monitoring setup). Write "the home server" or "the
@@ -183,6 +195,7 @@ finding, then steps 3 to 5 for the next. Say in your message to the user which w
 | "Do you want me to … add a comment to it" | Out of scope. Point at the open issue and stop. |
 | "I ran the two things myself, one after another, rather than through subagents (the skill allows dispatching them; I did not)." | A batch is dispatched, one subagent per issue. Doing them yourself is only for a session with no Agent tool. |
 | "Neither is filed, because the code at `development` already does what each one asks." (for a bug seen only on an iPhone, once a mock passed) | "Already does it" is for enhancements. A bug seen only on a device is drafted as not reproduced, and the passing mock is what was tried. |
+| "Your note on this says to file it anyway as not reproduced. Do you want me to file it that way?" | The user answered before you asked. Draft it as not reproduced and show it. Only the posting waits. |
 
 ## Red flags
 
@@ -199,6 +212,7 @@ finding, then steps 3 to 5 for the next. Say in your message to the user which w
   answered.
 - A bug seen only on a device, and you are asking "file it anyway?" instead of drafting it as not
   reproduced.
+- The user already said to file it anyway, and you are asking again instead of showing the draft.
 - Two or more issues, and you are reading or running the code yourself instead of dispatching a
   subagent for each.
 
