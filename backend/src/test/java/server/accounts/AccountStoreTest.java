@@ -124,7 +124,11 @@ public class AccountStoreTest {
             t.join();
         }
         if (!failures.isEmpty()) {
-            throw new AssertionError("A save threw.", failures.get(0));
+            AssertionError error = new AssertionError("A save threw.", failures.get(0));
+            for (Throwable other : failures.subList(1, failures.size())) {
+                error.addSuppressed(other);
+            }
+            throw error;
         }
         assertEquals(2, results.size());
         assertEquals(1, results.stream().filter(r -> r == NameResult.SAVED).count());

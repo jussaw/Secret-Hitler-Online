@@ -11,9 +11,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Base64;
+import java.util.function.LongSupplier;
 import org.sqlite.SQLiteErrorCode;
 import org.sqlite.SQLiteException;
-import java.util.function.LongSupplier;
 
 /**
  * Accounts and sessions, in the SQLite file lobbies are backed up to (or in memory when there
@@ -52,23 +52,8 @@ public final class AccountStore implements AutoCloseable {
                 : "jdbc:sqlite:" + databasePath;
         try {
             Connection connection = DriverManager.getConnection(url);
-            try (Statement s = connection.createStatement()) {
-                s.execute("PRAGMA busy_timeout = 5000");
-                s.execute("CREATE TABLE IF NOT EXISTS accounts ("
-                        + "id TEXT PRIMARY KEY, "
-                        + "discord_username TEXT, "
-                        + "discord_avatar TEXT, "
-                        + "username TEXT, "
-                        + "username_key TEXT, "
-                        + "created_at INTEGER NOT NULL, "
-                        + "updated_at INTEGER NOT NULL)");
-                s.execute("CREATE UNIQUE INDEX IF NOT EXISTS accounts_username_key "
-                        + "ON accounts (username_key)");
-                s.execute("CREATE TABLE IF NOT EXISTS sessions ("
-                        + "token_hash TEXT PRIMARY KEY, "
-                        + "account_id TEXT NOT NULL, "
-                        + "expires_at INTEGER NOT NULL, "
-                        + "created_at INTEGER NOT NULL)");
+            try {
+                createTables(connection);
             } catch (SQLException | RuntimeException e) {
                 try {
                     connection.close();
@@ -80,6 +65,27 @@ public final class AccountStore implements AutoCloseable {
             return new AccountStore(connection, clock);
         } catch (SQLException e) {
             throw new IllegalStateException("Could not open the account database.", e);
+        }
+    }
+
+    private static void createTables(Connection connection) throws SQLException {
+        try (Statement s = connection.createStatement()) {
+            s.execute("PRAGMA busy_timeout = 5000");
+            s.execute("CREATE TABLE IF NOT EXISTS accounts ("
+                    + "id TEXT PRIMARY KEY, "
+                    + "discord_username TEXT, "
+                    + "discord_avatar TEXT, "
+                    + "username TEXT, "
+                    + "username_key TEXT, "
+                    + "created_at INTEGER NOT NULL, "
+                    + "updated_at INTEGER NOT NULL)");
+            s.execute("CREATE UNIQUE INDEX IF NOT EXISTS accounts_username_key "
+                    + "ON accounts (username_key)");
+            s.execute("CREATE TABLE IF NOT EXISTS sessions ("
+                    + "token_hash TEXT PRIMARY KEY, "
+                    + "account_id TEXT NOT NULL, "
+                    + "expires_at INTEGER NOT NULL, "
+                    + "created_at INTEGER NOT NULL)");
         }
     }
 
