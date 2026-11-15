@@ -237,9 +237,11 @@ conditions:
   the user.
 - **Reproduce:** Java 17 (`ls ~/.sdkman/candidates/java`, `JAVA_HOME`) for `./gradlew test --tests
   <Class>`; `npm ci` once for `npx vitest run <file>` or a throwaway `e2e/repro.spec.ts` run with
-  `npx playwright test e2e/repro.spec.ts --project=<project>`, which serves on port 4545, so one
-  browser run at a time. Nothing to reproduce on a real device: say so and what was tried. A bug
-  that did not show is drafted as not reproduced, with what was tried, and shown.
+  `E2E_PORT=<port> npx playwright test e2e/repro.spec.ts --project=<project>`, on a free port
+  from 4546 to 4999 picked once per run, as `implement-issue` does (a run on a port another
+  session serves tests that session's code). Nothing to reproduce on a real device: say so and
+  what was tried. A bug that did not show is drafted as not reproduced, with what was tried, and
+  shown.
 - **Nothing to file:** an enhancement the code already does, or a bug report the code plainly shows
   is fixed already (a closed issue or commit you can name): report what was found, with
   references, and ask whether to file anyway. Draft nothing until the user answers.
