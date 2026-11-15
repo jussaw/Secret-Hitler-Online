@@ -14,6 +14,7 @@ afterEach(() => {
 
 const button = (name: string) => screen.getByRole("button", { name });
 const field = () => screen.getByLabelText("Your name") as HTMLInputElement;
+/** The prompt as CHOOSE A NAME (CONTINUE, SIGN OUT) unless `labels` says otherwise (CHANGE NAME). */
 const setup = (
   initialName = "Sam",
   onContinue = vi.fn().mockResolvedValue(""),
@@ -22,10 +23,10 @@ const setup = (
   const onCancel = vi.fn();
   const utils = render(
     <NamePrompt
-      title={labels.title ?? "PLAY INSTEAD"}
+      title={labels.title ?? "CHOOSE A NAME"}
       initialName={initialName}
       confirmLabel={labels.confirmLabel ?? "CONTINUE"}
-      secondaryLabel={labels.secondaryLabel ?? "CANCEL"}
+      secondaryLabel={labels.secondaryLabel ?? "SIGN OUT"}
       onConfirm={onContinue}
       onSecondary={onCancel}
     />
@@ -34,15 +35,15 @@ const setup = (
 };
 
 describe("NamePrompt", () => {
-  test("fills in the last name", () => {
+  test("starts from the name it is given", () => {
     setup("Sam");
     expect(field().value).toBe("Sam");
     expect(field().maxLength).toBe(12);
-    expect(screen.getByRole("heading", { name: "PLAY INSTEAD" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "CHOOSE A NAME" })).toBeInTheDocument();
     expect(
       screen.getByText("Others see it in lobbies and games. Up to 12 characters.")
     ).toBeInTheDocument();
-    expect(button("CANCEL")).toBeEnabled();
+    expect(button("SIGN OUT")).toBeEnabled();
     expect(button("CONTINUE")).toBeEnabled();
   });
 
@@ -69,7 +70,7 @@ describe("NamePrompt", () => {
     expect(console.error).not.toHaveBeenCalled();
   });
 
-  test("CONTINUE collapses runs of spaces, as the login form does", () => {
+  test("CONTINUE collapses runs of spaces, as the server's Usernames.normalize does", () => {
     const { onContinue } = setup("Sam");
     fireEvent.change(field(), { target: { value: " Sam   Lee " } });
     fireEvent.click(button("CONTINUE"));
@@ -204,9 +205,11 @@ describe("NamePrompt", () => {
     expect(button("CONTINUE")).toBeEnabled();
   });
 
-  test("CANCEL calls onCancel", () => {
-    const { onCancel } = setup();
-    fireEvent.click(button("CANCEL"));
+  test("the other button works while a save is on its way", () => {
+    const { onCancel } = setup("Sam", vi.fn(() => new Promise<string>(() => {})));
+    fireEvent.click(button("CONTINUE"));
+    expect(button("CONTINUE")).toBeDisabled();
+    fireEvent.click(button("SIGN OUT"));
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 });
