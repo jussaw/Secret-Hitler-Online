@@ -39,6 +39,7 @@ public class RenameServerTest {
     private AccountStore store;
     private AccountStore savedStore;
     private float savedGrace;
+    private String savedRedirectUri;
 
     @Before
     public void useAStore() {
@@ -47,6 +48,9 @@ public class RenameServerTest {
         SecretHitlerServer.accounts = store;
         savedGrace = Lobby.PLAYER_TIMEOUT_IN_SEC;
         Lobby.PLAYER_TIMEOUT_IN_SEC = 60; // no removal fires during a test
+        // A player's socket is checked against the Host it connects to, the origin TestSocket sends.
+        savedRedirectUri = ApplicationConfig.DISCORD_REDIRECT_URI;
+        ApplicationConfig.DISCORD_REDIRECT_URI = null;
     }
 
     @After
@@ -55,6 +59,7 @@ public class RenameServerTest {
         SecretHitlerServer.accounts = savedStore;
         store.close();
         Lobby.PLAYER_TIMEOUT_IN_SEC = savedGrace;
+        ApplicationConfig.DISCORD_REDIRECT_URI = savedRedirectUri;
     }
 
     private Lobby register(String code) {
@@ -223,8 +228,7 @@ public class RenameServerTest {
         TestSocket socket = null;
         try {
             Lobby lobby = register("RNMS");
-            // Until players join by account, the handshake's name is the account.
-            socket = TestSocket.connect(app.port(), "lobby=RNMS&name=Ann");
+            socket = TestSocket.connect(app.port(), "lobby=RNMS", TestAccounts.signIn(store, "1", "Ann"));
             socket.next("lobby");
             socket.send(command("select-icon").put("icon", "p1"));
             socket.next("ok");

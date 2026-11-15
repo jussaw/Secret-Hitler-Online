@@ -23,12 +23,16 @@ public class ServerStartupTest {
     private int port;
     private AccountStore store;
     private AccountStore savedStore;
+    private String savedRedirectUri;
 
     @Before
     public void startServer() {
         savedStore = SecretHitlerServer.accounts;
         store = AccountStore.open(null);
         SecretHitlerServer.accounts = store;
+        // A player's socket is checked against the Host it connects to, the origin TestSocket sends.
+        savedRedirectUri = ApplicationConfig.DISCORD_REDIRECT_URI;
+        ApplicationConfig.DISCORD_REDIRECT_URI = null;
         app = SecretHitlerServer.createApp().start(0);
         port = app.port();
     }
@@ -37,6 +41,7 @@ public class ServerStartupTest {
     public void stopServer() {
         app.stop();
         SecretHitlerServer.accounts = savedStore;
+        ApplicationConfig.DISCORD_REDIRECT_URI = savedRedirectUri;
         store.close();
     }
 
@@ -80,10 +85,11 @@ public class ServerStartupTest {
 
     @Test
     public void theGameSocketAnswersAsSoonAsStartReturns() throws Exception {
-        // The connect handler closes a socket with no parameters; an unregistered route
-        // would refuse the handshake instead.
-        TestSocket.CloseInfo close = TestSocket.connect(port, "").awaitClose();
+        // The connect handler closes a signed-in player's socket with no parameters; an
+        // unregistered route would refuse the handshake instead.
+        String token = TestAccounts.signIn(store, "starter", "Starter");
+        TestSocket.CloseInfo close = TestSocket.connect(port, "", token).awaitClose();
         assertEquals(1002, close.code);
-        assertEquals("Must have the 'lobby' and 'name' parameters.", close.reason);
+        assertEquals("Must have the 'lobby' parameter.", close.reason);
     }
 }

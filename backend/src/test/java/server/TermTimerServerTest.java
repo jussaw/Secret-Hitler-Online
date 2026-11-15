@@ -14,15 +14,20 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
 import server.util.Lobby;
 
-/** The END TERM countdown's commands over real sockets. */
+/** The END TERM countdown's commands over real sockets, from players signed in as their accounts. */
 public class TermTimerServerTest {
     private static final String[] NAMES = { "Ann", "Bob", "Cat", "Dan", "Eve" };
 
     private static Javalin app;
     private static int port;
+
+    @Rule
+    public final SignedInPlayers accounts = new SignedInPlayers();
+
     private final List<String> codes = new ArrayList<>();
     private final List<TestSocket> sockets = new ArrayList<>();
     private float savedDuration;
@@ -56,8 +61,16 @@ public class TermTimerServerTest {
         codes.forEach(SecretHitlerServer.codeToLobby::remove);
     }
 
+    /** Opens a spectator's socket: no session and no {@code Origin}. */
     private TestSocket connect(String query) throws Exception {
         TestSocket socket = TestSocket.connect(port, query);
+        sockets.add(socket);
+        return socket;
+    }
+
+    /** Opens a socket of the player named {@code name}, signed in as their account. */
+    private TestSocket connectAs(String name, String query) throws Exception {
+        TestSocket socket = TestSocket.connect(port, query, accounts.session(name));
         sockets.add(socket);
         return socket;
     }
@@ -72,7 +85,7 @@ public class TermTimerServerTest {
         SecretHitlerServer.codeToLobby.put(code, lobby);
         codes.add(code);
         for (int i = 0; i < NAMES.length; i++) {
-            TestSocket player = connect("lobby=" + code + "&name=" + NAMES[i]);
+            TestSocket player = connectAs(NAMES[i], "lobby=" + code);
             player.send(command(code, NAMES[i], "select-icon").put("icon", "p" + (i + 1)));
             player.next("ok");
             players.add(player);

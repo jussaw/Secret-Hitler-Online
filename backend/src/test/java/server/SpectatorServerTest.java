@@ -5,24 +5,30 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import io.javalin.Javalin;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
 import server.util.Lobby;
 
-/** The /game handshake and messages for spectators, over real sockets. */
+/**
+ * The /game handshake and messages for spectators, over real sockets. A spectator needs no session
+ * and its socket no {@code Origin}; players here are signed in as their accounts.
+ */
 public class SpectatorServerTest {
     private static Javalin app;
     private static int port;
+
+    @Rule
+    public final SignedInPlayers accounts = new SignedInPlayers();
+
     private final List<String> codes = new ArrayList<>();
     private final List<TestSocket> sockets = new ArrayList<>();
 
@@ -57,8 +63,20 @@ public class SpectatorServerTest {
         return lobby;
     }
 
+    /** Opens a spectator's socket: no session and no {@code Origin}. */
     private TestSocket connect(String query) throws Exception {
-        TestSocket socket = TestSocket.connect(port, query);
+        return connect(query, Map.of());
+    }
+
+    private TestSocket connect(String query, Map<String, String> headers) throws Exception {
+        TestSocket socket = TestSocket.connect(port, query, headers);
+        sockets.add(socket);
+        return socket;
+    }
+
+    /** Opens a socket of the player named {@code name}, signed in as their account. */
+    private TestSocket connectAs(String name, String query) throws Exception {
+        TestSocket socket = TestSocket.connect(port, query, accounts.session(name));
         sockets.add(socket);
         return socket;
     }
@@ -68,17 +86,21 @@ public class SpectatorServerTest {
         return name == null ? message : message.put("name", name);
     }
 
+    /** A spectator's /check-login: no session. */
     private static HttpResponse<String> checkLogin(String query) throws Exception {
-        HttpRequest request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/check-login?" + query))
-                .build();
-        return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+        return SignedInPlayers.checkLogin(port, query, null);
+    }
+
+    /** /check-login for the player named {@code name}, signed in as their account. */
+    private HttpResponse<String> checkLoginAs(String name, String query) throws Exception {
+        return SignedInPlayers.checkLogin(port, query, accounts.session(name));
     }
 
     /** Connects players with portraits p1.. and waits until each has its icon. */
     private List<TestSocket> players(String code, String... names) throws Exception {
         List<TestSocket> players = new ArrayList<>();
         for (int i = 0; i < names.length; i++) {
-            TestSocket player = connect("lobby=" + code + "&name=" + names[i]);
+            TestSocket player = connectAs(names[i], "lobby=" + code);
             player.send(command(code, names[i], "select-icon").put("icon", "p" + (i + 1)));
             player.next("ok");
             players.add(player);
@@ -96,7 +118,7 @@ public class SpectatorServerTest {
 
     @Test
     public void anUnknownLobbyGivesSpectatorsThePlayersError() throws Exception {
-        TestSocket.CloseInfo player = connect("lobby=NONE&name=Ann").awaitClose();
+        TestSocket.CloseInfo player = connectAs("Ann", "lobby=NONE").awaitClose();
         TestSocket.CloseInfo spectator = connect("lobby=NONE&spectator=true").awaitClose();
         assertEquals(1002, player.code);
         assertEquals("The lobby 'NONE' does not exist.", player.reason);
@@ -114,7 +136,7 @@ public class SpectatorServerTest {
         assertEquals(200, checkLogin("lobby=SPAB&spectator=true").statusCode());
         assertEquals(400, checkLogin("spectator=true").statusCode());
 
-        HttpResponse<String> player = checkLogin("lobby=NONE&name=Ann");
+        HttpResponse<String> player = checkLoginAs("Ann", "lobby=NONE");
         HttpResponse<String> spectator = checkLogin("lobby=NONE&spectator=true");
         assertEquals(404, player.statusCode());
         assertEquals(player.statusCode(), spectator.statusCode());
@@ -122,18 +144,61 @@ public class SpectatorServerTest {
 
         lobby("SPAC");
         players("SPAC", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10");
-        assertEquals(489, checkLogin("lobby=SPAC&name=Zed").statusCode());
+        assertEquals(489, checkLoginAs("Zed", "lobby=SPAC").statusCode());
         assertEquals(200, checkLogin("lobby=SPAC&spectator=true").statusCode());
 
         lobby("SPAD").startNewGame(); // five CPU players
-        assertEquals(488, checkLogin("lobby=SPAD&name=Zed").statusCode());
+        assertEquals(488, checkLoginAs("Zed", "lobby=SPAD").statusCode());
         assertEquals(200, checkLogin("lobby=SPAD&spectator=true").statusCode());
+    }
+
+    /**
+     * A spectator needs no session: signed out (no cookie, or one that matches no session), its
+     * /check-login and its socket are let in, and its socket is never checked for its
+     * {@code Origin} (debug mode off here, where a player's is). Its packets carry no {@code you}.
+     */
+    @Test
+    public void spectatorsNeedNoSession() throws Exception {
+        boolean debug = ApplicationConfig.DEBUG;
+        ApplicationConfig.DEBUG = false; // the Origin check is on, as outside debug mode
+        try {
+            lobby("SPAH");
+            TestSocket ann = connectAs("Ann", "lobby=SPAH");
+            ann.next("lobby");
+            String signedOut = TestAccounts.signIn(accounts.store(), "gone", "Gone");
+            accounts.store().deleteSession(signedOut);
+
+            for (String token : new String[] { null, "junk", "", signedOut }) {
+                assertEquals(String.valueOf(token), 200,
+                        SignedInPlayers.checkLogin(port, "lobby=SPAH&spectator=true", token).statusCode());
+            }
+            List<TestSocket> watching = new ArrayList<>();
+            watching.add(connect("lobby=SPAH&spectator=true"));
+            watching.add(connect("lobby=SPAH&spectator=true", Map.of("Cookie", "session=junk")));
+            watching.add(connect("lobby=SPAH&spectator=true",
+                    Map.of("Cookie", "session=" + signedOut, "Origin", "http://another.example.test")));
+            for (int i = 0; i < watching.size(); i++) {
+                JSONObject packet = watching.get(i).next("lobby");
+                assertEquals(List.of("Ann"), packet.getJSONArray("usernames").toList());
+                assertFalse("a spectator's packet had " + packet, packet.has("you"));
+            }
+            while (ann.next("lobby").getInt("spectatorCount") < watching.size()) {
+                // the count rises with each spectator
+            }
+            for (TestSocket spectator : watching) {
+                spectator.send(command("SPAH", null, "ping"));
+                spectator.next("pong");
+                assertTrue(spectator.isOpen());
+            }
+        } finally {
+            ApplicationConfig.DEBUG = debug;
+        }
     }
 
     @Test
     public void playersSeeTheCount() throws Exception {
         lobby("SPAE");
-        TestSocket player = connect("lobby=SPAE&name=Ann");
+        TestSocket player = connectAs("Ann", "lobby=SPAE");
         assertEquals(0, player.next("lobby").getInt("spectatorCount"));
         TestSocket spectator = connect("lobby=SPAE&spectator=true");
         assertEquals(1, player.next("lobby").getInt("spectatorCount"));
