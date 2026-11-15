@@ -165,11 +165,18 @@ public final class AuthRoutes {
      * account {@code test-<id>}, names it under the usual rules if a username is given, starts a
      * session and sets the cookie. 200 with {@link #me}'s body; 400 for a missing or blank id, a
      * broken name or a body that is not a JSON object; 403 seated in a running game; 409 a taken
-     * name. A refused sign-in starts no session.
+     * name; 415 not sent as JSON (checked once the route is on, so while off it is 404 whatever
+     * the request). A refused sign-in starts no session.
      */
     public static void postTestSignIn(Context ctx) {
         if (!ApplicationConfig.TEST_SIGN_IN) {
             throw new NotFoundResponse();
+        }
+        // As for the other POSTs: another site's form cannot send JSON without asking first, so
+        // it cannot sign the browser in as a test account of its choosing.
+        if (!isJson(ctx)) {
+            refuse(ctx, 415, NOT_JSON);
+            return;
         }
         String id;
         String raw;

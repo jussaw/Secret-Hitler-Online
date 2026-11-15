@@ -478,6 +478,26 @@ public class AuthRoutesTest {
     }
 
     @Test
+    public void testSignInNeedsAJsonContentType() throws Exception {
+        String body = new JSONObject().put("id", "3").put("username", "Guest 3").toString();
+        // While off, the route looks absent whatever the request.
+        assertEquals(404, post("/auth/test-sign-in", null, "text/plain", body).statusCode());
+
+        ApplicationConfig.TEST_SIGN_IN = true;
+        for (String type : Arrays.asList(null, "text/plain", "application/x-www-form-urlencoded",
+                "multipart/form-data; boundary=x", "application/jsonp")) {
+            HttpResponse<String> response = post("/auth/test-sign-in", null, type, body);
+            assertEquals(type, 415, response.statusCode());
+            assertNull(type, sessionCookie(response));
+        }
+        assertNull(store.find("test-3"));
+
+        HttpResponse<String> json = post("/auth/test-sign-in", null, "application/json; charset=utf-8", body);
+        assertEquals(200, json.statusCode());
+        assertNotNull(sessionCookie(json));
+    }
+
+    @Test
     public void testSignInCannotRenameASeatedAccount() throws Exception {
         ApplicationConfig.TEST_SIGN_IN = true;
         TestAccounts.signIn(store, "3", "Guest 3");
