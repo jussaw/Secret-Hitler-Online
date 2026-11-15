@@ -2,14 +2,18 @@ package server.util;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static server.util.LobbyTesting.join;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -49,7 +53,7 @@ public class LobbyRejoinTest {
         List<FakeSocket> players = new ArrayList<>();
         for (int i = 1; i <= count; i++) {
             FakeSocket player = FakeSocket.open();
-            lobby.addUser(player.ctx, "P" + i);
+            join(lobby, player.ctx, "P" + i);
             lobby.trySetUserIcon("p" + i, player.ctx);
             players.add(player);
         }
@@ -72,7 +76,7 @@ public class LobbyRejoinTest {
     /** Opens a new connection under {@code name}, as a page coming back does. */
     private static FakeSocket rejoin(Lobby lobby, String name) {
         FakeSocket socket = FakeSocket.open();
-        lobby.addUser(socket.ctx, name);
+        join(lobby, socket.ctx, name);
         return socket;
     }
 
@@ -203,5 +207,42 @@ public class LobbyRejoinTest {
         assertEquals("the first back is the host", List.of("P3", "P1", "P2", "P4"), lobbyListSentTo(restored, first));
         restored.startNewGame();
         assertEquals(Set.of("P1", "P2", "P3", "P4", "Bot 1"), new HashSet<>(restored.getUserNames()));
+    }
+
+    /**
+     * An account with a live connection is in the lobby once. A second connection for it is
+     * refused unless it brings the key the live one was opened with, as the same page
+     * reconnecting does: that one takes the live connection's place, and the account keeps its
+     * place and portrait.
+     */
+    @Test
+    public void aSecondConnectionForAnAccountNeedsItsKey() {
+        Lobby lobby = new Lobby();
+        FakeSocket first = FakeSocket.open();
+        lobby.addUser(first.ctx, "a", "Ann", "key-a");
+        lobby.trySetUserIcon("p1", first.ctx);
+        join(lobby, FakeSocket.open().ctx, "Bob");
+
+        for (String key : Arrays.asList(null, "another key")) {
+            assertEquals("key " + key, Lobby.JoinRefusal.ALREADY_IN, lobby.joinRefusal("a", key));
+            FakeSocket second = FakeSocket.open();
+            try {
+                lobby.addUser(second.ctx, "a", "Ann", key);
+                fail("a second connection with the key " + key + " was added");
+            } catch (IllegalArgumentException expected) {
+                // as expected
+            }
+            assertFalse(lobby.hasUser(second.ctx));
+            assertEquals("the live connection is untouched", "a", lobby.accountOf(first.ctx));
+        }
+
+        assertNull(lobby.joinRefusal("a", "key-a"));
+        FakeSocket back = FakeSocket.open();
+        assertSame("the live connection is the one replaced", first.ctx, lobby.addUser(back.ctx, "a", "Ann", "key-a"));
+        assertFalse(lobby.hasUser(first.ctx));
+        assertEquals("a", lobby.accountOf(back.ctx));
+        assertEquals(2, lobby.getUserCount());
+        assertEquals("Ann keeps her place", List.of("Ann", "Bob"), lobbyListSentTo(lobby, back));
+        assertEquals("Ann keeps her portrait", "p1", back.last().getJSONObject("icon").getString("Ann"));
     }
 }

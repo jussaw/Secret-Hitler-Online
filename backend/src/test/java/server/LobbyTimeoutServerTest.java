@@ -177,14 +177,14 @@ public class LobbyTimeoutServerTest {
         }
 
         @Override // not synchronized: the join's handler holds this lobby's lock around the add
-        public WsContext addUser(WsContext context, String name, String rejoinKey) {
+        public WsContext addUser(WsContext context, String accountId, String name, String rejoinKey) {
             if (armed) {
                 armed = false;
                 sweep = new Thread(SecretHitlerServer::removeInactiveLobbies, "sweep");
                 sweep.start();
                 sweepWaited = awaitBlockedOnThisLobby(sweep);
             }
-            return super.addUser(context, name, rejoinKey);
+            return super.addUser(context, accountId, name, rejoinKey);
         }
 
         private boolean awaitBlockedOnThisLobby(Thread thread) {

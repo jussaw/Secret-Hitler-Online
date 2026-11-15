@@ -163,7 +163,7 @@ public class RejoinServerTest {
     /** Closes the socket, as a reload does, and waits until the server has dropped it. */
     private static void reload(TestSocket socket, Lobby lobby, String name) throws InterruptedException {
         socket.close();
-        awaitTrue(() -> !lobby.hasUserWithName(name), () -> name + "'s socket was still in the lobby after 5 s");
+        awaitTrue(() -> !lobby.hasAccount(name), () -> name + "'s socket was still in the lobby after 5 s");
     }
 
     /** Waits until the lobby counts {@code count} users, which it does once a window has passed. */
@@ -200,7 +200,7 @@ public class RejoinServerTest {
         JSONObject state = rejoined.nextState("CHANCELLOR_NOMINATION");
         assertTrue(state.getJSONArray("playerOrder").toList().contains("Ann"));
         assertTrue(rejoined.isOpen());
-        assertTrue(lobby.hasUserWithName("Ann"));
+        assertTrue(lobby.hasAccount("Ann"));
     }
 
     @Test
@@ -212,7 +212,7 @@ public class RejoinServerTest {
         assertEquals(488, checkLogin("lobby=" + code + "&name=Ann").statusCode());
         assertRefused("lobby=" + code + "&name=Ann", "A user with the name Ann is already in the lobby.");
         assertTrue("the first connection is untouched", players.get(0).isOpen());
-        assertTrue(lobby.hasUserWithName("Ann"));
+        assertTrue(lobby.hasAccount("Ann"));
 
         // The same holds for the connection of a player who has rejoined.
         reload(players.get(0), lobby, "Ann");
@@ -262,7 +262,7 @@ public class RejoinServerTest {
         JSONObject state = rejoined.nextState("CHANCELLOR_NOMINATION");
         assertEquals("Ann's portrait is restored", "p1", state.getJSONObject("icon").getString("Ann"));
         assertTrue(rejoined.isOpen());
-        assertTrue(lobby.hasUserWithName("Ann"));
+        assertTrue(lobby.hasAccount("Ann"));
     }
 
     @Test
@@ -333,7 +333,7 @@ public class RejoinServerTest {
             throws InterruptedException {
         long until = System.currentTimeMillis() + 500;
         while (System.currentTimeMillis() < until) {
-            assertTrue(name + " lost their connection", lobby.hasUserWithName(name));
+            assertTrue(name + " lost their connection", lobby.hasAccount(name));
             assertEquals(users, lobby.getUserCount());
             assertTrue(socket.isOpen());
             Thread.sleep(20);
@@ -378,7 +378,7 @@ public class RejoinServerTest {
             assertRefused("lobby=" + code + "&name=Ann" + key, "A user with the name Ann is already in the lobby.");
         }
         assertTrue("Ann's connection is untouched", players.get(0).isOpen());
-        assertTrue(lobby.hasUserWithName("Ann"));
+        assertTrue(lobby.hasAccount("Ann"));
     }
 
     /** An older client sends no key, and nothing can take its connection's place. */
@@ -452,8 +452,8 @@ public class RejoinServerTest {
             }
         }
         assertEquals(2, lobby.getUserCount());
-        assertFalse(lobby.hasUserWithName(""));
-        assertFalse(lobby.hasUserWithName("  "));
+        assertFalse(lobby.hasAccount(""));
+        assertFalse(lobby.hasAccount("  "));
     }
 
     /** How long the first add of a race waits for the second connection: long enough for a slow run. */
@@ -480,7 +480,7 @@ public class RejoinServerTest {
         }
 
         @Override // not synchronized: the wait holds this lobby's lock only if the caller does
-        public WsContext addUser(WsContext context, String name, String rejoinKey) {
+        public WsContext addUser(WsContext context, String accountId, String name, String rejoinKey) {
             CountDownLatch latch = adds;
             if (latch != null) {
                 latch.countDown();
@@ -488,7 +488,7 @@ public class RejoinServerTest {
                     raced = true;
                 }
             }
-            return super.addUser(context, name, rejoinKey);
+            return super.addUser(context, accountId, name, rejoinKey);
         }
 
         private boolean awaitSecondConnection(CountDownLatch latch) {
@@ -584,7 +584,7 @@ public class RejoinServerTest {
         JSONObject state = outcome.get(0).nextState("CHANCELLOR_NOMINATION");
         assertTrue(state.getJSONArray("playerOrder").toList().contains("Ann"));
         assertTrue("the connection taken stays open", outcome.get(0).isOpen());
-        assertTrue(lobby.hasUserWithName("Ann"));
+        assertTrue(lobby.hasAccount("Ann"));
         assertEquals(5, lobby.getUserCount());
     }
 

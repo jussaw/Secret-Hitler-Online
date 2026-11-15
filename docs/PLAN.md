@@ -669,7 +669,7 @@ Issue #30: playing needs an account, made by signing in with Discord; each accou
 
 - [x] `backend/src/main/java/server/accounts/Usernames.java`: the name rules (the page's whitespace and length, unique ignoring case, no CPU player's name)
 - [x] `backend/src/main/java/server/accounts/AccountStore.java`: accounts and hashed sessions in SQLite, 30 days renewed by use
-- [ ] `backend/src/main/java/server/util/Lobby.java`: keyed on account IDs, with the race fixes' tests moved over
+- [x] `backend/src/main/java/server/util/Lobby.java`: keyed on account IDs, with the race fixes' tests moved over
 - [ ] `Lobby`: seats tied to accounts, `you` in every player's packet, renaming in a lobby
 - [ ] `/me`, `/me/username`, sign-out, the test sign-in, the `/new-lobby` guard, and renaming across lobbies
 - [ ] `backend/src/main/java/server/accounts/DiscordSignIn.java`: the Discord OAuth2 flow

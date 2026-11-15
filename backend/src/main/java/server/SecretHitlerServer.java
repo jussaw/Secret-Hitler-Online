@@ -407,12 +407,14 @@ public class SecretHitlerServer {
             return;
         }
 
+        // Until players join by account, a player's account is the name they bring.
+        String accountId = name;
         // One lookup: the sweep may remove the lobby at any moment. Once closed, a lobby stays closed.
         Lobby lobby = codeToLobby.get(lobbyCode);
         if (lobby == null || lobby.isClosed()) { // lobby does not exist, or the sweep has taken it
             ctx.status(404);
             ctx.result("No such lobby found.");
-        } else if (lobby.canRejoin(name)) { // takes back their own seat, even in a full lobby
+        } else if (lobby.canRejoin(accountId)) { // takes back their own seat, even in a full lobby
             ctx.status(200);
             ctx.result(lobby.isInGame() ? "Login request valid (re-joining an existing game)."
                     : "Login request valid.");
@@ -422,7 +424,7 @@ public class SecretHitlerServer {
         } else if (lobby.isInGame()) {
             ctx.status(488);
             ctx.result("The lobby is currently in a game.");
-        } else if (lobby.hasUserWithName(name)) { // repeat username.
+        } else if (lobby.hasAccount(accountId)) { // repeat username.
             ctx.status(403);
             ctx.result("There is already a user with the name '" + name + "' in the lobby.");
         } else { // unique username found. Return OK.
@@ -538,6 +540,8 @@ public class SecretHitlerServer {
 
         String code = ctx.queryParam(PARAM_LOBBY);
         String name = ctx.queryParam(PARAM_NAME);
+        // Until players join by account, a player's account is the name they bring.
+        String accountId = name;
 
         logger.debug("Attempting to connect user '" + name + "' to lobby '" + code + "': ");
         // One lookup: the sweep may remove the lobby at any moment (#64). If it does after this, the
@@ -559,9 +563,9 @@ public class SecretHitlerServer {
         Lobby.JoinRefusal refusal;
         WsContext replaced = null;
         synchronized (lobby) {
-            refusal = lobby.joinRefusal(name, rejoinKey);
+            refusal = lobby.joinRefusal(accountId, rejoinKey);
             if (refusal == null) {
-                replaced = lobby.addUser(ctx, name, rejoinKey);
+                replaced = lobby.addUser(ctx, accountId, name, rejoinKey);
                 userToLobby.put(ctx, lobby); // keep track of which lobby this connection is in.
                 if (replaced != null) {
                     // Forget the old connection first, so its close (whenever it comes) changes nothing.
@@ -587,8 +591,8 @@ public class SecretHitlerServer {
     private static String refusalReason(Lobby.JoinRefusal refusal, String code, String name) {
         return switch (refusal) {
             case CLOSED -> noSuchLobby(code); // timed out, and on its way out of the server
-            case BLANK_NAME -> "Lobby and name must be specified.";
-            case NAME_TAKEN -> "A user with the name " + name + " is already in the lobby.";
+            case NO_ACCOUNT -> "Lobby and name must be specified."; // a blank name, which is the account for now
+            case ALREADY_IN -> "A user with the name " + name + " is already in the lobby.";
             case FULL -> "The lobby " + code + " is currently full.";
             case IN_GAME -> "The lobby " + code + " is currently in a game..";
         };
@@ -723,7 +727,9 @@ public class SecretHitlerServer {
                 ctx.session.close(StatusCode.PROTOCOL, noSuchLobby(lobbyCode));
                 return;
             }
-            if (!lobby.hasUser(ctx, name)) {
+            // Until players join by account, a player's account is the name their handshake
+            // brought, and each message must name it.
+            if (!lobby.hasUser(ctx) || !name.equals(lobby.accountOf(ctx))) {
                 logger.debug(logMessage + " FAILED (Lobby does not have the user)");
                 ctx.session.close(StatusCode.PROTOCOL, "The user is not in the lobby " + lobbyCode + ".");
                 return;
@@ -748,7 +754,7 @@ public class SecretHitlerServer {
                         break;
 
                     case COMMAND_GET_STATE: // Requests the updated state of the game.
-                        lobby.updateUser(ctx, name);
+                        lobby.updateUser(ctx);
                         break;
 
                     case COMMAND_NOMINATE_CHANCELLOR: // params: PARAM_TARGET (String)
