@@ -279,7 +279,12 @@ keeps credit to upstream and to the board game's creators.
   checks the count fits every header. `startGame` (`e2e/lobby.ts`) joins one raw spectator by
   default, and the no-scroll and phone tests also measure a spectator's view. `settle`
   (`e2e/lobby.ts`) fails when the web fonts do not load; they come from Google Fonts through
-  `src/fonts.css`, so the browser tests need network access. The server closes a
+  `src/fonts.css`, so the browser tests need network access. They serve on port 4545, or on
+  `E2E_PORT`, which gives runs in two worktrees at once a port each: a run waits for any server on
+  its port to answer `/ping` while it builds, so two on one port can test the wrong code.
+  `playwright.linux.config.ts` runs the same projects in Playwright's Linux image against a jar
+  already serving on the host (`DEVELOPMENT.md`, "Browser tests on Linux"): Firefox where it will
+  not launch on macOS, and the phone layouts with CI's wider Linux fonts. The server closes a
   `/game` socket after 30 s with no traffic either way, so the client pings every 20 s
   (`PING_INTERVAL`); `connection.spec.ts` (`desktop`) holds a quiet lobby's socket open for 35 s.
   `reconnect.spec.ts` (`desktop`) cuts a player's connection mid-game through Playwright's
@@ -311,6 +316,8 @@ keeps credit to upstream and to the board game's creators.
 
 The Gradle 7.4.2 wrapper does not run on JDKs newer than 17. Java 17 comes from SDKMAN
 (`17.0.21.0+9-tem`). The frontend needs Node 22.12 or newer (Vitest 5, jsdom 30); local is 24.
+Change the frontend's dependencies with npm 11 (`npx npm@11 install …`): npm 10 drops the `libc`
+fields from `package-lock.json`.
 
 | Task | Command |
 |---|---|
@@ -318,7 +325,8 @@ The Gradle 7.4.2 wrapper does not run on JDKs newer than 17. Java 17 comes from 
 | Run frontend dev server (`localhost:3000`, against the local backend) | `cd frontend && npm install && npm run dev` |
 | Backend tests | `cd backend && ./gradlew test` |
 | Frontend tests (single run) | `cd frontend && npm test -- --run` |
-| Browser tests (build the frontend and the jar, serve them on `localhost:4545`; Java 17 active) | `cd frontend && npx playwright install chromium firefox && npm run e2e` (one project: `-- --project=phone-360`) |
+| Browser tests (build the frontend and the jar, serve them on `localhost:4545`, or `E2E_PORT` beside another run; Java 17 active) | `cd frontend && npx playwright install chromium firefox && npm run e2e` (one project: `-- --project=phone-360`) |
+| Browser tests on Linux (Firefox, or CI's font widths), against the jar serving on the host | `docker run … mcr.microsoft.com/playwright:v<version>-noble … npx playwright test --config playwright.linux.config.ts`, written out in `DEVELOPMENT.md` |
 | Backend build (tests + fat jar at `backend/build/libs/secret-hitler-online.jar`) | `cd backend && ./gradlew build` |
 | Frontend production build (type-checks the app and the browser tests, then writes `frontend/dist/`) | `cd frontend && npm run build` |
 | Whole app on one port (after the frontend build) | `cd backend && ./gradlew jar && java -jar build/libs/secret-hitler-online.jar` |
@@ -342,8 +350,9 @@ so mount a volume at `/data`.
 - One branch per phase off an up-to-date `development` (`phase-1-housekeeping`, `phase-2-vite`, …),
   merged into `development` by pull request on the fork once every box in the phase is ticked.
 - A single issue outside a phase gets its own branch and pull request through the `implement-issue`
-  skill. Once CI is green it merges the pull request itself for an issue labelled `bug`, and leaves
-  any other for the user to merge.
+  skill. Once CI is green it merges the pull request itself for an issue labelled `bug`, and any
+  other once the user says yes in chat. `development` asks for an approving review, so every merge
+  is `gh pr merge --merge --admin`.
 - Name every worktree for the work it holds (`pin-picker-confirm`, not a generated name such as
   `game-state-sync-b7a6ea`), and give its branch the same name. Rename a generated or prefixed
   branch (`claude/…`, `worktree-…`) before the first commit.
