@@ -11,6 +11,8 @@ every slot marked REQUIRED in the order given, and keep the example's shape.
   grace window frees the seat early"). An enhancement says what to do ("pin the icon picker's
   confirm button to the bottom of the prompt").
 - **Label:** exactly one. `bug` for a bug, `enhancement` for anything else. No other label.
+- **Label paragraphs** are bold, with the colon inside: **Scope:**, **Want:**, **Notes:**,
+  **Possible fix:**. The same everywhere.
 - **Sentences:** plain and short, as in the existing issues. State facts and numbers, not
   adjectives.
 - **Backticks:** every code, file, function, command, class and project name (`Lobby.removeUser`,
@@ -24,13 +26,15 @@ every slot marked REQUIRED in the order given, and keep the example's shape.
   section, whatever its skeleton: one question per bullet. Write only what the notes and the code
   settle. A choice nobody has made, such as where a new page is reached from, is a question, never
   a bullet under Scope or a line in the body. A small call that does not need the user is written
-  as a suggestion (**Possible fix:**, or a bullet under **Notes:**).
+  as a suggestion (**Possible fix:**, or a bullet under **Notes:**). Each skeleton below says
+  where `## Open questions` goes.
 - **Public repo:** no machine, host, domain, port, LAN address or deploy-tool names. Write "the
   home server" or "the host".
 
 ## 1. Bug found by reading the code
 
-For a bug found in review or while reading code. No `##` headings. REQUIRED, in order:
+For a bug found in review or while reading code. No `##` headings, except `## Open questions`
+when a choice is open: it goes just before **Possible fix:**. REQUIRED, in order:
 
 1. **Provenance sentence**, first in the body: where it was found, then "Not reproduced yet." or
    "Reproduced at `<short sha>`: <what happened>." Then the commit the line numbers come from.
@@ -39,7 +43,8 @@ For a bug found in review or while reading code. No `##` headings. REQUIRED, in 
 4. **How narrow it is,** and what stays correct.
 5. **Related issues,** by number, in the sentences that connect them.
 6. **A last paragraph starting `**Possible fix:**`.** It states the fix, then the test that would
-   show the bug, naming the existing helpers it can use. Nothing follows it.
+   show the bug, naming the existing helpers it can use. When no fix is known, it says "No fix
+   known yet." and still gives the test. Nothing follows it.
 
 Example, trimmed from #64:
 
@@ -60,6 +65,7 @@ lock (`onWebsocketConnect`, `:545`, `:551`, `:561`). A sweep can land between an
 
 Either way the connection ends up where it would have anyway: the lobby had timed out. Only the
 path there is wrong. The window is narrow: a connection has to arrive within a moment of a sweep.
+`onWebsocketConnect` is the handler #63 fixes the blank-name case in.
 
 **Possible fix:** look the lobby up once (`get` and a null check, as `connectSpectator` does), and
 have the handlers refuse a closed lobby under its lock. A backend test can stand in for a sweep by
@@ -70,11 +76,13 @@ hold `addUser`, as `RejoinServerTest`'s `RacingLobby` does.
 ## 2. Bug seen in play or in CI
 
 For a bug someone saw: in a game, in the browser, in a failing test. The repo's bug-template
-headings, exactly these four, in this order. REQUIRED:
+headings, these four in this order, and no other heading except `## Open questions` when a choice
+is open. REQUIRED:
 
 - `## Description`. Its first sentence is the provenance: where it was seen (or which run
-  failed), whether it was reproduced and at which commit, and what is known of the cause. Then
-  the numbers: how often, which project, the exact output in backticks.
+  failed), whether it was reproduced, and the commit (`development` at `<short sha>`) the line
+  numbers come from. Then what is known of the cause, and the numbers: how often, which project,
+  the exact output in backticks.
 - `## Expected Behavior`: one or two sentences.
 - `## Reproduction`: a fenced block holding the command or the script that shows it (a
   `npx playwright test ...` line for a browser test). If it did not reproduce, say what was
@@ -86,19 +94,22 @@ Between `## Reproduction` and `## Device Info`, put one of:
 - a paragraph `**Not diagnosed yet.**` followed by the suspects as bullets, each saying how to
   tell it apart from the others. When the next steps are investigation, add a `- [ ]` list.
 
+`## Open questions`, when there is one, goes after that paragraph and before `## Device Info`.
+
 Example, trimmed from #58:
 
 ````markdown
 ## Description
 
-Found while CI ran #57: its `test` job failed in `frontend/src/game/GameScreen.test.tsx:159`
-(`development` at the time). The test expects a 7 s countdown to read 7, but it read 8. #57
-changes no frontend code and the test passes locally, so it is flaky on `development` too.
+Found while CI ran #57: its `test` job failed in `frontend/src/game/GameScreen.test.tsx:159`.
+Reproduced in Node (see below). Line numbers are from `development` at 2d86798. The test expects
+a 7 s countdown to read 7, but it read 8. #57 changes no frontend code and the test passes
+locally, so it is flaky on `development` too.
 
 The cause is floating-point rounding in `TermTimer`: `clockFor` sets `deadline: now +
 timer.remainingMs` (`frontend/src/game/TermTimer.tsx:19`), and the time left is `clock.deadline -
 clock.now`, which can come out a hair over 7000. `secondsLeft` rounds it up to 8. In Node, 12,707
-of 100,000 random `now` values gave 8 instead of 7.
+of 100,000 random `now` values below 5000 gave 8 instead of 7.
 
 ## Expected Behavior
 
@@ -122,14 +133,16 @@ Any browser. Seen in Vitest (jsdom) on the CI runner.
 
 ## 3. Enhancement
 
-For one change that fits one pull request. No `##` headings. REQUIRED, in order:
+For one change that fits one pull request. No `##` headings, except `## Open questions` when a
+choice is open: it goes after **Notes:**. REQUIRED, in order:
 
-1. **How it works today,** in the first paragraph, with `path:line` references: what the code
-   does and why it should change. Open with today's behavior, not with the request.
-2. **`Want:`**, a paragraph or list of what a player sees afterwards.
-3. **`Notes:`**, a bullet list: the files and constraints it touches, what to leave unchanged,
-   the tests to add (which spec, which projects), the docs, and PR screenshots when the change
-   shows on screen. It names `e2e/` specs with their projects (`desktop`, `firefox`,
+1. **How it works today,** in the first paragraph, with `path:line` references and the commit
+   they come from: what the code does and why it should change. Open with today's behavior, not
+   with the request.
+2. **A `**Want:**` paragraph or list** of what a player sees afterwards.
+3. **A `**Notes:**` bullet list:** the files and constraints it touches, what to leave
+   unchanged, the tests to add (which spec, which projects), the docs, and PR screenshots when
+   the change shows on screen. It names `e2e/` specs with their projects (`desktop`, `firefox`,
    `phone-360`, `phone-412`) when it asks for a test.
 
 Example, trimmed from #25:
@@ -138,16 +151,19 @@ Example, trimmed from #25:
 The portrait picker (`IconSelection`, `frontend/src/custom-alert/IconSelection.tsx`) is a
 `ButtonPrompt`: the grid of portraits, then CONFIRM (`#prompt-button`). The whole prompt box
 scrolls as one piece (`#alert-box` has `max-height` and `overflow-y: auto`,
-`CustomAlert.css:42-43`). On most screens CONFIRM ends up below the fold.
+`CustomAlert.css:42-43`, from `development` at 41ef7dd). On most screens CONFIRM ends up below
+the fold.
 
-Want: CONFIRM stays pinned to the bottom of the prompt and is always visible. Only the portrait
+**Want:** CONFIRM stays pinned to the bottom of the prompt and is always visible. Only the portrait
 grid scrolls above it.
 
-Notes:
+**Notes:**
 - Other prompts share `ButtonPrompt`. Either give it a pinned-footer option, or pin the button
   for the picker only.
-- `e2e/prompts.spec.ts` opens every prompt at desktop and both phone sizes. Add a check there that
-  CONFIRM is in view without scrolling.
+- `e2e/prompts.spec.ts` (`desktop`, `phone-360`, `phone-412`) opens every prompt. Add a check
+  there that CONFIRM is in view without scrolling.
+- The change shows on screen: the pull request needs before-and-after screenshots at one desktop
+  size and one phone size.
 - Related upstream issue: `ShrimpCryptid/Secret-Hitler-Online#179`.
 ````
 
@@ -157,7 +173,7 @@ For work with several parts, or one that will not fit one session. REQUIRED, in 
 
 1. **An opening paragraph:** what to add, and why. Say what it is **blocked by** (`Blocked by
    #30.`) when another issue must land first.
-2. **Sections for its parts:** `Scope:` with a bullet list, or `## Remove`, `## Change`,
+2. **Sections for its parts:** **Scope:** with a bullet list, or `## Remove`, `## Change`,
    `## Add`, each with its own bullets.
 3. **`## Decided`:** each settled question, with its answer in bold, when there are any.
 4. **`## Open questions`:** one bullet per undecided point, written as a question. Nothing
@@ -172,7 +188,7 @@ Example, trimmed from #30:
 Add user accounts. The only way to sign in is with Discord (OAuth2): no passwords and no other
 providers. Accounts are what game stats tracking will build on.
 
-Scope:
+**Scope:**
 - A "Sign in with Discord" button on the login page. The server runs Discord's authorization code
   flow (scope `identify`) and keeps a session cookie.
 - An accounts table in the existing SQLite database (`DATABASE_PATH`), keyed by Discord user ID.
@@ -188,4 +204,6 @@ Scope:
 
 Joining as a player now needs a signed-in session, which changes the "stays backward compatible
 for players" line under Constraints in `CLAUDE.md`. The pull request for this issue updates it.
+Plan this in phases before writing any code: a design and a per-phase plan first, then one pull
+request per phase.
 ````
