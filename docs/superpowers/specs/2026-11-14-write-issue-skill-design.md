@@ -1,7 +1,7 @@
 # write-issue skill: design
 
 Date: 2026-11-14
-Status: approved design, pending implementation plan
+Status: approved design, implemented on `write-issue-skill`
 
 ## Why
 
@@ -64,7 +64,14 @@ want>` turns a few words into an issue written the way the last 27 were. Nothing
   My call.
 - Reproduce: always try, for every bug (the user's choice). A backend test, a Vitest test or a
   throwaway Playwright probe, whichever reaches the bug. A bug that does not show after a real
-  attempt is written up as not reproduced, with what was tried.
+  attempt is written up as not reproduced, with what was tried, and shown like any other draft:
+  showing it is the ask, and you can drop it there. A bug seen on the home server is tried on
+  `development` all the same. The host may run an older image than `development`, so a bug seen
+  there that does not show here may be fixed already, and the draft says so.
+- Nothing to file: only an enhancement the code already does, or a bug report the code plainly
+  shows is fixed already (a closed issue or a commit whose fix is in the code, and the line that
+  now does what you expected), gets no draft. The skill reports what it found, with references,
+  and asks whether to file it anyway.
 - Posting: show every draft (title, label, body) and post only on your OK, then give the links (the
   user's choice; first "post straight away", then changed to drafts).
 
@@ -72,20 +79,29 @@ want>` turns a few words into an issue written the way the last 27 were. Nothing
 
 1. **Split** the request into issues. For each, search the issues, open and closed, for the same
    thing. An open one: stop and point at it. A closed one: link it as related ("this may be #41
-   again").
+   again"), and go on to the code.
 2. **Check out `development`.** A throwaway detached worktree at `origin/development`, so the
    session's own changes never colour a repro or a line number. Note its short commit. My call.
+   Each run names its checkout for itself (`issue-draft-<HHMMSS>`, from `date +%H%M%S`), so two
+   runs never share one. A run removes only its own checkout, and names any other `issue-draft-*`
+   to you instead of removing it.
 3. **Read the code** until the mechanism is plain: what runs, where (`file:line`), and why it goes
    wrong or what would change.
 4. **Reproduce** a bug, always: the smallest test that shows it. Record what happened in plain
    numbers, as #63 does ("Ann's next lobby packet listed `["Ann","  "]`").
 5. **Draft** each issue from its skeleton in `formats.md`, then check it against the anti-goals.
-6. **Show** every draft. Make the changes you ask for, and post each on your OK with
+   A fact nobody knows yet (how long the count stayed up) is not an open question: it is written
+   in the body as "Unknown: …". **Open questions** holds only choices you have not made, and a
+   choice you settle in chat is written in as decided.
+6. **Clean up**: the throwaway tests and the worktree, before anything is shown, since a wait for
+   your answer can last hours. An edit that needs the code again makes a new checkout at the same
+   commit and removes it before the draft is shown again.
+7. **Show** every draft. Make the changes you ask for, and post each on your OK with
    `gh issue create --repo … --title … --label … --body-file …`. Give the links.
-7. **Clean up**: the throwaway tests and the worktree.
 
 A batch runs one subagent per issue, one after another (port 4545, and one Gradle build at a time),
-each bringing back a draft. The drafts are shown together. My call.
+each bringing back a draft. The drafts are shown together. My call. A session with no Agent tool
+takes the issues one after another itself.
 
 ## formats.md
 
@@ -97,6 +113,14 @@ Rules for every issue:
   what to do ("pin the icon picker's confirm button to the bottom of the prompt").
 - Plain, short sentences, as in the existing issues. Code, files and names in backticks.
 - Related issues and PRs by number; the constraints in `CLAUDE.md` it touches, by name.
+- Every bug opens with its provenance: where it was found or seen, then the run's sentence in one
+  of three forms, "Reproduced on `development` (<sha>) with `<command>`: …", "Not reproduced on
+  `development` (<sha>). Tried: …", or, for a device no run here reaches, "Not reproduced on
+  `development` (<sha>): it needs <device>. Tried: …".
+- **Open questions** for choices you have not made; "Unknown: …" in the body for facts nobody
+  knows yet; a choice settled in chat written in as decided.
+- Public repo: nothing from the list under Constraints in `CLAUDE.md`, and nothing from memory
+  notes or other private context.
 
 Skeletons, each filled in with an example:
 
