@@ -28,8 +28,9 @@ these rules is violating their spirit.
 **No bug is drafted without a run in the throwaway checkout that tried to show it.**
 - Not when the code looks right. Code that looks right is why you run it.
 - Not when the user is in a hurry.
-- Not when it was seen on the home server. The host runs the image CI builds from `development`,
-  so the same code runs here.
+- Not when it was seen on the home server. Run it on `development` all the same. The host may run
+  an older image than `development`, so a bug seen there that does not show here may be fixed
+  already: the draft or the report says so.
 - A probe that failed in its own setup never ran its check. Fix it and run it again.
 - "Reproduced" is written only after a run that showed the bug, with that run's command and
   result. Every other run gives one of the "Not reproduced" forms under **Provenance** in
@@ -94,11 +95,10 @@ Write down what happened in plain numbers, as #63 does ("Ann's next lobby packet
 
 1. The user saw it only on a device or browser no tool here runs (a real iPhone or iPad, iOS
    Safari, a phone's own browser; Playwright's phone projects emulate Chromium). The home server
-   is not one: it runs the image CI builds from `development`. No run here reaches such a bug,
-   whatever a mock or another browser shows, so it never goes to **Nothing to file**. Run what
-   can be run here (the code path in Vitest, the page in Playwright), then draft it with the
-   device form of "Not reproduced" (**Provenance** in `formats.md`): what it needs, and what was
-   tried.
+   is not one (see **The two rules**). No run here reaches such a bug, whatever a mock or another
+   browser shows, so it never goes to **Nothing to file**. Run what can be run here (the code path
+   in Vitest, the page in Playwright), then draft it with the device form of "Not reproduced"
+   (**Provenance** in `formats.md`): what it needs, and what was tried.
 2. The run showed the bug: draft it with the "Reproduced" form of **Provenance**.
 3. The run did not show it, and you can name what fixed it: a closed issue or a commit whose fix
    is in the checkout, and the line that now does what the user expected. That is a report the
@@ -136,7 +136,8 @@ Then check the draft, line by line:
   `<commit>`, "not recorded") is a failure: go back and run the command.
 - [ ] A bug opens with its **Provenance**, as `formats.md` gives it: where it was found or seen,
   then the run's sentence in the form step 4 picked, word for word. "Reproduced" stands only
-  beside a run that showed the bug.
+  beside a run that showed the bug. A bug seen on the home server that did not show here says the
+  host may run an older image (**The two rules**).
 - [ ] **Public repo** in `formats.md`, word by word, even for what the user's own words carry (a
   host name among them).
 - [ ] **Open questions**, **Unknown facts** and **Decided** in `formats.md`, each as it states
