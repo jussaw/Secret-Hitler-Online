@@ -243,8 +243,9 @@ conditions:
 - **Nothing to file:** an enhancement the code already does, or a bug report the code plainly shows
   is fixed already (a closed issue or commit you can name): report what was found, with
   references, and ask whether to file anyway. Draft nothing until the user answers.
-- **Draft:** pick the `formats.md` skeleton, write the body to a scratchpad file, check it against
-  the Global Constraints.
+- **Draft:** pick the `formats.md` skeleton, write the body to a file outside the repo (in the
+  scratchpad, or in a `mktemp -d` directory in a session without one), check it against the
+  Global Constraints.
 - **Show and post:** show each draft's title, label and body; apply the user's edits and show
   the draft again; post each draft the user OKs, and only those, with `gh issue create --repo …
   --title "…" --label <bug|enhancement> --body-file <file>`; give the links.
