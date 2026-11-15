@@ -69,7 +69,6 @@ public class DiscordSignInTest {
     private final CountDownLatch release = new CountDownLatch(1); // lets a stalled answer end
     private volatile String avatar = "fakeavatarhash";
 
-    private final HttpClient http = HttpClient.newHttpClient(); // never follows redirects
     private AccountStore store;
     private Javalin app;
     private Javalin discord;
@@ -136,6 +135,7 @@ public class DiscordSignInTest {
         DiscordSignIn.apiBase = "http://localhost:" + discord.port();
         DiscordSignIn.authorizeUrl = "http://localhost:" + discord.port() + "/oauth2/authorize";
         DiscordSignIn.TIMEOUT = Duration.ofSeconds(1);
+        DiscordSignIn.resetClient(); // no pooled connection to an earlier test's fake
 
         ApplicationConfig.DISCORD_CLIENT_ID = CLIENT_ID;
         ApplicationConfig.DISCORD_CLIENT_SECRET = CLIENT_SECRET;
@@ -171,6 +171,7 @@ public class DiscordSignInTest {
         DiscordSignIn.authorizeUrl = savedAuthorizeUrl;
         DiscordSignIn.apiBase = savedApiBase;
         DiscordSignIn.TIMEOUT = savedTimeout;
+        DiscordSignIn.resetClient();
     }
 
     ////// Helpers
@@ -180,7 +181,9 @@ public class DiscordSignInTest {
         if (cookie != null) {
             request.header("Cookie", cookie);
         }
-        return http.send(request.build(), HttpResponse.BodyHandlers.ofString());
+        // A new client per request (it never follows redirects): a pooled keep-alive connection
+        // the server closed at the same moment fails with "header parser received no bytes".
+        return HttpClient.newHttpClient().send(request.build(), HttpResponse.BodyHandlers.ofString());
     }
 
     private static String enc(String value) {

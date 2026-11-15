@@ -228,6 +228,11 @@ public final class DiscordSignIn {
         }
     }
 
+    /** Drops the shared client, and with it any pooled connection. For tests, which swap the fake Discord. */
+    static synchronized void resetClient() {
+        client = null;
+    }
+
     private static synchronized HttpClient client() {
         if (client == null) {
             client = HttpClient.newBuilder().connectTimeout(TIMEOUT).build();
