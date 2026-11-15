@@ -24,8 +24,10 @@ export type Me =
       testSignIn: boolean;
     };
 
+/** A failed save's `signedOut` is true for a 401: the page's session has ended. */
 export type SaveResult =
-  { ok: true; username: string } | { ok: false; error: string };
+  | { ok: true; username: string }
+  | { ok: false; error: string; signedOut?: true };
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
 
@@ -64,7 +66,10 @@ export async function fetchMe(): Promise<Me> {
   return parseMe(await response.json());
 }
 
-/** Saves the person's name. The error is the server's message, or CONTACT_ERROR. */
+/**
+ * Saves the person's name. The error is the server's message, or CONTACT_ERROR; a 401 (signed out
+ * in another tab, or the session expired) also says `signedOut`.
+ */
 export async function saveUsername(name: string): Promise<SaveResult> {
   let response: Response;
   try {
@@ -79,7 +84,10 @@ export async function saveUsername(name: string): Promise<SaveResult> {
     }
     const message =
       response.status >= 500 ? "" : (await response.text()).trim();
-    return { ok: false, error: message || CONTACT_ERROR };
+    const error = message || CONTACT_ERROR;
+    return response.status === 401
+      ? { ok: false, error, signedOut: true }
+      : { ok: false, error };
   } catch {
     return { ok: false, error: CONTACT_ERROR };
   }

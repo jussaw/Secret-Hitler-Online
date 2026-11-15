@@ -1102,7 +1102,8 @@ class App extends Component<{}, AppState> {
 
   /**
    * Saves the name (POST /me/username) and, if it was saved, shows it on the account and closes the
-   * prompt it came from. A PLAY INSTEAD waiting for that prompt then takes its seat.
+   * prompt it came from. A PLAY INSTEAD waiting for that prompt then takes its seat. A 401 asks /me
+   * again, as JOIN's does, so a session that has ended shows the sign-in and closes the prompt.
    * @return {Promise<string>} "" on success or when that prompt has closed meanwhile, otherwise the
    *         error for the prompt.
    */
@@ -1111,7 +1112,10 @@ class App extends Component<{}, AppState> {
     const id = account?.signedIn ? account.id : undefined;
     const result = await saveUsername(name);
     const current = this.namePromptOpen && session === this.namePromptSession;
-    if (!result.ok) return current ? result.error : "";
+    if (!result.ok) {
+      if (result.signedOut) this.loadAccount();
+      return current ? result.error : "";
+    }
     // The name is saved even when its prompt went meanwhile: show it, on the same account only.
     const now = this.state.account;
     const sameAccount = now?.signedIn === true && now.id === id;

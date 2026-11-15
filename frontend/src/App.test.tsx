@@ -404,6 +404,28 @@ test("a 401 from JOIN asks /me again, and a session that has ended shows the sig
   expect(screen.getByRole("button", { name: "JOIN" })).toBeDisabled();
 });
 
+test("a 401 from the name prompt's SAVE asks /me again, and a session that has ended closes it", async () => {
+  let me: Me = ROWAN;
+  const fetch = server({
+    "/me": () => json(me),
+    "/me/username": () => {
+      me = SIGNED_OUT; // signed out in another tab
+      return new Response("Sign in to play.", { status: 401 });
+    },
+  });
+  const app = createRef<App>();
+  render(<App ref={app} />);
+  fireEvent.click(await screen.findByRole("button", { name: "CHANGE NAME" }));
+  const asked = requests(fetch, "/me").length;
+  fireEvent.change(promptField(), { target: { value: "Robin" } });
+  fireEvent.click(alertBox().getByRole("button", { name: "SAVE" }));
+  expect(await screen.findByRole("link", { name: "SIGN IN WITH DISCORD" })).toBeInTheDocument();
+  expect(requests(fetch, "/me")).toHaveLength(asked + 1);
+  await waitFor(() => expect(app.current!.state.showAlert).toBe(false));
+  expect(app.current!.namePromptOpen).toBe(false);
+  expect(screen.getByRole("button", { name: "JOIN" })).toBeDisabled();
+});
+
 // The name prompt's guards: a late reply never touches a later prompt or account.
 
 /** CHANGE NAME's SAVE sent, then CANCEL, then CHANGE NAME again: the second prompt is on screen. */

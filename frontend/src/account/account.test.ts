@@ -77,6 +77,15 @@ describe("saveUsername", () => {
     });
   });
 
+  it("says a 401 means the page is signed out", async () => {
+    mockFetch(respond(401, "Sign in to play."));
+    expect(await saveUsername("Sam")).toEqual({
+      ok: false,
+      error: "Sign in to play.",
+      signedOut: true,
+    });
+  });
+
   it("falls back to the contact error for an empty body or a 5xx", async () => {
     mockFetch(respond(400));
     expect(await saveUsername("Sam")).toEqual({ ok: false, error: CONTACT_ERROR });
