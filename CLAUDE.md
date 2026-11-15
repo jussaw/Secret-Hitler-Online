@@ -159,7 +159,7 @@ keeps credit to upstream and to the board game's creators.
   gets CHANGE LOOK and WATCH INSTEAD, a spectator gets PLAY INSTEAD (off, with a note, when the
   lobby is full), and everyone gets LEAVE LOBBY. The switch between playing and watching is offered
   in the lobby only, and works by reconnecting: WATCH INSTEAD reopens the socket as a spectator and
-  sets the `spectator` cookie (the `name` cookie stays); PLAY INSTEAD opens `PlayInsteadPrompt`
+  sets the `spectator` cookie (the `name` cookie stays); PLAY INSTEAD opens `NamePrompt`
   (`src/custom-alert/`) for a name, checks it with `/check-login`, reopens the socket as a player
   and saves the cookies as JOIN does, and the portrait picker opens unless the server restores the
   name's remembered portrait. If the server closes that player socket before its first message

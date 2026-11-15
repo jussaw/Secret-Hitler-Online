@@ -94,7 +94,7 @@ import { CONNECT_ERROR, CONTACT_ERROR, joinErrorMessage } from "./lobby/joinErro
 import { normalizeCode } from "./lobby/normalizeCode";
 import { normalizeName } from "./lobby/normalizeName";
 import LoginScreen from "./login/LoginScreen";
-import PlayInsteadPrompt from "./custom-alert/PlayInsteadPrompt";
+import NamePrompt from "./custom-alert/NamePrompt";
 import { lobbySounds, SOUND_CUES, soundEvents, type Cue } from "./sound/soundEvents";
 import {
   VICTORY_TEXT,
@@ -863,7 +863,7 @@ class App extends Component<{}, AppState> {
           if (DEBUG) {
             console.log("Response is not ok");
           }
-          this.setState({ joinError: joinErrorMessage(response.status, name) });
+          this.setState({ joinError: joinErrorMessage(response.status) });
         } else {
           // Username and lobby were verified. Try to open websocket.
           if (!this.openSeat(name, lobby)) {
@@ -927,11 +927,14 @@ class App extends Component<{}, AppState> {
       this.setState({
         showAlert: true,
         alertContent: (
-          <PlayInsteadPrompt
+          <NamePrompt
             key={this.alertShowCount}
+            title="PLAY INSTEAD"
             initialName={Cookies.get(COOKIE_NAME) ?? ""}
-            onContinue={this.playInstead}
-            onCancel={() => this.closePlayInstead()}
+            confirmLabel="CONTINUE"
+            secondaryLabel="CANCEL"
+            onConfirm={this.playInstead}
+            onSecondary={() => this.closePlayInstead()}
           />
         ),
       });
@@ -976,7 +979,7 @@ class App extends Component<{}, AppState> {
     // The prompt closed meanwhile (CANCEL, or a game started): keep watching, show nothing.
     if (!this.playInsteadOpen || session !== this.playInsteadSession) return "";
     if (response === undefined) return CONTACT_ERROR;
-    if (!response.ok) return joinErrorMessage(response.status, name);
+    if (!response.ok) return joinErrorMessage(response.status);
     if (!this.openSeat(name, lobby)) return CONNECT_ERROR;
     this.seatPending = true;
     // Free the alert slot at once: the new socket's lobby packet may queue the portrait picker.

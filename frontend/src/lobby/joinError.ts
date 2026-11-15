@@ -8,13 +8,15 @@ export const CONTACT_ERROR =
 export const CONNECT_ERROR =
   "There was an error connecting to the server. Please try again.";
 
-/** The message for a failed /check-login response; `name` is the name that was tried. */
-export function joinErrorMessage(status: number, name: string): string {
+/** The message for a failed /check-login response. */
+export function joinErrorMessage(status: number): string {
   switch (status) {
+    case 401:
+      return "Sign in to play.";
     case 404:
       return "The lobby could not be found.";
     case 403:
-      return "There is already a user with the name '" + name + "' in the lobby.";
+      return "You're already in this lobby in another tab or window.";
     case 488:
       return "The lobby is currently in a game.";
     case 489:

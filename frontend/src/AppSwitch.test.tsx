@@ -20,7 +20,7 @@ import { RoundStep } from "./game/roundStep";
 import ButtonPrompt from "./custom-alert/ButtonPrompt";
 import { LobbyState, Role, WSCommandType } from "./types";
 import IconSelection from "./custom-alert/IconSelection";
-import PlayInsteadPrompt from "./custom-alert/PlayInsteadPrompt";
+import NamePrompt from "./custom-alert/NamePrompt";
 import { defaultPortrait } from "./assets";
 
 class FakeSocket {
@@ -129,9 +129,9 @@ async function spectatorInLobby() {
 
 function promptProps(app: App) {
   const content = app.state.alertContent as React.ReactElement<
-    React.ComponentProps<typeof PlayInsteadPrompt>
+    React.ComponentProps<typeof NamePrompt>
   >;
-  expect(content.type).toBe(PlayInsteadPrompt);
+  expect(content.type).toBe(NamePrompt);
   return content.props;
 }
 
@@ -273,7 +273,7 @@ test("a taken name keeps the spectator watching", async () => {
   await act(async () => {
     result = await app.playInstead("Sam");
   });
-  expect(result).toBe("There is already a user with the name 'Sam' in the lobby.");
+  expect(result).toBe("You're already in this lobby in another tab or window.");
   expect(FakeSocket.instances.length).toBe(before);
   expect(app.state.spectator).toBe(true);
   expect(app.state.showAlert).toBe(true);
@@ -319,7 +319,7 @@ test("a check that returns after the game started opens no player socket", async
 test("CANCEL closes the prompt", async () => {
   const app = await spectatorInLobby();
   act(() => app.onClickPlayInstead());
-  act(() => promptProps(app).onCancel());
+  act(() => promptProps(app).onSecondary());
   expect(app.state.showAlert).toBe(false);
   expect(app.playInsteadOpen).toBe(false);
 });
@@ -330,7 +330,7 @@ test("CANCEL during a check opens no socket and shows no error", async () => {
   checkStatus = 403;
   const before = FakeSocket.instances.length;
   const pending = app.playInstead("Sam");
-  act(() => promptProps(app).onCancel());
+  act(() => promptProps(app).onSecondary());
   await act(async () => {
     expect(await pending).toBe("");
   });

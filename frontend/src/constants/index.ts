@@ -17,6 +17,13 @@ export const SERVER_ADDRESS_HTTP = urls.http;
 export const WEBSOCKET_HEADER = urls.websocketHeader;
 
 export const CHECK_LOGIN = "/check-login";
+export const ME = "/me";
+export const ME_USERNAME = "/me/username";
+export const AUTH_DISCORD = "/auth/discord";
+export const AUTH_SIGN_OUT = "/auth/sign-out";
+export const AUTH_TEST_SIGN_IN = "/auth/test-sign-in";
+/** In the /check-login query for a player: the name the page thinks it plays under. */
+export const PARAM_YOU = "you";
 /** "true" in the /game and /check-login query makes a spectator, who needs no name. */
 export const PARAM_SPECTATOR = "spectator";
 export const PARAM_SPECTATOR_COUNT = "spectatorCount";

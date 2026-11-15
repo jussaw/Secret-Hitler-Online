@@ -152,5 +152,9 @@ export function soundEvents(prev: GameState | undefined, next: GameState, user: 
 /** playerJoined when the lobby gains a name; the first lobby packet on a socket plays nothing. */
 export function lobbySounds(prev: string[] | undefined, next: string[]): SoundName[] {
   if (!prev) return [];
+  // A rename: the same players, one of them under a new name.
+  if (next.length === prev.length && next.filter((name, i) => name !== prev[i]).length === 1) {
+    return [];
+  }
   return next.some((name) => !prev.includes(name)) ? ["playerJoined"] : [];
 }

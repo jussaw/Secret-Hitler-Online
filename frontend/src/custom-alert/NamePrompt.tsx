@@ -2,20 +2,26 @@ import { useEffect, useRef, useState } from "react";
 import { MAX_NAME_LENGTH } from "../constants";
 import { CONTACT_ERROR } from "../lobby/joinError";
 import { normalizeName } from "../lobby/normalizeName";
-import "./PlayInsteadPrompt.css";
+import "./NamePrompt.css";
 
-type PlayInsteadPromptProps = {
+type NamePromptProps = {
+  title: string;
   initialName: string;
-  /** Resolves "" on success (the app closes the prompt), otherwise the error to show. */
-  onContinue: (name: string) => Promise<string>;
-  onCancel: () => void;
+  confirmLabel: string;
+  secondaryLabel: string;
+  /** Resolves "" on success (the caller closes the prompt), otherwise the error to show. */
+  onConfirm: (name: string) => Promise<string>;
+  onSecondary: () => void;
 };
 
-export default function PlayInsteadPrompt({
+export default function NamePrompt({
+  title,
   initialName,
-  onContinue,
-  onCancel,
-}: PlayInsteadPromptProps) {
+  confirmLabel,
+  secondaryLabel,
+  onConfirm,
+  onSecondary,
+}: NamePromptProps) {
   const [name, setName] = useState(initialName);
   const [error, setError] = useState("");
   const [checking, setChecking] = useState(false);
@@ -40,7 +46,7 @@ export default function PlayInsteadPrompt({
     setError("");
     let result: string;
     try {
-      result = await onContinue(normalized);
+      result = await onConfirm(normalized);
     } catch {
       result = CONTACT_ERROR;
     }
@@ -55,13 +61,13 @@ export default function PlayInsteadPrompt({
   return (
     <div>
       <h2 id="prompt-label" className="left-align">
-        PLAY INSTEAD
+        {title}
       </h2>
       <p id="prompt-header" className="left-align">
-        Choose the name you will play under. You pick a look next.
+        Others see it in lobbies and games. Up to 12 characters.
       </p>
-      <label className="play-instead-field left-align">
-        <span className="play-instead-field-label">Your name</span>
+      <label className="name-prompt-field left-align">
+        <span className="name-prompt-field-label">Your name</span>
         <input
           type="text"
           value={name}
@@ -82,9 +88,9 @@ export default function PlayInsteadPrompt({
       <p className="prompt-error left-align" role="alert">
         {error}
       </p>
-      <button onClick={onCancel}>CANCEL</button>
+      <button onClick={onSecondary}>{secondaryLabel}</button>
       <button onClick={submit} disabled={!canContinue}>
-        CONTINUE
+        {confirmLabel}
       </button>
     </div>
   );
