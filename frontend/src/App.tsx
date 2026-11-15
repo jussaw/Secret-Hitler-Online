@@ -607,13 +607,20 @@ class App extends Component<{}, AppState> {
 
   /**
    * While the page's own player socket in `lobby` is still closing (closingSeat), a promise that
-   * resolves once it has closed, or after SEAT_CLOSE_WAIT_MS at the most; otherwise undefined.
+   * resolves once it has closed, or after SEAT_CLOSE_WAIT_MS at the most; otherwise undefined. A
+   * socket whose close has not come by then (a dead one can take minutes) is forgotten, so a later
+   * press does not wait for it again.
    */
   seatClosed(lobby: string): Promise<void> | undefined {
     const closing = this.closingSeat;
     if (closing === undefined || closing.lobby !== lobby) return undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const bound = new Promise<void>((resolve) => (timer = setTimeout(resolve, SEAT_CLOSE_WAIT_MS)));
+    const bound = new Promise<void>((resolve) => {
+      timer = setTimeout(() => {
+        if (this.closingSeat === closing) this.closingSeat = undefined;
+        resolve();
+      }, SEAT_CLOSE_WAIT_MS);
+    });
     return Promise.race([closing.closed, bound]).then(() => clearTimeout(timer));
   }
 

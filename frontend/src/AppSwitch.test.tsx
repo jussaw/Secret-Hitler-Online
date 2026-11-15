@@ -358,6 +358,27 @@ test("after WATCH INSTEAD, PLAY INSTEAD checks anyway once 2 s pass with no clos
   expect(app.state.spectator).toBe(false);
 });
 
+test("an old seat whose close never comes is waited for once, and a later press checks at once", async () => {
+  vi.useFakeTimers();
+  const { app } = await watchingInstead();
+  checkStatus = 403; // the first press takes no seat, so the person can press again
+  const first = app.onClickPlayInstead();
+  await settle();
+  expect(playerChecks()).toHaveLength(0);
+  await act(async () => {
+    vi.advanceTimersByTime(2000);
+  });
+  await act(() => first);
+  expect(playerChecks()).toHaveLength(1);
+  expect(app.state.spectator).toBe(true);
+
+  checkStatus = 200;
+  const second = app.onClickPlayInstead();
+  expect(playerChecks()).toHaveLength(2); // at once, before any await or timer
+  await act(() => second);
+  expect(app.state.spectator).toBe(false);
+});
+
 test("LEAVE LOBBY while PLAY INSTEAD waits for the old seat to close sends no check", async () => {
   vi.useFakeTimers();
   const { app, seat } = await watchingInstead();
