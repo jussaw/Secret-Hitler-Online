@@ -7,5 +7,5 @@
     // src/sound/SoundManager.ts, which uses import.meta.glob) and adds node.
     "types": ["node", "vite/client"]
   },
-  "include": ["e2e", "playwright.config.ts"]
+  "include": ["e2e", "playwright.config.ts", "playwright.linux.config.ts"]
 }

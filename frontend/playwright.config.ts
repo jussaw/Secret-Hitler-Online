@@ -1,7 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// The jar serves the built frontend and the game server on one port, as in production.
-const PORT = 4545;
+// The jar serves the built frontend and the game server on one port, as in production. E2E_PORT
+// moves it, so runs in two worktrees at once each get their own: while a run builds, it waits for
+// any jar on its port to answer /ping, and would test another worktree's.
+export const PORT = Number(process.env.E2E_PORT ?? 4545);
 
 export default defineConfig({
   testDir: "./e2e",

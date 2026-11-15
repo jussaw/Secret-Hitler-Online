@@ -58,6 +58,8 @@ npm install
 npm run dev
 ```
 
+Change dependencies with npm 11 (`npx npm@11 install …`): npm 10 drops the `libc` fields from `package-lock.json`.
+
 The dev server proxies `/check-login`, `/new-lobby`, `/ping` and the `/game` WebSocket to the backend, so the page talks to its own origin, as it does in production. The proxy target is `BACKEND_URL` (default `http://localhost:4040`; compose sets `http://backend:4040`). `.env.development` only turns on debug logging.
 
 ### Frontend tests and build
@@ -80,3 +82,24 @@ npx playwright install chromium firefox   # once
 npm run e2e                               # every project
 npm run e2e -- --project=phone-360        # one project
 ```
+
+To run two at once, in two worktrees, give each its own port with `E2E_PORT` (`E2E_PORT=4601 npm run e2e`). A run builds for a minute or two before its server starts, and it waits for any server on its port to answer `/ping`, so a second run on the same port can end up testing the first run's code without an error. A run that stops at once with `http://localhost:4545/ping is already used` has found another server on its port.
+
+### Browser tests on Linux
+
+CI runs the browser tests on Linux, where Germania One is drawn wider than on macOS at phone sizes, so a line with little room to spare can pass on a Mac and wrap on CI. Firefox may also fail to launch on macOS. Playwright's Linux image covers both: it runs the tests against the jar serving on the host, with `playwright.linux.config.ts` (the repo's config, without its own server).
+
+Build the app and serve it on the host, from the repo root with Java 17 active:
+
+```bash
+(cd frontend && npm run build) && (cd backend && ./gradlew jar)
+PORT=${E2E_PORT:-4545} java -jar backend/build/libs/secret-hitler-online.jar
+```
+
+Then, in a second terminal from the repo root, run the projects you need. The image's version is the one `frontend/package.json` pins for `@playwright/test`, `-e E2E_PORT` passes the port on when it is set, and the unnamed volume keeps the image's `node_modules` apart from the host's (`--rm` deletes it afterwards):
+
+```bash
+docker run --rm --ipc=host --add-host=host.docker.internal:host-gateway -e E2E_PORT -v "$PWD":/work -v /work/frontend/node_modules -w /work/frontend "mcr.microsoft.com/playwright:v$(node -p "require('./frontend/package.json').devDependencies['@playwright/test']")-noble" bash -c "npm ci && npx playwright test --config playwright.linux.config.ts --project=firefox"
+```
+
+The jar serves the `frontend/dist` it was built with, so rebuild both and restart it after a change to the page. Stop it when you are done.
