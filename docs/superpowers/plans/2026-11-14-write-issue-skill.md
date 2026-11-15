@@ -7,7 +7,7 @@ repo in the house style, tries every bug on `development` first, and posts each 
 user has seen its draft and said yes.
 
 **Architecture:** Two files in `.claude/skills/write-issue/`. `SKILL.md` holds the steps (search,
-throwaway checkout, read, reproduce, draft, show, post, clean up). `formats.md` holds the rules for
+throwaway checkout, read, reproduce, draft, clean up, show, post). `formats.md` holds the rules for
 every issue and four skeletons, each with a filled-in example. Both are built test-first, as
 `writing-skills` asks: fresh subagents run each scenario without the file (RED), then with it
 (GREEN).
@@ -28,7 +28,8 @@ every issue and four skeletons, each with a filled-in example. Both are built te
 - Every draft is shown, and posted only on the user's OK, even when the user said to post at once.
 - Every bug gets a real attempt to reproduce it. "Reproduced" is written only after a run that
   showed it.
-- Throwaway repro tests are never committed, and the throwaway checkout is removed afterwards.
+- Throwaway repro tests are never committed. Each run's throwaway checkout has a name of its own
+  and is removed before any draft is shown; a run never removes another run's checkout.
 - In a worktree session, git runs as `git -C <absolute path>`, one command per call, and new
   worktrees nest under the session's own.
 - Commits: Conventional Commits with a scope, lowercase imperative summary, at most 72 characters.
@@ -42,8 +43,12 @@ every issue and four skeletons, each with a filled-in example. Both are built te
   server" instead (S1).
 - A bug that shows only on a real device: the issue says it was not reproduced, why, and what was
   tried, never "Reproduced" (S4).
-- What is asked for already works, or the bug does not show on `development`: the skill says what
-  it found and asks whether to file anyway, and drafts nothing until then (S4, S1).
+- A bug that does not show on `development`: it is drafted as not reproduced, with what was tried,
+  and shown. Showing the draft is the ask (S1).
+- What is asked for already works, or the code plainly shows a reported bug is fixed already: the
+  skill says what it found and asks whether to file anyway, and drafts nothing until then (S4,
+  S6).
+- A closed issue matches: it is linked as related, and the skill goes on to the code (S6).
 - A request too vague to search the code for: one question, nothing drafted, no checkout made (S5).
 
 Partial OKs in a batch ("post the first, hold the second") and edits to a draft cannot be shown by
@@ -76,16 +81,19 @@ starts with the dry-run preamble:
 The notes restate facts from real issues that the examples in `formats.md` do not use, so the real
 issue is the oracle:
 
-- **F1 (from #42):** found while fixing #10, by reading the code, not reproduced. `Lobby.removeUser`
-  schedules a new `RemoveUserTask` per disconnect (`Lobby.java:285`) and never cancels the earlier
-  one; each task only checks for a live socket when it runs (`Lobby.java:316`). Drop at 0 s,
-  rejoin at 1 s, drop at 2 s: the first task removes the player at 3 s. Lobby: seat and portrait
-  lost. Game: can rejoin, but then missing from the lobby list (#41). May be part of #26. Fix: one
-  pending removal per name.
-- **F2 (from #59):** `e2e/button-press.spec.ts:96` fails now and then in the `firefox` project, on
-  the first press, 1px below END TERM's top edge: `Expected: "END TERM"`, `Received: null`. 7 of 20
-  with `--repeat-each 20` in Playwright's Linux image. Not diagnosed; two suspects (the page's first
-  press, END TERM moving after it is measured).
+- **F1 (from #42):** found while fixing #10, by reading the code. Tried on `development` at
+  4b306d1 with `./gradlew test --tests server.util.GraceWindowRepro`, a throwaway JUnit test
+  racing two disconnects: it did not show it. `Lobby.removeUser` schedules a new `RemoveUserTask`
+  per disconnect (`Lobby.java:285`) and never cancels the earlier one; each task only checks for
+  a live socket when it runs (`Lobby.java:316`). Drop at 0 s, rejoin at 1 s, drop at 2 s: the
+  first task removes the player at 3 s. Lobby: seat and portrait lost. Game: can rejoin, but then
+  missing from the lobby list (#41). May be part of #26. Fix: one pending removal per name.
+- **F2 (from #59):** found while CI ran #57: `e2e/button-press.spec.ts:96` fails now and then in
+  the `firefox` project, on the first press, 1px below END TERM's top edge: `Expected: "END
+  TERM"`, `Received: null`. On `development` at 2d86798, `npx playwright test
+  e2e/button-press.spec.ts:96 --project=firefox --repeat-each 20` in Playwright's Linux image
+  failed 7 of 20. Not diagnosed; two suspects (the page's first press, END TERM moving after it
+  is measured).
 - **F3 (from #24):** on desktop the decks column (`GameScreen.css:141`) stacks END TERM, draw pile,
   counts box, discard pile. Wanted: counts box above the piles on desktop and square desktops; tall
   windows and phones unchanged. `e2e/no-scroll.spec.ts` (`desktop`, `firefox`) should check it.
@@ -99,12 +107,16 @@ Assertions (`T` is the title, `B` the body):
   `^(backend|frontend|e2e|ci|docker|docs)(, (backend|frontend|e2e|ci|docker|docs))*: ` and the
   word after the colon is lowercase unless it is a code name; the label is exactly `bug` (F1, F2)
   or `enhancement` (F3, F4); every code, file and function name is in backticks.
-- F1: `B` has no `##` heading; its first sentence says where it was found and "Not reproduced yet";
-  the case is a numbered list of the three times; `B` links #10, #41 and #26; it ends with a
-  paragraph starting `**Possible fix:**` that names a test.
+- F1: `B` has no `##` heading; its first sentences say where it was found, then "Not reproduced
+  on `development` (4b306d1). Tried: `<command>`, …" with the notes' command and what it showed,
+  and no "not reproduced yet"; the case is a numbered list of the three times; `B` links #10, #41
+  and #26; it ends with a paragraph starting `**Possible fix:**` that names a test.
 - F2: `B`'s headings are exactly `## Description`, `## Expected Behavior`, `## Reproduction`,
-  `## Device Info`, in that order; Reproduction holds a fenced `npx playwright test` command;
-  `**Not diagnosed yet.**` is followed by the two suspects as bullets.
+  `## Device Info`, in that order; `## Description` opens with where it was seen, then
+  "Reproduced on `development` (2d86798) with `npx playwright test …`: …"; Reproduction holds a
+  fenced `npx playwright test` command; `**Not diagnosed yet.**` is followed by the two suspects
+  as bullets.
+- F1 to F4: no memory note, host name or other private context in `T` or `B`.
 - F3: `B` opens with today's order and a `file:line` reference; it has a `Want:` list and a `Notes:`
   list, and Notes names `e2e/no-scroll.spec.ts` and its projects.
 - F4: `B` says it is blocked by #30; it has a `## Open questions` section holding the three
@@ -122,8 +134,8 @@ Expected: several failures (generic headings, no provenance line, no `area:` tit
 The rules (spec, "formats.md": title form, the two labels, plain short sentences, backticks,
 `file:line` at a stated commit, upstream refs in backticks, related issues by number, `CLAUDE.md`
 constraints by name, unmade choices under `## Open questions` and small ones as suggestions). Then
-the four skeletons. Each lists its slots as REQUIRED, in order, and ends with an example trimmed
-from a real issue: #64 for skeleton 1, #58 for skeleton 2, #25 for skeleton 3, #30 for skeleton 4
+the four skeletons. Each lists its slots as REQUIRED, in order, and ends with an example adapted
+from a real issue: #63 for skeleton 1, #58 for skeleton 2, #25 for skeleton 3, #30 for skeleton 4
 (`gh issue view N --repo … --json body`). Shape each fix to its RED failure as `writing-skills`
 says ("Match the Form to the Failure"): an omitted part becomes a REQUIRED slot, not a reminder.
 
@@ -149,7 +161,7 @@ git -C <worktree> commit -m "feat(skills): add the write-issue issue formats"
 - Produces: the skill `write-issue`, called as `/write-issue <what you saw or want>`, which Task 3
   names in `CLAUDE.md` and `implement-issue`.
 
-- [ ] **Step 1: Write the five scenario prompts**
+- [ ] **Step 1: Write the six scenario prompts**
 
 Each is one fresh subagent working in this worktree, given the dry-run preamble and the user's
 words. RED: nothing else. GREEN: "Use the skill in `.claude/skills/write-issue/SKILL.md`." After
@@ -164,27 +176,38 @@ each run, check `git worktree list` and `git -C <worktree> status --short`.
 - **S4:** "two things: on my iPhone in Safari no sound plays after I lock and unlock the screen; and
   COPY in the lobby should say it copied the link"
 - **S5:** "the lobby feels off on my phone"
+- **S6:** "the lobby tags every player except the host as [Host]". GREEN only, added in the final
+  review: closed issue #9 reported it, and its fix is on `development`.
 
 Assertions:
 
 - S1: the report shows a duplicate search (`gh issue list … --search`); a detached checkout at
   `origin/development` and its short commit; a repro test it ran, with the command and the result.
-  If the run showed the bug: one draft, label `bug`, `T` in the `area:` form, the first line
-  "Reproduced on `development` (<sha>) with …", no host name in `T` or `B`. If it did not: no
-  draft, and a question whether to file it as not reproduced. Either way no `gh issue create` was
-  run, and afterwards no throwaway worktree is listed and `status` is clean.
+  If the run showed the bug: one draft, label `bug`, `T` in the `area:` form, `## Description`
+  opening with where it was seen, then "Reproduced on `development` (<sha>) with …". If it did
+  not: one draft, label `bug`, `T` in the `area:` form, whose `## Description` opens with where it
+  was seen, then "Not reproduced on `development` (<sha>). Tried: …", and which says the home
+  server may run an older image. Either way: the real commit, no host name in `T` or `B`, the
+  draft shown and not posted, no `gh issue create` run, and afterwards no throwaway worktree is
+  listed and `status` is clean.
 - S2: `T` starts `frontend, backend: ` with a lowercase verb; label `enhancement`; `B` opens with
   today's lobby and at least one `file:line`; `Want:` and `Notes:` lists, Notes naming the WebSocket
   protocol constraint from `CLAUDE.md` and a test file; a `## Open questions` section that asks
   whether a removed player may come back, and no line of `Want:` decides it; no repro run; the draft
   is shown, not posted.
 - S3: the report points at open issue #31; no draft; no checkout made.
-- S4: the two are handled one after another, a subagent each. The sound: label `bug`; `B` says not
-  reproduced, why (it needs a real iPhone), and what was tried; the word "Reproduced" appears only
-  as "not reproduced". COPY: the report says COPY already shows "Copied!"
+- S4: the two are handled one after another, a subagent each. The sound: label `bug`; `B`'s
+  provenance is "Not reproduced on `development` (<sha>): it needs …. Tried: …", saying why (it
+  needs a real iPhone) and what was tried; the word "Reproduced" appears only as "not
+  reproduced". COPY: the report says COPY already shows "Copied!"
   (`frontend/src/App.tsx:1091`), drafts nothing for it, and asks whether to file anything. Nothing
   is posted.
 - S5: one question about what the user saw; no draft; no checkout; no issue search.
+- S6: the report shows the search finding closed issue #9 and links it as related; it does not
+  stop there, but makes the checkout and reads the code on `development`; a run that tried to show
+  it, with the command and the result; it names what fixed it (#9) and the line that now tags the
+  host only, as `path:line`; no draft, and a question whether to file it anyway; nothing posted;
+  afterwards no throwaway worktree is listed and `status` is clean.
 
 - [ ] **Step 2: Run S1–S3 without the skill (RED)**
 
@@ -207,15 +230,19 @@ conditions:
   one: link it as related.
 - **Checkout:** its parent is the session's own worktree when the session runs inside
   `.claude/worktrees/`, else the main checkout (first line of `git worktree list`).
-  `git -C <parent> fetch origin`, then `git -C <parent> worktree add --detach
-  <parent>/.claude/worktrees/issue-draft origin/development`, then `git -C <path> rev-parse --short
-  HEAD` for the commit the issue names. One checkout for the whole run.
+  `date +%H%M%S` for a name of the run's own, `git -C <parent> fetch origin`, then `git -C
+  <parent> worktree add --detach <parent>/.claude/worktrees/issue-draft-<HHMMSS>
+  origin/development`, then `git -C <path> rev-parse --short HEAD` for the commit the issue names.
+  One checkout for the whole run. Another run's `issue-draft-*` is never touched, only named to
+  the user.
 - **Reproduce:** Java 17 (`ls ~/.sdkman/candidates/java`, `JAVA_HOME`) for `./gradlew test --tests
   <Class>`; `npm ci` once for `npx vitest run <file>` or a throwaway `e2e/repro.spec.ts` run with
   `npx playwright test e2e/repro.spec.ts --project=<project>`, which serves on port 4545, so one
-  browser run at a time. Nothing to reproduce on a real device: say so and what was tried.
-- **Nothing to file:** the code already does what is asked, or the bug did not show: report what
-  was found, with references, and ask whether to file anyway. Draft nothing until the user answers.
+  browser run at a time. Nothing to reproduce on a real device: say so and what was tried. A bug
+  that did not show is drafted as not reproduced, with what was tried, and shown.
+- **Nothing to file:** an enhancement the code already does, or a bug report the code plainly shows
+  is fixed already (a closed issue or commit you can name): report what was found, with
+  references, and ask whether to file anyway. Draft nothing until the user answers.
 - **Draft:** pick the `formats.md` skeleton, write the body to a scratchpad file, check it against
   the Global Constraints.
 - **Show and post:** show each draft's title, label and body; apply the user's edits and show
@@ -223,8 +250,9 @@ conditions:
   --title "…" --label <bug|enhancement> --body-file <file>`; give the links.
 - **Batch:** one subagent per issue, one after another, each with the checkout's path, the commit
   and these steps up to the draft; the main agent shows the drafts together and posts.
-- **Clean up:** delete the throwaway tests, `git -C <parent> worktree remove --force <path>`, then
-  `rmdir <parent>/.claude/worktrees` if it is empty.
+- **Clean up:** before any draft is shown, since a wait for the user can last hours: delete the
+  throwaway tests, `git -C <parent> worktree remove --force <path>` (this run's checkout only),
+  then `rmdir <parent>/.claude/worktrees` if it is empty.
 - **Out of scope:** no fixing (that is `implement-issue`); screenshots or mockups only when the user
   asks for them in the call; never edit, comment on or close an existing issue.
 
@@ -232,10 +260,10 @@ The draft rule and the repro rule are discipline rules: write each as a prohibit
 rationalization table built from Step 2's verbatim words and a red-flags list
 (`~/.claude/skills/writing-skills/references/bulletproofing.md`).
 
-- [ ] **Step 4: Run S1–S5 with the skill (GREEN)**
+- [ ] **Step 4: Run S1–S6 with the skill (GREEN)**
 
 Expected: every assertion passes. A new rationalization: add it to the table and run that scenario
-again, until all five pass.
+again, until all six pass.
 
 - [ ] **Step 5: Commit**
 
@@ -286,7 +314,7 @@ git -C <worktree> commit -m "docs(skills): point implement-issue at write-issue"
 ```
 
 (`github` is a new scope, named for the `.github/` folder, as top-level documents take their
-file's name.)
+file's name. The final review added it to the scopes in `CLAUDE.md`.)
 
 ### Task 4: Review and pull request
 
