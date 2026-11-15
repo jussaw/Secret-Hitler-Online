@@ -151,24 +151,23 @@ export function overflowX(page: Page): Promise<{ scrollWidth: number; offscreen:
 /**
  * Visible buttons, links in a button's look (`.button-link`: SIGN IN WITH DISCORD, SIGN IN TO
  * PLAY), text fields and selectable tiles or cards inside `scope` that are smaller than MIN_TARGET
- * in either direction, as `tag#id "text" WxH`. Those matching `skip` are left out.
+ * in either direction, as `tag#id "text" WxH`.
  */
-export function smallTargets(page: Page, scope: string, { skip }: { skip?: string } = {}): Promise<string[]> {
+export function smallTargets(page: Page, scope: string): Promise<string[]> {
   return page.evaluate(
-    ({ scope, skip, min }) =>
+    ({ scope, min }) =>
       Array.from(document.querySelectorAll(scope), (root) =>
         Array.from(root.querySelectorAll("button, .button-link, input, .selectable"))
       )
         .flat()
         .flatMap((el) => {
-          if (skip && el.matches(skip)) return [];
           const r = el.getBoundingClientRect();
           if (r.width === 0 || r.height === 0 || getComputedStyle(el).visibility !== "visible") return [];
           if (r.width >= min && r.height >= min) return [];
           const text = (el.textContent ?? "").trim().slice(0, 20);
           return [`${el.tagName.toLowerCase()}#${el.id} "${text}" ${Math.round(r.width)}x${Math.round(r.height)}`];
         }),
-    { scope, skip, min: MIN_TARGET }
+    { scope, min: MIN_TARGET }
   );
 }
 

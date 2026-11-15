@@ -5,13 +5,13 @@ import { defineConfig, devices } from "@playwright/test";
 // any jar on its port to answer /ping, and would test another worktree's.
 export const PORT = Number(process.env.E2E_PORT ?? 4545);
 
-// Three characters of base 36 for this run, drawn once here and handed to the workers, which
-// inherit the runner's environment: e2e/accounts.ts puts them in every account's name, so a run
-// against a server an earlier run used (DEVELOPMENT.md, "Browser tests on Linux") takes none of
-// that run's names, which are unique ignoring case across every account.
-process.env.E2E_RUN ??= Math.floor(Math.random() * 36 ** 3)
-  .toString(36)
-  .padStart(3, "0");
+// Three digits for this run, the second it started modulo 1000, set once here and handed to the
+// workers, which inherit the runner's environment: e2e/accounts.ts puts them in every account's
+// name, so a run against a server an earlier run used (DEVELOPMENT.md, "Browser tests on Linux")
+// takes none of that run's names, which are unique ignoring case across every account (two runs
+// share the digits only when they start a multiple of 1000 s apart, to the second). Set E2E_RUN to
+// three digits to make a run's names again; e2e/accounts.ts refuses any other value.
+process.env.E2E_RUN ??= String(Math.floor(Date.now() / 1000) % 1000).padStart(3, "0");
 
 export default defineConfig({
   testDir: "./e2e",

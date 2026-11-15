@@ -16,24 +16,43 @@ export const MAX_NAME_LENGTH = 12;
 
 let made = 0;
 
+/** The run's tag (playwright.config.ts): three digits, the same in every worker of the run. */
+function runTag(): string {
+  const run = process.env.E2E_RUN;
+  if (run === undefined || !/^[0-9]{3}$/.test(run)) {
+    throw new Error(
+      `E2E_RUN must be three digits, set once per run by playwright.config.ts; it is ${JSON.stringify(run)}.`
+    );
+  }
+  return run;
+}
+
 /**
  * A name of exactly MAX_NAME_LENGTH (12) characters that no other name of the run has, ignoring
- * case: `stem`, cut (or padded with "_") to four characters, then a space and a tag in lower-case
- * base 36, "Long 3fk0001" or "Ann_ 3fk07pt". The tag is the run's own three characters (E2E_RUN,
- * which playwright.config.ts draws once for the whole run, so a run against a server an earlier
- * run used, as DEVELOPMENT.md's "Browser tests on Linux" does, takes none of its names), then four
- * or more from the worker's index and a count of the names the worker has made. It is the text
- * after the last space, and stands for one worker and one count, so no two names share it.
+ * case: the first two characters of `stem` (padded with "_"), a space, and a tag of nine digits:
+ * the run's three (E2E_RUN, set once per run, so a run against a server an earlier run used, as
+ * DEVELOPMENT.md's "Browser tests on Linux" does, takes none of that run's names), the worker's
+ * index in two, and in four a count of the names this worker has made. "Lo 417000001" is worker 0's
+ * first name in run 417. Digits only, at fixed places, keep the names' glyphs close in width from
+ * run to run, unlike letters (an "m" is three times an "i").
  */
 export function uniqueName(stem: string): string {
-  made += 1;
-  if (made >= 10_000) throw new Error("uniqueName: a worker made 10,000 names");
+  const run = runTag();
   const worker = Number(process.env.TEST_WORKER_INDEX ?? 0);
-  const tag = (process.env.E2E_RUN ?? "000") + (worker * 10_000 + made).toString(36).padStart(4, "0");
+  if (!Number.isInteger(worker) || worker < 0 || worker > 99) {
+    throw new Error(`uniqueName: worker index ${process.env.TEST_WORKER_INDEX} needs more than two digits`);
+  }
+  made += 1;
+  if (made > 9_999) throw new Error("uniqueName: a worker made 10,000 names");
+  const tag = run + String(worker).padStart(2, "0") + String(made).padStart(4, "0");
   const room = MAX_NAME_LENGTH - tag.length - 1;
   // No space at the head's end: the server makes a run of spaces one, which would shorten the name.
   const head = stem.slice(0, room).trimEnd().padEnd(room, "_");
-  return `${head} ${tag}`;
+  const name = `${head} ${tag}`;
+  if (name.length !== MAX_NAME_LENGTH) {
+    throw new Error(`uniqueName made "${name}", not ${MAX_NAME_LENGTH} characters`);
+  }
+  return name;
 }
 
 /** The test account a name signs in as (`test-<this>` on the server); null, a new one. */
@@ -83,8 +102,12 @@ export async function signInRaw(baseURL: string, name: string): Promise<string> 
   return session;
 }
 
-/** The longest Discord username, 32 characters, in wide letters. */
-export const LONGEST_DISCORD_NAME = "maximilian.wolfgang_mcwilliamsww";
+/**
+ * The widest Discord username: 32 characters (the most Discord allows) of "m", the widest of the
+ * characters it allows (lower-case letters, digits, "_" and ".") in the page's Montserrat, about
+ * an eighth wider than "w" in bold.
+ */
+export const LONGEST_DISCORD_NAME = "m".repeat(32);
 
 /** GET /me's answer (src/account/account.ts's Me) for a Discord account named `username`. */
 export function signedInMe(username: string | null, discordUsername = "sam.discord"): object {

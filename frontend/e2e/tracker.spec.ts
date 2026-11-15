@@ -111,8 +111,8 @@ test("ELECTION stays lit under the victory screen when Hitler is elected", async
     })
   );
   await expect(current).toHaveText(/ELECTION/);
-  watch.send({
-    ...gamePacket(
+  watch.send(
+    spectatorPacket(
       {
         state: S.FASCIST_VICTORY_ELECTION,
         lastState: S.CHANCELLOR_VOTING,
@@ -121,10 +121,10 @@ test("ELECTION stays lit under the victory screen when Hitler is elected", async
         fascistPolicies: 3,
         userVotes: Object.fromEntries(TEN.map((name) => [name, true])),
       },
+      [],
       EVERY_ROLE
-    ),
-    spectatorCount: 1,
-  });
+    )
+  );
   await page.getByRole("button", { name: "RETURN TO LOBBY" }).waitFor({ timeout: 15000 });
   await expect(current).toHaveText(/ELECTION/);
 });

@@ -46,8 +46,8 @@ test("no sound plays and no AudioContext exists before the first gesture", async
       .click()
   );
   const ws = await connected;
-  ws.send(JSON.stringify({ type: "lobby", usernames: TEN.slice(0, 9), icon }));
-  ws.send(JSON.stringify({ type: "lobby", usernames: TEN, icon }));
+  ws.send(JSON.stringify({ type: "lobby", usernames: TEN.slice(0, 9), icon, you: USER }));
+  ws.send(JSON.stringify({ type: "lobby", usernames: TEN, icon, you: USER }));
   // The lobby rebuilds the portrait dialog after it renders, so let it render before the game.
   await waitForPlayers(page, TEN.length);
   ws.send(JSON.stringify(gamePacket()));
@@ -81,8 +81,8 @@ test("each sound waits for its animation", async ({ page, browserName, isMobile 
   const L = "LIBERAL" as PolicyType;
 
   // 1. Another player joins the lobby.
-  game.send({ type: "lobby", usernames: TEN.slice(0, 9), icon });
-  game.send({ type: "lobby", usernames: TEN, icon });
+  game.send({ type: "lobby", usernames: TEN.slice(0, 9), icon, you: USER });
+  game.send({ type: "lobby", usernames: TEN, icon, you: USER });
   await heard(page, 1);
   // 2. The game starts with the user as president.
   game.send(gamePacket());
@@ -284,8 +284,8 @@ test("mute and volume survive a reload", async ({ page, browserName, isMobile })
   await expect(button).toHaveAttribute("aria-pressed", "true");
   await expect(slider).toHaveValue("60");
   const game = await openFakeGame(page); // its click unlocks audio
-  game.send({ type: "lobby", usernames: TEN.slice(0, 9), icon });
-  game.send({ type: "lobby", usernames: TEN, icon });
+  game.send({ type: "lobby", usernames: TEN.slice(0, 9), icon, you: USER });
+  game.send({ type: "lobby", usernames: TEN, icon, you: USER });
   const [joined] = await heard(page, 1);
   expect(joined).toMatchObject({ name: "playerJoined", played: false, reason: "muted" });
 });
@@ -376,7 +376,7 @@ test("a disconnect during the vote reveal cancels its sound", async ({ page, bro
   await page.getByRole("button", { name: "CREATE LOBBY" }).click();
   const ws = await connected;
   const send = (packet: object) => ws.send(JSON.stringify(packet));
-  send({ type: "lobby", usernames: TEN, icon });
+  send({ type: "lobby", usernames: TEN, icon, you: USER });
   await waitForPlayers(page, TEN.length);
   send(gamePacket({ president: TEN[1] }));
   await page.locator("#alert-box.appear-custom-alert").getByRole("button", { name: "OKAY" }).click();

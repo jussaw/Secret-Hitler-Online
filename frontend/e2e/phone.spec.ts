@@ -13,9 +13,10 @@ import {
   wrappedLabels,
   type Box,
 } from "./layout";
-import { signInPage, uniqueName } from "./accounts";
+import { LONGEST_DISCORD_NAME, signInPage, signedInMe, stubMe, uniqueName } from "./accounts";
 import {
   LOGIN_STATES,
+  accountTargets,
   actionLabels,
   createLobby,
   joinGuests,
@@ -57,14 +58,18 @@ for (const narrow of [false, true]) {
       // out among them.
       expect(await smallTargets(page, "body"), "small touch targets").toEqual([]);
       const account = page.locator(".login-account");
-      const targets =
-        state === "signed in"
-          ? [account.getByRole("button", { name: "CHANGE NAME" }), account.getByRole("button", { name: "Sign out" })]
-          : [
-              account.getByRole(state === "signed out" ? "link" : "button", { name: "SIGN IN WITH DISCORD" }),
-              account.getByRole("button", { name: "TEST SIGN-IN" }),
-            ];
+      const signedIn = state.startsWith("signed in");
+      const targets = signedIn
+        ? [account.getByRole("button", { name: "CHANGE NAME" }), account.getByRole("button", { name: "Sign out" })]
+        : [
+            account.getByRole(state === "signed out" ? "link" : "button", { name: "SIGN IN WITH DISCORD" }),
+            account.getByRole("button", { name: "TEST SIGN-IN" }),
+          ];
       for (const target of targets) await expect(target).toBeVisible();
+      if (signedIn) {
+        const { signOut, changeName } = await accountTargets(page);
+        expect(overlaps(signOut, changeName), "Sign out's target over CHANGE NAME").toBe(false);
+      }
     });
   }
 
@@ -156,9 +161,12 @@ for (const narrow of [false, true]) {
     }
   });
 
-  test(`CHOOSE A NAME fits ${phone}, and PLAY INSTEAD then takes a seat at once`, async ({ page, browser }) => {
+  test(`CHOOSE A NAME fits ${phone} on the login page and over the lobby, and PLAY INSTEAD then takes a seat at once`, async ({
+    page,
+    browser,
+    baseURL,
+  }) => {
     if (narrow) await narrowPhone(page);
-    const { width } = page.viewportSize()!;
     // The host plays in a page of its own (with the project's phone settings); this phone watches.
     const host = await browser.newPage();
     try {
@@ -166,38 +174,25 @@ for (const narrow of [false, true]) {
       // A first sign-in: the account has no name yet, so CHOOSE A NAME opens by itself.
       await signInPage(page, null);
       await page.goto(`/?lobby=${code}`);
+      await checkNamePrompt(page, "CHOOSE A NAME", ["CONTINUE", "SIGN OUT"], "on the login page");
+
+      // Back from SIGN IN TO PLAY, the spectator cookie takes the page back to watching: there it
+      // opens over the lobby.
+      await page.context().addCookies([
+        { name: "lobby", value: code, url: baseURL! },
+        { name: "spectator", value: "true", url: baseURL! },
+      ]);
+      await page.reload();
+      await expect(page.locator(".lobby-screen")).toBeVisible();
+      await checkNamePrompt(page, "CHOOSE A NAME", ["CONTINUE", "SIGN OUT"], "over the lobby");
+
+      // With a name saved, still watching, PLAY INSTEAD takes the seat under it at once, with no
+      // prompt.
       const field = page.getByRole("textbox", { name: "Your name" });
-      await expect(field).toBeVisible();
-      await expect(page.locator("#alert-box h2")).toHaveText("CHOOSE A NAME");
-      // Measure the prompt as it rests, after its entrance animation and with the web fonts.
-      await page.waitForFunction(() =>
-        document.getElementById("alert-box")!.getAnimations().every((a) => a.playState === "finished")
-      );
-      await page.evaluate(() => document.fonts.ready.then(() => undefined));
-      expect(await smallTargets(page, "#alert-box"), "small targets in the prompt").toEqual([]);
-      expect(await smallFieldText(page, "#alert-box"), "small text in the name field").toEqual([]);
-      // CONTINUE and SIGN OUT share one row, their labels unwrapped.
-      expect(await wrappedLabels(page, "#alert-box"), "wrapped button labels in the prompt").toEqual([]);
-      const tops = await page
-        .locator("#alert-box .name-prompt-buttons button")
-        .evaluateAll((buttons) => buttons.map((button) => button.getBoundingClientRect().top));
-      expect(tops, "CONTINUE and SIGN OUT").toHaveLength(2);
-      expect(Math.abs(tops[0] - tops[1]), "CONTINUE and SIGN OUT on one row").toBeLessThanOrEqual(0.5);
-      const overflow = await overflowX(page);
-      expect(overflow.scrollWidth, "scrollWidth").toBeLessThanOrEqual(width);
-      expect(overflow.offscreen, "past the edge").toEqual([]);
-
-      // The field takes twelve characters at most; jsdom does not apply maxLength to typing.
-      await field.fill("");
-      await field.pressSequentially("ABCDEFGHIJKLM");
-      await expect(field).toHaveValue("ABCDEFGHIJKL");
-
-      // With a name saved, watching, PLAY INSTEAD takes the seat under it at once, with no prompt.
       const name = uniqueName("Sam");
       await field.fill(name);
       await page.getByRole("button", { name: "CONTINUE" }).click();
       await expect(field).toHaveCount(0);
-      await page.getByRole("button", { name: "WATCH" }).click();
       await page.getByRole("button", { name: "PLAY INSTEAD" }).click();
       await expect(page.locator(`.lobby-players li.is-user[data-player="${name}"]`)).toBeVisible();
       await expect(field).toHaveCount(0);
@@ -205,6 +200,61 @@ for (const narrow of [false, true]) {
       await host.close();
     }
   });
+
+  test(`CHANGE NAME fits ${phone} on the login page`, async ({ page }) => {
+    if (narrow) await narrowPhone(page);
+    // A twelve-character name in wide capitals, as the field holds it when the prompt opens.
+    await stubMe(page, signedInMe("WOLFGANG MAX", LONGEST_DISCORD_NAME));
+    await page.goto("/");
+    await page.locator(".login-account").getByRole("button", { name: "CHANGE NAME" }).click();
+    await expect(page.getByRole("textbox", { name: "Your name" })).toHaveValue("WOLFGANG MAX");
+    await checkNamePrompt(page, "CHANGE NAME", ["SAVE", "CANCEL"], "on the login page");
+  });
+
+  test(`CHANGE NAME fits ${phone} in the lobby`, async ({ page }) => {
+    if (narrow) await narrowPhone(page);
+    const name = uniqueName("Host Player");
+    await createLobby(page, name);
+    await page.locator(".lobby-actions").getByRole("button", { name: "CHANGE NAME" }).click();
+    await expect(page.getByRole("textbox", { name: "Your name" })).toHaveValue(name);
+    await checkNamePrompt(page, "CHANGE NAME", ["SAVE", "CANCEL"], "in the lobby");
+  });
+}
+
+/**
+ * The open name prompt `title`, measured as it rests (after its entrance animation, with the web
+ * fonts): 44px targets, 16px field text, its two buttons `labels` (in order) unwrapped and on one
+ * row, nothing past the window's sides, and a field that takes twelve characters at most. Leaves
+ * the field empty.
+ */
+async function checkNamePrompt(page: Page, title: string, labels: [string, string], where: string) {
+  const { width } = page.viewportSize()!;
+  const at = `${title} ${where}`;
+  await expect(page.locator("#alert-box h2"), at).toHaveText(title);
+  await page.waitForFunction(() =>
+    document.getElementById("alert-box")!.getAnimations().every((a) => a.playState === "finished")
+  );
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  expect(await smallTargets(page, "#alert-box"), `small targets in ${at}`).toEqual([]);
+  expect(await smallFieldText(page, "#alert-box"), `small text in the name field of ${at}`).toEqual([]);
+  expect(await wrappedLabels(page, "#alert-box"), `wrapped button labels in ${at}`).toEqual([]);
+  const buttons = await page
+    .locator("#alert-box .name-prompt-buttons button")
+    .evaluateAll((els) => els.map((el) => ({ label: (el.textContent ?? "").trim(), top: el.getBoundingClientRect().top })));
+  expect(buttons.map((button) => button.label), `the buttons of ${at}`).toEqual(labels);
+  expect(Math.abs(buttons[0].top - buttons[1].top), `${labels.join(" and ")} on one row in ${at}`).toBeLessThanOrEqual(
+    0.5
+  );
+  const overflow = await overflowX(page);
+  expect(overflow.scrollWidth, `scrollWidth with ${at}`).toBeLessThanOrEqual(width);
+  expect(overflow.offscreen, `past the edge with ${at}`).toEqual([]);
+
+  // The field takes twelve characters at most; jsdom does not apply maxLength to typing.
+  const field = page.getByRole("textbox", { name: "Your name" });
+  await field.fill("");
+  await field.pressSequentially("ABCDEFGHIJKLM");
+  await expect(field, `the field of ${at}`).toHaveValue("ABCDEFGHIJKL");
+  await field.fill("");
 }
 
 test("phones put the roster first", async ({ page, baseURL }) => {

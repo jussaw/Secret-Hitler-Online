@@ -21,6 +21,7 @@ import {
 } from "./layout";
 import {
   LOGIN_STATES,
+  accountTargets,
   actionLabels,
   lobbyCode,
   lobbyStatusCard,
@@ -296,7 +297,7 @@ test("every name fits beside its role icon, on 16:9 and squarer desktops and in 
   const roles = ["FASCIST", "HITLER", "LIBERAL", "FASCIST", "LIBERAL"] as Role[];
   names.forEach((name, i) => (state.players[name].id = roles[i % roles.length]));
   state.players[names[7]].alive = false;
-  game.send({ type: "game", ...state });
+  game.send({ type: "game", ...state, you: names[0] });
   await page.locator(".game-screen").waitFor();
   await settle(page);
   expect(await page.locator(".roster-name .roster-role-icon").count(), "role icons").toBe(names.length);
@@ -581,11 +582,12 @@ for (const state of LOGIN_STATES) {
       expect(overflow.scrollWidth, `scrollWidth at ${at}`).toBeLessThanOrEqual(size.width);
       expect(overflow.offscreen, `past the edge at ${at}`).toEqual([]);
       expect(await wrappedLabels(page, ".login-screen"), `wrapped button labels at ${at}`).toEqual([]);
-      // Sign out is a link in its line here, as the footer's links are; on phones it is a 44px
-      // target (phone.spec.ts).
-      expect(await smallTargets(page, ".login-body", { skip: ".login-sign-out" }), `small targets at ${at}`).toEqual(
-        []
-      );
+      // Sign out among them, a 44px target like every control on the page.
+      expect(await smallTargets(page, ".login-body"), `small targets at ${at}`).toEqual([]);
+      if (state.startsWith("signed in")) {
+        const { signOut, changeName } = await accountTargets(page);
+        expect(overlaps(signOut, changeName), `Sign out's target over CHANGE NAME at ${at}`).toBe(false);
+      }
       expect(await smallFieldText(page, ".login-body"), `small text in text fields at ${at}`).toEqual([]);
       // The account, then joining, then starting a game, then the footer, none over the next.
       const parts = await measureLogin(page);

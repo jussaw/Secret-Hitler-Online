@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import type { Box } from "./layout";
 import {
   LONGEST_DISCORD_NAME,
   playerSocket,
@@ -235,8 +236,8 @@ const PLAYER_BUTTONS = ["CHANGE NAME", "CHANGE LOOK", "WATCH INSTEAD", "LEAVE LO
  * longestLineLobby, seen by every kind of viewer, each on a page of its own: the host and a guest
  * (the four player buttons, the host START GAME above them), and three spectators, signed in
  * (PLAY INSTEAD, off in the full lobby), signed out on a server with Discord sign-in (SIGN IN TO
- * PLAY, a link: their /me is stubbed, as the tests' server has no Discord), and signed out on one
- * without (SIGN IN TO PLAY off). Returns the raw guests' sockets, which the caller closes.
+ * PLAY, a link), and signed out on one without (SIGN IN TO PLAY off); both signed-out pages' /me
+ * are stubbed. Returns the raw guests' sockets, which the caller closes.
  */
 export async function longestLineViewers(
   baseURL: string,
@@ -244,7 +245,9 @@ export async function longestLineViewers(
 ): Promise<{ sockets: WebSocket[]; viewers: LobbyViewer[] }> {
   const { host, guest, signedIn, signedOut, noDiscord } = pages;
   await signInPage(signedIn, uniqueName("Watcher"));
+  // Both signed-out pages' /me are stubbed, so the server's own Discord setting decides neither.
   await stubMe(signedOut, signedOutMe({ discord: true }));
+  await stubMe(noDiscord, signedOutMe({ discord: false }));
   const { sockets } = await longestLineLobby(baseURL, { host, guest, spectators: [signedIn, signedOut, noDiscord] });
   return {
     sockets,
@@ -284,30 +287,41 @@ export function lobbyStatusCard(page: Page): Promise<{ height: number; minHeight
 
 /**
  * How the login page's account card is shown: signed out on a server with Discord sign-in, signed
- * out on one without (SIGN IN WITH DISCORD off), or signed in. The tests' server has the test
- * sign-in, so signed out the card has TEST SIGN-IN too.
+ * out on one without (SIGN IN WITH DISCORD off), signed in with the widest Discord username
+ * (Sign out on the third line of its paragraph), or signed in with the shortest (Sign out on the
+ * line just under CHANGE NAME). The tests' server has the test sign-in, so signed out the card has
+ * TEST SIGN-IN too.
  */
-export type LoginState = "signed out" | "signed out, no Discord" | "signed in";
+export type LoginState = "signed out" | "signed out, no Discord" | "signed in" | "signed in, short Discord name";
 
-export const LOGIN_STATES: LoginState[] = ["signed out", "signed out, no Discord", "signed in"];
+export const LOGIN_STATES: LoginState[] = [
+  "signed out",
+  "signed out, no Discord",
+  "signed in",
+  "signed in, short Discord name",
+];
+
+/** The shortest Discord username Discord allows. */
+const SHORTEST_DISCORD_NAME = "ab";
 
 /**
  * Opens the login page at its fullest in `state`, with a lobby code and the longest error under
  * every card that can show one: under the account card, the server unreachable (TEST SIGN-IN
  * failing signed out, Sign out failing signed in); under JOIN and WATCH, the server unreachable
  * (WATCH signed out, JOIN signed in); and signed in, under CREATE LOBBY, the server refusing a new
- * lobby. Signed in, the account is a Discord one named in wide capitals, with the longest Discord
- * username. /me and every request are stubbed, so nothing reaches the server.
+ * lobby. Signed in, the account is a Discord one named in wide capitals, with the widest Discord
+ * username or the shortest. /me and every request are stubbed, so nothing reaches the server.
  */
 export async function longestLogin(page: Page, state: LoginState): Promise<void> {
   await page.route("**/check-login?**", (route) => route.abort());
   await page.route("**/new-lobby", (route) => route.fulfill({ status: 500 }));
   await page.route("**/auth/test-sign-in", (route) => route.abort());
   await page.route("**/auth/sign-out", (route) => route.fulfill({ status: 500 }));
-  const signedIn = state === "signed in";
+  const signedIn = state.startsWith("signed in");
+  const discordName = state === "signed in" ? LONGEST_DISCORD_NAME : SHORTEST_DISCORD_NAME;
   await stubMe(
     page,
-    signedIn ? signedInMe("WOLFGANG MAX", LONGEST_DISCORD_NAME) : signedOutMe({ discord: state === "signed out" })
+    signedIn ? signedInMe("WOLFGANG MAX", discordName) : signedOutMe({ discord: state === "signed out" })
   );
   await page.goto("/?lobby=ABCD");
   const error = (card: string) => page.locator(`.login-${card} .login-error`);
@@ -323,6 +337,21 @@ export async function longestLogin(page: Page, state: LoginState): Promise<void>
   await expect(error("join")).toHaveText(/error contacting the server/);
   await expect(error("account")).toHaveText(/error contacting the server/);
   if (signedIn) await expect(page.locator(".login-account-name")).toHaveText("WOLFGANG MAX");
+}
+
+/**
+ * Signed in, the boxes of the account card's Sign out and CHANGE NAME. Sign out's 44px target
+ * reaches past its line, and must not cover CHANGE NAME's face or the shadow under it, which take
+ * CHANGE NAME's presses.
+ */
+export function accountTargets(page: Page): Promise<{ signOut: Box; changeName: Box }> {
+  return page.evaluate(() => {
+    const box = (selector: string) => {
+      const r = document.querySelector(selector)!.getBoundingClientRect();
+      return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+    };
+    return { signOut: box(".login-account .login-sign-out"), changeName: box(".login-account .login-change-name") };
+  });
 }
 
 /** Watches `lobby` from the login page, and waits for its lobby or game page. */

@@ -7,6 +7,7 @@ import {
   WATCHED_LOBBY,
   WATCHER,
   gamePacket,
+  lobbyPacket,
   openFakeGame,
   openFakeWatch,
   spectatorPacket,
@@ -382,7 +383,6 @@ test("the spectator count fits every header", async ({ page, isMobile }) => {
   await page.evaluate(async () => {
     await document.fonts.load(getComputedStyle(document.querySelector("header")!).font, "SECRET-HITLER");
   });
-  const icon = Object.fromEntries(TEN.map((name, i) => [name, `p${i + 1}`]));
   const check = async (where: string) => {
     for (const size of sizes) {
       if (!isMobile) await page.setViewportSize(size);
@@ -400,7 +400,7 @@ test("the spectator count fits every header", async ({ page, isMobile }) => {
   };
 
   for (const spectatorCount of [1, 12]) {
-    game.send({ type: "lobby", usernames: TEN, icon, spectatorCount });
+    game.send({ ...lobbyPacket(), spectatorCount });
     await expect(page.locator("header .spectator-count")).toHaveText(String(spectatorCount));
     await check(`lobby watched by ${spectatorCount}`);
   }
