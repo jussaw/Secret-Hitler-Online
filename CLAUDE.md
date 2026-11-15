@@ -383,9 +383,9 @@ so mount a volume at `/data`.
 
 Conventional Commits, always with a scope: `type(scope): summary`, lowercase imperative summary,
 no trailing period, at most 72 characters. Scopes in use: `frontend`, `backend`, `docker`, `ci`,
-`plan` (`docs/PLAN.md` and its breakdowns), `docs` (other files under `docs/`), `skills`
-(`.claude/skills/`), and for top-level documents the file's name (`readme`, `development`,
-`claude`).
+`github` (the rest of `.github/`, such as the issue templates), `plan` (`docs/PLAN.md` and its
+breakdowns), `docs` (other files under `docs/`), `skills` (`.claude/skills/`), and for top-level
+documents the file's name (`readme`, `development`, `claude`).
 
 ## Pointers
 
