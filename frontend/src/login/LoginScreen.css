@@ -10,13 +10,15 @@
 /* --login-font is the column's text size, set in px and window units only, so --card-width,
    --control and --card-gap are the same lengths wherever they are used, whatever the font size
    there. --control is the height of the fields and of the buttons' faces, a touch target at the
-   least. */
+   least. Below 786px tall --control is that 44px, more of the window the shorter it is, so the
+   gaps between the cards close from 18px at 900px tall to 10px at 700px: signed in, with every
+   error line showing, the page then still fits 800x700. */
 .login-body {
     --login-font: clamp(13px, 2vh, 19px);
     --card-width: calc(var(--login-font) * 30);
     --control: max(44px, calc(var(--login-font) * 2.8));
     --card-gap: calc(var(--login-font) * 0.6);
-    --page-gap: clamp(10px, 2vh, 18px);
+    --page-gap: clamp(10px, 4vh - 18px, 18px);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -232,12 +234,14 @@
 
 /* Phones only: the column from the top, as wide as the window less a gutter, with sizes that follow
    the window's width. The query is GameScreen.css's phone-only one. The page is as tall as its
-   column and scrolls if it must (at 320x568). */
+   column and scrolls if it must (at 320x568). The cards are 10px apart, as in the shortest
+   windows: at 360x740, signed in with the longest Discord username (three lines on Linux) and
+   every error line showing, that leaves the page some 6px to spare. */
 @media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
     .login-body {
         --login-font: clamp(13px, 4vw, 16px);
         --card-width: 100%;
-        --page-gap: 12px;
+        --page-gap: 10px;
         padding: 12px 12px 16px;
     }
 
