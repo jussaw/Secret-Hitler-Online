@@ -53,6 +53,14 @@ export const MAX_PLAYERS = 10;
 /** The longest name a player can join under. */
 export const MAX_NAME_LENGTH = 12;
 
+//////// Footer Links (the login page's and the lobby's)
+/** The board game's official rules. */
+export const RULES_URL = "https://www.secrethitler.com/assets/Secret_Hitler_Rules.pdf";
+/** This fork's README. */
+export const ABOUT_URL = "https://github.com/jussaw/Secret-Hitler-Online#readme";
+/** This fork's issues, for bug reports. */
+export const ISSUES_URL = "https://github.com/jussaw/Secret-Hitler-Online/issues";
+
 //////// JSON Packet Data
 
 // Packet Headers

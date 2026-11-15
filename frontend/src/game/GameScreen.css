@@ -2,9 +2,11 @@
 
 /* The whole game page fits the window: a slim header, then the roster and the table. The lobby
    (LobbyScreen.css) shares the page, its header and the roster column through the selector lists
-   here, so the roster stays put when the game starts. */
+   here, so the roster stays put when the game starts. The login page (LoginScreen.css) shares the
+   page and its header, so the header stays put from the login page on. */
 .game-screen,
-.lobby-screen {
+.lobby-screen,
+.login-screen {
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
     height: 100dvh;
@@ -12,7 +14,8 @@
 }
 
 .game-screen > header,
-.lobby-screen > header {
+.lobby-screen > header,
+.login-screen > header {
     min-height: 0;
     padding: 0.4vh 0;
     font-size: clamp(18px, 3.4vh, 40px);
@@ -283,7 +286,8 @@
    third line at 335px and 363-364px (docs/PLAN.md, Phase 9, Known limits). */
 @media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
     .game-screen,
-    .lobby-screen {
+    .lobby-screen,
+    .login-screen {
         display: block;
         height: auto;
     }

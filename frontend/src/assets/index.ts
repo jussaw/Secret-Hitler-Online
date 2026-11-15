@@ -19,7 +19,6 @@ import p18 from "./player-portraits/player-portrait-18.svg";
 import p19 from "./player-portraits/player-portrait-19.svg";
 import p20 from "./player-portraits/player-portrait-20.svg";
 import p_default from "./player-portraits/player-portrait-default.svg";
-import badge_img from "./badge.svg";
 
 const portraits: Record<string, string> = {
   p_default,
@@ -95,4 +94,3 @@ export const portraitsAltText: Record<string, string> = {
   p20: "An unsettling stranger shadowed in darkness.",
 };
 
-export const badge = badge_img;

@@ -2,7 +2,7 @@ import { expect, test, type Page, type WebSocketRoute } from "@playwright/test";
 import { LobbyState, type PolicyType, type Role } from "../src/types";
 import { LOBBY_GONE, TEN, answerPings, gamePacket, openFakeGame } from "./fakeGame";
 import { DESKTOP_SIZES, NARROW_WINDOWS, overflowX, overlaps, smallTargets } from "./layout";
-import { settle, waitForPlayers } from "./lobby";
+import { nameField, settle, waitForPlayers } from "./lobby";
 import { heard, recordSounds, soundLog } from "./soundLog";
 
 const audioContexts = (page: Page): Promise<number> =>
@@ -371,7 +371,7 @@ test("a disconnect during the vote reveal cancels its sound", async ({ page, bro
     connect(ws);
   });
   await page.goto("/");
-  await page.getByRole("textbox", { name: "Your Name" }).last().fill(USER);
+  await nameField(page).fill(USER);
   await page.getByRole("button", { name: "CREATE LOBBY" }).click();
   const ws = await connected;
   const send = (packet: object) => ws.send(JSON.stringify(packet));

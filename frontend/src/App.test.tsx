@@ -1,4 +1,5 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import Cookies from "js-cookie";
 import { createRef } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import App from "./App";
@@ -13,6 +14,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  Cookies.remove("name");
   vi.unstubAllGlobals();
 });
 
@@ -20,6 +22,34 @@ test("renders the login page with join and create forms", () => {
   render(<App />);
   expect(screen.getByRole("heading", { name: "JOIN A GAME" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "CREATE LOBBY" })).toBeInTheDocument();
+});
+
+test("one name field, filled from the name cookie, serves JOIN and CREATE LOBBY", () => {
+  Cookies.set("name", "Sam");
+  render(<App />);
+  const names = screen.getAllByRole("textbox", { name: /name/i });
+  expect(names).toHaveLength(1);
+  expect(names[0]).toHaveValue("Sam");
+  expect(screen.getByRole("button", { name: "CREATE LOBBY" })).toBeEnabled();
+  expect(screen.getByRole("button", { name: "JOIN" })).toBeDisabled();
+  fireEvent.change(screen.getByRole("textbox", { name: "Lobby code" }), { target: { value: "abcd" } });
+  expect(screen.getByRole("button", { name: "JOIN" })).toBeEnabled();
+  fireEvent.change(names[0], { target: { value: "" } });
+  expect(screen.getByRole("button", { name: "JOIN" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "CREATE LOBBY" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "WATCH" })).toBeEnabled();
+});
+
+test("the login page carries none of upstream's leftovers", () => {
+  const { container } = render(<App />);
+  expect(screen.queryByText(/Announcing/)).toBeNull();
+  expect(screen.queryByText(/What is Secret Hitler Online/)).toBeNull();
+  expect(container.querySelectorAll("img")).toHaveLength(0);
+  const hrefs = [...container.querySelectorAll("a")].map((a) => a.getAttribute("href") ?? "");
+  // Upstream is credited by its repository's home page only, never sent its issues.
+  expect(hrefs.filter((href) => href.includes("ShrimpCryptid"))).toEqual([
+    "https://github.com/ShrimpCryptid/Secret-Hitler-Online",
+  ]);
 });
 
 test("pings the server once when it starts", () => {

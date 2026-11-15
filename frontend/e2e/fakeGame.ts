@@ -1,6 +1,6 @@
 import type { Page, WebSocketRoute } from "@playwright/test";
 import { makeGameState } from "../src/game/testGameState";
-import { waitForPlayers } from "./lobby";
+import { codeField, nameField, waitForPlayers } from "./lobby";
 import { LobbyState, type GameState, type PolicyType, type Role } from "../src/types";
 
 /**
@@ -75,7 +75,7 @@ export async function openFakeGame(page: Page, names: string[] = TEN): Promise<F
   });
 
   await page.goto("/");
-  await page.getByRole("textbox", { name: "Your Name" }).last().fill(names[0]);
+  await nameField(page).fill(names[0]);
   await page.getByRole("button", { name: "CREATE LOBBY" }).click();
   await connected;
   latest!.send(JSON.stringify(lobbyPacket(names)));
@@ -319,7 +319,7 @@ export async function openFakeWatch(page: Page, first: object = WATCHED_LOBBY): 
   });
 
   await page.goto("/");
-  await page.getByRole("textbox", { name: "Lobby" }).fill("FAKE");
+  await codeField(page).fill("FAKE");
   await page.getByRole("button", { name: "WATCH" }).click();
   await connected;
   latest!.send(JSON.stringify(first));

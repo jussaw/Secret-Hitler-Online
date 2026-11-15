@@ -66,8 +66,26 @@ keeps credit to upstream and to the board game's creators.
   last seat, the second is refused with 1002 and the reason it would get had it arrived later,
   not failed with 1011 by the add (`RejoinServerTest`).
 - `frontend/`: React 18 and TypeScript 5, built with Vite and tested with Vitest. The entry is
-  `src/main.tsx`, with `index.html` at the `frontend/` root. `src/App.tsx` owns the WebSocket, all
-  state, the overlays and the login page; prompts live in `src/custom-alert/`. The game
+  `src/main.tsx`, with `index.html` at the `frontend/` root, whose description is one plain line
+  and which has no preview image, so an invite link previews as that line (`linkPreview.test.ts`).
+  `src/App.tsx` owns the WebSocket, all state and the overlays; prompts live in
+  `src/custom-alert/`. The login page is `src/login/LoginScreen` (markup and `LoginScreen.css`):
+  the header, then three cards in the lobby's look, YOUR NAME (the one name field, `loginName` in
+  `App`, with "Up to 12 characters" under it), JOIN A GAME (the lobby code, JOIN and WATCH, and its
+  error line) and OR START ONE (CREATE LOBBY and its error line), then a footer with How to play
+  (the official rules), About this project, Report a bug and the credit line the licence asks for.
+  JOIN needs the name and the 4-letter code, WATCH only the code, CREATE LOBBY only the name. The
+  name field takes `typedName` (`src/lobby/normalizeName.ts`: runs of whitespace one space, none
+  at the start, twelve characters at most), and the code field and a `?lobby=CODE` link take
+  `normalizeCode` (no whitespace, capitals, four letters at most). In `App`, `loginForm` fills or
+  empties the fields and error lines together. The footer links are in `src/constants`:
+  `RULES_URL`, and `ABOUT_URL` and `ISSUES_URL`, which the lobby's footer shares, each an `OutLink`
+  (`src/util/`, a new tab). `GameScreen.css` lists `.login-screen` beside the lobby and the game
+  for the page and its header, and `LobbyScreen.css` lists the login page's selectors beside the
+  lobby's for the cards' look, the fields' focus, the centred column and the footer;
+  `LoginScreen.css` holds the rest. The cards are a column centred both ways on desktop and in
+  tall windows, and start at the top on phones (`LoginScreen.css` writes out the phone-only
+  query). It fits one screen at every tested size but 320x568, where it may scroll down. The game
   page is `src/game/`: `GameScreen` (markup and the three layouts), `PlayerRoster` (a row per player
   in `playerOrder`: portrait, name, office or role, and the vote or busy bubble), `RoundTracker`
   (the four steps of a round, the current one lit, over the status line `#status-bar-text`; its line
@@ -121,8 +139,8 @@ keeps credit to upstream and to the board game's creators.
   select-and-copy fallback).
   `GameScreen.css` lists the lobby's selectors beside the game's for the page, header and roster
   column, so the roster cannot drift between the lobby and the game; `LobbyScreen.css` holds only
-  what the lobby has, with its own phone-only and tall-window blocks written out as in the game's
-  files. With ten players and the longest status it fits one screen at the same sizes the game
+  what the lobby has (and the login page shares), with its own phone-only and tall-window blocks
+  written out as in the game's files. With ten players and the longest status it fits one screen at the same sizes the game
   does. The buttons: the host gets START GAME (off until every player has picked a look), a player
   gets CHANGE LOOK and WATCH INSTEAD, a spectator gets PLAY INSTEAD (off, with a note, when the
   lobby is full), and everyone gets LEAVE LOBBY. The switch between playing and watching is offered
@@ -202,12 +220,16 @@ keeps credit to upstream and to the board game's creators.
   `phone-360`/`phone-412` (Galaxy S8 and Pixel 7 emulation, `phone.spec.ts`: the game fits without
   scrolling, in order, with 44px targets, for players and a spectator; at 320x568 it keeps the
   phone layout and only scrolls down, for both, and `phone-360` also checks the login page and the
-  lobby there; the lobby tests (the host's, a guest's and a spectator's lobby fit without
+  lobby there; the login page fits without scrolling, with 44px targets, 16px field text and
+  unwrapped button labels; the lobby tests (the host's, a guest's and a spectator's lobby fit without
   scrolling, with 44px targets and 16px field text,
   the roster first, the busy bubble at 320px, and the PLAY INSTEAD prompt with 44px targets, 16px
   field text and twelve characters at most); and a phone held sideways gets the phone layout).
-  `no-scroll.spec.ts` also has a lobby test, for the host, a guest and a spectator at
-  `DESKTOP_SIZES`, `SQUARE_DESKTOPS` and the `NARROW_WINDOWS`. `lobby-switch.spec.ts` (`desktop`
+  `no-scroll.spec.ts` also has a lobby test, for the host, a guest and a spectator, and a login
+  page test (the cards and the footer in order, 44px targets and 16px field text), both at
+  `DESKTOP_SIZES`, `SQUARE_DESKTOPS` and the `NARROW_WINDOWS`. The login tests open the page with
+  `longestLogin` (`e2e/lobby.ts`): a twelve-character name and the longest error under both cards,
+  from stubbed requests. `lobby-switch.spec.ts` (`desktop`
   and `phone-360`) plays the seat switch in a real lobby: watching instead and playing instead, a
   full lobby, a taken name, the host passing on, reloads, the grace window, and a game started
   right after someone watches instead (both grace-window tests fail when their timing missed the
@@ -252,7 +274,8 @@ keeps credit to upstream and to the board game's creators.
   sockets of `e2e/fakeGame.ts` answer pings (`answerPings`), and `FakeWatch.down` refuses new
   sockets as `LOBBY_GONE`, so the page gives up at once. Shared helpers are `e2e/lobby.ts`
   (`waitForPlayers`, `joinGuests`, with `pickLooks` false for guests who stay on the default
-  portrait, `joinLobby`, `pickPortrait`, `longestLineLobby`, `lobbyStatusCard`, `waitForPrompt`),
+  portrait, `joinLobby`, `pickPortrait`, `longestLineLobby`, `longestLogin`, `lobbyStatusCard`,
+  `waitForPrompt`, and `nameField` and `codeField`, the login page's two fields),
   `e2e/layout.ts` (`wrappedLabels`, `smallFieldText`, `MIN_FIELD_TEXT`, and `addPngDecoder` for
   page functions that read screenshots) and `e2e/soundLog.ts`. `App.css` hides
   `overflow-x` on `html` and `body`, so horizontal overflow shows only in `body.scrollWidth`, and

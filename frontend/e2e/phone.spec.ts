@@ -18,6 +18,8 @@ import {
   joinGuests,
   lobbyStatusCard,
   longestLineLobby,
+  longestLogin,
+  nameField,
   settle,
   startGame,
   waitForPlayers,
@@ -38,9 +40,13 @@ for (const narrow of [false, true]) {
 
   test(`the login page fits ${phone}`, async ({ page }) => {
     if (narrow) await narrowPhone(page);
-    const { width } = page.viewportSize()!;
-    await page.goto("/");
+    const { width, height } = page.viewportSize()!;
+    await longestLogin(page);
     await settle(page);
+    // The 320px phone may scroll down, never sideways.
+    if (!narrow) expect(await pageHeight(page), "scrollHeight").toBeLessThanOrEqual(height);
+    expect(await wrappedLabels(page, ".login-screen"), "wrapped button labels").toEqual([]);
+    expect(await smallFieldText(page, ".login-screen"), "small text in text fields").toEqual([]);
     const overflow = await overflowX(page);
     expect(overflow.scrollWidth, "scrollWidth").toBeLessThanOrEqual(width);
     expect(overflow.offscreen, "past the edge").toEqual([]);
@@ -51,11 +57,15 @@ for (const narrow of [false, true]) {
     if (narrow) await narrowPhone(page);
     const { width, height } = page.viewportSize()!;
     await page.goto("/");
-    await page.getByRole("textbox", { name: "Your Name" }).last().fill("Host Player");
+    await nameField(page).fill("Host Player");
     await page.getByRole("button", { name: "CREATE LOBBY" }).click();
     const portraits = page.locator("#icon.selectable:not(.disabled)");
     await portraits.first().waitFor();
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    // A portrait still loading is a few pixels tall, so measure the picker once every image has.
+    await page.waitForFunction(() =>
+      Array.from(document.querySelectorAll<HTMLImageElement>("#alert-box img")).every((img) => img.complete)
+    );
     let overflow = await overflowX(page);
     expect(overflow.scrollWidth, "scrollWidth with the picker open").toBeLessThanOrEqual(width);
     expect(overflow.offscreen, "picker past the edge").toEqual([]);

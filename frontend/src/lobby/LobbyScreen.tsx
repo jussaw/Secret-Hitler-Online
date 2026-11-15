@@ -1,8 +1,9 @@
 import { useRef } from "react";
 import { Copy, Eye, UserPlus } from "lucide-react";
-import { MAX_PLAYERS } from "../constants";
+import { ABOUT_URL, ISSUES_URL, MAX_PLAYERS } from "../constants";
 import SoundControl from "../sound/SoundControl";
 import SpectatorCount from "../spectator/SpectatorCount";
+import OutLink from "../util/OutLink";
 import { copyText } from "./copyText";
 import LobbyRoster from "./LobbyRoster";
 import { isPicking, lobbyStatus } from "./lobbyStatus";
@@ -29,9 +30,6 @@ export type LobbyScreenProps = {
   /** Called once COPY has finished, with whether the link was copied. */
   onCopied: (ok: boolean) => void;
 };
-
-const ABOUT_URL = "https://github.com/jussaw/Secret-Hitler-Online#readme";
-const ISSUES_URL = "https://github.com/jussaw/Secret-Hitler-Online/issues";
 
 /**
  * The lobby page below the prompts: the game's header, the roster of players beside (or, in tall
@@ -142,13 +140,9 @@ export default function LobbyScreen(props: LobbyScreenProps) {
           )}
 
           <footer className="lobby-footer">
-            <a href={ABOUT_URL} target="_blank" rel="noopener noreferrer">
-              About this project
-            </a>
+            <OutLink href={ABOUT_URL}>About this project</OutLink>
             {" · "}
-            <a href={ISSUES_URL} target="_blank" rel="noopener noreferrer">
-              Report a bug
-            </a>
+            <OutLink href={ISSUES_URL}>Report a bug</OutLink>
           </footer>
         </main>
       </div>

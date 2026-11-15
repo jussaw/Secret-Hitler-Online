@@ -19,7 +19,15 @@ import {
   wrappedLabels,
   type Box,
 } from "./layout";
-import { lobbyCode, lobbyStatusCard, longestLineLobby, settle, startGame, watchLobby } from "./lobby";
+import {
+  lobbyCode,
+  lobbyStatusCard,
+  longestLineLobby,
+  longestLogin,
+  settle,
+  startGame,
+  watchLobby,
+} from "./lobby";
 
 type Size = { width: number; height: number };
 
@@ -542,5 +550,44 @@ test("the lobby fits every desktop size and narrow window, for the host, a guest
   } finally {
     await guest.close();
     await spectator.close();
+  }
+});
+
+/** The login page's cards and footer, top to bottom, in viewport px. */
+function measureLogin(page: Page) {
+  return page.evaluate(() =>
+    Array.from(document.querySelectorAll(".login-card, .login-footer"), (el) => {
+      const r = el.getBoundingClientRect();
+      return { name: el.className, top: r.top, bottom: r.bottom };
+    })
+  );
+}
+
+test("the login page fits every desktop size and narrow window", async ({ page }) => {
+  await longestLogin(page);
+  await settle(page);
+  for (const size of [...DESKTOP_SIZES, ...SQUARE_DESKTOPS, ...NARROW_WINDOWS]) {
+    await page.setViewportSize(size);
+    const at = `${size.width}x${size.height}`;
+    expect(await pageHeight(page), `scrollHeight at ${at}`).toBeLessThanOrEqual(size.height);
+    const overflow = await overflowX(page);
+    expect(overflow.scrollWidth, `scrollWidth at ${at}`).toBeLessThanOrEqual(size.width);
+    expect(overflow.offscreen, `past the edge at ${at}`).toEqual([]);
+    expect(await wrappedLabels(page, ".login-screen"), `wrapped button labels at ${at}`).toEqual([]);
+    expect(await smallTargets(page, ".login-body"), `small targets at ${at}`).toEqual([]);
+    expect(await smallFieldText(page, ".login-body"), `small text in text fields at ${at}`).toEqual([]);
+    // The name, then joining, then starting a game, then the footer, none over the next.
+    const parts = await measureLogin(page);
+    expect(parts.map((part) => part.name), `the parts at ${at}`).toEqual([
+      "login-card login-name",
+      "login-card login-join",
+      "login-card login-start",
+      "login-footer",
+    ]);
+    for (let i = 1; i < parts.length; i++) {
+      expect(parts[i].top, `${parts[i].name} below ${parts[i - 1].name} at ${at}`).toBeGreaterThanOrEqual(
+        parts[i - 1].bottom
+      );
+    }
   }
 });

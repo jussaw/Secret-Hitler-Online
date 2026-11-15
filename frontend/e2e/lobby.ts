@@ -1,7 +1,17 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 /** How often guests ping: the server drops a game socket after 30 s without traffic. */
 const PING_MS = 10_000;
+
+/** The login page's one name field, which JOIN and CREATE LOBBY share. */
+export function nameField(page: Page): Locator {
+  return page.getByRole("textbox", { name: "YOUR NAME", exact: true });
+}
+
+/** The login page's lobby code field, which JOIN and WATCH share. */
+export function codeField(page: Page): Locator {
+  return page.getByRole("textbox", { name: "Lobby code", exact: true });
+}
 
 /** Picks the first free portrait in the open portrait picker and confirms it. */
 export async function pickPortrait(page: Page): Promise<void> {
@@ -12,7 +22,7 @@ export async function pickPortrait(page: Page): Promise<void> {
 /** Creates a lobby from the login page as `host`, picks the first free portrait, returns the code. */
 export async function createLobby(page: Page, host: string): Promise<string> {
   await page.goto("/");
-  await page.getByRole("textbox", { name: "Your Name" }).last().fill(host);
+  await nameField(page).fill(host);
   await page.getByRole("button", { name: "CREATE LOBBY" }).click();
   await pickPortrait(page);
   const link = await page.locator("#linkText").inputValue();
@@ -171,8 +181,8 @@ export async function joinSpectator(baseURL: string, lobby: string): Promise<Web
 /** Joins `lobby` from the login form as `name`, picks the first free portrait, and waits for the lobby. */
 export async function joinLobby(page: Page, lobby: string, name: string): Promise<void> {
   await page.goto("/");
-  await page.getByRole("textbox", { name: "Lobby" }).fill(lobby);
-  await page.getByRole("textbox", { name: "Your Name" }).first().fill(name);
+  await codeField(page).fill(lobby);
+  await nameField(page).fill(name);
   await page.getByRole("button", { name: "JOIN" }).click();
   await pickPortrait(page);
   await page.locator("#linkText").waitFor();
@@ -224,10 +234,26 @@ export function lobbyStatusCard(page: Page): Promise<{ height: number; minHeight
   });
 }
 
+/**
+ * Opens the login page at its fullest: a twelve-character name in wide capitals, a lobby code, and
+ * the longest error under both JOIN (the server unreachable) and CREATE LOBBY (the server refusing
+ * a new lobby). Requests are stubbed, so nothing reaches the server.
+ */
+export async function longestLogin(page: Page): Promise<void> {
+  await page.route("**/check-login?**", (route) => route.abort());
+  await page.route("**/new-lobby", (route) => route.fulfill({ status: 500 }));
+  await page.goto("/?lobby=ABCD");
+  await nameField(page).fill("WOLFGANG MAX");
+  await page.getByRole("button", { name: "JOIN" }).click();
+  await page.getByRole("button", { name: "CREATE LOBBY" }).click();
+  await expect(page.getByText(/error contacting the server/)).toBeVisible();
+  await expect(page.getByText(/error connecting to the server/)).toBeVisible();
+}
+
 /** Watches `lobby` from the login form, and waits for its lobby or game page. */
 export async function watchLobby(page: Page, lobby: string): Promise<void> {
   await page.goto("/");
-  await page.getByRole("textbox", { name: "Lobby" }).fill(lobby);
+  await codeField(page).fill(lobby);
   await page.getByRole("button", { name: "WATCH" }).click();
   await page.locator("#linkText, .game-screen").first().waitFor();
 }

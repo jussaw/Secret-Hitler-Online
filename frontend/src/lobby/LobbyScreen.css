@@ -4,7 +4,9 @@
    the top in tall windows, and first in one column on phones. The page, its header, the column
    (its width and band) and the roster's rows and their sizes are GameScreen.css's, which lists the
    lobby's selectors beside the game's (.lobby-screen, .lobby-body, .lobby-players), so the roster
-   stays put when the game starts. This file holds what only the lobby has. */
+   stays put when the game starts. This file holds what only the lobby has, and lists the login
+   page's selectors (LoginScreen.css) beside the lobby's for the cards' look, the fields' focus, the
+   centred column and the footer, so the two pages cannot drift apart. */
 
 /* The roster column: the heading, then the rows, on the game's darker band (GameScreen.css). */
 .lobby-players {
@@ -45,17 +47,20 @@
     font-size: var(--lobby-font);
 }
 
-.lobby-main > :first-child {
+.lobby-main > :first-child,
+.login-body > :first-child {
     margin-top: auto;
 }
 
-.lobby-main > :last-child {
+.lobby-main > :last-child,
+.login-body > :last-child {
     margin-bottom: auto;
 }
 
-/* The round tracker's card (RoundTracker.css). */
+/* The round tracker's card (RoundTracker.css), which the login page's cards share. */
 .lobby-code-card,
-.lobby-status {
+.lobby-status,
+.login-card {
     box-sizing: border-box;
     width: min(100%, var(--card-width));
     background-color: var(--backgroundDark);
@@ -113,8 +118,8 @@
     margin-bottom: 5px; /* room for COPY's shadow */
 }
 
-/* A read-only field that ends in an ellipsis when the link is too long. App.css's input look is
-   for the light login form, so most of it is replaced here. */
+/* A read-only field that ends in an ellipsis when the link is too long. App.css's input look, white
+   with dark text, is the login page's fields', so most of it is replaced here. */
 .lobby-link-row input {
     flex: 1 1 auto;
     width: auto;
@@ -133,7 +138,8 @@
     border-radius: 0.5em;
 }
 
-.lobby-link-row input:focus {
+.lobby-link-row input:focus,
+.login-card input:focus {
     border-color: #f08a5d;
 }
 
@@ -241,12 +247,14 @@
     color: var(--textColorOnDark);
 }
 
-.lobby-footer {
+.lobby-footer,
+.login-footer {
     font-size: 0.9em;
     color: #b9ab9f;
 }
 
-.lobby-footer a {
+.lobby-footer a,
+.login-footer a {
     font-size: inherit;
 }
 
@@ -271,11 +279,13 @@
         padding: 0;
     }
 
-    .lobby-main > :first-child {
+    .lobby-main > :first-child,
+    .login-body > :first-child {
         margin-top: 0;
     }
 
-    .lobby-main > :last-child {
+    .lobby-main > :last-child,
+    .login-body > :last-child {
         margin-bottom: 0;
     }
 

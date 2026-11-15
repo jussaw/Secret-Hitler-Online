@@ -21,9 +21,9 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-test("a lobby link fills the join form's Lobby field, upper-cased", () => {
+test("a lobby link fills the join form's code field, upper-cased", () => {
   window.history.pushState({}, "", "/?lobby=abcd");
   render(<App />);
-  expect(screen.getByLabelText("Lobby")).toHaveValue("ABCD");
+  expect(screen.getByLabelText("Lobby code")).toHaveValue("ABCD");
   expect(consoleError).not.toHaveBeenCalled();
 });

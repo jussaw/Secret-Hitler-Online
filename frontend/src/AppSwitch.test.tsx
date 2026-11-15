@@ -629,7 +629,7 @@ test("a join after giving up still retries a socket that closes before its first
   expect(app.state.page).toBe("login");
   expect(app.reconnectAttempts).toBeGreaterThan(0);
   await act(async () => {
-    app.setState({ joinName: "Ann", joinLobby: "HBIA" });
+    app.setState({ loginName: "Ann", joinLobby: "HBIA" });
     app.onClickJoin();
   });
   const before = FakeSocket.instances.length;
@@ -643,7 +643,7 @@ test("JOIN checks and joins under the normalized name", async () => {
   render(<App ref={ref} />);
   const app = ref.current!;
   await act(async () => {
-    app.setState({ joinName: "Sam ", joinLobby: "HBIA" });
+    app.setState({ loginName: "Sam ", joinLobby: "HBIA" });
   });
   await act(async () => {
     app.onClickJoin();
@@ -666,13 +666,22 @@ test("CREATE LOBBY joins under the normalized name", async () => {
   render(<App ref={ref} />);
   const app = ref.current!;
   await act(async () => {
-    app.setState({ createLobbyName: "Sam  Lee " });
+    app.setState({ loginName: "Sam  Lee " });
   });
   await act(async () => {
     app.onClickCreateLobby();
   });
   expect(new URL(lastUrl(), "http://host").searchParams.get("name")).toBe("Sam Lee");
   expect(Cookies.get("name")).toBe("Sam Lee");
+});
+
+test("LEAVE LOBBY puts the player's name and the code back in the login page's fields", async () => {
+  const app = await playerInLobby();
+  act(() => app.onClickLeaveLobby());
+  act(() => lastSocket().onclose?.({ code: 1000 }));
+  expect(app.state.page).toBe("login");
+  expect(app.state.loginName).toBe("Ann");
+  expect(app.state.joinLobby).toBe("HBIA");
 });
 
 test("START GAME on a socket still connecting is sent once it opens", async () => {
@@ -789,7 +798,7 @@ test("an OK listener from before a lost connection does not close the next lobby
   loseConnectionForGood(app);
   expect(app.state.page).toBe("login");
   await act(async () => {
-    app.setState({ joinName: "Ann", joinLobby: "HBIA" });
+    app.setState({ loginName: "Ann", joinLobby: "HBIA" });
   });
   await act(async () => {
     app.onClickJoin();

@@ -57,14 +57,6 @@ h6 { /*Notification and/or error text.*/
     margin: 3px;
 }
 
-#errormessage {
-    font-family: var(--textFont);
-    font-weight: 700;
-    font-size: calc(12px + 1vmin);
-    color: var(--textColorHighlight);
-    margin: 3px;
-}
-
 p {
     font-family: var(--textFont);
     font-weight: 700;

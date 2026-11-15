@@ -11,7 +11,7 @@ import {
   spectatorPacket,
 } from "./fakeGame";
 import { DESKTOP_SIZES, NARROW_WINDOWS, overlaps } from "./layout";
-import { settle, waitForPlayers, watchLobby } from "./lobby";
+import { codeField, nameField, settle, waitForPlayers, watchLobby } from "./lobby";
 import { findSecrets } from "./secrets";
 import { heard, recordSounds } from "./soundLog";
 
@@ -56,13 +56,13 @@ const statusLog = (page: Page): Promise<string[]> =>
 test("a spectator gets the player's error for an unknown lobby", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "one browser is enough");
   await page.goto("/");
-  await page.getByRole("textbox", { name: "Lobby" }).fill("ZZZZ");
+  await codeField(page).fill("ZZZZ");
   await page.getByRole("button", { name: "WATCH" }).click();
   await expect(page.getByText("The lobby could not be found.")).toBeVisible();
 
   await page.reload();
-  await page.getByRole("textbox", { name: "Lobby" }).fill("ZZZZ");
-  await page.getByRole("textbox", { name: "Your Name" }).first().fill("Ann");
+  await codeField(page).fill("ZZZZ");
+  await nameField(page).fill("Ann");
   await page.getByRole("button", { name: "JOIN" }).click();
   await expect(page.getByText("The lobby could not be found.")).toBeVisible();
 });
@@ -169,15 +169,15 @@ test("a spectator watches a scripted game without prompts", async ({ page }, tes
   }
 });
 
-test("a spectator who leaves gets the name cookie back in the JOIN form", async ({ page, context, baseURL }, testInfo) => {
+test("a spectator who leaves gets the name cookie back in the name field", async ({ page, context, baseURL }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "one browser is enough");
   await context.addCookies([{ name: "name", value: "Ann", url: baseURL! }]);
-  const joinName = page.getByRole("textbox", { name: "Your Name" }).first();
+  const name = nameField(page);
 
   const game = await openFakeWatch(page);
   await page.getByRole("button", { name: "LEAVE LOBBY" }).click();
   await expect(page.getByRole("button", { name: "WATCH" })).toBeVisible();
-  await expect(joinName, "after LEAVE LOBBY").toHaveValue("Ann");
+  await expect(name, "after LEAVE LOBBY").toHaveValue("Ann");
 
   // The same after the server restarts without the lobby and refuses the reconnect.
   const sockets = game.urls.length;
@@ -187,7 +187,7 @@ test("a spectator who leaves gets the name cookie back in the JOIN form", async 
   await waitForPlayers(page, TEN.length);
   game.down(true);
   await expect(page.getByText("Disconnected from the lobby.")).toBeVisible();
-  await expect(joinName, "after a disconnect").toHaveValue("Ann");
+  await expect(name, "after a disconnect").toHaveValue("Ann");
 });
 
 /**
