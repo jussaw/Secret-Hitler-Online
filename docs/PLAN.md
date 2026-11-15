@@ -41,7 +41,8 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 8. Game screen redesign | `phase-8-game-screen` | done |
 | 9. Phase 8 follow-ups | `phase-9-follow-ups` | done |
 | 10. Baseline bugs | `fix/issue-N`, one per issue | done |
-| 11. Lobby redesign | `phase-11-lobby` | in progress |
+| 11. Lobby redesign | `phase-11-lobby` | done |
+| 12. Accounts with Discord sign-in | `phase-12-accounts` | planned |
 
 ---
 
@@ -657,6 +658,36 @@ Issue #23: the lobby matches the game screen and fits one screen, says what STAR
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
 - [x] PR merged into `development`
 - [ ] The user plays one real lobby on the deployed build, on a desktop and on a phone: switches each way, sees the status line name the player still picking, and starts a game
+
+---
+
+## Phase 12: Accounts with Discord sign-in
+
+Breakdown: [`docs/superpowers/plans/2026-11-15-phase-12-accounts.md`](superpowers/plans/2026-11-15-phase-12-accounts.md) · Spec: [`docs/superpowers/specs/2026-11-15-accounts-design.md`](superpowers/specs/2026-11-15-accounts-design.md)
+
+Issue #30: playing needs an account, made by signing in with Discord; each account has a unique username of its own, renamable outside games; watching needs nothing. Issue #31 (game stats) builds on it. Added after the first ten phases were done, so the "Done when" below covers Phases 1 to 10.
+
+- [ ] `backend/src/main/java/server/accounts/Usernames.java`: the name rules (the page's whitespace and length, unique ignoring case, no CPU player's name)
+- [ ] `backend/src/main/java/server/accounts/AccountStore.java`: accounts and hashed sessions in SQLite, 30 days renewed by use
+- [ ] `backend/src/main/java/server/util/Lobby.java`: keyed on account IDs, with the race fixes' tests moved over
+- [ ] `Lobby`: seats tied to accounts, `you` in every player's packet, renaming in a lobby
+- [ ] `/me`, `/me/username`, sign-out, the test sign-in, the `/new-lobby` guard, and renaming across lobbies
+- [ ] `backend/src/main/java/server/accounts/DiscordSignIn.java`: the Discord OAuth2 flow
+- [ ] `SecretHitlerServer`: players join and act by signed-in account; the `Origin` check
+- [ ] Backups: idle lobbies from before accounts kept, their games dropped; seats' accounts survive a backup
+- [ ] `frontend/src/account/` and `NamePrompt`: the account calls, the name prompt, the messages, no join sound for a rename
+- [ ] `frontend/src/login/LoginScreen.tsx`: the account card, CHOOSE A NAME and CHANGE NAME
+- [ ] `frontend/src/lobby/LobbyScreen.tsx`: CHANGE NAME, SIGN IN TO PLAY, PLAY INSTEAD with no prompt
+- [ ] The browser tests run on accounts, and the login page and lobby fit every tested size
+- [ ] `frontend/e2e/accounts.spec.ts`: signing in, naming, renaming and watching in the browser
+- [ ] `CLAUDE.md`, `README.md` and `DEVELOPMENT.md` describe accounts; the pull request shows the login page and lobby before and after, and closes #30
+
+**Phase 12 acceptance**
+
+- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [ ] PR merged into `development`
+- [ ] The user creates the Discord application and sets `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` and `DISCORD_REDIRECT_URI` on the home server
+- [ ] The user signs in with Discord on the deployed build, on a desktop and on a phone, chooses a name, renames in a lobby, and plays a game
 
 ---
 
