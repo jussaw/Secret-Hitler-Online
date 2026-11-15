@@ -399,7 +399,7 @@ public class SecretHitlerServer {
             return;
         }
         String name = ctx.queryParam(PARAM_NAME);
-        if (lobbyCode == null || name == null || name.isEmpty() || name.isBlank()) {
+        if (lobbyCode == null || name == null || name.isBlank()) {
             ctx.status(400);
             ctx.result("Lobby and name must be specified.");
             return;
@@ -509,11 +509,11 @@ public class SecretHitlerServer {
      *          <p>
      *          - there is no lobby with the given code.
      *          <p>
-     *          - the lobby refuses the connection ({@code Lobby.joinRefusal}): there
-     *          is already another user with that name in the lobby, and this
-     *          connection does not bring its {@code rejoinKey}; the lobby is full,
-     *          and the user is not taking back their own seat; or the lobby is in a
-     *          game, and the user is not a rejoining player.
+     *          - the lobby refuses the connection ({@code Lobby.joinRefusal}): the
+     *          name is blank; there is already another user with that name in the
+     *          lobby, and this connection does not bring its {@code rejoinKey}; the
+     *          lobby is full, and the user is not taking back their own seat; or the
+     *          lobby is in a game, and the user is not a rejoining player.
      *          <p>
      *          Otherwise, connects the user to the lobby. A connection that takes
      *          its name's place closes the old one with {@code CLOSE_REPLACED}.
@@ -532,14 +532,8 @@ public class SecretHitlerServer {
             return;
         }
 
-        // Sanitize user input
         String code = ctx.queryParam(PARAM_LOBBY);
         String name = ctx.queryParam(PARAM_NAME);
-
-        if (code == null || name == null || name.isEmpty() || name.isBlank()) {
-            logger.debug("FAILED (Lobby or name is empty/null)");
-            ctx.session.close(StatusCode.PROTOCOL, "Lobby and name must be specified.");
-        }
 
         logger.debug("Attempting to connect user '" + name + "' to lobby '" + code + "': ");
         if (!codeToLobby.containsKey(code)) { // the lobby does not exist.
@@ -586,6 +580,7 @@ public class SecretHitlerServer {
     /** The reason a refused player's socket is closed with, for the lobby {@code code}. */
     private static String refusalReason(Lobby.JoinRefusal refusal, String code, String name) {
         return switch (refusal) {
+            case BLANK_NAME -> "Lobby and name must be specified.";
             case NAME_TAKEN -> "A user with the name " + name + " is already in the lobby.";
             case FULL -> "The lobby " + code + " is currently full.";
             case IN_GAME -> "The lobby " + code + " is currently in a game..";
