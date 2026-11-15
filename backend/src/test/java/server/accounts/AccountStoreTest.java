@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -33,10 +34,24 @@ public class AccountStoreTest {
 
     private final AtomicLong now = new AtomicLong(1_000_000_000_000L);
     private AccountStore store;
+    private AccountStore fileStore;
 
     @Before
     public void setUp() {
         store = AccountStore.open(null, now::get);
+    }
+
+    @After
+    public void tearDown() {
+        store.close();
+        if (fileStore != null) {
+            fileStore.close();
+        }
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void namingAnUnknownAccountFails() {
+        store.setUsername("nobody", "Ghost");
     }
 
     @Test
@@ -79,6 +94,7 @@ public class AccountStoreTest {
         store.upsertDiscordAccount("b", "b", null);
         CountDownLatch go = new CountDownLatch(1);
         List<NameResult> results = new ArrayList<>();
+        List<Throwable> failures = new ArrayList<>();
         Thread[] threads = new Thread[2];
         String[] ids = {"a", "b"};
         String[] names = {"Sam", "SAM"};
@@ -90,9 +106,15 @@ public class AccountStoreTest {
                 } catch (InterruptedException e) {
                     return;
                 }
-                NameResult r = store.setUsername(ids[n], names[n]);
-                synchronized (results) {
-                    results.add(r);
+                try {
+                    NameResult r = store.setUsername(ids[n], names[n]);
+                    synchronized (results) {
+                        results.add(r);
+                    }
+                } catch (Throwable t) {
+                    synchronized (results) {
+                        failures.add(t);
+                    }
                 }
             });
             threads[i].start();
@@ -100,6 +122,9 @@ public class AccountStoreTest {
         go.countDown();
         for (Thread t : threads) {
             t.join();
+        }
+        if (!failures.isEmpty()) {
+            throw new AssertionError("A save threw.", failures.get(0));
         }
         assertEquals(2, results.size());
         assertEquals(1, results.stream().filter(r -> r == NameResult.SAVED).count());
@@ -109,7 +134,7 @@ public class AccountStoreTest {
     @Test
     public void sessionsAreStoredHashed() throws Exception {
         String path = folder.newFile("accounts.db").getAbsolutePath();
-        AccountStore fileStore = AccountStore.open(path, now::get);
+        fileStore = AccountStore.open(path, now::get);
         fileStore.upsertDiscordAccount("a", "a", null);
         String token = fileStore.createSession("a");
         assertNotNull(token);

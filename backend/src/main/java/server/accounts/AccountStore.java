@@ -11,6 +11,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Base64;
+import org.sqlite.SQLiteErrorCode;
+import org.sqlite.SQLiteException;
 import java.util.function.LongSupplier;
 
 /**
@@ -19,12 +21,10 @@ import java.util.function.LongSupplier;
  * and every public method is synchronized. A session token is never stored: the database keeps
  * only its SHA-256, so a copy of the file signs no one in.
  */
-public final class AccountStore {
+public final class AccountStore implements AutoCloseable {
     public static final long SESSION_MS = 30L * 24 * 60 * 60 * 1000;
     public static final long RENEW_BELOW_MS = 29L * 24 * 60 * 60 * 1000;
 
-    /** SQLite's primary result code for any constraint failure. */
-    private static final int SQLITE_CONSTRAINT = 19;
     private static final int TOKEN_BYTES = 32;
     private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -69,10 +69,27 @@ public final class AccountStore {
                         + "account_id TEXT NOT NULL, "
                         + "expires_at INTEGER NOT NULL, "
                         + "created_at INTEGER NOT NULL)");
+            } catch (SQLException | RuntimeException e) {
+                try {
+                    connection.close();
+                } catch (SQLException closeFailure) {
+                    e.addSuppressed(closeFailure);
+                }
+                throw e;
             }
             return new AccountStore(connection, clock);
         } catch (SQLException e) {
             throw new IllegalStateException("Could not open the account database.", e);
+        }
+    }
+
+    /** Closes the connection; an in-memory database is gone with it. */
+    @Override
+    public synchronized void close() {
+        try {
+            connection.close();
+        } catch (SQLException e) {
+            throw new IllegalStateException("Could not close the account database.", e);
         }
     }
 
@@ -125,10 +142,13 @@ public final class AccountStore {
             ps.setString(2, Usernames.key(normalizedName));
             ps.setLong(3, clock.getAsLong());
             ps.setString(4, accountId);
-            ps.executeUpdate();
+            if (ps.executeUpdate() == 0) {
+                throw new IllegalStateException("No account " + accountId + " to name.");
+            }
             return NameResult.SAVED;
         } catch (SQLException e) {
-            if ((e.getErrorCode() & 0xFF) == SQLITE_CONSTRAINT) {
+            if (e instanceof SQLiteException
+                    && ((SQLiteException) e).getResultCode() == SQLiteErrorCode.SQLITE_CONSTRAINT_UNIQUE) {
                 return NameResult.TAKEN;
             }
             throw new IllegalStateException("Could not save the name.", e);
