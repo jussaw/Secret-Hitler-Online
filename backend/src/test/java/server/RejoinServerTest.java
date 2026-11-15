@@ -386,7 +386,7 @@ public class RejoinServerTest {
 
         TestSocket.CloseInfo replaced = dead.awaitClose();
         assertEquals(SecretHitlerServer.CLOSE_REPLACED, replaced.code);
-        assertEquals("Replaced by a newer connection under the same name.", replaced.reason);
+        assertEquals("Replaced by a newer connection under the same account.", replaced.reason);
         // The old connection's close, once the server sees it, takes nothing from the new one.
         assertStaysSeated(lobby, "Ann", 5, back);
 

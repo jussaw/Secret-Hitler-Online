@@ -794,7 +794,7 @@ public class SecretHitlerServer {
         }
         logger.debug("SUCCESS");
         if (replaced != null) {
-            replaced.session.close(CLOSE_REPLACED, "Replaced by a newer connection under the same name.");
+            replaced.session.close(CLOSE_REPLACED, "Replaced by a newer connection under the same account.");
             logger.info("Account " + accountId + " ('" + name + "') in lobby '" + code
                     + "' reconnected in place of their old connection.");
         }

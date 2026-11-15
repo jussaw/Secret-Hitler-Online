@@ -8,7 +8,7 @@ import { startGame } from "./lobby";
 type Proxied = { page: WebSocketRoute; server?: WebSocketRoute; cut: boolean };
 
 /** The server's close of the page's dead socket when the page's reconnect takes its place. */
-const REPLACED = "4001 Replaced by a newer connection under the same name.";
+const REPLACED = "4001 Replaced by a newer connection under the same account.";
 
 /**
  * Routes the page's /game sockets through the test. While `refuse()` returns true a new socket is
