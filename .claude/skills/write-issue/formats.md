@@ -7,9 +7,10 @@ every slot marked REQUIRED in the order given, and keep the example's shape.
 
 - **Title:** `area: plain summary`. The area is `frontend`, `backend`, `e2e`, `ci`, `docker` or
   `docs`. Several are joined with `, ` in that order, as in #26, #28, #30 and #31
-  (`frontend, backend`). The word after the colon is lowercase unless it is a code name. A bug names the symptom ("a second disconnect inside the
-  grace window frees the seat early"). An enhancement says what to do ("pin the icon picker's
-  confirm button to the bottom of the prompt").
+  (`frontend, backend`). The word after the colon is lowercase unless it is a code name. A bug
+  names the symptom ("a second disconnect inside the grace window frees the seat early"). An
+  enhancement says what to do ("pin the icon picker's confirm button to the bottom of the
+  prompt").
 - **Label:** exactly one. `bug` for a bug, `enhancement` for anything else. No other label.
 - **Label paragraphs** are bold, with the colon inside: **Scope:**, **Want:**, **Notes:**,
   **Possible fix:**. The same everywhere.
@@ -82,8 +83,8 @@ is open. REQUIRED:
 
 - `## Description`. Its first sentences are the provenance, one fact each: where it was seen (or
   which run failed), whether it was reproduced, and the commit (`development` at `<short sha>`)
-  the line numbers come from. Then what is known of the cause, and the numbers: how often, which project,
-  the exact output in backticks.
+  the line numbers come from. Then what is known of the cause, and the numbers: how often, which
+  project, the exact output in backticks.
 - `## Expected Behavior`: one or two sentences.
 - `## Reproduction`: a fenced block holding the command or the script that shows it (a
   `npx playwright test ...` line for a browser test). If it did not reproduce, say what was
