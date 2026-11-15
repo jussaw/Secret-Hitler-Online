@@ -62,6 +62,10 @@ for (const narrow of [false, true]) {
     const portraits = page.locator("#icon.selectable:not(.disabled)");
     await portraits.first().waitFor();
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    // A portrait still loading is a few pixels tall, so measure the picker once every image has.
+    await page.waitForFunction(() =>
+      Array.from(document.querySelectorAll<HTMLImageElement>("#alert-box img")).every((img) => img.complete)
+    );
     let overflow = await overflowX(page);
     expect(overflow.scrollWidth, "scrollWidth with the picker open").toBeLessThanOrEqual(width);
     expect(overflow.offscreen, "picker past the edge").toEqual([]);
