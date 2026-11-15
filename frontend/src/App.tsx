@@ -205,6 +205,8 @@ type AppState = {
   snackbarMessage: string;
   showAlert: boolean;
   alertContent: JSX.Element;
+  /** The prompt overlay's key: toLoginPage changes it, so the overlay it closes goes at once. */
+  alertKey: number;
   showEventBar: boolean;
   eventBarMessage: string;
   statusBarText: string;
@@ -242,6 +244,7 @@ const defaultAppState: AppState = {
   snackbarMessage: "",
   showAlert: false,
   alertContent: <div />,
+  alertKey: 0,
   showEventBar: false,
   eventBarMessage: "",
   statusBarText: "---",
@@ -312,8 +315,15 @@ class App extends Component<{}, AppState> {
   namePromptStep?: () => void = undefined;
   /** Counts the name prompt's openings, so a reply that began under an earlier one touches no later one. */
   namePromptSession = 0;
-  /** Counts the requests that set the account (/me, test sign-in), so only the latest one's answer shows. */
+  /**
+   * Counts the requests that set the account (/me, test sign-in), so only the latest one's answer
+   * shows. A saved name counts too: a /me asked before it may not have the name yet.
+   */
   accountRequest = 0;
+  /** True while TEST SIGN-IN's request is on its way: another press does nothing. */
+  testSigningIn = false;
+  /** True from Sign out (on the card or in CHOOSE A NAME) until the page has asked /me again. */
+  signingOut = false;
   /** Whether the page opened on ?signin=failed (componentDidMount takes it out of the address). */
   readonly signInFailed: boolean;
 
@@ -686,8 +696,9 @@ class App extends Component<{}, AppState> {
 
   /**
    * Leaves for the login page with the lobby code filled in: stops the ping and any waiting
-   * reconnect, closes the alert and any prompt, and empties the animation queue. An account still
-   * without a name gets CHOOSE A NAME again there.
+   * reconnect, closes the alert and any prompt at once, and empties the animation queue. An
+   * account still without a name gets CHOOSE A NAME again there, and the account is asked for
+   * again, so a session that ended meanwhile shows at once.
    * @param error the message under JOIN and WATCH ("" for none).
    */
   toLoginPage(error: string) {
@@ -696,16 +707,20 @@ class App extends Component<{}, AppState> {
     }
     this.clearReplyTimer();
     this.stopReconnecting();
-    this.setState({
-      page: PAGE.LOGIN,
-      ...loginForm(this.state.lobby, error),
-      showAlert: false,
-      alertContent: <div />,
-    });
+    this.setState(
+      (state) => ({
+        page: PAGE.LOGIN,
+        ...loginForm(state.lobby, error),
+        showAlert: false,
+        alertContent: <div />,
+        alertKey: state.alertKey + 1,
+      }),
+      () => this.askForName() // once the page is the login page
+    );
     this.dropPlayInstead();
     this.dropNamePrompt();
     this.clearAnimationQueue();
-    this.askForName();
+    this.loadAccount();
   }
 
   async onWebSocketMessage(msg: MessageEvent) {
@@ -739,6 +754,8 @@ class App extends Component<{}, AppState> {
             page: PAGE.LOBBY,
           },
           () => {
+            // Back in the lobby (after a game, say): an account with no name is asked again.
+            this.askForName();
             if (this.state.spectator) {
               return; // a spectator has no portrait to pick
             }
@@ -757,6 +774,9 @@ class App extends Component<{}, AppState> {
       case PACKET_GAME_STATE:
         // A game starting under an open PLAY INSTEAD prompt: close it and keep watching.
         this.closePlayInstead();
+        // The game page has no name prompt (a spectator's status lines must not wait on one):
+        // it is asked again back in the lobby or on the login page.
+        this.closeNamePrompt();
         if (message !== this.state.gameState) {
           this.onGameStateChanged(message);
         }
@@ -879,7 +899,9 @@ class App extends Component<{}, AppState> {
 
   /**
    * Asks the server who the page is signed in as (GET /me); a first sign-in then gets CHOOSE A
-   * NAME. Only the latest request that sets the account is shown.
+   * NAME. Only the latest request that sets the account is shown. When /me cannot be reached the
+   * card says so: blank before any answer, and otherwise still showing the account last known, so
+   * JOIN can be tried again once the server is back.
    * @param error the account card's error line once /me answers ("" for none).
    */
   async loadAccount(error = "") {
@@ -888,31 +910,53 @@ class App extends Component<{}, AppState> {
       const me = await fetchMe();
       if (request === this.accountRequest) this.setAccount(me, error);
     } catch {
-      if (request === this.accountRequest) {
-        this.setState({ account: undefined, accountError: CONTACT_ERROR });
-      }
+      if (request === this.accountRequest) this.setState({ accountError: CONTACT_ERROR });
     }
   }
 
-  /** Shows the account, and asks a signed-in account with no name for one. */
+  /** Shows the account, then fits the name prompt to it (syncNamePrompt). */
   setAccount(me: Me, error = "") {
-    this.setState({ account: me, accountError: error }, () => this.askForName());
+    this.setState({ account: me, accountError: error }, () => this.syncNamePrompt());
   }
 
-  /** Queues CHOOSE A NAME for a signed-in account with no name, unless a name prompt is open. */
+  /**
+   * Fits the name prompt to the account: signed out, no name prompt stays open; with a name, no
+   * CHOOSE A NAME stays open; signed in with no name, CHOOSE A NAME is asked for.
+   */
+  syncNamePrompt() {
+    const account = this.state.account;
+    if (!account?.signedIn) {
+      this.closeNamePrompt();
+    } else if (account.username !== null) {
+      if (this.namePromptKind === "choose") this.closeNamePrompt();
+    } else {
+      this.askForName();
+    }
+  }
+
+  /**
+   * Queues CHOOSE A NAME for a signed-in account with no name, on the login page or in the lobby
+   * only (the game page has none), unless a name prompt is open.
+   */
   askForName() {
     const account = this.state.account;
+    const page = this.state.page;
+    if (page !== PAGE.LOGIN && page !== PAGE.LOBBY) return;
     if (account?.signedIn && account.username === null) this.queueNamePrompt("choose");
   }
 
   /** TEST SIGN-IN (servers with test sign-in only): signs the page in as a new test account. */
   onClickTestSignIn = async () => {
+    if (this.testSigningIn) return;
+    this.testSigningIn = true;
     const request = ++this.accountRequest;
     try {
       const me = await testSignIn();
       if (request === this.accountRequest) this.setAccount(me);
     } catch {
       if (request === this.accountRequest) this.setState({ accountError: CONTACT_ERROR });
+    } finally {
+      this.testSigningIn = false;
     }
   };
 
@@ -923,13 +967,19 @@ class App extends Component<{}, AppState> {
 
   /** Sign out: ends the session, then shows what the server says the page is now. */
   onClickSignOut = async () => {
-    let failed = false;
+    if (this.signingOut) return;
+    this.signingOut = true;
     try {
-      await signOut();
-    } catch {
-      failed = true;
+      let failed = false;
+      try {
+        await signOut();
+      } catch {
+        failed = true;
+      }
+      await this.loadAccount(failed ? CONTACT_ERROR : "");
+    } finally {
+      this.signingOut = false;
     }
-    await this.loadAccount(failed ? CONTACT_ERROR : "");
   };
 
   /**
@@ -985,6 +1035,9 @@ class App extends Component<{}, AppState> {
     const now = this.state.account;
     const sameAccount = now?.signedIn === true && now.id === id;
     if (sameAccount) {
+      // A /me asked before the save may not have the name yet, so its answer is dropped; but a
+      // sign-out's /me is the truth to show.
+      if (!this.signingOut) this.accountRequest += 1;
       this.setState((state) =>
         state.account?.signedIn && state.account.id === id
           ? { account: { ...state.account, username: result.username } }
@@ -1191,27 +1244,24 @@ class App extends Component<{}, AppState> {
       });
   };
 
-  /** The login page, under the prompt overlay that CHOOSE A NAME and CHANGE NAME open in. */
+  /** The login page (CHOOSE A NAME and CHANGE NAME open over it, in render's prompt overlay). */
   renderLoginPage() {
     return (
-      <>
-        <CustomAlert show={this.state.showAlert}>{this.state.alertContent}</CustomAlert>
-        <LoginScreen
-          account={this.state.account}
-          accountError={this.state.accountError}
-          discordHref={discordSignInHref(this.state.joinLobby)}
-          lobby={this.state.joinLobby}
-          joinError={this.state.joinError}
-          createLobbyError={this.state.createLobbyError}
-          onLobbyChange={this.updateJoinLobby}
-          onJoin={this.onClickJoin}
-          onWatch={this.onClickWatch}
-          onCreateLobby={this.onClickCreateLobby}
-          onTestSignIn={this.onClickTestSignIn}
-          onChangeName={this.onClickChangeName}
-          onSignOut={this.onClickSignOut}
-        />
-      </>
+      <LoginScreen
+        account={this.state.account}
+        accountError={this.state.accountError}
+        discordHref={discordSignInHref(this.state.joinLobby)}
+        lobby={this.state.joinLobby}
+        joinError={this.state.joinError}
+        createLobbyError={this.state.createLobbyError}
+        onLobbyChange={this.updateJoinLobby}
+        onJoin={this.onClickJoin}
+        onWatch={this.onClickWatch}
+        onCreateLobby={this.onClickCreateLobby}
+        onTestSignIn={this.onClickTestSignIn}
+        onChangeName={this.onClickChangeName}
+        onSignOut={this.onClickSignOut}
+      />
     );
   }
 
@@ -1300,11 +1350,7 @@ class App extends Component<{}, AppState> {
 
   renderLobbyPage() {
     return (
-      <div className="App">
-        <CustomAlert show={this.state.showAlert}>
-          {this.state.alertContent}
-        </CustomAlert>
-
+      <>
         <LobbyScreen
           lobby={this.state.lobby}
           inviteLink={window.location.origin + "/?lobby=" + this.state.lobby}
@@ -1323,7 +1369,7 @@ class App extends Component<{}, AppState> {
         <div style={{ textAlign: "center" }}>
           <div id="snackbar">{this.state.snackbarMessage}</div>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -2156,11 +2202,7 @@ class App extends Component<{}, AppState> {
    */
   renderGamePage() {
     return (
-      <div className="App">
-        <CustomAlert show={this.state.showAlert}>
-          {this.state.alertContent}
-        </CustomAlert>
-
+      <>
         <EventBar
           show={this.state.showEventBar}
           message={this.state.eventBarMessage}
@@ -2190,12 +2232,18 @@ class App extends Component<{}, AppState> {
         <div>
           <div id="snackbar">{this.state.snackbarMessage}</div>
         </div>
-      </div>
+      </>
     );
   }
 
   //</editor-fold>
 
+  /**
+   * The page, under the one prompt overlay every page shares: it stays in the same place in the
+   * tree, so a prompt open when the page changes (CHOOSE A NAME from the login page to the lobby,
+   * say) stays as it is. Leaving for the login page gives it a new key (toLoginPage), so a prompt
+   * closed there goes at once, with no fade-out.
+   */
   render() {
     let page_render;
     switch (this.state.page) {
@@ -2210,9 +2258,12 @@ class App extends Component<{}, AppState> {
         page_render = this.renderLoginPage();
     }
     return (
-      <>
+      <div className="App">
+        <CustomAlert key={this.state.alertKey} show={this.state.showAlert}>
+          {this.state.alertContent}
+        </CustomAlert>
         {page_render}
-      </>
+      </div>
     );
   }
 }
