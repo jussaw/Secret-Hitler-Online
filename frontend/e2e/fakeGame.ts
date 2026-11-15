@@ -1,6 +1,7 @@
 import type { Page, WebSocketRoute } from "@playwright/test";
 import { makeGameState } from "../src/game/testGameState";
-import { codeField, nameField, waitForPlayers } from "./lobby";
+import { signedInMe, stubMe } from "./accounts";
+import { codeField, waitForPlayers } from "./lobby";
 import { LobbyState, type GameState, type PolicyType, type Role } from "../src/types";
 
 /**
@@ -9,7 +10,7 @@ import { LobbyState, type GameState, type PolicyType, type Role } from "../src/t
  * are involved. Packets have the shape Lobby.updateUser sends: the game state plus `type`.
  */
 
-/** The user, then nine players with twelve-character names, the longest the login form allows. */
+/** The user, then nine players with twelve-character names, the longest a name can be. */
 export const TEN = ["Host Player", ...Array.from({ length: 9 }, (_, i) => `Long Guest ${i + 1}`)];
 const [USER, G1, G2, G3] = TEN;
 const G5 = TEN[5];
@@ -56,11 +57,13 @@ export function lobbyPacket(names: string[] = TEN): object {
 }
 
 /**
- * Creates a lobby of `names` (TEN by default) as names[0] through the login form, with every
- * portrait already chosen, and returns the scripted socket. The client's own messages are
- * recorded and get no answer, but for its pings, which are answered.
+ * Creates a lobby of `names` (TEN by default) as names[0] through the login page, signed in (a
+ * stubbed /me) as an account of that name, with every portrait already chosen, and returns the
+ * scripted socket. The client's own messages are recorded and get no answer, but for its pings,
+ * which are answered.
  */
 export async function openFakeGame(page: Page, names: string[] = TEN): Promise<FakeGame> {
+  await stubMe(page, signedInMe(names[0]));
   await page.route("**/new-lobby", (route) => route.fulfill({ body: "FAKE" }));
   const urls: string[] = [];
   const received: Record<string, unknown>[] = [];
@@ -75,7 +78,6 @@ export async function openFakeGame(page: Page, names: string[] = TEN): Promise<F
   });
 
   await page.goto("/");
-  await nameField(page).fill(names[0]);
   await page.getByRole("button", { name: "CREATE LOBBY" }).click();
   await connected;
   latest!.send(JSON.stringify(lobbyPacket(names)));
@@ -297,12 +299,16 @@ export type FakeWatch = FakeGame & {
   down(on: boolean): void;
 };
 
+/** The account a scripted spectator is signed in as (a stubbed /me), so the lobby offers PLAY INSTEAD. */
+export const WATCHER = "Watcher";
+
 /**
- * Watches the scripted lobby "FAKE" through the login form's WATCH button. The socket's first
- * packet is `first`: by default WATCHED_LOBBY; a game packet joins a game already running.
- * `send` goes to the newest socket.
+ * Watches the scripted lobby "FAKE" through the login page's WATCH button, signed in (a stubbed
+ * /me) as WATCHER. The socket's first packet is `first`: by default WATCHED_LOBBY; a game packet
+ * joins a game already running. `send` goes to the newest socket.
  */
 export async function openFakeWatch(page: Page, first: object = WATCHED_LOBBY): Promise<FakeWatch> {
+  await stubMe(page, signedInMe(WATCHER));
   await page.route(/\/check-login\?/, (route) => route.fulfill({ body: "Spectator login valid." }));
   const urls: string[] = [];
   const received: Record<string, unknown>[] = [];

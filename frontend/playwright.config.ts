@@ -5,6 +5,14 @@ import { defineConfig, devices } from "@playwright/test";
 // any jar on its port to answer /ping, and would test another worktree's.
 export const PORT = Number(process.env.E2E_PORT ?? 4545);
 
+// Three characters of base 36 for this run, drawn once here and handed to the workers, which
+// inherit the runner's environment: e2e/accounts.ts puts them in every account's name, so a run
+// against a server an earlier run used (DEVELOPMENT.md, "Browser tests on Linux") takes none of
+// that run's names, which are unique ignoring case across every account.
+process.env.E2E_RUN ??= Math.floor(Math.random() * 36 ** 3)
+  .toString(36)
+  .padStart(3, "0");
+
 export default defineConfig({
   testDir: "./e2e",
   timeout: 60_000,
@@ -39,7 +47,8 @@ export default defineConfig({
     command:
       "npm run build && cd ../backend && ./gradlew jar && java -jar build/libs/secret-hitler-online.jar",
     url: `http://localhost:${PORT}/ping`,
-    env: { PORT: String(PORT) },
+    // Playing needs a signed-in account: the tests sign in through the test sign-in (e2e/accounts.ts).
+    env: { PORT: String(PORT), TEST_SIGN_IN: "true" },
     reuseExistingServer: false,
     timeout: 240_000,
   },

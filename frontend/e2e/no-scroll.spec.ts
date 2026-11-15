@@ -20,9 +20,11 @@ import {
   type Box,
 } from "./layout";
 import {
+  LOGIN_STATES,
+  actionLabels,
   lobbyCode,
   lobbyStatusCard,
-  longestLineLobby,
+  longestLineViewers,
   longestLogin,
   settle,
   startGame,
@@ -261,7 +263,7 @@ for (const players of [5, 7, 10]) {
 }
 
 /**
- * Twelve characters each, the longest the login form allows. Names in capitals and in wide mixed
+ * Twelve characters each, the longest a name can be. Names in capitals and in wide mixed
  * case must fit whole wherever the game is shown. Twelve Ws cannot fit at 12px or more, so that
  * name is cut short inside its own box.
  */
@@ -508,6 +510,8 @@ async function checkLobby(page: Page, size: Size, viewer: string) {
     `status card ${status.height}px against its min-height ${status.minHeight}px at ${at}`
   ).toBeLessThanOrEqual(1);
   expect(await wrappedLabels(page, ".lobby-screen"), `wrapped button labels at ${at}`).toEqual([]);
+  // The buttons under the status line are 44px targets at every size.
+  expect(await smallTargets(page, ".lobby-actions"), `small buttons at ${at}`).toEqual([]);
   // Twelve-character names fit whole, as they do in the game.
   for (const name of lobby.names) {
     expect(name.scrollWidth, `"${name.text}" is cut off at ${at}`).toBeLessThanOrEqual(name.clientWidth + 1);
@@ -522,23 +526,26 @@ async function checkLobby(page: Page, size: Size, viewer: string) {
   }
 }
 
-test("the lobby fits every desktop size and narrow window, for the host, a guest and a spectator", async ({
+test("the lobby fits every desktop size and narrow window, for the host, a guest and spectators", async ({
   page,
   browser,
   baseURL,
 }) => {
   test.setTimeout(240_000);
   // Each viewer has a page (and cookies) of its own, with the project's browser settings.
-  const guest = await browser.newPage();
-  const spectator = await browser.newPage();
+  const others = await Promise.all(Array.from({ length: 4 }, () => browser.newPage()));
+  const [guest, signedIn, signedOut, noDiscord] = others;
   try {
-    const sockets = await longestLineLobby(baseURL!, { host: page, guest, spectator });
+    const { sockets, viewers } = await longestLineViewers(baseURL!, {
+      host: page,
+      guest,
+      signedIn,
+      signedOut,
+      noDiscord,
+    });
     try {
-      for (const [viewer, viewerPage] of [
-        ["host", page],
-        ["guest", guest],
-        ["spectator", spectator],
-      ] as const) {
+      for (const { viewer, page: viewerPage, buttons } of viewers) {
+        expect(await actionLabels(viewerPage), `the ${viewer}'s buttons`).toEqual(buttons);
         await settle(viewerPage);
         for (const size of [...DESKTOP_SIZES, ...SQUARE_DESKTOPS, ...NARROW_WINDOWS]) {
           await checkLobby(viewerPage, size, viewer);
@@ -548,8 +555,7 @@ test("the lobby fits every desktop size and narrow window, for the host, a guest
       sockets.forEach((ws) => ws.close());
     }
   } finally {
-    await guest.close();
-    await spectator.close();
+    await Promise.all(others.map((other) => other.close()));
   }
 });
 
@@ -563,31 +569,37 @@ function measureLogin(page: Page) {
   );
 }
 
-test("the login page fits every desktop size and narrow window", async ({ page }) => {
-  await longestLogin(page);
-  await settle(page);
-  for (const size of [...DESKTOP_SIZES, ...SQUARE_DESKTOPS, ...NARROW_WINDOWS]) {
-    await page.setViewportSize(size);
-    const at = `${size.width}x${size.height}`;
-    expect(await pageHeight(page), `scrollHeight at ${at}`).toBeLessThanOrEqual(size.height);
-    const overflow = await overflowX(page);
-    expect(overflow.scrollWidth, `scrollWidth at ${at}`).toBeLessThanOrEqual(size.width);
-    expect(overflow.offscreen, `past the edge at ${at}`).toEqual([]);
-    expect(await wrappedLabels(page, ".login-screen"), `wrapped button labels at ${at}`).toEqual([]);
-    expect(await smallTargets(page, ".login-body"), `small targets at ${at}`).toEqual([]);
-    expect(await smallFieldText(page, ".login-body"), `small text in text fields at ${at}`).toEqual([]);
-    // The name, then joining, then starting a game, then the footer, none over the next.
-    const parts = await measureLogin(page);
-    expect(parts.map((part) => part.name), `the parts at ${at}`).toEqual([
-      "login-card login-name",
-      "login-card login-join",
-      "login-card login-start",
-      "login-footer",
-    ]);
-    for (let i = 1; i < parts.length; i++) {
-      expect(parts[i].top, `${parts[i].name} below ${parts[i - 1].name} at ${at}`).toBeGreaterThanOrEqual(
-        parts[i - 1].bottom
+for (const state of LOGIN_STATES) {
+  test(`the login page fits every desktop size and narrow window, ${state}`, async ({ page }) => {
+    await longestLogin(page, state);
+    await settle(page);
+    for (const size of [...DESKTOP_SIZES, ...SQUARE_DESKTOPS, ...NARROW_WINDOWS]) {
+      await page.setViewportSize(size);
+      const at = `${size.width}x${size.height}`;
+      expect(await pageHeight(page), `scrollHeight at ${at}`).toBeLessThanOrEqual(size.height);
+      const overflow = await overflowX(page);
+      expect(overflow.scrollWidth, `scrollWidth at ${at}`).toBeLessThanOrEqual(size.width);
+      expect(overflow.offscreen, `past the edge at ${at}`).toEqual([]);
+      expect(await wrappedLabels(page, ".login-screen"), `wrapped button labels at ${at}`).toEqual([]);
+      // Sign out is a link in its line here, as the footer's links are; on phones it is a 44px
+      // target (phone.spec.ts).
+      expect(await smallTargets(page, ".login-body", { skip: ".login-sign-out" }), `small targets at ${at}`).toEqual(
+        []
       );
+      expect(await smallFieldText(page, ".login-body"), `small text in text fields at ${at}`).toEqual([]);
+      // The account, then joining, then starting a game, then the footer, none over the next.
+      const parts = await measureLogin(page);
+      expect(parts.map((part) => part.name), `the parts at ${at}`).toEqual([
+        "login-card login-account",
+        "login-card login-join",
+        "login-card login-start",
+        "login-footer",
+      ]);
+      for (let i = 1; i < parts.length; i++) {
+        expect(parts[i].top, `${parts[i].name} below ${parts[i - 1].name} at ${at}`).toBeGreaterThanOrEqual(
+          parts[i - 1].bottom
+        );
+      }
     }
-  }
-});
+  });
+}

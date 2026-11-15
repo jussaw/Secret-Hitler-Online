@@ -1,4 +1,5 @@
 import type { GameState } from "../src/types";
+import { playerSocket, signInRaw, uniqueName } from "./accounts";
 
 /**
  * A real game on the server, played by raw WebSocket players with the moves of the backend's
@@ -38,9 +39,18 @@ type Internal = Table & {
 
 export const isVictory = (state: string): boolean => VICTORIES.includes(state);
 
-/** Creates a lobby, seats "Long Guest 1".. with portraits p1.., and starts the game. */
+/**
+ * Signs in an account per seat, named uniqueName("Long Guest 1").., creates a lobby as the first,
+ * seats them all with portraits p1.., and starts the game.
+ */
 export async function openTable(baseURL: string, players: number): Promise<Table> {
-  const lobby = await (await fetch(new URL("/new-lobby", baseURL))).text();
+  const names = Array.from({ length: players }, (_, i) => uniqueName(`Long Guest ${i + 1}`));
+  const cookies: string[] = [];
+  for (const name of names) cookies.push(await signInRaw(baseURL, name));
+  // /new-lobby needs a signed-in account with a name.
+  const made = await fetch(new URL("/new-lobby", baseURL), { headers: { Cookie: cookies[0] } });
+  if (!made.ok) throw new Error(`/new-lobby answered ${made.status}`);
+  const lobby = await made.text();
   let latest: Packet | undefined;
   let lastLobby: Packet | undefined;
   const roles: Record<string, string> = {};
@@ -54,16 +64,14 @@ export async function openTable(baseURL: string, players: number): Promise<Table
   const seats: Seat[] = [];
   const closed: string[] = [];
   for (let i = 1; i <= players; i++) {
-    const name = `Long Guest ${i}`;
-    const url = new URL("/game", baseURL);
-    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-    url.searchParams.set("lobby", lobby);
-    url.searchParams.set("name", name);
-    const ws = new WebSocket(url);
-    await new Promise<void>((resolve, reject) => {
-      ws.addEventListener("open", () => resolve(), { once: true });
-      ws.addEventListener("error", () => reject(new Error(`${name} could not connect`)), { once: true });
-    });
+    const name = names[i - 1];
+    let ws: WebSocket;
+    try {
+      ws = await playerSocket(baseURL, lobby, cookies[i - 1]);
+    } catch (error) {
+      seats.forEach((seat) => seat.ws.close()); // the seats already taken must not ping on
+      throw error;
+    }
     ws.addEventListener("message", (event) => {
       const packet = JSON.parse(String(event.data)) as Packet;
       if (packet.type === "game") {

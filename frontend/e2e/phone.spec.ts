@@ -13,13 +13,15 @@ import {
   wrappedLabels,
   type Box,
 } from "./layout";
+import { signInPage, uniqueName } from "./accounts";
 import {
+  LOGIN_STATES,
+  actionLabels,
   createLobby,
   joinGuests,
   lobbyStatusCard,
-  longestLineLobby,
+  longestLineViewers,
   longestLogin,
-  nameField,
   settle,
   startGame,
   waitForPlayers,
@@ -38,26 +40,39 @@ async function narrowPhone(page: Page): Promise<void> {
 for (const narrow of [false, true]) {
   const phone = narrow ? "a 320px phone" : "the phone";
 
-  test(`the login page fits ${phone}`, async ({ page }) => {
-    if (narrow) await narrowPhone(page);
-    const { width, height } = page.viewportSize()!;
-    await longestLogin(page);
-    await settle(page);
-    // The 320px phone may scroll down, never sideways.
-    if (!narrow) expect(await pageHeight(page), "scrollHeight").toBeLessThanOrEqual(height);
-    expect(await wrappedLabels(page, ".login-screen"), "wrapped button labels").toEqual([]);
-    expect(await smallFieldText(page, ".login-screen"), "small text in text fields").toEqual([]);
-    const overflow = await overflowX(page);
-    expect(overflow.scrollWidth, "scrollWidth").toBeLessThanOrEqual(width);
-    expect(overflow.offscreen, "past the edge").toEqual([]);
-    expect(await smallTargets(page, "body"), "small touch targets").toEqual([]);
-  });
+  for (const state of LOGIN_STATES) {
+    test(`the login page fits ${phone}, ${state}`, async ({ page }) => {
+      if (narrow) await narrowPhone(page);
+      const { width, height } = page.viewportSize()!;
+      await longestLogin(page, state);
+      await settle(page);
+      // The 320px phone may scroll down, never sideways.
+      if (!narrow) expect(await pageHeight(page), "scrollHeight").toBeLessThanOrEqual(height);
+      expect(await wrappedLabels(page, ".login-screen"), "wrapped button labels").toEqual([]);
+      expect(await smallFieldText(page, ".login-screen"), "small text in text fields").toEqual([]);
+      const overflow = await overflowX(page);
+      expect(overflow.scrollWidth, "scrollWidth").toBeLessThanOrEqual(width);
+      expect(overflow.offscreen, "past the edge").toEqual([]);
+      // SIGN IN WITH DISCORD (a link signed out with Discord), TEST SIGN-IN, CHANGE NAME and Sign
+      // out among them.
+      expect(await smallTargets(page, "body"), "small touch targets").toEqual([]);
+      const account = page.locator(".login-account");
+      const targets =
+        state === "signed in"
+          ? [account.getByRole("button", { name: "CHANGE NAME" }), account.getByRole("button", { name: "Sign out" })]
+          : [
+              account.getByRole(state === "signed out" ? "link" : "button", { name: "SIGN IN WITH DISCORD" }),
+              account.getByRole("button", { name: "TEST SIGN-IN" }),
+            ];
+      for (const target of targets) await expect(target).toBeVisible();
+    });
+  }
 
   test(`the lobby and its portrait picker fit ${phone}`, async ({ page, baseURL }) => {
     if (narrow) await narrowPhone(page);
     const { width, height } = page.viewportSize()!;
+    await signInPage(page, uniqueName("Host Player"));
     await page.goto("/");
-    await nameField(page).fill("Host Player");
     await page.getByRole("button", { name: "CREATE LOBBY" }).click();
     const portraits = page.locator("#icon.selectable:not(.disabled)");
     await portraits.first().waitFor();
@@ -91,22 +106,25 @@ for (const narrow of [false, true]) {
     }
   });
 
-  test(`the host's, a guest's and a spectator's lobby fit ${phone}`, async ({ page, browser, baseURL }) => {
+  test(`the host's, a guest's and spectators' lobbies fit ${phone}`, async ({ page, browser, baseURL }) => {
+    test.setTimeout(120_000);
     if (narrow) await narrowPhone(page);
     // Each viewer has a page (and cookies) of its own, with the project's phone settings.
-    const host = await browser.newPage();
-    const spectator = await browser.newPage();
+    const others = await Promise.all(Array.from({ length: 4 }, () => browser.newPage()));
+    const [host, signedIn, signedOut, noDiscord] = others;
     try {
       const { width, height } = page.viewportSize()!;
-      await host.setViewportSize({ width, height });
-      await spectator.setViewportSize({ width, height });
-      const sockets = await longestLineLobby(baseURL!, { host, guest: page, spectator });
+      for (const other of others) await other.setViewportSize({ width, height });
+      const { sockets, viewers } = await longestLineViewers(baseURL!, {
+        host,
+        guest: page,
+        signedIn,
+        signedOut,
+        noDiscord,
+      });
       try {
-        for (const [viewer, viewerPage] of [
-          ["host", host],
-          ["guest", page],
-          ["spectator", spectator],
-        ] as const) {
+        for (const { viewer, page: viewerPage, buttons } of viewers) {
+          expect(await actionLabels(viewerPage), `the ${viewer}'s buttons`).toEqual(buttons);
           await settle(viewerPage);
           // The 320px phone may scroll down, never sideways, and its status line may take a third
           // line.
@@ -134,21 +152,23 @@ for (const narrow of [false, true]) {
         sockets.forEach((ws) => ws.close());
       }
     } finally {
-      await host.close();
-      await spectator.close();
+      await Promise.all(others.map((other) => other.close()));
     }
   });
 
-  test(`the PLAY INSTEAD prompt fits ${phone}`, async ({ page, browser }) => {
+  test(`CHOOSE A NAME fits ${phone}, and PLAY INSTEAD then takes a seat at once`, async ({ page, browser }) => {
     if (narrow) await narrowPhone(page);
     const { width } = page.viewportSize()!;
     // The host plays in a page of its own (with the project's phone settings); this phone watches.
     const host = await browser.newPage();
     try {
-      await watchLobby(page, await createLobby(host, "Host Player"));
-      await page.getByRole("button", { name: "PLAY INSTEAD" }).click();
+      const code = await createLobby(host, uniqueName("Host Player"));
+      // A first sign-in: the account has no name yet, so CHOOSE A NAME opens by itself.
+      await signInPage(page, null);
+      await page.goto(`/?lobby=${code}`);
       const field = page.getByRole("textbox", { name: "Your name" });
       await expect(field).toBeVisible();
+      await expect(page.locator("#alert-box h2")).toHaveText("CHOOSE A NAME");
       // Measure the prompt as it rests, after its entrance animation and with the web fonts.
       await page.waitForFunction(() =>
         document.getElementById("alert-box")!.getAnimations().every((a) => a.playState === "finished")
@@ -156,6 +176,13 @@ for (const narrow of [false, true]) {
       await page.evaluate(() => document.fonts.ready.then(() => undefined));
       expect(await smallTargets(page, "#alert-box"), "small targets in the prompt").toEqual([]);
       expect(await smallFieldText(page, "#alert-box"), "small text in the name field").toEqual([]);
+      // CONTINUE and SIGN OUT share one row, their labels unwrapped.
+      expect(await wrappedLabels(page, "#alert-box"), "wrapped button labels in the prompt").toEqual([]);
+      const tops = await page
+        .locator("#alert-box .name-prompt-buttons button")
+        .evaluateAll((buttons) => buttons.map((button) => button.getBoundingClientRect().top));
+      expect(tops, "CONTINUE and SIGN OUT").toHaveLength(2);
+      expect(Math.abs(tops[0] - tops[1]), "CONTINUE and SIGN OUT on one row").toBeLessThanOrEqual(0.5);
       const overflow = await overflowX(page);
       expect(overflow.scrollWidth, "scrollWidth").toBeLessThanOrEqual(width);
       expect(overflow.offscreen, "past the edge").toEqual([]);
@@ -164,6 +191,16 @@ for (const narrow of [false, true]) {
       await field.fill("");
       await field.pressSequentially("ABCDEFGHIJKLM");
       await expect(field).toHaveValue("ABCDEFGHIJKL");
+
+      // With a name saved, watching, PLAY INSTEAD takes the seat under it at once, with no prompt.
+      const name = uniqueName("Sam");
+      await field.fill(name);
+      await page.getByRole("button", { name: "CONTINUE" }).click();
+      await expect(field).toHaveCount(0);
+      await page.getByRole("button", { name: "WATCH" }).click();
+      await page.getByRole("button", { name: "PLAY INSTEAD" }).click();
+      await expect(page.locator(`.lobby-players li.is-user[data-player="${name}"]`)).toBeVisible();
+      await expect(field).toHaveCount(0);
     } finally {
       await host.close();
     }
@@ -171,7 +208,7 @@ for (const narrow of [false, true]) {
 }
 
 test("phones put the roster first", async ({ page, baseURL }) => {
-  const code = await createLobby(page, "Host Player");
+  const code = await createLobby(page, uniqueName("Host Player"));
   const guests = await joinGuests(baseURL!, code, 9);
   try {
     await waitForPlayers(page, 10);
@@ -190,7 +227,7 @@ test("phones put the roster first", async ({ page, baseURL }) => {
 
 test("the busy bubble shows at 320px", async ({ page, baseURL }) => {
   await narrowPhone(page);
-  const code = await createLobby(page, "Host Player");
+  const code = await createLobby(page, uniqueName("Host Player"));
   const guests = await joinGuests(baseURL!, code, 9, { pickLooks: false });
   try {
     await waitForPlayers(page, 10);
@@ -411,13 +448,14 @@ test("a spectator's lobby and game fit the phone", async ({ page, browser, baseU
   const { width } = page.viewportSize()!;
   // The host plays in a page of its own (with the project's phone settings); this phone watches.
   const host = await browser.newPage();
-  const code = await createLobby(host, "Host Player");
+  const hostName = uniqueName("Host Player");
+  const code = await createLobby(host, hostName);
   const guests = await joinGuests(baseURL!, code, 9);
   try {
     await watchLobby(page, code);
     await expect(page.locator("#lobby-status-text")).toBeVisible();
     await expect(page.locator("#lobby-status-text")).toHaveText(
-      "You are watching. Waiting for Host Player to start the game."
+      `You are watching. Waiting for ${hostName} to start the game.`
     );
     await waitForPlayers(page, 10);
     await settle(page);
@@ -440,7 +478,7 @@ test("a spectator's game keeps the phone layout at 320px", async ({ page, browse
   test.skip(test.info().project.name !== "phone-360", "one phone project is enough");
   // The host plays in a page of its own (with the project's phone settings); this phone watches.
   const host = await browser.newPage();
-  const code = await createLobby(host, "Host Player");
+  const code = await createLobby(host, uniqueName("Host Player"));
   const guests = await joinGuests(baseURL!, code, 9);
   try {
     await watchLobby(page, code);
