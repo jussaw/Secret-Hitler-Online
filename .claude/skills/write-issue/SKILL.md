@@ -115,9 +115,8 @@ scratchpad directory, never in the repo or `/tmp`.
 
 Then check the draft, line by line:
 
-- [ ] `## Rules for every issue` in `formats.md`: the title, the one label (`bug` or
-  `enhancement`), backticks, upstream issues in backticks. Several areas go in the order the
-  repo's titles use: `frontend`, `backend`, `e2e`, `ci`, `docker`, `docs` (`frontend, backend:`).
+- [ ] `## Rules for every issue` in `formats.md`: the title (its areas in the order the rule
+  gives), the one label (`bug` or `enhancement`), backticks, upstream issues in backticks.
 - [ ] The commit is what `rev-parse --short HEAD` printed in step 2. A placeholder (`<sha>`,
   `<commit>`, "not recorded") is a failure: go back and run the command.
 - [ ] "Reproduced" only beside a run that showed the bug.

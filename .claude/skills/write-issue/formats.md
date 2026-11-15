@@ -5,9 +5,9 @@ every slot marked REQUIRED in the order given, and keep the example's shape.
 
 ## Rules for every issue
 
-- **Title:** `area: plain summary`. The area is `backend`, `frontend`, `e2e`, `ci`, `docker` or
-  `docs`, joined with `, ` when several (`frontend, backend`). The word after the colon is
-  lowercase unless it is a code name. A bug names the symptom ("a second disconnect inside the
+- **Title:** `area: plain summary`. The area is `frontend`, `backend`, `e2e`, `ci`, `docker` or
+  `docs`. Several are joined with `, ` in that order, as in #26, #28, #30 and #31
+  (`frontend, backend`). The word after the colon is lowercase unless it is a code name. A bug names the symptom ("a second disconnect inside the
   grace window frees the seat early"). An enhancement says what to do ("pin the icon picker's
   confirm button to the bottom of the prompt").
 - **Label:** exactly one. `bug` for a bug, `enhancement` for anything else. No other label.
