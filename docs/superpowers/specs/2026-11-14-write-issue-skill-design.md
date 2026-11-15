@@ -67,7 +67,7 @@ want>` turns a few words into an issue written the way the last 27 were. Nothing
   attempt is written up as not reproduced, with what was tried, and shown like any other draft:
   showing it is the ask, and you can drop it there. A bug seen on the home server is tried on
   `development` all the same. The host may run an older image than `development`, so a bug seen
-  there that does not show here may be fixed already, and the draft says so.
+  there that does not show here may be fixed already, and the draft or the report says so.
 - Nothing to file: only an enhancement the code already does, or a bug report the code plainly
   shows is fixed already (a closed issue or a commit whose fix is in the code, and the line that
   now does what you expected), gets no draft. The skill reports what it found, with references,
