@@ -145,12 +145,18 @@
     color: #ffffff;
 }
 
-/* Sign out: a button in the look of the page's links (App.css's a), inside its line. */
+/* Sign out: a button in the look of the page's links (App.css's a), inside its line, and a 44px
+   target like every control on the page. Its negative margins take back all of the target but its
+   line's height (1lh; -14px where the browser has no lh), so the line is no taller for it. */
 .login-card .login-sign-out {
-    display: inline;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
     height: auto;
-    min-height: 0;
-    margin: 0;
+    min-height: 44px;
+    margin: -14px 0;
+    margin: calc((1lh - 44px) / 2) 0;
     padding: 0;
     border: 0;
     font: inherit;
@@ -264,15 +270,5 @@
 
     .login-card .login-change-name {
         font-size: 1.15em;
-    }
-
-    /* Sign out is a 44px target, reaching past its line without making the line taller. */
-    .login-card .login-sign-out {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 44px;
-        min-height: 44px;
-        margin: -14px 0;
     }
 }
