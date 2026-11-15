@@ -243,6 +243,64 @@ public class Lobby implements Serializable {
         return accountId != null && userToAccount.containsValue(accountId);
     }
 
+    /**
+     * Returns whether the account holds a seat in the running game.
+     *
+     * @param accountId the account to check, or null.
+     * @return true iff a game is running and {@code accountId} has a seat in it.
+     */
+    synchronized public boolean isSeated(String accountId) {
+        return game != null && accountId != null && gameSeats.containsKey(accountId);
+    }
+
+    /**
+     * Returns the seat of a player's connection in the running game.
+     *
+     * @param context the Websocket context of a user.
+     * @return the seat name of the connection's account while a game runs, or null if there is
+     *         no game or the connection has no seat (a spectator's, say).
+     */
+    synchronized public String seatName(WsContext context) {
+        String accountId = userToAccount.get(context);
+        return isSeated(accountId) ? gameSeats.get(accountId) : null;
+    }
+
+    /**
+     * Returns the running game's human seats.
+     *
+     * @return a new map from seat name to account ID, with no CPU seat; empty outside a game.
+     */
+    synchronized public Map<String, String> seatAccounts() {
+        Map<String, String> seats = new HashMap<>();
+        if (game != null) {
+            for (Entry<String, String> entry : gameSeats.entrySet()) {
+                seats.put(entry.getValue(), entry.getKey());
+            }
+        }
+        return seats;
+    }
+
+    /**
+     * Gives an account in this lobby a new name. Sends nothing: the caller sends the state.
+     *
+     * @param accountId the account to rename.
+     * @param name      the new name, already checked against the name rules.
+     * @return true iff the account is in the lobby (live, or inside the grace window after a
+     *         disconnect) and its name changed; false if it is not here or the name is the same.
+     * @throws IllegalStateException if the account has a seat in the running game. Nothing
+     *                               changes.
+     */
+    synchronized public boolean rename(String accountId, String name) {
+        if (isSeated(accountId)) {
+            throw new IllegalStateException("A seated account cannot be renamed during a game.");
+        }
+        if (accountId == null || !activeAccounts.contains(accountId) || name.equals(accountToName.get(accountId))) {
+            return false;
+        }
+        accountToName.put(accountId, name);
+        return true;
+    }
+
     /** The account's live connection, or null if it has none. */
     private WsContext connectionOf(String accountId) {
         for (Entry<WsContext, String> entry : userToAccount.entrySet()) {
@@ -739,6 +797,8 @@ public class Lobby implements Serializable {
         } else {
             message = lobbyPacket();
         }
+        String you = isInGame() ? gameSeats.get(accountId) : accountToName.get(accountId);
+        message.put(SecretHitlerServer.PARAM_YOU, you);
         send(ctx, message);
     }
 

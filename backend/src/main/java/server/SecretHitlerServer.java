@@ -59,6 +59,7 @@ public class SecretHitlerServer {
 
     public static final String PARAM_INVESTIGATION = "investigation";
     public static final String PARAM_SPECTATOR_COUNT = "spectatorCount"; // in every lobby and game packet
+    public static final String PARAM_YOU = "you"; // in every player's packet: their name, or their seat's in a game
     public static final String FASCIST = "FASCIST";
     public static final String LIBERAL = "LIBERAL";
 

@@ -120,7 +120,7 @@ public class LobbySpectatorTest {
         lobby.updateAllUsers();
 
         Set<String> expected = new HashSet<>(GameToJSONConverter.convert(lobby.game(), "P1").keySet());
-        expected.addAll(Set.of("type", "icon", "spectatorCount"));
+        expected.addAll(Set.of("type", "icon", "spectatorCount", "you"));
         assertEquals(expected, players.get(0).last().keySet());
         assertEquals(0, players.get(0).last().getInt("spectatorCount"));
     }
