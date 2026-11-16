@@ -330,12 +330,22 @@ keeps credit to upstream and to the board game's creators.
   finished game, `formatDuration`, `plural`, and `formatLocalDate`,
   `formatLocalTime`, `formatLocalDateTime` and `localDayKey`, English whatever the locale, each in
   a time zone it is passed, `viewerTimeZone()` by default, so tests pass one and never set
-  `process.env.TZ`), `PlayerName` (the one way a name shows: a `span.player-name` with
-  `overflow-wrap: anywhere`, coloured by role through `stats-liberal`, `stats-fascist` and
-  `stats-hitler`, underlined, which any stats page may use for a side's word through `roleClass`,
-  and `data-player`;
-  `link`, `true` by default, does nothing until Phase 22A makes names links, and a name inside a
-  sentence or a headline passes `link={false}`), `routes.ts` (`TabId`, `TAB_IDS`, `StatsRoute`,
+  `process.env.TZ`), `PlayerName` (the one way a name shows, with `overflow-wrap: anywhere`,
+  coloured by role through `stats-liberal`, `stats-fascist` and `stats-hitler`, underlined, which
+  any stats page may use for a side's word through `roleClass`, and `data-player`: since Phase 22A
+  a player's name is a `StatsLink`, `a.player-name.player-link`, to their page at `playerHref(n,
+  location)`, `/stats/players/<n>` with the address's stats filter (`filterSearch(parseFilter(…))`)
+  from a tab, PLAYERS or a player page and none from GAMES or a game page, whose address holds
+  GAMES' own; a CPU seat's name, and one with `link={false}` (a name inside a sentence or a
+  headline: OVERVIEW's At a glance, RIVALS' headlines, ACTIVITY's fastest voter and slowest
+  president, RECORDS' one-line records), is a plain `span.player-name`. A link looks as the plain
+  name does (`font` and `color` inherited, or its role's colour), underlined only as Hitler's and
+  on hover, with a `--selectionHover` outline on keyboard focus; in the stacked query a name in a
+  table cell, the game page's seats or a GAMES row's seats is an `inline-flex` box at least 44px
+  both ways (`PlayerName.css`), which makes its row or line taller rather than reaching over a
+  neighbour, and a name in a sentence (a `p`) stays inline. No name is ever inside another link,
+  a button or a label; `nameLinks.test.tsx` checks that across every page, and that headlines
+  stay plain), `routes.ts` (`TabId`, `TAB_IDS`, `StatsRoute`,
   `PageProps`, `parseRoute`, `routePath`, `navigate`, which pushes one history entry, none for the
   address the page is at, and scrolls to the top only for a new path, and `useLocation`, which
   follows `navigate` and the back and forward buttons; no router library), `StatsLink` (the one
@@ -377,7 +387,13 @@ keeps credit to upstream and to the board game's creators.
   kind of round, for the pull request's screenshots. The game page, `game/GamePage` (Phase 16):
   the record whose `id` is exactly the address's (else "This game was not found." and All games);
   `GameHeader`, a card with the result, its first word in the winners' colour, the start, length,
-  rounds and final board, and the seats in turn order with their roles, Hitler's marked; "The
+  rounds and final board, since Phase 22A the game's Elo change when it counted under the default
+  filter (`Elo: Liberals +16 · Fascists −16`, `p.game-elo`, from `game/gameElo.ts`: `defaultElo(data)`,
+  `replayElo` over `countedGames(data.games, DEFAULT_FILTER)` once per records in a `WeakMap`, and
+  `gameEloChange(data, id)`, null for a CPU, unfinished or unknown game, whatever the tabs' filter),
+  and the seats in turn order with their roles, Hitler's marked: "Seats in order:" naming an
+  `ol.game-seats`, one `li` a seat, read as one dotted line on desktop and, in the stacked query,
+  a wrapping list of rows at least 44px tall that each name's link fills; "The
   first rounds of this game were not recorded." for a `complete: false` record; an
   `ol.game-rounds` of `RoundBlock`s, each a card edged in the colour of the policy it enacted (grey
   for none) with a line per part of the round (the nomination and result, the votes by name, the
@@ -631,20 +647,52 @@ keeps credit to upstream and to the board game's creators.
   `winners` and `losers` are the human players). Every period is the game's start's, in the zone
   (a win at 23:30 on a month's last day is that month's), and `now` is passed in.
   `tabs/RecordsTab.tsx` takes optional `now` (else the tab's first draw) and `timeZone` for its
-  tests, memoizes the module per counted set and Elo, and lays out nine `StatCard`s, each in a
+  tests, memoizes the module per counted set and Elo, and lays out ten `StatCard`s, each in a
   `div.records-cell` with `data-card`, in one grid of `tabs/sectionGrid.css`'s columns (ACTIVITY's,
-  though not packed `dense`, which could lift a card above its heading) under four
-  `h2.records-heading`s (Streaks, Wins, Sessions, Ratings): the longest win and losing streaks (a
+  though not packed `dense`, which could lift a card above its heading) under five
+  `h2.records-heading`s (Streaks, Wins, Sessions, Ratings, Trophies): the longest win and losing streaks (a
   line per first and last day naming every tied holder), current streaks (a `RankedTable`, "3
   wins" or "2 losses"), the most wins in a week and in a month (a table in `RankedTable`'s classes,
   as `PowerRanking` does, of the rank, the name over its period and the wins, so a long name keeps
   its width), the player of the month (every tied player) and the players of the month (the month
   over its holders, one a line, and the wins), the most games in one session (up to five lines of games, day and length), and
   the rating records (the highest peak, then the upset, its winners' gain and its losers' loss, a
-  side with no person left out, and See the game, `a.records-game-link`, 44px at every size).
+  side with no person left out, and See the game, `a.records-game-link`, 44px at every size), and
+  last (Phase 22A) Trophy holders ("Worked out from the counted games. Most need 8 of them.", the
+  grid's whole width, `NO_GAMES` with no counted game): a `table.trophy-holders`, a row per trophy
+  in `TROPHIES`' order, its `TrophyBadge` over its rule, then its holders by name, comma-separated
+  and linked, or "No one yet."; on phones a row's holders take the card's whole width under the
+  badge. It is `trophyHolders(computeTrophies(stats, now), names)` with the tab's `now`.
   Tied players are listed by more counted games, then name; names in a record's line are
   `link={false}`, names in its tables are not, and those tables' rows are 44px tall in the stacked
   query. A record's parts wrap only between them (a no-break space before each " · ").
+  Trophies (Phase 22A, the spec's "Trophies") are worked out on every load, never stored.
+  `allStats.ts`'s `allStats(stats, now)` runs each per-player module once on `stats.counted`
+  (`computeRoles`, `computeCards`, `computeVotes`, `computePowers`, `computeRivals(counted,
+  names)`, `computeRecords(counted, elo, now)` and `computeTiming`). `trophies.ts` holds `TROPHIES`
+  (the spec's fifteen, labels and rules word for word, in its order), `TROPHY_MIN_GAMES` (8),
+  `trophyFacts(stats, all)` (each player with a counted game: games, rating and provisional,
+  longest win streak, `opponents` from RIVALS' `byPlayer`, executions of Hitler, wins as Hitler
+  elected chancellor, counted from the records as no module does, `oneOfEach.FASCIST`,
+  `liberalAccuracy`, `forced.president` as FFF hands as a Liberal president, VOTES' Liberal vote
+  accuracy and survival), `awardTrophies(facts, totalGames, speedDemon)` (every key a list, `[]`
+  for none, in `TROPHIES`' order; 8 counted games for all but Hitler Hunter, Chancellor Hitler and
+  Speed Demon; ratings compared rounded, shares in whole numbers), `speedDemonOf`, ACTIVITY's
+  `fastestVoter`, so the fastest voter and the Speed Demon are one holder,
+  `computeTrophies(stats, now)` and `trophyHolders(trophies, names)` (every trophy with its
+  holders by name). `players/TrophyBadge.tsx` draws one as a pill of `#f08a5d` with its rule as
+  its `title`. `player.ts` (for Phase 22B's pages) has `computePlayer(stats, n, now)`, one
+  player's `PlayerStats` on `withoutPlayerFilter(stats)` (the player filter dropped, the CPU toggle
+  kept; the same context when it has no player filter): counted games and their first start and
+  last end, CPU games not counted, every record of theirs, trophies, Elo (rating, rank as
+  OVERVIEW's power ranking gives it, null while provisional, peak, and a history from 1500 that
+  adds each counted game's `liberalChange` by side, dashed while provisional), win rates, roles,
+  streaks, cards, votes, powers, people (named), average decision times and their 5 latest
+  records of any kind; a player with no counted game gets zeros, nulls and empty lists. Its
+  `computePlayersList(stats)` gives PLAYERS' rows (every player with a counted game under the
+  whole filter, in the power ranking's order). `players/testStats.ts` is their test data
+  (`sampleData()`, seven players and eight games, `SAMPLE_NOW`, `TZ`, `played`, `term` and
+  `withRatings`), which Phase 22B's tests reuse.
   GAMES (`/stats/games`, `src/stats/games/`) lists
   every recorded game, newest first, under a filter of its own kept in the address:
   `gamesFilter.ts` (`GamesFilter`, `NO_GAMES_FILTER`, `PER_PAGE`, `ENDING_PARAM`,
@@ -658,8 +706,9 @@ keeps credit to upstream and to the board game's creators.
   and `gamesSummary`, "142 games recorded · 37 match · showing 21–37"), `GameRow` (an
   `li.games-row`: the date and the result, its winners' word in their colour and a `CPU` tag, are
   its one link, `a.games-row-link`, whose `::after` covers the row; the time and length, the seats
-  as `PlayerName`s, above the link's area, and the seat and round counts sit outside it, so no
-  anchor wraps a name; a subgrid of the row's columns on desktop, of its first three rows on
+  as `PlayerName`s (links of their own since Phase 22A, which `.games-row-seats a` lets take a
+  press), above the link's area, and the seat and round counts sit outside it, so no anchor wraps
+  a name; a subgrid of the row's columns on desktop, of its first three rows on
   phones) and `GamesPage` (the filter card: Players with a grey chip per chosen player, `Remove
   <name>`, and Add a player; From and To, whose typed day reaches the address once it is a whole
   day, its year from 1000, and typing has paused, or on Enter or leaving the field, so a day typed
@@ -1053,7 +1102,12 @@ keeps credit to upstream and to the board game's creators.
   `checkStatsPage` at every `statsSizesFor` size against `bigStatsData()`, its game link 44px both
   ways, and (`desktop`) that See the game opens one of its games, and with `timezoneId` that a
   game from 23:30 UTC on 31 October, won by Ann and Bo, makes them November's players of the month
-  in Paris and October's in Los Angeles. No `e2e/` file imports `src/constants` or anything that does
+  in Paris and October's in Los Angeles. `stats-names.spec.ts` (Phase 22A) opens every tab, GAMES
+  and a game page against `bigStatsData()` and checks each with `checkStatsPage` at every
+  `statsSizesFor` size, and where the stacked query matches that no two name links in one column of
+  a table overlap (`overlappingNameLinks`); that a name in GAMES' last row opens its player's page
+  (not the row's game) at its top; and that a counted game's page shows its Elo line and an
+  unfinished one's none. No `e2e/` file imports `src/constants` or anything that does
   (`api.ts`, `App`): it
   reads `window` when it loads, which throws in Playwright's Node process; specs build stats paths
   with `routePath`. Shared helpers are `e2e/lobby.ts`
