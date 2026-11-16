@@ -354,11 +354,38 @@ keeps credit to upstream and to the board game's creators.
   (`.stats-screen`, left-aligned, `.stats-main`, at most 1100px wide, `.stats-card` and
   `.stats-card-title`, the game's card look, and `.stats-link`, a 44px target in the stacked
   query), and placeholders for later phases to fill: `TabsPage` (17A; for now the ten latest games
-  as links and All games ›), `games/GamesPage` (15B), `game/GamePage` (16; for now the result, its
-  first word in the winners' colour, the start, length and rounds, and the seats in order, or "This
-  game was not found."), `players/PlayersPage` and `players/PlayerPage` (22B), each "Coming in a
-  later update." until then. App.css still styles the stats pages' `header`, `a`, `p` and `div`,
-  and the stats CSS sets what it needs over it.
+  as links and All games ›), `games/GamesPage` (15B), `players/PlayersPage` and
+  `players/PlayerPage` (22B), each "Coming in a later update." until then. App.css still styles
+  the stats pages' `header`, `a`, `p`, `h2` and `div`, and the stats CSS sets what it needs over it.
+  `rounds.ts` (Phase 16) turns a record into rounds, `rounds(record)`, which the game page draws
+  and every stat phase reads instead of the raw events: one `Round` per round number in the
+  timeline, ascending, an `endTerm`, a pause or a resume in its term and a chaos `enact` in the
+  round of the failed election or accepted veto that caused it, and a finished record's round of
+  only `end`, `restored`, `disconnect` and `reconnect` left out. A round with no recorded
+  nomination takes its president from `SecretHitlerGame.endPresidentialTerm`'s rotation after the
+  round before (a special election's target, the turn back to the first living seat after its
+  caller, else the first living seat after its president), and the first round of a record that
+  starts late from its president's first move, or is left out with none. `blame` is the president
+  who discarded the one Liberal of their hand, when a chancellor enacted a Fascist from a hand with
+  a Liberal, else that chancellor. Each decision time (`ms`, `Vote.ms`) runs from the event that
+  asked for the decision to the one that made it, a nomination from the last END TERM or restart
+  before it (in a complete record, the game's start without either), and is null for a CPU
+  decider, a missing event or a `restored` event between the two; `formatDecisionTime` shows one
+  in whole seconds (`8 s`, `1 min 05 s`). `rounds` reads only the record and never throws on a
+  format-1 one. `game/sampleGames.ts` is test support: `ev.<type>(r, t, …)`, one builder per event
+  type with its fields in the spec's order and cards as a string (later phases' tests use it),
+  `fiveSeatGame`, and `SHOWCASE_PLAYERS` and `showcaseGame()`, a seven-seat game holding every
+  kind of round, for the pull request's screenshots. The game page, `game/GamePage` (Phase 16):
+  the record whose `id` is exactly the address's (else "This game was not found." and All games);
+  `GameHeader`, a card with the result, its first word in the winners' colour, the start, length,
+  rounds and final board, and the seats in turn order with their roles, Hitler's marked; "The
+  first rounds of this game were not recorded." for a `complete: false` record; an
+  `ol.game-rounds` of `RoundBlock`s, each a card edged in the colour of the policy it enacted (grey
+  for none) with a line per part of the round (the nomination and result, the votes by name, the
+  tracker or chaos, the president's cards, the chancellor's cards, veto and choice, blame, the
+  power, and the term's end, pauses, dropped connections and reshuffle), policies as tiles
+  (`role="img"`, Liberal or Fascist) and each decision's time after it; and "Unfinished: the lobby
+  closed" at the end of an unfinished game.
   `src/App.tsx` owns the WebSocket, all state and the overlays; prompts live in `src/custom-alert/`,
   in one overlay (`CustomAlert`) that `render()` draws for every page, so a prompt open on the login
   page stays open when the page moves to the lobby (`toLoginPage` bumps `alertKey`, so the overlay
@@ -687,7 +714,12 @@ keeps credit to upstream and to the board game's creators.
   every size (the loading and error lines too), a twelve-character name of wide letters inside its
   line at 320px, that the game's first download holds no stats code and fetches the clips while the
   stats fetch their chunk and no clip, the header moving in place, and back, forward, reload and a
-  deep link. No `e2e/` file imports `src/constants` or anything that does (`api.ts`, `App`): it
+  deep link. `stats-game.spec.ts` checks the game page at every size against `bigStatsData()` (its
+  largest game, ten twelve-character names voting, its first incomplete and first unfinished
+  games, and an unknown ID; on phones each round's block at least the window's width less 32px),
+  All games moving in place from the not-found page, and (`desktop`) a real seven-seat game's page
+  opened by its `gameId`: a block per round, the first election failed, a decision's time and the
+  accepted veto. No `e2e/` file imports `src/constants` or anything that does (`api.ts`, `App`): it
   reads `window` when it loads, which throws in Playwright's Node process; specs build stats paths
   with `routePath`. Shared helpers are `e2e/lobby.ts`
   (`waitForPlayers`, `joinGuests`, with `pickLooks` false for guests who stay on the default
