@@ -196,7 +196,8 @@ keeps credit to upstream and to the board game's creators.
   `DROPPING`, the default until Phase 14B, drops it with a debug line). `Lobby` keeps the running
   game's `gameId` (a random UUID; `gameId()` gives it, then the last game's until the next
   starts), `gameStartedAt` (`recordClock`, epoch ms), `gameComplete` and `gameEvents`, all backed
-  up, and the transient `lastSnapshot`. It looks at the game (`observeGame`) first in
+  up, and the transient `lastSnapshot`; `timeline()` gives a copy of the running game's events.
+  It takes a snapshot of the game (`observeGame`) first in
   `updateAllUsers` and after every CPU move, so CPU votes come one by one in name order; the END
   TERM countdown's look after `endPresidentialTerm` makes its `endTerm` `by` `countdown`. `t` is
   ms since the start on `recordClock`, never going back. `Lobby` adds its own events: `timerPause`
@@ -206,23 +207,31 @@ keeps credit to upstream and to the board game's creators.
   cannot read is logged in one warning line and left out, and the record is `complete: false`:
   nothing the recorder does stops a game. `handOverGame` makes every record. A game that has ended
   keeps its outcome, with exactly one `end`, so a game a CPU won, which the next tick drops, keeps
-  it when the sweep or a restart comes first; any other is `UNFINISHED`, ended at the sweep's time.
+  it when the sweep or a restart comes first; any other is `UNFINISHED`, with an `end` at the
+  sweep. A record's `endedAt` is `startedAt` plus its `end`'s `t`, the sweep's time unless the
+  clock stepped back.
   `updateAllUsers` hands a finished game over before it clears the seats, marks the lobbies changed
   (`SecretHitlerServer.markLobbiesChanged`, so the next backup holds no finished game) and drops it
   (`dropGame`); `closeIfTimedOut` hands over and drops a game in a swept lobby, so no CPU tick or
   countdown plays on in it. A record or sink that throws is logged, and the game is dropped as
   usual. `writeObject` writes a lobby under its own lock, so a backup's game and timeline match.
-  `readObject` adds `restored` unless the timeline ends with `end`, and gives a game from a backup
+  `readObject` adds `restored` unless the timeline ends with `end`, gives a game from a backup
   before the recorder (`gameEvents` null; `backup-before-recorder.db`) a new ID, a start at the
-  restore, `restored` at `t` 0 and `complete: false`. It reads the game no further than its round:
-  the first look after a restore is taken in `observeGame` or in `game()`, which every command goes
-  through before it changes the game. The tests: `TimelineDiffTest` (every event type and the
+  restore, `restored` at `t` 0 and `complete: false`, and marks the lobbies changed, so the next
+  tick keeps what it changed. It reads the game no further than its round: the first snapshot after
+  a restore is taken in `observeGame`, in `game()`, which every command goes through before it
+  changes the game, or by the END TERM countdown just before it ends a term (the one change made
+  without `game()`). The tests: `TimelineDiffTest` (every event type and the
   several-at-once moves, from hand-built looks, `Snapshots`), `RandomGamesReplayTest` (300 games of
   CPU players in every seat, `CpuGames`, which Phase 14B's fixture uses too, each replayed by
   `TimelineReplay`, which checks every event's place against the game's rules and its keys against
   `RecordFormat`, the spec's format; and games until every event type and outcome has come up),
-  `LobbyRecordingTest`, and `DatabaseBackupTest`'s restores. `GameDriver.stepCpus` plays a lobby's
-  CPU players one tick at a time, with `CPU_ACTION_DELAY_IN_SEC` at 600 so no tick comes by itself.
+  `LobbyRecordingTest`, and `DatabaseBackupTest`'s restores. Both of those take the records through
+  `RecordedGames` (a JUnit rule: the records, a clock the test sets, and CPU ticks, countdowns and
+  grace windows long enough that none ends by itself, all put back after). `GameDriver.stepCpus`
+  plays a lobby's CPU players one tick at a time, `GameDriver.playUntil(game, state, onStep)` calls
+  `onStep` after every move as `playOut` does, and `ServerTesting.lobbiesChanged()` and
+  `clearLobbiesChanged()` read and reset the server's mark for the next backup.
 - `frontend/`: React 18 and TypeScript 5, built with Vite and tested with Vitest. The entry is
   `src/main.tsx`, with `index.html` at the `frontend/` root, whose description is one plain line
   and which has no preview image, so an invite link previews as that line (`linkPreview.test.ts`).
