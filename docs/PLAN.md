@@ -956,7 +956,7 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-20-rivals-endings.md`](supe
 
 Issue #31: the RIVALS tab (teammates, opponents, rivalries, each player's people, and who nominates whom) and the ENDINGS tab (how games are won by player count, the Liberal win rate beside the smoothed rate the Elo handicap uses, game length, final boards, and the most chaos policies, failed elections and vetoes in one game) fill Phase 17A's placeholders. Built after Phases 16 and 17A, beside 17B, 18, 19 and 21A, touching no shared source file.
 
-- [ ] `frontend/src/stats/rivals.ts`: pairs on the same and opposite sides, the best duo and best Fascist duo, the closest and most lopsided rivalries
+- [x] `frontend/src/stats/rivals.ts`: pairs on the same and opposite sides, the best duo and best Fascist duo, the closest and most lopsided rivalries
 - [ ] `rivals.ts`: each player's most played with, best teammate, nemesis, favourite opponent and record against each opponent, and who nominated whom
 - [ ] `frontend/src/stats/endings.ts`: games by player count and outcome, the Liberal win rate with its smoothed rate, game length, the fastest win and the longest game
 - [ ] `endings.ts`: the closest and most lopsided final boards, and the most chaos policies, failed elections and vetoes in one game
