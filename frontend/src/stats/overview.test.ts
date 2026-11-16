@@ -107,6 +107,40 @@ describe("computeOverview", () => {
     }
   });
 
+  it("provisionalPlayersTieOnTheirShownRating", () => {
+    // Two provisional players who both show 1500 go by more games, then name, never by the
+    // fraction the page does not show; so do two settled ones, who share a rank.
+    const rating = (player: number, value: number, games: number) => ({
+      player,
+      rating: value,
+      games,
+      provisional: games < 5,
+      lastChange: 0,
+      peak: value,
+    });
+    const ctx = buildStats(fx.data, DEFAULT_FILTER);
+    const elo = {
+      ratings: new Map([
+        [1, rating(1, 1500.4, 3)],
+        [2, rating(2, 1499.6, 4)],
+        [3, rating(3, 1500.2, 3)],
+        [9, rating(9, 1600.4, 9)],
+        [4, rating(4, 1599.6, 9)],
+      ]),
+      history: [],
+      games: new Map(),
+    };
+    const names = new Map([...ctx.names, [4, "Al"]]);
+    const { powerRanking } = computeOverview({ ...ctx, counted: [], elo, names }, fx.now, "UTC");
+    expect(powerRanking.map((r) => [r.player, r.rank])).toEqual([
+      [4, 1],
+      [9, 1],
+      [2, null],
+      [1, null],
+      [3, null],
+    ]);
+  });
+
   it("ratingHistoryCarriesAndDashes", () => {
     const { ratingHistory } = overview();
     expect(ratingHistory.map((line) => line.player)).toEqual([1, 2, 3, 9]);

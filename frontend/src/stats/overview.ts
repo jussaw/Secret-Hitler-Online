@@ -257,7 +257,8 @@ export function computeOverview(stats: StatsContext, now: number, timeZone?: str
     }
   });
 
-  // The power ranking: rated players by rounded rating, then the provisional ones.
+  // The power ranking: settled players ranked on rounded ratings, then the provisional ones by
+  // rounded rating, then more games, then name.
   const rated = Array.from(elo.ratings.values());
   const settled = rankRows(
     rated.filter((r) => !r.provisional).map((r) => ({ player: r.player, value: Math.round(r.rating), count: r.games })),
@@ -269,7 +270,7 @@ export function computeOverview(stats: StatsContext, now: number, timeZone?: str
     .filter((r) => r.provisional)
     .sort(
       (a, b) =>
-        b.rating - a.rating ||
+        Math.round(b.rating) - Math.round(a.rating) ||
         b.games - a.games ||
         compareNames(nameOf(names, a.player), nameOf(names, b.player)) ||
         a.player - b.player
