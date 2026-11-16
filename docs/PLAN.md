@@ -56,7 +56,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 20. RIVALS and ENDINGS | `phase-20-rivals-endings` | done |
 | 21A. ACTIVITY | `phase-21a-activity` | done |
 | 21B. RECORDS | `phase-21b-records` | done |
-| 22A. Trophies and name links | `phase-22a-trophies-links` | planned |
+| 22A. Trophies and name links | `phase-22a-trophies-links` | done |
 | 22B. Player pages | `phase-22b-player-pages` | planned |
 | 23. One header for the site | `phase-23-site-header` | planned |
 
@@ -1041,7 +1041,7 @@ Issue #31: the fifteen trophies and RECORDS' trophy holders, one player's number
 **Phase 22A acceptance**
 
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] PR merged into `development`
+- [x] PR merged into `development`
 
 ---
 
