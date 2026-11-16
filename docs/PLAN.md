@@ -53,7 +53,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 17B. OVERVIEW | `phase-17b-overview` | planned |
 | 18. ROLES & CARDS | `phase-18-roles-cards` | planned |
 | 19. VOTES & POWERS | `phase-19-votes-powers` | planned |
-| 20. RIVALS and ENDINGS | `phase-20-rivals-endings` | planned |
+| 20. RIVALS and ENDINGS | `phase-20-rivals-endings` | done |
 | 21A. ACTIVITY | `phase-21a-activity` | done |
 | 21B. RECORDS | `phase-21b-records` | planned |
 | 22A. Trophies and name links | `phase-22a-trophies-links` | planned |
@@ -971,7 +971,7 @@ Issue #31: the RIVALS tab (teammates, opponents, rivalries, each player's people
 **Phase 20 acceptance**
 
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] PR merged into `development`
+- [x] PR merged into `development`
 - [ ] The user opens RIVALS and ENDINGS on the deployed build, on a desktop and on a phone, and finds the games they played in them
 
 ---
