@@ -87,10 +87,14 @@ function hasCpuSeat(record: GameRecord): boolean {
   return record.hasCpu || record.seats.some((seat) => seat.cpu);
 }
 
-/** Oldest first: by `endedAt`, then `id` by code units. */
-function byEnd(a: GameRecord, b: GameRecord): number {
-  if (a.endedAt !== b.endedAt) return a.endedAt - b.endedAt;
+/** Two ids in code-unit order, so the order is the same in every locale. */
+function compareIds(a: GameRecord, b: GameRecord): number {
   return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+}
+
+/** Oldest first, the order every stat counts games in: by `endedAt`, then `id` by code units. */
+export function compareByEnd(a: GameRecord, b: GameRecord): number {
+  return a.endedAt - b.endedAt || compareIds(a, b);
 }
 
 /**
@@ -105,7 +109,7 @@ export function countedGames(games: GameRecord[], filter: StatsFilter): GameReco
       const on = filter.players;
       return on === null || humanSeats(record).every(({ player }) => on.has(player));
     })
-    .sort(byEnd);
+    .sort(compareByEnd);
 }
 
 /** Whether the seat's side won the game (never, for an unfinished game). */
@@ -173,9 +177,7 @@ export function rankRows<T>(
  * overlapping lobbies and a night past midnight stay one session.
  */
 export function sessions(games: GameRecord[]): GameRecord[][] {
-  const sorted = [...games].sort(
-    (a, b) => a.startedAt - b.startedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
-  );
+  const sorted = [...games].sort((a, b) => a.startedAt - b.startedAt || compareIds(a, b));
   const out: GameRecord[][] = [];
   let latestEnd = -Infinity;
   for (const record of sorted) {

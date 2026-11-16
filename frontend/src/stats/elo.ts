@@ -1,4 +1,4 @@
-import { humanSeats } from "./counting";
+import { compareByEnd, humanSeats } from "./counting";
 import { sideOf, type GameRecord } from "./record";
 
 /**
@@ -73,12 +73,6 @@ export function eloChange(expected: number, liberalWon: boolean): number {
   return ELO_K * ((liberalWon ? 1 : 0) - expected);
 }
 
-/** Oldest first: by `endedAt`, then `id` by code units. */
-function byEnd(a: GameRecord, b: GameRecord): number {
-  if (a.endedAt !== b.endedAt) return a.endedAt - b.endedAt;
-  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
-}
-
 const mean = (values: number[]) => (values.length === 0 ? ELO_START : values.reduce((s, v) => s + v, 0) / values.length);
 
 /**
@@ -92,7 +86,7 @@ export function replayElo(counted: GameRecord[]): EloResult {
   /** Earlier games and Liberal wins, by seat count. */
   const tally = new Map<number, { wins: number; games: number }>();
 
-  for (const record of [...counted].sort(byEnd)) {
+  for (const record of [...counted].sort(compareByEnd)) {
     const size = record.seats.length;
     const earlier = tally.get(size) ?? { wins: 0, games: 0 };
     const h = handicap(earlier.wins, earlier.games);

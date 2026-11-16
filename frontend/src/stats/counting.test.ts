@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  compareByEnd,
   compareNames,
   countedGames,
   DEFAULT_FILTER,
@@ -95,6 +96,17 @@ describe("countedGames", () => {
   });
   it("anEmptySelectionCountsNothing", () => {
     expect(countedGames([a, c, o], { players: new Set(), cpu: true })).toEqual([]);
+  });
+});
+
+describe("compareByEnd", () => {
+  it("ordersByEndedAtThenIdByCodeUnits", () => {
+    const seats = seatsOf([1, 2, 3, 4, 5]);
+    const late = game("a", T0 + H, seats, "LIBERAL");
+    const b = game("b", T0, seats, "LIBERAL");
+    const upper = game("B", T0, seats, "LIBERAL");
+    expect([late, b, upper].sort(compareByEnd).map((g) => g.id)).toEqual(["B", "b", "a"]);
+    expect(compareByEnd(b, b)).toBe(0);
   });
 });
 
