@@ -31,18 +31,34 @@ describe("TabRow", () => {
     expect(links().filter((a) => a.hasAttribute("aria-current"))).toHaveLength(1);
   });
 
-  it("scrollsTheCurrentTabIntoView", () => {
-    const scrolled: string[] = [];
-    Element.prototype.scrollIntoView = function (this: Element, options?: boolean | ScrollIntoViewOptions) {
-      scrolled.push(`${this.textContent} ${JSON.stringify(options)}`);
-    };
+  it("scrollsOnlyTheRowToTheCurrentTab", () => {
+    // The row scrolls sideways on phones; the page itself keeps its scroll (back and forward too).
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    const scrollTo = vi.fn();
+    vi.stubGlobal("scrollTo", scrollTo);
+    let rowScroll = 0;
+    // A 300px row of 90px tabs, 100px apart.
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      if (this.tagName === "NAV") return { left: 0, right: 300 } as DOMRect;
+      const left = LABELS.indexOf(this.textContent ?? "") * 100 - rowScroll;
+      return { left, right: left + 90 } as DOMRect;
+    });
     const { rerender } = render(<TabRow current="overview" search="" />);
+    const nav = screen.getByRole("navigation", { name: "Stats sections" });
+    Object.defineProperty(nav, "scrollLeft", {
+      get: () => rowScroll,
+      set: (value: number) => (rowScroll = value),
+    });
     rerender(<TabRow current="records" search="" />);
-    rerender(<TabRow current="records" search="?cpu=1" />);
-    expect(scrolled).toEqual([
-      'OVERVIEW {"block":"nearest","inline":"nearest"}',
-      'RECORDS {"block":"nearest","inline":"nearest"}',
-    ]);
+    expect(rowScroll, "RECORDS's right edge at the row's").toBe(390);
+    rerender(<TabRow current="activity" search="" />);
+    expect(rowScroll, "ACTIVITY already in view").toBe(390);
+    rerender(<TabRow current="roles" search="" />);
+    expect(rowScroll, "ROLES & CARDS's left edge at the row's").toBe(100);
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    expect(scrollTo).not.toHaveBeenCalled();
     delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+    vi.unstubAllGlobals();
   });
 });

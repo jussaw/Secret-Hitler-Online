@@ -210,3 +210,15 @@ test("a chart's hovered bar is marked", async ({ page }) => {
   expect(hovered.stroke).not.toBe("none");
   expect(hovered.width).toBeGreaterThanOrEqual(2);
 });
+
+test("a link to a tab shows that tab in the row", async ({ page }) => {
+  await open(page, SMALL, "/stats/records?cpu=1");
+  const boxes = await tabRow(page).evaluate((nav) => {
+    const current = nav.querySelector('[aria-current="page"]')!.getBoundingClientRect();
+    const row = nav.getBoundingClientRect();
+    return { current: { left: current.left, right: current.right }, row: { left: row.left, right: row.right }, page: scrollY };
+  });
+  expect(boxes.current.left).toBeGreaterThanOrEqual(boxes.row.left - 0.5);
+  expect(boxes.current.right).toBeLessThanOrEqual(boxes.row.right + 0.5);
+  expect(boxes.page, "the page itself stays at the top").toBe(0);
+});
