@@ -916,11 +916,11 @@ Issue #31: the ROLES & CARDS tab fills Phase 17A's placeholder with each player'
 - [x] `frontend/e2e/stats-roles.spec.ts`: the tab never scrolls sideways at any `statsSizes` size against `bigStatsData()`, with 44px targets on phones
 - [x] `CLAUDE.md` and `README.md` describe ROLES & CARDS
 - [x] Every finding of the whole-branch review fixed, Minor ones included
-- [ ] The pull request shows the tab before and after, on desktop and on a phone
+- [x] The pull request shows the tab before and after, on desktop and on a phone
 
 **Phase 18 acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
 - [ ] PR merged into `development`
 - [ ] The user opens ROLES & CARDS on the deployed build, on a desktop and on a phone, and finds their games' numbers
 
