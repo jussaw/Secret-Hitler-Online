@@ -1,6 +1,7 @@
-import { humanSeats, MIN_CHANCES, rate, type Rate } from "./counting";
-import { sideOf, type GameRecord, type Role, type Side } from "./record";
+import type { Rate } from "./counting";
+import type { GameRecord, Role, Side } from "./record";
 import { rounds, type Round } from "./rounds";
+import { addChance, countRate, newCount, seatTallies, sideAt, type Count } from "./tallies";
 
 /**
  * VOTES & POWERS' elections and votes (the spec's "VOTES & POWERS"): each player's nominations,
@@ -57,12 +58,6 @@ export interface VoteStats {
   byPlayer: Map<number, PlayerVotes>;
 }
 
-/** Hits of chances, on their way to a `Rate`. */
-interface Count {
-  hits: number;
-  chances: number;
-}
-
 interface Tally {
   games: number;
   nominatedChancellor: number;
@@ -81,35 +76,25 @@ interface Tally {
   loneDissent: number;
 }
 
-const count = (): Count => ({ hits: 0, chances: 0 });
-
 function newTally(): Tally {
   return {
     games: 0,
     nominatedChancellor: 0,
-    presidentPassed: count(),
-    chancellorPassed: count(),
-    teammatePick: { LIBERAL: count(), FASCIST: count() },
+    presidentPassed: newCount(),
+    chancellorPassed: newCount(),
+    teammatePick: { LIBERAL: newCount(), FASCIST: newCount() },
     failedAsPresident: 0,
     chaos: 0,
-    ja: count(),
-    jaByRole: { LIBERAL: count(), FASCIST: count(), HITLER: count() },
-    liberalAccuracy: count(),
-    fascistLoyalty: count(),
+    ja: newCount(),
+    jaByRole: { LIBERAL: newCount(), FASCIST: newCount(), HITLER: newCount() },
+    liberalAccuracy: newCount(),
+    fascistLoyalty: newCount(),
     votedHitlerIn: 0,
     hitlerElectionVotes: 0,
     swing: 0,
     loneDissent: 0,
   };
 }
-
-/** One more chance, a hit when `hit`. */
-function add(c: Count, hit: boolean): void {
-  c.chances++;
-  if (hit) c.hits++;
-}
-
-const toRate = (c: Count): Rate => rate(c.hits, c.chances, MIN_CHANCES);
 
 /**
  * The round whose election voted Hitler in: in a game Hitler's election won, the last round that
@@ -128,41 +113,33 @@ function hitlerElection(g: GameRecord, rs: Round[]): Round | null {
 export function computeVotes(counted: GameRecord[]): VoteStats {
   const tallies = new Map<number, Tally>();
   for (const g of counted) {
-    // The seat-to-player map for this game: people only.
-    const playerAt = new Map<number, Tally>();
-    for (const { seat, player } of humanSeats(g)) {
-      let tally = tallies.get(player);
-      if (!tally) {
-        tally = newTally();
-        tallies.set(player, tally);
-      }
-      tally.games++;
-      playerAt.set(seat, tally);
-    }
-    const side = (seat: number): Side | null => (g.seats[seat] ? sideOf(g.seats[seat].role) : null);
+    // Each person's seat in this game, with their tally; a CPU seat has none.
+    const seats = seatTallies(g, tallies, newTally);
+    const tallyAt = (seat: number) => seats.get(seat)?.tally;
+    const side = (seat: number) => sideAt(g, seat);
     const rs = rounds(g);
     const hitlerIn = hitlerElection(g, rs);
 
     for (const round of rs) {
-      const president = playerAt.get(round.president);
+      const president = tallyAt(round.president);
       if (round.enacted?.by === "chaos" && president) president.chaos++;
       if (round.chancellor === null) continue;
 
       // A nomination: its government is the president and the chancellor.
-      const chancellor = playerAt.get(round.chancellor);
+      const chancellor = tallyAt(round.chancellor);
       if (chancellor) chancellor.nominatedChancellor++;
       const presidentSide = side(round.president);
       if (president && presidentSide !== null) {
-        add(president.teammatePick[presidentSide], side(round.chancellor) === presidentSide);
+        addChance(president.teammatePick[presidentSide], side(round.chancellor) === presidentSide);
       }
 
       const { election } = round;
       if (election === null) continue;
       if (president) {
-        add(president.presidentPassed, election.passed);
+        addChance(president.presidentPassed, election.passed);
         if (!election.passed) president.failedAsPresident++;
       }
-      if (chancellor) add(chancellor.chancellorPassed, election.passed);
+      if (chancellor) addChance(chancellor.chancellorPassed, election.passed);
 
       // The votes, judged by the government they elected or turned down.
       const government = [round.president, round.chancellor];
@@ -170,19 +147,19 @@ export function computeVotes(counted: GameRecord[]): VoteStats {
       const n = election.ja + election.nein;
       const need = Math.floor(n / 2) + 1;
       for (const vote of round.votes) {
-        const voter = playerAt.get(vote.seat);
+        const voter = tallyAt(vote.seat);
         const role = g.seats[vote.seat]?.role;
         if (!voter || role === undefined) continue;
-        add(voter.ja, vote.ja);
-        add(voter.jaByRole[role], vote.ja);
+        addChance(voter.ja, vote.ja);
+        addChance(voter.jaByRole[role], vote.ja);
         if (role === "LIBERAL") {
-          add(voter.liberalAccuracy, vote.ja !== fascistIn);
+          addChance(voter.liberalAccuracy, vote.ja !== fascistIn);
           if (round === hitlerIn) {
             voter.hitlerElectionVotes++;
             if (vote.ja) voter.votedHitlerIn++;
           }
         } else if (government.some((seat) => seat !== vote.seat && side(seat) === "FASCIST")) {
-          add(voter.fascistLoyalty, vote.ja);
+          addChance(voter.fascistLoyalty, vote.ja);
         }
         // A swing vote: had it gone the other way, the result would have too.
         const swung = vote.ja ? election.passed && election.ja === need : !election.passed && election.ja === need - 1;
@@ -197,16 +174,16 @@ export function computeVotes(counted: GameRecord[]): VoteStats {
     byPlayer.set(player, {
       games: t.games,
       nominatedChancellor: t.nominatedChancellor,
-      presidentPassed: toRate(t.presidentPassed),
-      chancellorPassed: toRate(t.chancellorPassed),
-      teammatePick: { LIBERAL: toRate(t.teammatePick.LIBERAL), FASCIST: toRate(t.teammatePick.FASCIST) },
+      presidentPassed: countRate(t.presidentPassed),
+      chancellorPassed: countRate(t.chancellorPassed),
+      teammatePick: { LIBERAL: countRate(t.teammatePick.LIBERAL), FASCIST: countRate(t.teammatePick.FASCIST) },
       failedAsPresident: t.failedAsPresident,
       chaos: t.chaos,
       votes: t.ja.chances,
-      ja: toRate(t.ja),
-      jaByRole: { LIBERAL: toRate(t.jaByRole.LIBERAL), FASCIST: toRate(t.jaByRole.FASCIST), HITLER: toRate(t.jaByRole.HITLER) },
-      liberalAccuracy: toRate(t.liberalAccuracy),
-      fascistLoyalty: toRate(t.fascistLoyalty),
+      ja: countRate(t.ja),
+      jaByRole: { LIBERAL: countRate(t.jaByRole.LIBERAL), FASCIST: countRate(t.jaByRole.FASCIST), HITLER: countRate(t.jaByRole.HITLER) },
+      liberalAccuracy: countRate(t.liberalAccuracy),
+      fascistLoyalty: countRate(t.fascistLoyalty),
       votedHitlerIn: t.votedHitlerIn,
       hitlerElectionVotes: t.hitlerElectionVotes,
       swing: t.swing,

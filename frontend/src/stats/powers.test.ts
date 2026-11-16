@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { countedGames, DEFAULT_FILTER } from "./counting";
 import fixture from "./fixtures/recorded-games.json";
 import { computePowers } from "./powers";
-import { parseStatsData, type GameRecord } from "./record";
+import { parseStatsData, type GameEvent, type GameRecord } from "./record";
 import { computeVotes } from "./votes";
 import { ALL, eventsOf, execute, FIVE, gameOf, investigate, range, sum, term } from "./votesTestRounds";
 
@@ -83,6 +83,29 @@ describe("computePowers: executions, vetoes and survival", () => {
     expect(p.get(1)).toMatchObject({ investigations: 1, saw: { LIBERAL: 1 }, timesInvestigated: { LIBERAL: 1 },
       timesExecuted: 1, executedFirst: 1, survival: { hits: 0, chances: 1 } });
     expect(p.get(1)!.investigatedPlayers.size).toBe(0);
+  });
+
+  it("counts investigations of CPU seats apart from the players'", () => {
+    const g = gameOf(FIVE, [term(1, 0, 1, ALL, [], investigate(0, 4, "FASCIST")), term(2, 0, 1, ALL, [], investigate(0, 1, "LIBERAL")),
+      term(3, 0, 2, ALL, [], investigate(0, 4, "FASCIST"))], { players: [1, 2, 3, 4, null] });
+    const p = computePowers([g]).byPlayer.get(1)!;
+    expect(p).toMatchObject({ investigations: 3, investigatedCpu: 2 });
+    expect([...p.investigatedPlayers]).toEqual([[2, 1]]);
+  });
+
+  it("credits a death before a late record's start as an execution, and first only when it is the one", () => {
+    /** A record that starts late, `dead` ending dead with no recorded execution. */
+    const late = (dead: number[], ...terms: GameEvent[][]): GameRecord => {
+      const g = gameOf(FIVE, terms);
+      return { ...g, complete: false, seats: g.seats.map((seat, i) => (dead.includes(i) ? { ...seat, alive: false } : seat)) };
+    };
+    const one = computePowers([late([2], term(4, 0, 1, ALL, [], execute(0, 3, "FASCIST")))]).byPlayer;
+    expect([3, 4].map((n) => [one.get(n)!.timesExecuted, one.get(n)!.executedFirst])).toEqual([[1, 1], [1, 0]]);
+    expect(one.get(1)!.executions).toBe(1);
+    const two = computePowers([late([1, 2], term(4, 0, 3, ALL, []))]).byPlayer;
+    expect([2, 3].map((n) => [two.get(n)!.timesExecuted, two.get(n)!.executedFirst])).toEqual([[1, 0], [1, 0]]);
+    const none = computePowers([late([], term(4, 0, 1, ALL, [], execute(0, 3, "FASCIST")))]).byPlayer;
+    expect(none.get(4)).toMatchObject({ timesExecuted: 1, executedFirst: 1 });
   });
 
   it("agrees with the contract fixture's raw events, and 1,000 games take under a second", () => {
