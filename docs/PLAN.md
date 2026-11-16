@@ -43,7 +43,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 10. Baseline bugs | `fix/issue-N`, one per issue | done |
 | 11. Lobby redesign | `phase-11-lobby` | done |
 | 12. Accounts with Discord sign-in | `phase-12-accounts` | done |
-| 13. Database backups | `phase-13-db-backups` | in progress |
+| 13. Database backups | `phase-13-db-backups` | done |
 | 14A. Game timeline | `phase-14a-game-timeline` | done |
 | 14B. Game records | `phase-14b-game-records` | planned |
 | 15A. Stats shell | `phase-15a-stats-shell` | planned |
@@ -731,7 +731,7 @@ Issue #31 (game stats), the first of its ten phases: the database is backed up b
 **Phase 13 acceptance**
 
 - [x] Backend and frontend unit tests pass, the frontend builds, the backup and restore test passes, and the browser tests pass in all four Playwright projects
-- [ ] PR merged into `development`
+- [x] PR merged into `development`
 - [ ] The user schedules the nightly backup on the home server, with `AFTER_BACKUP` copying each backup off the host if wanted
 - [ ] The user takes one restore drill on the home server: restores a recent backup and signs in to find their account and name
 
