@@ -51,7 +51,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 16. The game page | `phase-16-game-page` | done |
 | 17A. Stats engine | `phase-17a-stats-engine` | done |
 | 17B. OVERVIEW | `phase-17b-overview` | planned |
-| 18. ROLES & CARDS | `phase-18-roles-cards` | in progress |
+| 18. ROLES & CARDS | `phase-18-roles-cards` | done |
 | 19. VOTES & POWERS | `phase-19-votes-powers` | planned |
 | 20. RIVALS and ENDINGS | `phase-20-rivals-endings` | done |
 | 21A. ACTIVITY | `phase-21a-activity` | done |
@@ -921,7 +921,7 @@ Issue #31: the ROLES & CARDS tab fills Phase 17A's placeholder with each player'
 **Phase 18 acceptance**
 
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] PR merged into `development`
+- [x] PR merged into `development`
 - [ ] The user opens ROLES & CARDS on the deployed build, on a desktop and on a phone, and finds their games' numbers
 
 ---
