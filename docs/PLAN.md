@@ -944,7 +944,7 @@ Issue #31: the VOTES & POWERS tab at `/stats/votes`. It shows each player's elec
 
 **Phase 19 acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
 - [ ] PR merged into `development`
 - [ ] The user opens VOTES & POWERS on the deployed build after real games, on a desktop and on a phone, and its numbers match the games played
 
