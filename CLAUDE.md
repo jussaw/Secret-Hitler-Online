@@ -320,17 +320,20 @@ keeps credit to upstream and to the board game's creators.
   `import()`, and nothing in it imports `App`, the game, lobby or login pages or `SoundManager`
   (leaf modules such as `src/constants` are fine), so the game's first download holds none of it
   (`npm run first-download` gives its gzipped size). `src/stats/` (issue #31; the interfaces file
-  names who fills what): `record.ts` (the record's types, format 1, `STATS_GAMES_PATH`,
+  names who fills what): `record.ts` (the record's types, format 1, with `ROLES`, `SIDES` and
+  `OUTCOMES` the lists their unions come from, `STATS_GAMES_PATH`,
   `EVENT_FIELDS`, each event type's keys in the spec's order, `parseStatsData`, which checks a
   response and throws `Unsupported game record format: N` or the path of the first malformed
   field, `sideOf` and `playerName`, `Player N` for a number with no player; it imports nothing, so
   the browser tests use it), `testRecords.ts` (`makeRecord`, `makeSeats`, `makeData`, for tests
-  only), `format.ts` (`outcomeLabel`, `formatDuration`, `plural`, and `formatLocalDate`,
+  only), `format.ts` (`outcomeLabel`, which starts with `sideWord`'s "Liberals" or "Fascists" for a
+  finished game, `formatDuration`, `plural`, and `formatLocalDate`,
   `formatLocalTime`, `formatLocalDateTime` and `localDayKey`, English whatever the locale, each in
   a time zone it is passed, `viewerTimeZone()` by default, so tests pass one and never set
   `process.env.TZ`), `PlayerName` (the one way a name shows: a `span.player-name` with
   `overflow-wrap: anywhere`, coloured by role through `stats-liberal`, `stats-fascist` and
-  `stats-hitler`, underlined, which any stats page may use for a side's word, and `data-player`;
+  `stats-hitler`, underlined, which any stats page may use for a side's word through `roleClass`,
+  and `data-player`;
   `link`, `true` by default, does nothing until Phase 22A makes names links, and a name inside a
   sentence or a headline passes `link={false}`), `routes.ts` (`TabId`, `TAB_IDS`, `StatsRoute`,
   `PageProps`, `parseRoute`, `routePath`, `navigate`, which pushes one history entry, none for the
@@ -669,9 +672,9 @@ keeps credit to upstream and to the board game's creators.
   `/api/stats/games`), `bigStatsData()` (the same 400 games on every call, from a seeded generator:
   players 1 to 10 named `WWWWWWWWWW01` to `WWWWWWWWWW10`, `big-001` to `big-400` four an evening
   every third or fourth evening from 6 Oct 2025, sizes cycling 5 to 10, one or two CPU seats in
-  every seventh, Hitler among them once, every 25th unfinished and the rest cycling through the four
+  every seventh, Hitler among them at least once, every 25th unfinished and the rest cycling through the four
   endings, `big-200` also incomplete and opening with `restored`, each timeline played by the rules:
-  rounds, votes, the tracker and chaos, cards, vetoes, powers by size, the term's end, by the
+  rounds, votes, the tracker, which only a policy puts back, and chaos, cards, vetoes, powers by size, the term's end, by the
   countdown in every fifth, pauses, dropped connections, reshuffles, and the board in the last
   `enact`; later phases assume nothing else about it), `statsPageProblems(page)` (what is wrong at
   the current size: anything past either side but inside a box that scrolls sideways itself, never
