@@ -1031,7 +1031,7 @@ Issue #31: the fifteen trophies and RECORDS' trophy holders, one player's number
 
 - [x] `frontend/src/stats/trophies.ts`: the fifteen trophies, each rule held at its threshold and not below it, with the 8-game minimum wherever the spec does not lift it
 - [x] `trophies.ts` and `allStats.ts`: each player's trophies worked out from the counted games through the earlier stat modules, the Speed Demon from ACTIVITY's fastest voter
-- [ ] `frontend/src/stats/player.ts`: one player's numbers from every stat module, with the CPU toggle and without the player filter, and the PLAYERS rows
+- [x] `frontend/src/stats/player.ts`: one player's numbers from every stat module, with the CPU toggle and without the player filter, and the PLAYERS rows
 - [ ] `frontend/src/stats/PlayerName.tsx`: a player's name in the stats links to their page (plain inside a sentence or headline); CPU seats stay plain text; no link sits inside another link or control
 - [ ] `frontend/src/stats/tabs/RecordsTab.tsx`: the trophy holders card, with `players/TrophyBadge.tsx`
 - [ ] `frontend/src/stats/game/gameElo.ts`, `GameHeader.tsx` and `GamePage.tsx`: the game's Elo change when it counted under the default filter
