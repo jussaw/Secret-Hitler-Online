@@ -98,3 +98,76 @@
 .stats-screen a.records-game-link:focus-visible {
     color: var(--headerTextColor);
 }
+
+/* The trophy holders (Phase 22A): the grid's whole width, a row per trophy in RankedTable's look,
+   its badge over its rule at the left and its holders, names separated by commas, at the right.
+   The rule and the names wrap inside their halves. */
+.records-cell[data-card="trophy-holders"] {
+    grid-column: 1 / -1;
+}
+
+.trophy-holders th.trophy-holders-trophy {
+    width: 50%;
+    padding: 6px 12px 6px 0;
+    text-align: left;
+    vertical-align: middle;
+    font-weight: 500;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.trophy-holders tr:first-child th.trophy-holders-trophy {
+    border-top: none;
+}
+
+.trophy-holders .trophy-rule {
+    margin-top: 3px;
+    font-weight: 500;
+    color: var(--textColorOnDark);
+    overflow-wrap: anywhere;
+}
+
+.trophy-holders td.trophy-holders-names {
+    width: 50%;
+    font-weight: 600;
+    color: var(--headerTextColor);
+    overflow-wrap: anywhere;
+}
+
+/* A holder's name keeps the comma after it; the line breaks between holders. */
+.trophy-holder {
+    display: inline-block;
+    max-width: 100%;
+}
+
+.trophy-holders-none {
+    font-weight: 500;
+    color: var(--textColorOnDark);
+}
+
+/* Phones (the game's phone-only query): a trophy's holders take the card's whole width under its
+   badge and rule, so two twelve-character names fit on a line. */
+@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
+    .trophy-holders tr {
+        display: block;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 6px 0;
+    }
+
+    .trophy-holders tr:first-child {
+        border-top: none;
+        padding-top: 0;
+    }
+
+    .trophy-holders th.trophy-holders-trophy,
+    .trophy-holders td.trophy-holders-names {
+        display: block;
+        width: auto;
+        height: auto;
+        padding: 0;
+        border-top: none;
+    }
+
+    .trophy-holders td.trophy-holders-names {
+        margin-top: 2px;
+    }
+}

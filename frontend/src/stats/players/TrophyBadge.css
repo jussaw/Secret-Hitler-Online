@@ -1,0 +1,15 @@
+/* A trophy's badge: its label in a pill of the office orange, text and border, on the card's dark
+   brown. It keeps to one line. */
+.trophy-badge {
+    display: inline-block;
+    box-sizing: border-box;
+    padding: 1px 9px;
+    border: 1.5px solid #f08a5d;
+    border-radius: 999px;
+    font-family: var(--textFont);
+    font-weight: 700;
+    font-size: 13px;
+    line-height: 1.4;
+    color: #f08a5d;
+    white-space: nowrap;
+}

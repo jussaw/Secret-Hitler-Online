@@ -14,9 +14,11 @@ import {
   type RecordStats,
   type StreakKind,
 } from "../records";
+import { TrophyBadge } from "../players/TrophyBadge";
 import { routePath } from "../routes";
 import { StatCard } from "../StatCard";
 import StatsLink from "../StatsLink";
+import { computeTrophies, trophyHolders } from "../trophies";
 import type { StatsContext } from "../useStats";
 import "./sectionGrid.css";
 import "./RecordsTab.css";
@@ -128,7 +130,7 @@ function PeriodTable({ rows, names }: { rows: Row<BestPeriod>[]; names: Map<numb
  * RECORDS (Phase 21B): streaks, the best weeks and months, the player of the month and its
  * history, the longest game nights and the rating records, counted in the viewer's time zone.
  * `now` (the time the tab opened, by default) and `timeZone` (the viewer's) are for its tests.
- * Phase 22A adds its trophy holders after the last card.
+ * Last come the trophy holders (Phase 22A): each trophy and who holds it under this filter.
  */
 export function RecordsTab(props: { stats: StatsContext; now?: number; timeZone?: string }): JSX.Element {
   const { stats } = props;
@@ -136,6 +138,7 @@ export function RecordsTab(props: { stats: StatsContext; now?: number; timeZone?
   const now = props.now ?? mountedAt;
   const zone = props.timeZone ?? viewerTimeZone();
   const records = useMemo(() => computeRecords(stats.counted, stats.elo, now, zone), [stats.counted, stats.elo, now, zone]);
+  const trophies = useMemo(() => trophyHolders(computeTrophies(stats, now, zone), stats.names), [stats, now, zone]);
   const { names } = stats;
   const empty = stats.counted.length === 0;
 
@@ -301,6 +304,39 @@ export function RecordsTab(props: { stats: StatsContext; now?: number; timeZone?
               </StatsLink>
             </>
           )}
+        </StatCard>
+      </Cell>
+
+      <h2 className="records-heading">Trophies</h2>
+      <Cell slug="trophy-holders">
+        <StatCard title="Trophy holders" definition="Worked out from the counted games. Most need 8 of them." empty={empty}>
+          <table className="ranked-table trophy-holders">
+            <tbody>
+              {trophies.map(({ trophy, players: holders }) => (
+                <tr key={trophy.id}>
+                  <th scope="row" className="trophy-holders-trophy">
+                    <TrophyBadge trophy={trophy} />
+                    <span className="records-sub trophy-rule">{trophy.rule}</span>
+                  </th>
+                  <td className="trophy-holders-names">
+                    {holders.length === 0 ? (
+                      <span className="trophy-holders-none">No one yet.</span>
+                    ) : (
+                      holders.map((player, i) => (
+                        <Fragment key={player}>
+                          {i > 0 && " "}
+                          <span className="trophy-holder">
+                            <PlayerName player={player} name={name(player)} />
+                            {i < holders.length - 1 && ","}
+                          </span>
+                        </Fragment>
+                      ))
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </StatCard>
       </Cell>
     </div>

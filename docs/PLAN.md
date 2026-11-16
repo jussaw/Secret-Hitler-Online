@@ -56,7 +56,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 20. RIVALS and ENDINGS | `phase-20-rivals-endings` | done |
 | 21A. ACTIVITY | `phase-21a-activity` | done |
 | 21B. RECORDS | `phase-21b-records` | done |
-| 22A. Trophies and name links | `phase-22a-trophies-links` | planned |
+| 22A. Trophies and name links | `phase-22a-trophies-links` | done |
 | 22B. Player pages | `phase-22b-player-pages` | planned |
 | 23. One header for the site | `phase-23-site-header` | planned |
 
@@ -1029,19 +1029,19 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-22a-trophies-links.md`](sup
 
 Issue #31: the fifteen trophies and RECORDS' trophy holders, one player's numbers as a pure module for Phase 22B, the game page's Elo change, and every player's name in the stats a link to their page (which stays Phase 15A's placeholder until 22B). It reads Phases 18 to 21B's stat modules through their `byPlayer` maps and changes no stat they compute. Starts once 17B, 18, 19, 20 and 21B have merged.
 
-- [ ] `frontend/src/stats/trophies.ts`: the fifteen trophies, each rule held at its threshold and not below it, with the 8-game minimum wherever the spec does not lift it
-- [ ] `trophies.ts` and `allStats.ts`: each player's trophies worked out from the counted games through the earlier stat modules, the Speed Demon from ACTIVITY's fastest voter
-- [ ] `frontend/src/stats/player.ts`: one player's numbers from every stat module, with the CPU toggle and without the player filter, and the PLAYERS rows
-- [ ] `frontend/src/stats/PlayerName.tsx`: a player's name in the stats links to their page (plain inside a sentence or headline); CPU seats stay plain text; no link sits inside another link or control
-- [ ] `frontend/src/stats/tabs/RecordsTab.tsx`: the trophy holders card, with `players/TrophyBadge.tsx`
-- [ ] `frontend/src/stats/game/gameElo.ts`, `GameHeader.tsx` and `GamePage.tsx`: the game's Elo change when it counted under the default filter
-- [ ] `frontend/e2e/stats-names.spec.ts`: name links in tables are 44px targets that never overlap on phones, a name in GAMES opens its player page, and a game page shows its Elo change
-- [ ] `CLAUDE.md` and `DEVELOPMENT.md` describe trophies, name links and the Elo change; the pull request shows RECORDS and a game page before and after, on desktop and on a phone
+- [x] `frontend/src/stats/trophies.ts`: the fifteen trophies, each rule held at its threshold and not below it, with the 8-game minimum wherever the spec does not lift it
+- [x] `trophies.ts` and `allStats.ts`: each player's trophies worked out from the counted games through the earlier stat modules, the Speed Demon from ACTIVITY's fastest voter
+- [x] `frontend/src/stats/player.ts`: one player's numbers from every stat module, with the CPU toggle and without the player filter, and the PLAYERS rows
+- [x] `frontend/src/stats/PlayerName.tsx`: a player's name in the stats links to their page (plain inside a sentence or headline); CPU seats stay plain text; no link sits inside another link or control
+- [x] `frontend/src/stats/tabs/RecordsTab.tsx`: the trophy holders card, with `players/TrophyBadge.tsx`
+- [x] `frontend/src/stats/game/gameElo.ts`, `GameHeader.tsx` and `GamePage.tsx`: the game's Elo change when it counted under the default filter
+- [x] `frontend/e2e/stats-names.spec.ts`: name links in tables are 44px targets that never overlap on phones, a name in GAMES opens its player page, and a game page shows its Elo change
+- [x] `CLAUDE.md` and `DEVELOPMENT.md` describe trophies, name links and the Elo change; the pull request shows RECORDS and a game page before and after, on desktop and on a phone
 
 **Phase 22A acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] PR merged into `development`
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] PR merged into `development`
 
 ---
 

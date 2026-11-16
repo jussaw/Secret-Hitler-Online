@@ -1,7 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { formatDuration, formatLocalDateTime, outcomeLabel, plural } from "../format";
+import { sampleData } from "../players/testStats";
 import { makeRecord } from "../testRecords";
+import { gameEloChange } from "./gameElo";
 import GameHeader from "./GameHeader";
 import { fiveSeatGame } from "./sampleGames";
 
@@ -46,12 +48,42 @@ describe("GameHeader", () => {
 
   it("the seats in turn order with their roles", () => {
     const { container } = render(<GameHeader record={fiveSeatGame([])} />);
-    const seats = container.querySelector("p.game-seats")!;
-    expect(seats.textContent).toBe("Seats in order: P1 · P2 · P3 · P4 (Hitler) · Bot 1");
+    const seats = container.querySelector("ol.game-seats")!;
+    expect(screen.getByRole("list", { name: "Seats in order:" })).toBe(seats);
+    expect(Array.from(seats.children, (li) => li.textContent)).toEqual(["P1", "P2", "P3", "P4 (Hitler)", "Bot 1"]);
     const names = Array.from(seats.querySelectorAll(".player-name"));
     expect(names.map((n) => n.textContent)).toEqual(["P1", "P2", "P3", "P4", "Bot 1"]);
     expect(names[2]).toHaveClass("stats-fascist");
     expect(names[3]).toHaveClass("stats-hitler");
     expect(names[0]).toHaveClass("stats-liberal");
+  });
+
+  it("aCountedGameShowsItsEloChange", () => {
+    const data = sampleData();
+    const g1 = data.games.find((g) => g.id === "g1")!;
+    const { container } = render(<GameHeader record={g1} elo={gameEloChange(data, "g1")} />);
+    const line = container.querySelector("p.game-elo")!;
+    expect(line.textContent).toBe("Elo: Liberals +16 · Fascists −16");
+    expect(line.previousElementSibling).toHaveClass("game-facts");
+  });
+
+  it("noEloNoLine", () => {
+    const record = makeRecord();
+    const { container, unmount } = render(<GameHeader record={record} elo={null} />);
+    expect(Array.from(container.querySelectorAll("p")).some((p) => p.textContent!.startsWith("Elo:"))).toBe(false);
+    unmount();
+    const { container: none } = render(<GameHeader record={record} />);
+    expect(Array.from(none.querySelectorAll("p")).some((p) => p.textContent!.startsWith("Elo:"))).toBe(false);
+  });
+
+  it("seatsLinkToPlayers", () => {
+    const data = sampleData();
+    const { unmount } = render(<GameHeader record={data.games.find((g) => g.id === "g1")!} />);
+    expect(screen.getByRole("link", { name: "Ann" })).toHaveAttribute("href", "/stats/players/1");
+    unmount();
+    const { container } = render(<GameHeader record={data.games.find((g) => g.id === "cpu")!} />);
+    const bot = Array.from(container.querySelectorAll(".game-seats .player-name")).find((n) => n.textContent === "Bot 1")!;
+    expect(bot.tagName).toBe("SPAN");
+    expect(screen.queryByRole("link", { name: "Bot 1" })).toBeNull();
   });
 });

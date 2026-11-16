@@ -1,14 +1,19 @@
+import { useId } from "react";
+import type { GameElo } from "../elo";
 import { formatDuration, formatLocalDateTime, outcomeLabel, plural, sideWord } from "../format";
+import { formatSigned } from "../numbers";
 import PlayerName, { roleClass } from "../PlayerName";
 import type { GameRecord } from "../record";
-import { joined, RoleWord } from "./text";
+import { RoleWord } from "./text";
 
 /**
  * A game page's header card: the result, its first word in the winners' colour; the start, the
- * length, the rounds and the final board; and the seats in turn order, coloured by role, Hitler's
- * marked.
+ * length, the rounds and the final board; the game's Elo change when it counted under the default
+ * filter (`elo`, from `gameElo.ts`); and the seats in turn order, coloured by role, Hitler's
+ * marked, each player's name a link to their page.
  */
-export function GameHeader({ record }: { record: GameRecord }): JSX.Element {
+export function GameHeader({ record, elo }: { record: GameRecord; elo?: GameElo | null }): JSX.Element {
+  const seatsLabel = useId();
   // The result starts with the winners' word (outcomeLabel), which takes their colour.
   const label = outcomeLabel(record);
   const winners = record.winner ? sideWord(record.winner) : null;
@@ -31,24 +36,33 @@ export function GameHeader({ record }: { record: GameRecord }): JSX.Element {
         )}
       </h1>
       <p className="game-facts">{facts}</p>
-      <p className="game-seats">
-        {"Seats in order: "}
-        {joined(
-          record.seats.map((seat) => (
-            <>
+      {elo && (
+        <p className="game-elo">
+          {"Elo: "}
+          <span className={roleClass("LIBERAL")}>{sideWord("LIBERAL")}</span> {formatSigned(elo.liberalChange)}
+          {" · "}
+          <span className={roleClass("FASCIST")}>{sideWord("FASCIST")}</span> {formatSigned(-elo.liberalChange)}
+        </p>
+      )}
+      <div className="game-seats-line">
+        <span className="game-seats-label" id={seatsLabel}>
+          Seats in order:
+        </span>{" "}
+        <ol className="game-seats" aria-labelledby={seatsLabel}>
+          {record.seats.map((seat, i) => (
+            <li key={i}>
               <PlayerName player={seat.player} name={seat.name} role={seat.role} />
               {seat.role === "HITLER" && (
-                <>
+                <span className="game-seat-note">
                   {" ("}
                   <RoleWord role="HITLER" />
                   {")"}
-                </>
+                </span>
               )}
-            </>
-          )),
-          " · "
-        )}
-      </p>
+            </li>
+          ))}
+        </ol>
+      </div>
     </header>
   );
 }

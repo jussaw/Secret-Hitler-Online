@@ -2,7 +2,11 @@ import { fireEvent, render, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { replayElo } from "../elo";
 import type { GameRecord, Role, Side } from "../record";
+import { DEFAULT_FILTER } from "../counting";
+import { SAMPLE_NOW, sampleData, TZ } from "../players/testStats";
 import { NO_GAMES } from "../StatCard";
+import { TROPHIES } from "../trophies";
+import { buildStats } from "../useStats";
 import { makeRecord, makeSeats } from "../testRecords";
 import type { StatsContext } from "../useStats";
 import { RecordsTab } from "./RecordsTab";
@@ -87,6 +91,7 @@ const SLUGS = [
   "players-of-the-month",
   "most-games-session",
   "rating-records",
+  "trophy-holders",
 ];
 
 afterEach(() => window.history.replaceState(null, "", "/"));
@@ -189,5 +194,33 @@ describe("RecordsTab", () => {
     // The CPU seats lost b: only the winners' side is named.
     tab([played("a", "2026-11-01T20:00:00Z", [1, 2, 3], [4, 5]), played("b", "2026-11-02T20:00:00Z", [4, 5], [], "FASCIST")]);
     expect(card("rating-records").querySelector(".records-upset")).toHaveTextContent(/chance · Di, Ed \+\d+$/);
+  });
+
+  it("trophyHoldersIsTheLastCard", () => {
+    render(<RecordsTab stats={buildStats(sampleData(), DEFAULT_FILTER)} now={SAMPLE_NOW} timeZone={TZ} />);
+    const regions = Array.from(document.querySelectorAll<HTMLElement>("section.stat-card"));
+    const last = regions[regions.length - 1];
+    expect(within(last).getByRole("heading", { level: 3 })).toHaveTextContent(/^Trophy holders$/);
+    expect(last).toHaveTextContent("Worked out from the counted games. Most need 8 of them.");
+    const rows = Array.from(last.querySelectorAll("tbody tr"));
+    expect(rows).toHaveLength(15);
+    expect(rows.map((row) => row.querySelector(".trophy-badge")!.textContent)).toEqual(TROPHIES.map((t) => t.label));
+    expect(rows.map((row) => row.querySelector(".trophy-rule")!.textContent)).toEqual(TROPHIES.map((t) => t.rule));
+    const rowOf = (label: string) => rows[TROPHIES.findIndex((t) => t.label === label)];
+    for (const label of ["Hitler Hunter", "Chancellor Hitler"]) {
+      const links = within(rowOf(label) as HTMLElement).getAllByRole("link");
+      expect(links.map((a) => a.textContent), label).toEqual(["Ann"]);
+      expect(links[0]).toHaveAttribute("href", "/stats/players/1");
+    }
+    expect(rowOf("Regular")).toHaveTextContent("No one yet.");
+    expect(within(rowOf("Regular") as HTMLElement).queryByRole("link")).toBeNull();
+  });
+
+  it("theCardIsEmptyWithNoGames", () => {
+    render(
+      <RecordsTab stats={buildStats(sampleData(), { players: new Set([7]), cpu: false })} now={SAMPLE_NOW} timeZone={TZ} />
+    );
+    expect(card("trophy-holders")).toHaveTextContent(NO_GAMES);
+    expect(card("trophy-holders").querySelector("table")).toBeNull();
   });
 });
