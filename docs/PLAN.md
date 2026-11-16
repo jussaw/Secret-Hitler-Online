@@ -990,7 +990,7 @@ Issue #31, after Phases 16 and 17A, beside 17B, 18, 19 and 20: the ACTIVITY tab 
 - [x] `frontend/e2e/stats-activity.spec.ts`: ACTIVITY fits every stats size, its charts show values on hover or tap, and the browser's time zone is used
 - [x] `CLAUDE.md` and `README.md` (and `DEVELOPMENT.md` if needed) describe the tab
 - [x] Every finding of the whole-branch review is fixed
-- [ ] The pull request shows the tab before and after, on desktop and on a phone
+- [x] The pull request shows the tab before and after, on desktop and on a phone
 
 **Phase 21A acceptance**
 
