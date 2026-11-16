@@ -1,12 +1,11 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { countedGames } from "../counting";
-import { replayElo } from "../elo";
+import { DEFAULT_FILTER } from "../counting";
 import { ev } from "../game/sampleGames";
-import type { GameEvent, GameRecord, StatsData } from "../record";
+import type { GameEvent, GameRecord } from "../record";
 import { NO_GAMES } from "../StatCard";
 import { makeRecord, makeSeats } from "../testRecords";
-import type { StatsContext } from "../useStats";
+import { buildStats, type StatsContext } from "../useStats";
 import { ActivityTab } from "./ActivityTab";
 
 const NAMES = ["Ann", "Bo", "Cy", "Di", "Ed", "Flo"];
@@ -59,12 +58,7 @@ function night(): GameEvent[] {
 }
 const NIGHTS = Array.from({ length: 8 }, (_, i) => game(`n${i + 1}`, `2026-11-0${i + 1}T20:00:00Z`, 30, [1, 2, 3, 4, 5], night()));
 
-function stats(games: GameRecord[]): StatsContext {
-  const data: StatsData = { players: PLAYERS, games };
-  const filter = { players: null, cpu: false };
-  const counted = countedGames(games, filter);
-  return { data, filter, counted, elo: replayElo(counted), names: new Map(PLAYERS.map((p) => [p.number, p.name])) };
-}
+const stats = (games: GameRecord[]): StatsContext => buildStats({ players: PLAYERS, games }, DEFAULT_FILTER);
 const tab = (games: GameRecord[]) => render(<ActivityTab stats={stats(games)} now={NOW} timeZone="UTC" />);
 const card = (slug: string) => document.querySelector<HTMLElement>(`[data-card="${slug}"]`)!;
 
