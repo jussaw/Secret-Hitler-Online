@@ -6,12 +6,10 @@
     width: 100%;
 }
 
+/* ChartFrame sets the svg's touch-action itself (pan-y). */
 .chart svg {
     display: block;
     overflow: visible;
-    /* A sideways drag scrolls nothing here, so the pointer can read the chart; a vertical one
-       still scrolls the page. */
-    touch-action: pan-y;
 }
 
 .chart-axis-text {
