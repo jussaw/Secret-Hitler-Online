@@ -1,0 +1,18 @@
+/* A player's or seat's name in the stats. A long name of wide letters wraps inside its column. */
+.player-name {
+  overflow-wrap: anywhere;
+}
+
+/* A side's or role's colour, for a name or for the word itself, on any stats page. */
+.stats-liberal {
+  color: var(--textColorLiberal);
+}
+
+.stats-fascist,
+.stats-hitler {
+  color: var(--textColorFascist);
+}
+
+.stats-hitler {
+  text-decoration: underline;
+}

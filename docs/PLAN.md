@@ -795,7 +795,7 @@ Issue #31: the stats pages' shell at `/stats`, loaded as a chunk of its own so t
 - [x] `GameToJSONConverter` and `Lobby`: every game packet, to players and spectators, carries `gameId`
 - [x] `SecretHitlerServer`: every path under `/stats` answers with the page (Javalin's single-page fallback)
 - [x] `frontend/src/stats/record.ts`: the record's types, parsed with a format check against the contract fixture, and `testRecords.ts`
-- [ ] `frontend/src/stats/format.ts` and `PlayerName.tsx`: results, lengths, local dates and times in the viewer's zone, and names coloured by role
+- [x] `frontend/src/stats/format.ts` and `PlayerName.tsx`: results, lengths, local dates and times in the viewer's zone, and names coloured by role
 - [ ] `frontend/src/stats/routes.ts`, `StatsLink.tsx` and `api.ts`: the paths, History API navigation with a working back button, and the games fetched once per visit
 - [ ] `frontend/src/main.tsx`, `statsPath.ts` and `stats/StatsApp.tsx`: the stats as their own lazy chunk, the header, and the placeholder pages; `npm run first-download`
 - [ ] `frontend/e2e/stats.ts` and `stats-shell.spec.ts`: the shared helpers and page check, every page fits every tested size, the game's first download holds no stats code, and `firefox` runs `stats-*.spec`
