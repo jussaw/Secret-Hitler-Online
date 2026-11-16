@@ -364,8 +364,7 @@ keeps credit to upstream and to the board game's creators.
   desktop, the title over a row of four equal columns in the phone-only query) and `StatsApp.css`
   (`.stats-screen`, left-aligned, `.stats-main`, at most 1100px wide, `.stats-card` and
   `.stats-card-title`, the game's card look, and `.stats-link`, a 44px target in the stacked
-  query), and placeholders for later phases to fill: `players/PlayersPage` and
-  `players/PlayerPage` (22B), each "Coming in a later update." until then. App.css still styles
+  query); PLAYERS and a player's page are `players/` (Phase 22B, below). App.css still styles
   the stats pages' `header`, `a`, `p`, `h2` and `div`, and the stats CSS sets what it needs over it.
   `rounds.ts` (Phase 16) turns a record into rounds, `rounds(record)`, which the game page draws
   and every stat phase reads instead of the raw events: one `Round` per round number in the
@@ -697,7 +696,41 @@ keeps credit to upstream and to the board game's creators.
   `computePlayersList(stats)` gives PLAYERS' rows (every player with a counted game under the
   whole filter, in the power ranking's order). `players/testStats.ts` is their test data
   (`sampleData()`, seven players and eight games, `SAMPLE_NOW`, `TZ`, `played`, `term` and
-  `withRatings`), which Phase 22B's tests reuse.
+  `withRatings`), which Phase 22B's tests reuse. PLAYERS (`/stats/players`,
+  `players/PlayersPage`, Phase 22B) is the stats filter (`FilterBar`, its changes put in the
+  address) over `PlayersList`, the Players card: a row per player with a counted game under the
+  whole filter, in `computePlayersList`'s order, with their counted games, win rate (`formatRate`:
+  a whole percent, or `— (N)` below 5 games), rounded Elo and when they last played
+  (`formatLastPlayed`: `today`, `yesterday`, `N days ago`, in local days), a provisional row
+  (`.ranked-unranked.is-provisional`) in italics at the bottom as in OVERVIEW's power ranking, in
+  `RankedTable.css`'s look with a header row, and `NO_GAMES` when the filter counts no game. In the
+  phone-only query the Last played column gives way to a `played 2 days ago` line under the name,
+  so the table fits 320px without a scroll of its own. A player's page (`/stats/players/<n>`,
+  `players/PlayerPage`) is "This player was not found." and All players (`/stats/players`) for a
+  number no player has, decided before any hook; otherwise the CPU switch on its own (`FilterBar`
+  with `showPlayers={false}`: a `players` list in the address is kept for the links out, and
+  ignored) over `PlayerView`, which draws `computePlayer`'s numbers (memoized, with `now` from the
+  page's mount): a header card with the name (an `h1`, not a link), the line `6 games since 2 Oct
+  · +1 with CPU players, not counted · last played 2 days ago` (`No counted games` with none; the
+  CPU part only while the switch is off and some CPU game was left out) and the trophies
+  (`TrophyBadge`s in a `ul` "Trophies"), then nine `StatCard`s in a grid of `repeat(auto-fill,
+  minmax(min(100%, 18em), 1fr))` (three columns on wide desktops, one on phones): Elo (the
+  rating, `#rank` or provisional, the peak and the history as one `LineChart` line, its legend
+  hidden), Win rate (overall, by role and by seats), Roles (a bar of their roles' games in the
+  Liberal, Fascist and Hitler colours, the expected Liberal share, role luck and the current and
+  longest streaks), Cards as president (hands FFF · FFL · FLL · LLL, Liberal accuracy, deep cover,
+  FFF as a Liberal), As chancellor (one of each by role, FF as a Liberal, Fascist choices), Votes &
+  powers, People (most played with, best teammate, nemesis and favourite opponent, each a name
+  link and its count), Timing (`formatAverageTime`, `—` with none) and Latest games (their 5
+  newest records of any kind: the day it ended, linking the game, their role in its colour, won,
+  lost or unfinished, the ending and a CPU tag; then `All N games ›` to GAMES filtered to them by
+  `gamesFilterSearch`, the `›` hidden from screen readers). A rate below its minimum shows `—`
+  and its count. With no counted games every card but Latest games says "No counted games yet."
+  In the stacked query People's and Latest games' rows are 44px tall, and their links 44px
+  targets. `players/playerText.ts` has the words both pages share: `formatRate`, `formatPoints`
+  (signed points: `+7%`, `−3%`, `0%`), `formatShortDate` (`2 Oct`, with the year when it is not
+  `now`'s, its month as `format.ts` writes it, `Sep` and not en-GB's `Sept`) and
+  `formatLastPlayed`, each date in the zone it is passed, the viewer's by default.
   GAMES (`/stats/games`, `src/stats/games/`) lists
   every recorded game, newest first, under a filter of its own kept in the address:
   `gamesFilter.ts` (`GamesFilter`, `NO_GAMES_FILTER`, `PER_PAGE`, `ENDING_PARAM`,
@@ -1113,7 +1146,12 @@ keeps credit to upstream and to the board game's creators.
   a table overlap (`overlappingNameLinks`) and that names in seat lists (GAMES' rows, a game's
   header, ENDINGS' games) are 44px targets; that a name in GAMES' last row opens its player's page
   (not the row's game) at its top; and that a counted game's page shows its Elo line and an
-  unfinished one's none. No `e2e/` file imports `src/constants` or anything that does
+  unfinished one's none. `stats-players.spec.ts` (Phase 22B) checks PLAYERS (with CPU games and
+  without), the busiest player's page (with at least one trophy) and an unknown player's page
+  with `checkStatsPage` at every `statsSizesFor` size against `bigStatsData()`; that a name in
+  GAMES opens its player's page at its top; that All N games opens GAMES filtered to the player,
+  every row on its first page naming them; and that the page's CPU switch adds `cpu=1` to the
+  address and counts the CPU games the header's `+N` left out. No `e2e/` file imports `src/constants` or anything that does
   (`api.ts`, `App`): it
   reads `window` when it loads, which throws in Playwright's Node process; specs build stats paths
   with `routePath`. Shared helpers are `e2e/lobby.ts`
