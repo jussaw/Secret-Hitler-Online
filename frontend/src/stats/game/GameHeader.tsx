@@ -1,7 +1,7 @@
 import { formatDuration, formatLocalDateTime, outcomeLabel, plural, sideWord } from "../format";
 import PlayerName, { roleClass } from "../PlayerName";
 import type { GameRecord } from "../record";
-import { joined } from "./text";
+import { joined, RoleWord } from "./text";
 
 /**
  * A game page's header card: the result, its first word in the winners' colour; the start, the
@@ -40,7 +40,7 @@ export function GameHeader({ record }: { record: GameRecord }): JSX.Element {
               {seat.role === "HITLER" && (
                 <>
                   {" ("}
-                  <span className={roleClass("HITLER")}>Hitler</span>
+                  <RoleWord role="HITLER" />
                   {")"}
                 </>
               )}

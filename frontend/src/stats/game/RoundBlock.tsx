@@ -1,8 +1,8 @@
 import { useId, type ReactNode } from "react";
-import PlayerName, { roleClass } from "../PlayerName";
+import PlayerName from "../PlayerName";
 import type { Card, Seat } from "../record";
 import { formatDecisionTime, type Round } from "../rounds";
-import { joined } from "./text";
+import { CARD_WORDS, joined, RoleWord } from "./text";
 import "./RoundBlock.css";
 
 /** A seat's name, plain (a round shows no roles); a seat the record does not have is `Seat <n>`. */
@@ -13,12 +13,11 @@ function Name({ seat, seats }: { seat: number; seats: Seat[] }): JSX.Element {
 
 /** A policy tile, Liberal blue or Fascist red, read by its name. */
 function Tile({ card }: { card: Card }): JSX.Element {
-  const liberal = card === "L";
   return (
     <span
-      className={`policy-tile ${liberal ? "policy-liberal" : "policy-fascist"}`}
+      className={`policy-tile ${card === "L" ? "policy-liberal" : "policy-fascist"}`}
       role="img"
-      aria-label={liberal ? "Liberal" : "Fascist"}
+      aria-label={CARD_WORDS[card]}
     />
   );
 }
@@ -52,11 +51,6 @@ function clauses(parts: ReactNode[]): ReactNode | null {
 /** Seats' names, joined by `, `, in the order given. */
 function NameList({ list, seats }: { list: number[]; seats: Seat[] }): JSX.Element {
   return <>{joined(list.map((seat) => <Name seat={seat} seats={seats} />), ", ")}</>;
-}
-
-/** A side's or role's word in its colour. */
-function RoleWord({ role, children }: { role: "LIBERAL" | "FASCIST" | "HITLER"; children: string }): JSX.Element {
-  return <span className={roleClass(role)}>{children}</span>;
 }
 
 /**
@@ -222,7 +216,7 @@ export function RoundBlock({ round, seats }: { round: Round; seats: Seat[] }): J
         what = (
           <>
             {by} investigated <Name seat={p.target} seats={seats} /> and saw{" "}
-            <RoleWord role={p.result}>{p.result === "LIBERAL" ? "Liberal" : "Fascist"}</RoleWord>
+            <RoleWord role={p.result} />
           </>
         );
         break;
@@ -231,7 +225,7 @@ export function RoundBlock({ round, seats }: { round: Round; seats: Seat[] }): J
           <>
             {by} executed <Name seat={p.target} seats={seats} />
             {p.role === "HITLER" ? ", " : ", a "}
-            <RoleWord role={p.role}>{p.role === "LIBERAL" ? "Liberal" : p.role === "FASCIST" ? "Fascist" : "Hitler"}</RoleWord>
+            <RoleWord role={p.role} />
           </>
         );
         break;
