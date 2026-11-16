@@ -730,7 +730,7 @@ Issue #31 (game stats), the first of its ten phases: the database is backed up b
 
 **Phase 13 acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, the backup and restore test passes, and the browser tests pass in all four Playwright projects
+- [x] Backend and frontend unit tests pass, the frontend builds, the backup and restore test passes, and the browser tests pass in all four Playwright projects
 - [ ] PR merged into `development`
 - [ ] The user schedules the nightly backup on the home server, with `AFTER_BACKUP` copying each backup off the host if wanted
 - [ ] The user takes one restore drill on the home server: restores a recent backup and signs in to find their account and name
