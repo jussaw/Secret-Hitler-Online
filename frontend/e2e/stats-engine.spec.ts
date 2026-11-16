@@ -1,12 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
 import { fileURLToPath } from "node:url";
-import type { StatsData } from "../src/stats/record";
 import { game, seatsOf } from "../src/stats/testGames";
 import { NARROW_PHONE } from "./layout";
 import { settle } from "./lobby";
 import { bigStatsData, checkStatsPage, statsSizesFor, stubStats } from "./stats";
 
 /** The stats engine in the browser: the filter, the CPU toggle and the tab row, at every size. */
+
+/** A `GET /api/stats/games` response (this spec imports only `./stats`, `./lobby`, `./layout` and `testGames`). */
+type StatsData = ReturnType<typeof bigStatsData>;
 
 /** The game's phone-only query (GameScreen.css), where the filter folds and the tab row scrolls. */
 const PHONE_ONLY =
