@@ -14,8 +14,11 @@ const HEAD = 16;
 /** The largest cell pitch, and the smallest that leaves room for the weekday labels. */
 const MAX_PITCH = 16;
 const WEEKDAY_PITCH = 7;
-/** The room a month's name takes, in px: a name closer than this to the last one is skipped. */
-const MONTH_ROOM = 24;
+/**
+ * The room a month's name takes, in px, with a gap after it (the widest, "May" at 11px, is about
+ * 25px): a name closer than this to the last one is skipped.
+ */
+const MONTH_ROOM = 28;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const WEEKDAY_ROWS: [number, string][] = [
   [0, "Mon"],

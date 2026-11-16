@@ -1,7 +1,7 @@
 /* ACTIVITY: four sections, each a heading over a grid of cards. A wide card takes a whole row;
    the rest take a column of at least 300px (the whole width on a phone), packed into the gaps a
-   wide card leaves in their own section. Every grid child has min-width: 0, so a long name wraps
-   inside it instead of widening the page. */
+   wide card leaves in their own section, each as tall as its own content. Every grid child has
+   min-width: 0, so a long name wraps inside it instead of widening the page. */
 .activity-tab {
     display: flex;
     flex-direction: column;
@@ -13,6 +13,7 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
     grid-auto-flow: row dense;
+    align-items: start;
     gap: 16px;
     min-width: 0;
 }
@@ -24,16 +25,6 @@
 .activity-heading,
 .activity-wide {
     grid-column: 1 / -1;
-}
-
-/* A card fills its cell, so the cards of a row are one height. */
-.activity-cell {
-    display: flex;
-    flex-direction: column;
-}
-
-.activity-cell > .stat-card {
-    flex: 1;
 }
 
 .stats-screen h2.activity-heading {

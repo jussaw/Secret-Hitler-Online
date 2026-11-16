@@ -76,8 +76,8 @@ describe("CalendarHeatmap", () => {
     const months = Array.from(container.querySelectorAll("text.month-label")).map((t) => Number(t.getAttribute("x")));
     expect(months.length).toBeGreaterThan(0);
     months.forEach((x, i) => {
-      if (i > 0) expect(x - months[i - 1]).toBeGreaterThanOrEqual(24);
-      expect(x).toBeLessThanOrEqual(288 - 24);
+      if (i > 0) expect(x - months[i - 1]).toBeGreaterThanOrEqual(28);
+      expect(x).toBeLessThanOrEqual(288 - 28);
     });
   });
 
