@@ -5,7 +5,14 @@ import { formatDuration, sideWord, viewerTimeZone } from "../format";
 import { formatPercent, formatRating, formatSigned } from "../numbers";
 import PlayerName, { roleClass } from "../PlayerName";
 import { RankedTable } from "../RankedTable";
-import { computeRecords, streakHolders, type BestPeriod, type PlayerRecords, type RecordStats } from "../records";
+import {
+  computeRecords,
+  streakHolders,
+  type BestPeriod,
+  type PlayerRecords,
+  type RecordStats,
+  type StreakKind,
+} from "../records";
 import { routePath } from "../routes";
 import { StatCard } from "../StatCard";
 import StatsLink from "../StatsLink";
@@ -58,7 +65,7 @@ function Names({ players, names }: { players: number[]; names: Map<number, strin
  */
 function StreakLines(props: {
   records: RecordStats;
-  which: "longestWin" | "longestLoss";
+  which: StreakKind;
   nouns: [string, string];
   order: (a: number, b: number) => number;
   names: Map<number, string>;

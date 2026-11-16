@@ -35,6 +35,9 @@ export interface Streak extends StreakRun {
   to: string;
 }
 
+/** Which of a player's longest streaks: their wins in a row or their losses. */
+export type StreakKind = "longestWin" | "longestLoss";
+
 /** A player's best week or month: its labels and the wins in it. */
 export interface BestPeriod extends Label {
   wins: number;
@@ -164,7 +167,7 @@ function biggestUpsetOf(counted: GameRecord[], elo: EloResult): Upset | null {
  * Every player whose longest win (or losing) streak ties the record: as long, and ending in the
  * same game, as teammates' streaks do. Ascending; none when there is no record.
  */
-export function streakHolders(records: RecordStats, which: "longestWin" | "longestLoss"): number[] {
+export function streakHolders(records: RecordStats, which: StreakKind): number[] {
   const record = records[which];
   if (record === null) return [];
   const out: number[] = [];
