@@ -49,7 +49,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 15A. Stats shell | `phase-15a-stats-shell` | done |
 | 15B. Game history | `phase-15b-game-history` | planned |
 | 16. The game page | `phase-16-game-page` | done |
-| 17A. Stats engine | `phase-17a-stats-engine` | planned |
+| 17A. Stats engine | `phase-17a-stats-engine` | in progress |
 | 17B. OVERVIEW | `phase-17b-overview` | planned |
 | 18. ROLES & CARDS | `phase-18-roles-cards` | planned |
 | 19. VOTES & POWERS | `phase-19-votes-powers` | planned |
@@ -861,7 +861,7 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-17a-stats-engine.md`](super
 
 Issue #31: the stats engine every tab reads (the counting rules, the player filter and the CPU toggle kept in the address, Elo with a handicap per player count), the shared cards, tables and charts, and the tab row with all seven tabs, each "Coming in a later update." until its phase fills it. Needs Phase 15A; runs beside Phases 15B and 16, touching none of their files.
 
-- [ ] `frontend/src/stats/counting.ts`: the filter in the address, counted games, rates with their minimum, ranks with ties, sessions, local days in any time zone
+- [x] `frontend/src/stats/counting.ts`: the filter in the address, counted games, rates with their minimum, ranks with ties, sessions, local days in any time zone
 - [ ] `frontend/src/stats/elo.ts`: Elo replayed over counted games, with the handicap per player count, provisional players and the spec's worked case
 - [ ] `frontend/src/stats/useStats.ts`: counted games, Elo and names, memoized per records and filter
 - [ ] `StatCard`, `RankedTable` and `numbers.ts`: the card look, empty states, ranked tables with "—" below the minimum
