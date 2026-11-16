@@ -1,10 +1,11 @@
+import { ev } from "./game/sampleGames";
 import type { GameEvent, GameRecord, Role, Side } from "./record";
 import { game, seatsOf } from "./testGames";
 
 /**
  * Builders for RIVALS' and ENDINGS' tests (never imported by the page): ten named players, games
- * of chosen seats and sides, and a run of nominations. It imports only `record.ts` and
- * `testGames.ts`.
+ * of chosen seats and sides, and a round's nomination. It imports only `record.ts`,
+ * `testGames.ts` and `game/sampleGames.ts`.
  */
 
 /** Players 1 to 10, in alphabetical order. */
@@ -57,4 +58,17 @@ export function together(x: number, y: number, side: Side, won: boolean): GameRe
 /** `winner` a Liberal and `loser` a Fascist, beside two CPU Liberals and a CPU Hitler; Liberals win. */
 export function beats(winner: number, loser: number): GameRecord {
   return played([[winner, "LIBERAL"], [loser, "FASCIST"], [null, "LIBERAL"], [null, "LIBERAL"], [null, "HITLER"]], "LIBERAL");
+}
+
+/**
+ * Round `r`'s nomination of the seat `chancellor` by the seat `president`, at `r` minutes: voted
+ * in 3–2 when `passed`, else voted down 1–4 with the tracker moving to 1.
+ */
+export function nominated(r: number, president: number, chancellor: number, passed: boolean): GameEvent[] {
+  const t = r * 60_000;
+  return [
+    ev.nominate(r, t, president, chancellor),
+    passed ? ev.election(r, t, true, 3, 2) : ev.election(r, t, false, 1, 4),
+    ...(passed ? [] : [ev.tracker(r, t, 1)]),
+  ];
 }

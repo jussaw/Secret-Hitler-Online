@@ -1,12 +1,15 @@
 import { compareNames, humanSeats, MIN_GAMES, nameOf } from "./counting";
 import { sideOf, type GameRecord } from "./record";
+import { rounds } from "./rounds";
 
 /**
  * RIVALS (the spec's "RIVALS"): who wins with and against whom. Every pair of people who shared a
  * counted game, their games on the same side and on opposite sides, the best duos and the closest
  * and most lopsided rivalries. People are human seats, by player number: a CPU seat is never
- * paired, though its game still counts for the humans in it. Pure: it reads only its arguments,
- * and gives the same result for the games in any order.
+ * paired, though its game still counts for the humans in it. Also each player's people (who they
+ * play with most, their best teammate, nemesis and favourite opponent, and their record against
+ * everyone they met on opposite sides) and who nominated whom, from `rounds`. Pure: it reads only
+ * its arguments, and gives the same result for the games in any order.
  *
  * This module imports nothing that reads the browser, so the browser tests can use it.
  */
@@ -34,6 +37,20 @@ export interface Rivalry {
   closeness: number;
 }
 
+/** One player's people: Phase 22's player page reads these. */
+export interface PlayerRivals {
+  /** Everyone the player met on opposite sides, by name: their games so, and the player's wins and losses. */
+  opponents: Map<number, { games: number; wins: number; losses: number }>;
+  /** The most counted games together, on either side (`games`: shared); ties by name. */
+  mostPlayedWith: { player: number; games: number } | null;
+  /** The best win rate on the same side over 5 or more games so (`games`: together). */
+  bestTeammate: { player: number; wins: number; games: number } | null;
+  /** The most losses to one opponent, at least 1 (`games`: shared); ties by more shared, then name. */
+  nemesis: { player: number; losses: number; games: number } | null;
+  /** The most wins against one opponent, at least 1 (`games`: shared); the same ties. */
+  favouriteOpponent: { player: number; wins: number; games: number } | null;
+}
+
 export interface RivalStats {
   /** Everyone in a counted game, by name. */
   players: number[];
@@ -46,6 +63,13 @@ export interface RivalStats {
   /** Of pairs with 5 or more games on opposite sides, the most even and the most one-sided. */
   closest: Rivalry | null;
   mostLopsided: Rivalry | null;
+  /**
+   * How often each president nominated each chancellor, both human, passed or not: president to
+   * chancellor to count, by name, with no zeros.
+   */
+  nominations: Map<number, Map<number, number>>;
+  /** Every one of `players`' people. */
+  byPlayer: Map<number, PlayerRivals>;
 }
 
 /** The key of the pair of `x` and `y`: `"<smaller>-<larger>"`. */
@@ -148,7 +172,8 @@ export function computeRivals(counted: GameRecord[], names: Map<number, string>)
 
   const bestDuo = first(
     list.filter((p) => p.together >= MIN_GAMES),
-    (p, q) => higherShare(p.togetherWins, p.together, q.togetherWins, q.together) || q.together - p.together || byPairName(p, q)
+    (p, q) =>
+      higherShare(p.togetherWins, p.together, q.togetherWins, q.together) || q.together - p.together || byPairName(p, q)
   );
   const bestFascistDuo = first(
     list.filter((p) => p.fascistTogether >= MIN_GAMES),
@@ -173,5 +198,78 @@ export function computeRivals(counted: GameRecord[], names: Map<number, string>)
   const closest = rivalry(first(rivals, (p, q) => closer(p, q) || q.opposed - p.opposed || byPairName(p, q)));
   const mostLopsided = rivalry(first(rivals, (p, q) => closer(q, p) || q.opposed - p.opposed || byPairName(p, q)));
 
-  return { players, pairs, bestDuo, bestFascistDuo, closest, mostLopsided };
+  const byPlayer = new Map<number, PlayerRivals>();
+  for (const player of players) {
+    /** The player's pairs, each with the other player and the player's wins and losses against them. */
+    const met = list
+      .filter((p) => p.a === player || p.b === player)
+      .map((pair) => {
+        const other = pair.a === player ? pair.b : pair.a;
+        const wins = pair.a === player ? pair.aWins : pair.opposed - pair.aWins;
+        return { pair, other, wins, losses: pair.opposed - wins };
+      })
+      .sort((x, y) => byName(x.other, y.other));
+    type Met = (typeof met)[number];
+    const most = (count: (m: Met) => number) =>
+      first(
+        met.filter((m) => count(m) > 0),
+        (x, y) => count(y) - count(x) || y.pair.shared - x.pair.shared || byName(x.other, y.other)
+      );
+
+    const opponents = new Map<number, { games: number; wins: number; losses: number }>();
+    for (const m of met) {
+      if (m.pair.opposed > 0) opponents.set(m.other, { games: m.pair.opposed, wins: m.wins, losses: m.losses });
+    }
+    const mostPlayed = first(met, (x, y) => y.pair.shared - x.pair.shared || byName(x.other, y.other));
+    const teammate = first(
+      met.filter((m) => m.pair.together >= MIN_GAMES),
+      (x, y) =>
+        higherShare(x.pair.togetherWins, x.pair.together, y.pair.togetherWins, y.pair.together) ||
+        y.pair.together - x.pair.together ||
+        byName(x.other, y.other)
+    );
+    const nemesis = most((m) => m.losses);
+    const favourite = most((m) => m.wins);
+    byPlayer.set(player, {
+      opponents,
+      mostPlayedWith: mostPlayed && { player: mostPlayed.other, games: mostPlayed.pair.shared },
+      bestTeammate: teammate && { player: teammate.other, wins: teammate.pair.togetherWins, games: teammate.pair.together },
+      nemesis: nemesis && { player: nemesis.other, losses: nemesis.losses, games: nemesis.pair.shared },
+      favouriteOpponent: favourite && { player: favourite.other, wins: favourite.wins, games: favourite.pair.shared },
+    });
+  }
+
+  const nominations = nominationsOf(counted, byName);
+  return { players, pairs, bestDuo, bestFascistDuo, closest, mostLopsided, nominations, byPlayer };
+}
+
+/**
+ * Every round's nomination in the counted games whose president and chancellor are both human,
+ * passed or not: president to chancellor to count, both by `byName`.
+ */
+function nominationsOf(counted: GameRecord[], byName: (x: number, y: number) => number): Map<number, Map<number, number>> {
+  const counts = new Map<number, Map<number, number>>();
+  for (const record of counted) {
+    const playerAt = (seat: number | null) => {
+      const s = seat === null ? undefined : record.seats[seat];
+      return s && !s.cpu && s.player !== null ? s.player : null;
+    };
+    for (const round of rounds(record)) {
+      const president = playerAt(round.president);
+      const chancellor = playerAt(round.chancellor);
+      if (president === null || chancellor === null || president === chancellor) continue;
+      let row = counts.get(president);
+      if (!row) {
+        row = new Map();
+        counts.set(president, row);
+      }
+      row.set(chancellor, (row.get(chancellor) ?? 0) + 1);
+    }
+  }
+  const sorted = new Map<number, Map<number, number>>();
+  for (const president of Array.from(counts.keys()).sort(byName)) {
+    const row = counts.get(president)!;
+    sorted.set(president, new Map(Array.from(row.keys()).sort(byName).map((c) => [c, row.get(c)!])));
+  }
+  return sorted;
 }

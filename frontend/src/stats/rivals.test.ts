@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { countedGames, DEFAULT_FILTER, humanSeats } from "./counting";
 import fixture from "./fixtures/recorded-games.json";
-import { parseStatsData } from "./record";
+import { parseStatsData, type Role } from "./record";
 import { against, computeRivals, pairKey, pairOf } from "./rivals";
-import { beats, NAMES, played, repeat, together } from "./testRivals";
+import { beats, NAMES, nominated, played, repeat, together } from "./testRivals";
 
 describe("pairs", () => {
   it("counts each pair's games on the same side and on opposite sides", () => {
@@ -140,6 +140,108 @@ describe("rivalries", () => {
   });
 });
 
+describe("each player's people", () => {
+  it("most played with counts games on either side, ties by name", () => {
+    const r = computeRivals(
+      [
+        ...repeat(3, () => together(1, 2, "LIBERAL", true)),
+        ...repeat(2, () => together(1, 3, "LIBERAL", true)), beats(3, 1),
+        ...repeat(2, () => together(1, 4, "FASCIST", false)),
+      ],
+      NAMES
+    );
+    expect(r.byPlayer.get(1)!.mostPlayedWith).toEqual({ player: 2, games: 3 }); // Bo before Cy
+    expect(r.byPlayer.get(4)!.mostPlayedWith).toEqual({ player: 1, games: 2 });
+  });
+
+  it("the best teammate needs 5 games together", () => {
+    const r = computeRivals(
+      [
+        ...repeat(3, () => together(1, 2, "LIBERAL", true)), ...repeat(2, () => together(1, 2, "LIBERAL", false)),
+        ...repeat(4, () => together(1, 3, "FASCIST", true)), together(1, 3, "LIBERAL", false),
+        ...repeat(4, () => together(1, 4, "LIBERAL", true)),
+      ],
+      NAMES
+    );
+    expect(r.byPlayer.get(1)!.bestTeammate).toEqual({ player: 3, wins: 4, games: 5 });
+    expect(r.byPlayer.get(4)!.bestTeammate).toBeNull();
+  });
+
+  it("the nemesis has the most wins against the player; ties by more shared games, then name", () => {
+    const r = computeRivals(
+      [
+        ...repeat(2, () => beats(2, 1)), beats(1, 2), // Bo 2–1, 3 shared
+        ...repeat(2, () => beats(3, 1)), ...repeat(2, () => together(1, 3, "LIBERAL", true)), // Cy 2–0, 4 shared
+        beats(4, 1),
+      ],
+      NAMES
+    );
+    expect(r.byPlayer.get(1)!.nemesis).toEqual({ player: 3, losses: 2, games: 4 });
+    expect(r.byPlayer.get(4)!.nemesis).toBeNull();
+    expect(r.byPlayer.get(2)!.favouriteOpponent).toEqual({ player: 1, wins: 2, games: 3 });
+    expect(r.byPlayer.get(1)!.favouriteOpponent).toEqual({ player: 2, wins: 1, games: 3 });
+    expect(r.byPlayer.get(1)!.opponents).toEqual(
+      new Map([
+        [2, { games: 3, wins: 1, losses: 2 }],
+        [3, { games: 2, wins: 0, losses: 2 }],
+        [4, { games: 1, wins: 0, losses: 1 }],
+      ])
+    );
+    expect(computeRivals([beats(3, 1), beats(2, 1)], NAMES).byPlayer.get(1)!.nemesis).toEqual({
+      player: 2,
+      losses: 1,
+      games: 1,
+    });
+  });
+
+  it("the favourite opponent breaks ties by more shared games", () => {
+    const r = computeRivals(
+      [beats(1, 2), beats(1, 2), beats(1, 3), beats(1, 3), together(1, 3, "LIBERAL", false), beats(1, 4)],
+      NAMES
+    );
+    expect(r.byPlayer.get(1)!.favouriteOpponent).toEqual({ player: 3, wins: 2, games: 3 });
+  });
+
+  it("a lone player has an entry with no one in it", () => {
+    const r = computeRivals(
+      [played([[1, "LIBERAL"], [null, "LIBERAL"], [null, "LIBERAL"], [null, "FASCIST"], [null, "HITLER"]], "LIBERAL")],
+      NAMES
+    );
+    expect(r.players).toEqual([1]);
+    expect(r.pairs.size).toBe(0);
+    expect(r.nominations.size).toBe(0);
+    expect(r.byPlayer.get(1)).toEqual({
+      opponents: new Map(),
+      mostPlayedWith: null,
+      bestTeammate: null,
+      nemesis: null,
+      favouriteOpponent: null,
+    });
+  });
+});
+
+describe("who trusts whom", () => {
+  it("counts who nominated whom, human to human", () => {
+    const seats: [number | null, Role][] = [[1, "LIBERAL"], [2, "LIBERAL"], [3, "FASCIST"], [null, "LIBERAL"], [null, "HITLER"]];
+    const r = computeRivals(
+      [
+        played(seats, "LIBERAL", [
+          ...nominated(1, 0, 1, true), ...nominated(2, 1, 0, false), ...nominated(3, 2, 0, true),
+          ...nominated(4, 3, 0, true), ...nominated(5, 4, 1, false), ...nominated(6, 0, 1, false),
+        ]),
+      ],
+      NAMES
+    );
+    expect(r.nominations).toEqual(
+      new Map([
+        [1, new Map([[2, 2]])],
+        [2, new Map([[1, 1]])],
+        [3, new Map([[1, 1]])],
+      ])
+    );
+  });
+});
+
 describe("the contract fixture", () => {
   it("adds up on the contract fixture", () => {
     const data = parseStatsData(fixture);
@@ -161,5 +263,16 @@ describe("the contract fixture", () => {
     }, 0);
     expect(expected).toBeGreaterThan(0);
     expect(shared).toBe(expected);
+
+    expect(r.byPlayer.size).toBe(r.players.length);
+    let nominations = 0;
+    r.nominations.forEach((chancellors) => chancellors.forEach((n) => (nominations += n)));
+    const human = (g: (typeof counted)[number], seat: number) => g.seats[seat].player !== null && !g.seats[seat].cpu;
+    const events = counted.reduce(
+      (sum, g) => sum + g.events.filter((e) => e.type === "nominate" && human(g, e.president) && human(g, e.chancellor)).length,
+      0
+    );
+    expect(events).toBeGreaterThan(0);
+    expect(nominations).toBe(events);
   });
 });
