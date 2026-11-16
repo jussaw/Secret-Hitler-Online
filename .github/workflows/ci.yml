@@ -71,6 +71,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+      - name: Shellcheck the scripts
+        run: shellcheck devops/*.sh devops/tests/*.sh
       - uses: docker/setup-buildx-action@v4
       - uses: docker/build-push-action@v7
         with:
