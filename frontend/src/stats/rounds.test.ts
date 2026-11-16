@@ -1,0 +1,320 @@
+import { describe, expect, it } from "vitest";
+import { ev, fiveSeatGame } from "./game/sampleGames";
+import type { Card, GameEvent } from "./record";
+import { rounds } from "./rounds";
+import { makeRecord } from "./testRecords";
+
+// fiveSeatGame's seats: P1, P2, P3 (Fascist), P4 (Hitler) and the CPU Bot 1.
+const [A, B, C, D, BOT] = [0, 1, 2, 3, 4];
+
+const PASSED_TERM = fiveSeatGame([
+  ev.nominate(1, 4_000, A, B),
+  ev.vote(1, 5_000, B, true), ev.vote(1, 6_000, A, true), ev.vote(1, 6_000, BOT, false),
+  ev.vote(1, 7_000, C, true), ev.vote(1, 9_000, D, false),
+  ev.election(1, 9_000, true, 3, 2),
+  ev.draw(1, 9_000, A, "LFF"), ev.discard(1, 12_000, A, 1, "F"),
+  ev.enact(1, 15_000, "L", "chancellor", B, 1, 0),
+  ev.endTerm(1, 18_000, A, "president"),
+]);
+
+/** A passed election from `t`: the nomination, five votes, three Ja. */
+function passed(r: number, t: number, president: number, chancellor: number): GameEvent[] {
+  return [
+    ev.nominate(r, t, president, chancellor),
+    ...[A, B, C, D, BOT].map((seat, i) => ev.vote(r, t + 1_000 + i * 100, seat, i < 3)),
+    ev.election(r, t + 2_000, true, 3, 2),
+  ];
+}
+
+/** A failed election from `t`, the tracker moving to `tracker`. */
+function failed(r: number, t: number, president: number, chancellor: number, tracker: number): GameEvent[] {
+  return [
+    ev.nominate(r, t, president, chancellor),
+    ...[A, B, C, D, BOT].map((seat, i) => ev.vote(r, t + 1_000 + i * 100, seat, i < 2)),
+    ev.election(r, t + 2_000, false, 2, 3),
+    ev.tracker(r, t + 2_000, tracker),
+  ];
+}
+
+/**
+ * A whole passed term from `t`: `hand` drawn, the card at `index` discarded, `policy` enacted by
+ * the chancellor (the board after it `board`), then `extra` and the president's END TERM.
+ */
+function term(
+  r: number,
+  t: number,
+  president: number,
+  chancellor: number,
+  hand: string,
+  index: number,
+  policy: Card,
+  board: [number, number],
+  extra: GameEvent[] = []
+): GameEvent[] {
+  return [
+    ...passed(r, t, president, chancellor),
+    ev.draw(r, t + 2_000, president, hand),
+    ev.discard(r, t + 5_000, president, index, hand[index] as Card),
+    ev.enact(r, t + 8_000, policy, "chancellor", chancellor, board[0], board[1]),
+    ...extra,
+    ev.endTerm(r, t + 20_000, president, "president"),
+  ];
+}
+
+describe("rounds", () => {
+  it("reads a passed election's term", () => {
+    expect(rounds(PASSED_TERM)).toHaveLength(1);
+    expect(rounds(PASSED_TERM)[0]).toMatchObject({
+      r: 1, president: A, chancellor: B,
+      votes: [{ seat: B, ja: true }, { seat: A, ja: true }, { seat: BOT, ja: false },
+        { seat: C, ja: true }, { seat: D, ja: false }],
+      election: { passed: true, ja: 3, nein: 2 }, trackerAfter: null,
+      hand: ["L", "F", "F"], discard: { index: 1, card: "F" }, chancellorHand: ["L", "F"],
+      veto: null, enacted: { policy: "L", by: "chancellor" }, power: null,
+      endTerm: { by: "president" }, pauses: 0, reshuffled: false, disconnects: [],
+    });
+  });
+
+  it("a failed election moves the tracker and the countdown ends the term", () => {
+    const [round] = rounds(
+      fiveSeatGame([
+        ...failed(1, 4_000, A, B, 1),
+        ev.timerPause(1, 8_000, A), ev.timerResume(1, 10_000, A), ev.timerPause(1, 11_000, A),
+        ev.endTerm(1, 21_000, A, "countdown"),
+      ])
+    );
+    expect(round).toMatchObject({
+      election: { passed: false, ja: 2, nein: 3 }, trackerAfter: 1, hand: null, enacted: null,
+      endTerm: { by: "countdown" }, pauses: 2,
+    });
+  });
+
+  it("chaos belongs to the failed election's round", () => {
+    const rs = rounds(
+      fiveSeatGame([
+        ...failed(1, 4_000, A, B, 1), ev.endTerm(1, 10_000, A, "president"),
+        ...failed(2, 14_000, B, C, 2), ev.endTerm(2, 20_000, B, "president"),
+        ...failed(3, 24_000, C, D, 3),
+        ev.enact(3, 26_000, "F", "chaos", undefined, 0, 1),
+        ev.reshuffle(3, 26_000, 14),
+        ev.endTerm(3, 30_000, C, "president"),
+        ...passed(4, 34_000, D, A),
+      ])
+    );
+    expect(rs.map((x) => x.r)).toEqual([1, 2, 3, 4]);
+    expect(rs[2]).toMatchObject({
+      trackerAfter: 3, enacted: { policy: "F", by: "chaos" }, reshuffled: true, chancellor: D,
+    });
+    expect(rs[3].enacted).toBeNull();
+  });
+
+  it("a refused veto, then the chancellor's enact", () => {
+    const [round] = rounds(
+      fiveSeatGame([
+        ...passed(1, 4_000, A, B),
+        ev.draw(1, 6_000, A, "LFF"), ev.discard(1, 8_000, A, 0, "L"),
+        ev.veto(1, 10_000, B), ev.vetoAnswer(1, 13_000, A, false),
+        ev.enact(1, 16_000, "F", "chancellor", B, 0, 6),
+      ])
+    );
+    expect(round).toMatchObject({
+      chancellorHand: ["F", "F"], veto: { accepted: false }, enacted: { policy: "F", by: "chancellor" },
+    });
+  });
+
+  it("an accepted veto moves the tracker", () => {
+    const vetoed = (after: GameEvent[]) =>
+      rounds(
+        fiveSeatGame([
+          ...passed(1, 4_000, A, B),
+          ev.draw(1, 6_000, A, "LFF"), ev.discard(1, 8_000, A, 0, "L"),
+          ev.veto(1, 10_000, B), ev.vetoAnswer(1, 13_000, A, true),
+          ...after,
+        ])
+      )[0];
+    expect(vetoed([ev.tracker(1, 13_000, 2), ev.endTerm(1, 16_000, A, "president")])).toMatchObject({
+      veto: { accepted: true }, trackerAfter: 2, enacted: null,
+    });
+    expect(
+      vetoed([
+        ev.tracker(1, 13_000, 3),
+        ev.enact(1, 13_000, "F", "chaos", undefined, 1, 5),
+        ev.endTerm(1, 16_000, A, "president"),
+      ])
+    ).toMatchObject({ veto: { accepted: true }, trackerAfter: 3, enacted: { policy: "F", by: "chaos" } });
+  });
+
+  it("reads each power", () => {
+    const rs = rounds(
+      fiveSeatGame([
+        ...term(1, 0, A, B, "FFF", 0, "F", [0, 1], [ev.peek(1, 12_000, A, "FLF")]),
+        ...term(2, 30_000, B, C, "FFL", 2, "F", [0, 2], [ev.investigate(2, 42_000, B, C, "FASCIST")]),
+        ...term(3, 60_000, C, D, "FFL", 2, "F", [0, 3], [ev.execute(3, 72_000, C, B, "LIBERAL")]),
+        ...term(4, 90_000, D, A, "FFL", 2, "F", [0, 4], [ev.specialElection(4, 102_000, D, A)]),
+      ])
+    );
+    expect(rs.map((x) => x.power)).toEqual([
+      { kind: "peek", seat: A, cards: ["F", "L", "F"] },
+      { kind: "investigate", seat: B, target: C, result: "FASCIST" },
+      { kind: "execute", seat: C, target: B, role: "LIBERAL" },
+      { kind: "specialElection", seat: D, target: A },
+    ]);
+  });
+
+  it("keeps every drop and the reshuffle", () => {
+    const rs = rounds(
+      fiveSeatGame([
+        ...passed(1, 4_000, A, B),
+        ev.disconnect(1, 7_000, C), ev.disconnect(1, 8_000, A), ev.reconnect(1, 9_000, A),
+        ev.disconnect(1, 10_000, C),
+        ev.draw(1, 11_000, A, "LFF"), ev.discard(1, 12_000, A, 1, "F"),
+        ev.enact(1, 15_000, "L", "chancellor", B, 1, 0),
+        ev.reshuffle(1, 15_000, 15),
+        ev.endTerm(1, 18_000, A, "president"),
+      ])
+    );
+    expect(rs[0]).toMatchObject({ disconnects: [C, A, C], reshuffled: true });
+    expect(rounds(PASSED_TERM)[0].reshuffled).toBe(false);
+  });
+
+  it("two equal cards", () => {
+    for (const index of [0, 1]) {
+      const [round] = rounds(
+        fiveSeatGame([
+          ...passed(1, 4_000, A, B),
+          ev.draw(1, 6_000, A, "FFL"), ev.discard(1, 8_000, A, index, "F"),
+          ev.enact(1, 12_000, "L", "chancellor", B, 1, 0),
+        ])
+      );
+      expect(round.chancellorHand, `discard index ${index}`).toEqual(["F", "L"]);
+    }
+  });
+
+  it("Hitler elected ends the round at its election", () => {
+    const [round] = rounds(
+      fiveSeatGame([...passed(1, 4_000, A, D), ev.end(1, 7_000, "HITLER_ELECTED")], {
+        outcome: "HITLER_ELECTED", winner: "FASCIST",
+      })
+    );
+    expect(round).toMatchObject({
+      president: A, chancellor: D, election: { passed: true }, hand: null, enacted: null, endTerm: null,
+    });
+  });
+
+  it("an unfinished round stops where the lobby closed", () => {
+    const unfinished = (events: GameEvent[]) =>
+      rounds(fiveSeatGame(events, { outcome: "UNFINISHED", winner: null }))[0];
+    expect(
+      unfinished([...passed(1, 4_000, A, B), ev.draw(1, 6_000, A, "LFF"), ev.end(1, 600_000, "UNFINISHED")])
+    ).toMatchObject({
+      hand: ["L", "F", "F"], discard: null, chancellorHand: null, enacted: null, endTerm: null,
+    });
+    expect(
+      unfinished([
+        ...passed(1, 4_000, A, B),
+        ev.draw(1, 6_000, A, "LFF"), ev.discard(1, 8_000, A, 0, "L"), ev.veto(1, 10_000, B),
+        ev.end(1, 600_000, "UNFINISHED"),
+      ])
+    ).toMatchObject({ veto: { accepted: null }, enacted: null });
+  });
+
+  describe("a lobby closed during a nomination", () => {
+    const closed = (events: GameEvent[]) => rounds(fiveSeatGame(events, { outcome: "UNFINISHED", winner: null }));
+
+    it("the next seat in turn would have nominated", () => {
+      const rs = closed([...term(1, 0, A, B, "LFF", 1, "L", [1, 0]), ev.end(2, 600_000, "UNFINISHED")]);
+      expect(rs).toHaveLength(2);
+      expect(rs[1]).toMatchObject({
+        r: 2, president: B, chancellor: null, votes: [], election: null, trackerAfter: null, hand: null,
+        discard: null, chancellorHand: null, veto: null, enacted: null, power: null, endTerm: null,
+        pauses: 0, reshuffled: false, disconnects: [],
+      });
+    });
+
+    it("an executed seat is skipped", () => {
+      const rs = closed([
+        ...term(1, 0, A, C, "FFL", 2, "F", [0, 4], [ev.execute(1, 12_000, A, B, "LIBERAL")]),
+        ev.end(2, 600_000, "UNFINISHED"),
+      ]);
+      expect(rs[1].president).toBe(C);
+    });
+
+    it("a special election names the next president, then the turn goes back", () => {
+      const special = term(1, 0, A, C, "FFL", 2, "F", [0, 3], [ev.specialElection(1, 12_000, A, D)]);
+      expect(closed([...special, ev.end(2, 600_000, "UNFINISHED")])[1].president).toBe(D);
+      const rs = closed([...special, ...term(2, 30_000, D, A, "LFF", 1, "L", [1, 3]), ev.end(3, 600_000, "UNFINISHED")]);
+      expect(rs.map((x) => x.president)).toEqual([A, D, B]);
+    });
+
+    it("a record holding only its end gives the first seat", () => {
+      const rs = closed([ev.end(1, 600_000, "UNFINISHED")]);
+      expect(rs).toHaveLength(1);
+      expect(rs[0]).toMatchObject({ r: 1, president: 0, chancellor: null });
+    });
+  });
+
+  it("a record that starts mid-term", () => {
+    const rs = rounds(
+      fiveSeatGame(
+        [
+          ev.restored(4, 0),
+          ev.enact(4, 3_000, "F", "chancellor", D, 1, 3),
+          ev.endTerm(4, 6_000, C, "president"),
+          ev.nominate(5, 9_000, D, A),
+        ],
+        { complete: false, outcome: "UNFINISHED", winner: null }
+      )
+    );
+    expect(rs.map((x) => x.r)).toEqual([4, 5]);
+    expect(rs[0]).toMatchObject({
+      president: C, chancellor: D, hand: null, discard: null, chancellorHand: null,
+      enacted: { policy: "F", by: "chancellor" },
+    });
+    expect(rs[1]).toMatchObject({ president: D, chancellor: A });
+
+    expect(
+      rounds(
+        fiveSeatGame([ev.restored(3, 0), ev.end(3, 600_000, "UNFINISHED")], {
+          complete: false, outcome: "UNFINISHED", winner: null,
+        })
+      )
+    ).toEqual([]);
+  });
+
+  it("a record that starts mid-term counts the dead it does not see die", () => {
+    // Seat B died before the restore (it ends dead, and no recorded execution killed it), so the
+    // turn after A's term skips it.
+    const seats = fiveSeatGame([]).seats.map((s, i) => (i === B ? { ...s, alive: false } : s));
+    const rs = rounds(
+      fiveSeatGame([ev.restored(6, 0), ev.endTerm(6, 3_000, A, "countdown"), ev.end(7, 600_000, "UNFINISHED")], {
+        complete: false, outcome: "UNFINISHED", winner: null, seats,
+      })
+    );
+    expect(rs.map((x) => [x.r, x.president])).toEqual([
+      [6, A],
+      [7, C],
+    ]);
+  });
+
+  it("Phase 15A's builders' records", () => {
+    expect(rounds(makeRecord())).toEqual([]);
+    const rs = rounds(makeRecord({ outcome: "UNFINISHED", winner: null }));
+    expect(rs).toHaveLength(1);
+    expect(rs[0]).toMatchObject({ r: 9, president: 0, chancellor: null, votes: [], election: null });
+  });
+
+  it("never throws on an odd record", () => {
+    const odd = fiveSeatGame([
+      ev.nominate(1, 1_000, A, B),
+      ev.vote(1, 2_000, 9, true),
+      ev.election(1, 3_000, true, 1, 0),
+      ev.draw(1, 4_000, A, "LFF"),
+      ev.discard(1, 5_000, A, 5, "F"),
+      { type: "somethingNew", t: 6_000, r: 1 } as unknown as GameEvent,
+    ]);
+    let rs: ReturnType<typeof rounds> = [];
+    expect(() => (rs = rounds(odd))).not.toThrow();
+    expect(rs).toHaveLength(1);
+    expect(rs[0]).toMatchObject({ votes: [{ seat: 9, ja: true }], discard: { index: 5, card: "F" }, chancellorHand: null });
+  });
+});

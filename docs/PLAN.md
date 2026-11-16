@@ -48,7 +48,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 14B. Game records | `phase-14b-game-records` | done |
 | 15A. Stats shell | `phase-15a-stats-shell` | done |
 | 15B. Game history | `phase-15b-game-history` | planned |
-| 16. The game page | `phase-16-game-page` | planned |
+| 16. The game page | `phase-16-game-page` | in progress |
 | 17A. Stats engine | `phase-17a-stats-engine` | planned |
 | 17B. OVERVIEW | `phase-17b-overview` | planned |
 | 18. ROLES & CARDS | `phase-18-roles-cards` | planned |
@@ -837,7 +837,7 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-16-game-page.md`](superpowe
 
 Issue #31: each game's record, round by round. `rounds(record)` turns a timeline into one entry per round, with its government, votes, cards, veto, power, blame and decision times. Every stat phase after this one reads it. `/stats/games/<id>` shows a game's header and its rounds. Built after Phase 15A, beside 15B and 17A, touching none of their files.
 
-- [ ] `frontend/src/stats/rounds.ts`: one `Round` per round from a record's timeline: the government, votes, election, tracker, cards, veto, policy, power, the term's end, pauses, reshuffles and dropped connections
+- [x] `frontend/src/stats/rounds.ts`: one `Round` per round from a record's timeline: the government, votes, election, tracker, cards, veto, policy, power, the term's end, pauses, reshuffles and dropped connections
 - [ ] `rounds.ts`: blame and each decision's time, by the spec's rules
 - [ ] `rounds.test.ts`: every game in the contract fixture lines up with its final board, deaths, outcome and the president rotation
 - [ ] `frontend/src/stats/game/GameHeader.tsx` and `GamePage.tsx`: the header, the incomplete and unfinished notes, and "This game was not found"
