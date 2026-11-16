@@ -1,31 +1,6 @@
-/* RECORDS: a grid of cards, each in a column at least 300px wide (the whole width on a phone),
-   under section headings that take a whole row. Every grid child has min-width: 0, so a long
-   name wraps inside its card instead of widening the page. App.css styles every h2, p and a,
-   so these set their own sizes and margins. */
-.records-tab {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
-    align-items: start;
-    gap: 16px;
-    min-width: 0;
-}
-
-.records-tab > *,
-.records-cell {
-    min-width: 0;
-}
-
-.stats-screen h2.records-heading {
-    grid-column: 1 / -1;
-    font-family: var(--headerFont);
-    font-weight: normal;
-    font-style: normal;
-    font-size: 26px;
-    line-height: 1.2;
-    color: var(--headerTextColor);
-    margin: 4px 0 -4px;
-    overflow-wrap: anywhere;
-}
+/* RECORDS' own lines, tables and link; the grid of cards and its headings are sectionGrid.css's,
+   shared with ACTIVITY. App.css styles every p and a, so these set their own sizes and
+   margins. */
 
 /* A record's line: the holders, then " · 3 wins · Sun 4 Oct 2026 to Tue 6 Oct 2026". It wraps
    only between its parts (and inside a name too long for the card). */
@@ -122,16 +97,4 @@
 .stats-screen a.records-game-link:hover,
 .stats-screen a.records-game-link:focus-visible {
     color: var(--headerTextColor);
-}
-
-/* Phones (the game's phone-only query): less room between the cards. */
-@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
-    .records-tab {
-        gap: 8px;
-    }
-
-    .stats-screen h2.records-heading {
-        font-size: 22px;
-        margin: 4px 0 0;
-    }
 }

@@ -18,6 +18,7 @@ import { routePath } from "../routes";
 import { StatCard } from "../StatCard";
 import StatsLink from "../StatsLink";
 import type { StatsContext } from "../useStats";
+import "./sectionGrid.css";
 import "./RecordsTab.css";
 
 const WIN_NOUNS: [string, string] = ["win", "wins"];

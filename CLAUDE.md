@@ -532,7 +532,9 @@ keeps credit to upstream and to the board game's creators.
   and End too; the heatmap's up and down a day, left and right a week), cleared when it loses the
   focus. `tabs/ActivityTab.tsx` takes optional `now` (else the tab's first draw) and
   `timeZone` for its tests, memoizes both modules per counted set, and has four sections (Games,
-  When, Sessions and gaps, Timing), each a heading over a grid of cards (`div.activity-cell` with
+  When, Sessions and gaps, Timing), each a heading over a grid of cards (`tabs/sectionGrid.css`,
+  which RECORDS shares: columns at least 300px wide, the Germania One heading across the row;
+  `div.activity-cell` with
   `data-card`, `.activity-wide` across the grid, the rest packed `dense` within their section, each
   its own height): games over time with PER WEEK and PER MONTH (`button.activity-choice`,
   `aria-pressed`, 44px at every size), which redraw cumulative games and attendance too (a
@@ -630,7 +632,8 @@ keeps credit to upstream and to the board game's creators.
   (a win at 23:30 on a month's last day is that month's), and `now` is passed in.
   `tabs/RecordsTab.tsx` takes optional `now` (else the tab's first draw) and `timeZone` for its
   tests, memoizes the module per counted set and Elo, and lays out nine `StatCard`s, each in a
-  `div.records-cell` with `data-card`, in one grid of columns at least 300px wide under four
+  `div.records-cell` with `data-card`, in one grid of `tabs/sectionGrid.css`'s columns (ACTIVITY's,
+  though not packed `dense`, which could lift a card above its heading) under four
   `h2.records-heading`s (Streaks, Wins, Sessions, Ratings): the longest win and losing streaks (a
   line per first and last day naming every tied holder), current streaks (a `RankedTable`, "3
   wins" or "2 losses"), the most wins in a week and in a month (a table in `RankedTable`'s classes,
