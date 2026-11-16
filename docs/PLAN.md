@@ -940,7 +940,7 @@ Issue #31: the VOTES & POWERS tab at `/stats/votes`. It shows each player's elec
 - [x] `frontend/e2e/stats-votes.spec.ts`: the tab fits every stats size against the large stubbed response, with 44px targets on phones
 - [x] `CLAUDE.md` and `README.md` describe VOTES & POWERS
 - [x] Every finding of the whole-branch review fixed, Minor ones included
-- [ ] The pull request shows the tab before and after, on a desktop and on a phone
+- [x] The pull request shows the tab before and after, on a desktop and on a phone
 
 **Phase 19 acceptance**
 
