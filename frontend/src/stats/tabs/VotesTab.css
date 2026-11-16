@@ -39,9 +39,19 @@
     min-width: 0;
 }
 
-/* INVESTIGATIONS' value names whom they investigated, so it is a line of text that wraps inside
-   its cell, where RankedTable keeps its short values on one line. */
+/* INVESTIGATIONS' value names whom they investigated, so it is a line of text: the card takes a
+   whole row of the grid, and the value two thirds of its table, wrapping there, where RankedTable
+   keeps its short values on one line beside a name that takes the rest. */
+.votes-grid > .votes-investigations {
+    grid-column: 1 / -1;
+}
+
+.votes-investigations .ranked-name {
+    width: auto;
+}
+
 .votes-investigations .ranked-value {
+    width: 65%;
     white-space: normal;
     overflow-wrap: anywhere;
     text-align: left;
