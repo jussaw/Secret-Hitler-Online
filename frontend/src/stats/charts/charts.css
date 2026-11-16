@@ -73,12 +73,15 @@
 }
 
 /* The details of the point or part under the pointer. Its left edge slides with the point's share
-   of the plot and it moves left by as much of its own width, so it never leaves the chart. */
+   of the plot and it moves left by as much of its own width, so it never leaves the chart. Its
+   width is its text's (up to the cap), never the room left of `left`, which is none at the right
+   edge. */
 .chart-tooltip {
     position: absolute;
     z-index: 2;
     pointer-events: none;
     box-sizing: border-box;
+    width: max-content;
     max-width: min(240px, 100%);
     padding: 6px 8px;
     border-radius: 6px;

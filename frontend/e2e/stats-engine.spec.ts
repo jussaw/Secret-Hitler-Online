@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { fileURLToPath } from "node:url";
 import type { StatsData } from "../src/stats/record";
 import { game, seatsOf } from "../src/stats/testGames";
 import { NARROW_PHONE } from "./layout";
@@ -159,5 +160,32 @@ test("phones fold the filter into one line", async ({ page }) => {
     await page.setViewportSize({ width: 412, height: 915 });
     await expect(summary(page)).toBeVisible();
     await expect(page.getByRole("group", { name: "Players" })).toBeHidden();
+  }
+});
+
+/** The charts' shared stylesheet, which a chart's tooltip and marks take their look from. */
+const CHARTS_CSS = fileURLToPath(new URL("../src/stats/charts/charts.css", import.meta.url));
+
+test("a chart's tooltip keeps its width at either edge", async ({ page }) => {
+  // Review Focus 5: the rightmost point's details stay whole and inside the chart, as LineChart
+  // and StackedBarChart place them (left at the point's share, moved back by as much).
+  const tooltip = (id: string, share: number) =>
+    `<div class="chart-tooltip" id="${id}" style="left: ${share}%; top: 100px; transform: translateX(-${share}%)">` +
+    "<div>WWWWWWWWWW01</div><div>+19 \u00b7 1612</div></div>";
+  await page.setContent(
+    `<div class="chart" id="chart" style="width: 300px; height: 220px; margin: 0 10px">${tooltip("left", 0)}${tooltip(
+      "middle",
+      50
+    )}${tooltip("right", 100)}</div>`
+  );
+  await page.addStyleTag({ path: CHARTS_CSS });
+  const chart = (await page.locator("#chart").boundingBox())!;
+  for (const id of ["left", "middle", "right"]) {
+    const box = (await page.locator(`#${id}`).boundingBox())!;
+    expect(box.width, `the ${id} tooltip's width`).toBeGreaterThan(120);
+    expect(box.x, `the ${id} tooltip's left edge`).toBeGreaterThanOrEqual(chart.x - 0.5);
+    expect(box.x + box.width, `the ${id} tooltip's right edge`).toBeLessThanOrEqual(chart.x + chart.width + 0.5);
+    const lines = await page.locator(`#${id} > div`).evaluateAll((all) => all.map((line) => line.getClientRects().length));
+    expect(lines, `the ${id} tooltip's lines each on one line`).toEqual([1, 1]);
   }
 });
