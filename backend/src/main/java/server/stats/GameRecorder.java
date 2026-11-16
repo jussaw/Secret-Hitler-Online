@@ -27,8 +27,8 @@ public final class GameRecorder implements GameRecordSink {
 
     /**
      * @param store     where records are saved.
-     * @param afterSave run after each save that wrote a game, on the saving thread (the route
-     *                  empties its cache): it must not block.
+     * @param afterSave run after each save that wrote a game or found it written already, on the
+     *                  saving thread (the route empties its cache): it must not block.
      */
     public GameRecorder(GameStore store, Runnable afterSave) {
         this.store = store;
@@ -122,15 +122,17 @@ public final class GameRecorder implements GameRecordSink {
             logger.error("Could not save the record of game " + record.id() + ": it waits for the next try.", e);
             return;
         }
-        if (!wrote) {
+        if (wrote) {
+            logger.debug("Saved the record of game " + record.id() + ".");
+        } else {
+            // A retry of a save that wrote the game but reported a failure, say: the route is
+            // refreshed all the same, in case it still keeps a body without the game.
             logger.info("Game " + record.id() + " has a record already: nothing was written.");
-            return;
         }
-        logger.debug("Saved the record of game " + record.id() + ".");
         try {
             afterSave.run();
         } catch (RuntimeException e) {
-            logger.error("Saved the record of game " + record.id() + ", but what follows a save failed.", e);
+            logger.error("The record of game " + record.id() + " is saved, but what follows a save failed.", e);
         }
     }
 }

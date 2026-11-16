@@ -41,15 +41,19 @@ public class GameRecorderTest {
         assertEquals(0, recorder.waitingCount());
     }
 
+    /**
+     * A record already there (a retry of a save that wrote it but reported a failure, say) writes
+     * nothing, but still refreshes what follows a save, so the route never keeps a body without it.
+     */
     @Test
-    public void aRecordAlreadyThereCallsNoAfterSave() throws Exception {
+    public void aRecordAlreadyThereStillRefreshesTheRoute() {
         store.save(record("g1"));
         recorder.start();
         recorder.submit(record("g1"));
 
-        assertTrue(TestStore.await(() -> store.saves.get() == 2, 5_000));
-        Thread.sleep(100);
-        assertEquals(0, afterSave.get());
+        assertTrue(TestStore.await(() -> afterSave.get() == 1, 5_000));
+        assertEquals(2, store.saves.get());
+        assertEquals(List.of("g1"), store.written);
         assertEquals(0, recorder.waitingCount());
     }
 
