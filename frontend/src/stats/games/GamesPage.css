@@ -1,0 +1,442 @@
+/* GAMES (GamesPage, GameRow): the filter card, the summary line, the rows and the page links, in
+   the game's look (StatsApp.css's cards). Every grid and flex child has min-width: 0, so a
+   twelve-character name of wide letters wraps inside its column (PlayerName wraps anywhere)
+   instead of widening the page. StatsApp.css loads after this file, so a rule here that changes
+   one of its rules is the more specific. */
+
+.games-page {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.games-page > * {
+    min-width: 0;
+}
+
+/* ---- The filter ---- */
+
+.stats-card.games-filter {
+    gap: 10px;
+}
+
+/* Desktop: the players on one wrapping line, the other controls on the next. */
+.games-players,
+.games-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+}
+
+.games-players > *,
+.games-controls > * {
+    min-width: 0;
+}
+
+.stats-screen .games-controls a.games-clear {
+    align-self: center;
+}
+
+.games-field-label {
+    font-family: var(--textFont);
+    font-weight: 700;
+    font-size: 14px;
+    line-height: 1.2;
+    color: var(--textColorWhite);
+}
+
+/* From and To: the label beside its field. */
+.games-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+/* The selects and date fields, dark on the card. App.css sizes every input for the login page,
+   so these set their own size. */
+.stats-screen .games-page select,
+.stats-screen .games-page input {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+    width: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 5px 8px;
+    font-family: var(--textFont);
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 1.2;
+    color: var(--textColorWhite);
+    background-color: var(--backgroundLight);
+    border: 1px solid #6e655e;
+    border-radius: 6px;
+    color-scheme: dark;
+    outline: none;
+}
+
+.stats-screen .games-page select:focus-visible,
+.stats-screen .games-page input:focus-visible {
+    outline: 2px solid var(--headerTextColor);
+    outline-offset: 1px;
+}
+
+.stats-screen .games-page select:disabled {
+    color: var(--textColorOnDark);
+    cursor: not-allowed;
+}
+
+/* A chosen player: the lobby's grey button, smaller, with the name and an X. */
+.stats-screen button.games-chip {
+    --button-face: #6e655e;
+    --button-shadow: #4b4440;
+    --button-depth: 3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    max-width: 100%;
+    margin: 0;
+    padding: 3px 6px 3px 10px;
+    border-radius: 8px;
+    font-family: var(--textFont);
+    font-weight: 700;
+    font-size: 14px;
+    line-height: 1.2;
+    color: var(--textColorWhite);
+    text-align: left;
+}
+
+.stats-screen button.games-chip:hover,
+.stats-screen button.games-chip:focus,
+.stats-screen button.games-chip:focus-visible {
+    --button-face: #857b73;
+}
+
+.stats-screen button.games-chip:focus-visible {
+    outline: 2px solid var(--headerTextColor);
+    outline-offset: 2px;
+}
+
+.stats-screen button.games-chip:not(:disabled):active {
+    --button-face: #6e655e;
+}
+
+.games-chip .player-name {
+    min-width: 0;
+}
+
+.games-chip svg {
+    flex: none;
+}
+
+/* ---- The summary line and the page size ---- */
+
+.games-summary-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 12px;
+}
+
+.games-summary-row > * {
+    min-width: 0;
+}
+
+.stats-screen p.games-summary {
+    font-size: 14px;
+    color: var(--textColorOnDark);
+}
+
+/* ---- The rows ---- */
+
+.games-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Desktop (games.jpg): the date over the time at the left, the result over the seats, and the
+   counts at the right. The link (the date and the result) is a subgrid of the first row's two
+   columns, and its ::after covers the whole row. */
+.games-row {
+    position: relative;
+    box-sizing: border-box;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 150px) minmax(0, 1fr) auto;
+    column-gap: 16px;
+    row-gap: 2px;
+    padding: 10px 14px;
+    background-color: var(--backgroundDark);
+    border-radius: 0.6em;
+    box-shadow: 0 0.4vh 0 rgba(0, 0, 0, 0.25);
+    font-family: var(--textFont);
+    font-weight: 500;
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--textColorOnDark);
+    text-align: left;
+}
+
+.games-row > * {
+    min-width: 0;
+}
+
+.games-row:hover {
+    background-color: #42372d;
+}
+
+.stats-screen a.games-row-link {
+    grid-column: 1 / 3;
+    grid-row: 1;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: subgrid;
+    align-items: center;
+    font: inherit;
+    color: var(--textColorWhite);
+    text-decoration: none;
+    outline: none;
+}
+
+.games-row-link > * {
+    min-width: 0;
+}
+
+/* The link's area is the whole row: a press anywhere on it opens the game. */
+.games-row-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 0.6em;
+}
+
+.games-row-link:focus-visible::after {
+    outline: 2px solid var(--headerTextColor);
+    outline-offset: 2px;
+}
+
+.games-row-date {
+    grid-column: 1;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.games-row-result {
+    grid-column: 2;
+    font-weight: 700;
+    font-size: 14px;
+    overflow-wrap: anywhere;
+}
+
+/* The CPU tag: a small grey badge after the result. */
+.games-row-cpu {
+    display: inline-block;
+    padding: 0 5px;
+    border-radius: 4px;
+    background-color: #6e655e;
+    color: var(--textColorWhite);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.5;
+    vertical-align: 1px;
+}
+
+.games-row-when {
+    grid-column: 1;
+    grid-row: 2;
+    font-size: 12px;
+}
+
+/* The seats sit above the link's area, so names can be links of their own; a press between them
+   still reaches the row's link. */
+.games-row-seats {
+    grid-column: 2;
+    grid-row: 2;
+    position: relative;
+    z-index: 1;
+    pointer-events: none;
+    font-weight: 600;
+}
+
+.games-row-seats a {
+    pointer-events: auto;
+}
+
+.games-row-counts {
+    grid-column: 3;
+    grid-row: 1 / 3;
+    align-self: center;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    font-size: 12px;
+    text-align: right;
+    white-space: nowrap;
+}
+
+/* ---- The page links ---- */
+
+.games-pages {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 2px 4px;
+    font-family: var(--textFont);
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--textColorOnDark);
+}
+
+.games-pages > * {
+    box-sizing: border-box;
+    min-width: 0;
+    padding: 4px 6px;
+}
+
+.stats-screen .games-pages a {
+    font: inherit;
+    color: var(--buttonHoverFill);
+    text-decoration: none;
+}
+
+.stats-screen .games-pages a:hover,
+.stats-screen .games-pages a:focus-visible {
+    color: var(--headerTextColor);
+    text-decoration: underline;
+}
+
+.games-pages [aria-current="page"] {
+    color: var(--headerTextColor);
+    text-decoration: underline;
+    text-underline-offset: 0.3em;
+}
+
+.games-pages [aria-disabled="true"] {
+    color: #857b73;
+}
+
+/* Touch sizes follow the game's stacked query: every control a 44px target, every field and select
+   16px text. */
+@media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
+    .stats-screen .games-page select,
+    .stats-screen .games-page input {
+        min-height: 44px;
+        font-size: 16px;
+    }
+
+    .stats-screen button.games-chip {
+        min-height: calc(44px + var(--button-depth));
+        min-width: 44px;
+        font-size: 16px;
+    }
+
+    .stats-screen a.games-row-link {
+        min-height: 44px;
+    }
+
+    .games-pages > * {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        min-width: 44px;
+    }
+}
+
+/* Phones (the game's phone-only query): the controls in two equal columns, with the labels over
+   their fields, and each row in one column: the date, the time, the result, the seats, then the
+   counts on one line. The link spans the first three rows as a subgrid, so the time, outside it,
+   sits between its date and its result. */
+@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
+    .games-controls {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: end;
+        gap: 8px;
+    }
+
+    .games-field {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 2px;
+    }
+
+    .stats-screen .games-controls select,
+    .stats-screen .games-controls input,
+    .stats-screen .games-players select {
+        width: 100%;
+    }
+
+    .games-players select {
+        flex: 1 1 100%;
+    }
+
+    /* The CPU select's longest choice and Clear filters each take the whole width. */
+    .games-controls .games-cpu,
+    .games-controls .games-clear {
+        grid-column: 1 / -1;
+    }
+
+    .games-row {
+        grid-template-columns: minmax(0, 1fr);
+        padding: 8px 12px;
+    }
+
+    .stats-screen a.games-row-link {
+        grid-column: 1;
+        grid-row: 1 / 4;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: subgrid;
+        align-items: start;
+    }
+
+    .games-row-date {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    .games-row-result {
+        grid-column: 1;
+        grid-row: 3;
+    }
+
+    .games-row-when {
+        grid-column: 1;
+        grid-row: 2;
+    }
+
+    .games-row-seats {
+        grid-column: 1;
+        grid-row: 4;
+    }
+
+    .games-row-counts {
+        grid-column: 1;
+        grid-row: 5;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: baseline;
+        text-align: left;
+    }
+
+    .games-row-counts > span + span::before {
+        content: "\00a0·\00a0";
+    }
+}
+
+/* Below 360px wide, From and To each take the whole width. */
+@media (max-width: 359px) {
+    .games-date {
+        grid-column: 1 / -1;
+    }
+}

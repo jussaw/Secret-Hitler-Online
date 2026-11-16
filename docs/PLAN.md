@@ -817,7 +817,7 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-15b-game-history.md`](super
 Issue #31: GAMES at `/stats/games`, every recorded game, newest first, with its own filter in the address, 20, 50 or 100 to a page; and the links in, from the login page's and the lobby's footers and the victory screen's "See this game". Needs Phase 15A; built beside Phases 16 and 17A, touching none of their files.
 
 - [x] `frontend/src/stats/games/gamesFilter.ts` and `pages.ts`: GAMES' filter read from and written to the address, any other value read as the default, local days both inclusive, and the page links
-- [ ] `frontend/src/stats/games/GameRow.tsx` and `GamesPage.tsx`: GAMES as in `games.jpg`, one link stretched over each row, filling 15A's placeholder
+- [x] `frontend/src/stats/games/GameRow.tsx` and `GamesPage.tsx`: GAMES as in `games.jpg`, one link stretched over each row, filling 15A's placeholder
 - [ ] The links in: Stats in the login page's and the lobby's footers, See this game on the victory screen
 - [ ] `frontend/e2e/stats-games.spec.ts`: GAMES fits every tested size, names stay in their columns at 320px, filters and pages go through the address, and a real game shows up in GAMES and its victory link opens it
 - [ ] `CLAUDE.md`, `README.md` and `DEVELOPMENT.md` describe GAMES and the links in; the pull request shows the footers, the victory screen and GAMES before and after
