@@ -1,5 +1,6 @@
 import { compareByEnd, MIN_GAMES, rate, type Rate } from "./counting";
 import { ELO_PRIOR } from "./elo";
+import { firstBy } from "./pick";
 import type { GameRecord, Outcome } from "./record";
 import { rounds, type Round } from "./rounds";
 
@@ -125,8 +126,8 @@ function isFinished(outcome: Outcome): outcome is FinishedOutcome {
   return (FINISHED_OUTCOMES as readonly string[]).includes(outcome);
 }
 
-/** A game's length, from its start to its end. */
-function lengthMs(record: GameRecord): number {
+/** A game's length, from its start to its end (wrong for a game not recorded from its start). */
+export function gameLength(record: GameRecord): number {
   return record.endedAt - record.startedAt;
 }
 
@@ -134,16 +135,9 @@ function lengthMs(record: GameRecord): number {
 function lengthOf(games: GameRecord[]): LengthStats {
   const complete = games.filter((record) => record.complete);
   if (complete.length === 0) return { games: 0, averageMs: null, averageRounds: null };
-  const ms = complete.reduce((sum, record) => sum + lengthMs(record), 0);
+  const ms = complete.reduce((sum, record) => sum + gameLength(record), 0);
   const rounds = complete.reduce((sum, record) => sum + record.rounds, 0);
   return { games: complete.length, averageMs: ms / complete.length, averageRounds: rounds / complete.length };
-}
-
-/** The first of `items` by `compare` (negative: the first argument comes first), or null. */
-function first<T>(items: T[], compare: (x: T, y: T) => number): T | null {
-  let found: T | null = null;
-  for (const item of items) if (found === null || compare(item, found) < 0) found = item;
-  return found;
 }
 
 /** How the counted games ended and how long they lasted. */
@@ -178,8 +172,14 @@ export function computeEndings(counted: GameRecord[]): EndingStats {
     });
 
   const complete = finished.filter((record) => record.complete);
-  const fastestWin = first(complete, (x, y) => lengthMs(x) - lengthMs(y) || x.rounds - y.rounds || compareByEnd(x, y));
-  const longestGame = first(complete, (x, y) => lengthMs(y) - lengthMs(x) || y.rounds - x.rounds || compareByEnd(x, y));
+  const fastestWin = firstBy(
+    complete,
+    (x, y) => gameLength(x) - gameLength(y) || x.rounds - y.rounds || compareByEnd(x, y)
+  );
+  const longestGame = firstBy(
+    complete,
+    (x, y) => gameLength(y) - gameLength(x) || y.rounds - x.rounds || compareByEnd(x, y)
+  );
 
   const newestFirst = (x: GameRecord, y: GameRecord) => compareByEnd(y, x);
   const closestFinishes = finished.filter(isClosestFinish).sort(newestFirst);
@@ -188,7 +188,7 @@ export function computeEndings(counted: GameRecord[]): EndingStats {
   const timelines = finished.map((game) => ({ game, rounds: rounds(game) }));
   /** The game with the most rounds that `counts`, above 0; ties to the earlier game. */
   const most = (counts: (round: Round) => boolean): GameCount | null =>
-    first(
+    firstBy(
       timelines.map(({ game, rounds }) => ({ game, count: rounds.filter(counts).length })).filter((c) => c.count > 0),
       (x, y) => y.count - x.count || compareByEnd(x.game, y.game)
     );

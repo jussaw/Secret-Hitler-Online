@@ -1,4 +1,5 @@
 import { compareNames, humanSeats, MIN_GAMES, nameOf } from "./counting";
+import { firstBy } from "./pick";
 import { sideOf, type GameRecord } from "./record";
 import { rounds } from "./rounds";
 
@@ -82,20 +83,27 @@ export function pairOf(stats: RivalStats, x: number, y: number): Pair | undefine
   return stats.pairs.get(pairKey(x, y));
 }
 
-/** `player`'s wins and losses against `opponent`, in their games on opposite sides. */
-export function against(stats: RivalStats, player: number, opponent: number): { wins: number; losses: number } {
-  const pair = player === opponent ? undefined : pairOf(stats, player, opponent);
-  if (!pair) return { wins: 0, losses: 0 };
+/** `player`'s wins and losses in the pair's games on opposite sides (`player` is `a` or `b`). */
+export function pairRecord(pair: Pair, player: number): { wins: number; losses: number } {
   const aWins = pair.aWins;
   const bWins = pair.opposed - pair.aWins;
   return player === pair.a ? { wins: aWins, losses: bWins } : { wins: bWins, losses: aWins };
 }
 
-/** The first of `items` by `compare` (negative: the first argument comes first), or null. */
-function first<T>(items: T[], compare: (x: T, y: T) => number): T | null {
-  let found: T | null = null;
-  for (const item of items) if (found === null || compare(item, found) < 0) found = item;
-  return found;
+/** `player`'s wins and losses against `opponent`, in their games on opposite sides. */
+export function against(stats: RivalStats, player: number, opponent: number): { wins: number; losses: number } {
+  const pair = player === opponent ? undefined : pairOf(stats, player, opponent);
+  return pair ? pairRecord(pair, player) : { wins: 0, losses: 0 };
+}
+
+/** Two players by their names in `names`, alphabetically, then by number: negative when `x` comes first. */
+function byNameIn(names: Map<number, string>): (x: number, y: number) => number {
+  return (x, y) => compareNames(nameOf(names, x), nameOf(names, y)) || x - y;
+}
+
+/** The pair's two players in the order of their names in `names` (current names). */
+export function namesInOrder(pair: Pair, names: Map<number, string>): [number, number] {
+  return byNameIn(names)(pair.a, pair.b) <= 0 ? [pair.a, pair.b] : [pair.b, pair.a];
 }
 
 /**
@@ -113,8 +121,7 @@ function closenessOf(pair: Pair): { over: number; under: number } {
 
 /** The pairs and picks of the counted games, with names from `names` (current names). */
 export function computeRivals(counted: GameRecord[], names: Map<number, string>): RivalStats {
-  const name = (player: number) => nameOf(names, player);
-  const byName = (x: number, y: number) => compareNames(name(x), name(y)) || x - y;
+  const byName = byNameIn(names);
 
   // Counted games are always won; a game nobody won (unfinished) would give one side a win.
   const decided = counted.filter((record) => record.winner !== null);
@@ -162,22 +169,20 @@ export function computeRivals(counted: GameRecord[], names: Map<number, string>)
   }
 
   const players = Array.from(people).sort(byName);
-  /** A pair's two names, in alphabetical order. */
-  const namesOf = (pair: Pair) => (byName(pair.a, pair.b) <= 0 ? [pair.a, pair.b] : [pair.b, pair.a]);
   const byPairName = (p: Pair, q: Pair) => {
-    const [p1, p2] = namesOf(p);
-    const [q1, q2] = namesOf(q);
+    const [p1, p2] = namesInOrder(p, names);
+    const [q1, q2] = namesInOrder(q, names);
     return byName(p1, q1) || byName(p2, q2);
   };
   const list = Array.from(found.values()).sort(byPairName);
   const pairs = new Map(list.map((pair) => [pairKey(pair.a, pair.b), pair]));
 
-  const bestDuo = first(
+  const bestDuo = firstBy(
     list.filter((p) => p.together >= MIN_GAMES),
     (p, q) =>
       higherShare(p.togetherWins, p.together, q.togetherWins, q.together) || q.together - p.together || byPairName(p, q)
   );
-  const bestFascistDuo = first(
+  const bestFascistDuo = firstBy(
     list.filter((p) => p.fascistTogether >= MIN_GAMES),
     (p, q) =>
       higherShare(p.fascistTogetherWins, p.fascistTogether, q.fascistTogetherWins, q.fascistTogether) ||
@@ -197,23 +202,19 @@ export function computeRivals(counted: GameRecord[], names: Map<number, string>)
     const { over, under } = closenessOf(pair);
     return { pair, closeness: over / under };
   };
-  const closest = rivalry(first(rivals, (p, q) => closer(p, q) || q.opposed - p.opposed || byPairName(p, q)));
-  const mostLopsided = rivalry(first(rivals, (p, q) => closer(q, p) || q.opposed - p.opposed || byPairName(p, q)));
+  const closest = rivalry(firstBy(rivals, (p, q) => closer(p, q) || q.opposed - p.opposed || byPairName(p, q)));
+  const mostLopsided = rivalry(firstBy(rivals, (p, q) => closer(q, p) || q.opposed - p.opposed || byPairName(p, q)));
 
   const byPlayer = new Map<number, PlayerRivals>();
   for (const player of players) {
     /** The player's pairs, each with the other player and the player's wins and losses against them. */
     const met = list
       .filter((p) => p.a === player || p.b === player)
-      .map((pair) => {
-        const other = pair.a === player ? pair.b : pair.a;
-        const wins = pair.a === player ? pair.aWins : pair.opposed - pair.aWins;
-        return { pair, other, wins, losses: pair.opposed - wins };
-      })
+      .map((pair) => ({ pair, other: pair.a === player ? pair.b : pair.a, ...pairRecord(pair, player) }))
       .sort((x, y) => byName(x.other, y.other));
     type Met = (typeof met)[number];
     const most = (count: (m: Met) => number) =>
-      first(
+      firstBy(
         met.filter((m) => count(m) > 0),
         (x, y) => count(y) - count(x) || y.pair.shared - x.pair.shared || byName(x.other, y.other)
       );
@@ -222,8 +223,8 @@ export function computeRivals(counted: GameRecord[], names: Map<number, string>)
     for (const m of met) {
       if (m.pair.opposed > 0) opponents.set(m.other, { games: m.pair.opposed, wins: m.wins, losses: m.losses });
     }
-    const mostPlayed = first(met, (x, y) => y.pair.shared - x.pair.shared || byName(x.other, y.other));
-    const teammate = first(
+    const mostPlayed = firstBy(met, (x, y) => y.pair.shared - x.pair.shared || byName(x.other, y.other));
+    const teammate = firstBy(
       met.filter((m) => m.pair.together >= MIN_GAMES),
       (x, y) =>
         higherShare(x.pair.togetherWins, x.pair.together, y.pair.togetherWins, y.pair.together) ||

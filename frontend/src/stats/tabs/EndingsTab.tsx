@@ -3,6 +3,7 @@ import { StackedBarChart } from "../charts/StackedBarChart";
 import {
   computeEndings,
   FINISHES_SHOWN,
+  gameLength,
   OUTCOME_COLORS,
   OUTCOME_LABELS,
   outcomeBars,
@@ -18,7 +19,9 @@ import { ScrollRegion } from "../ScrollRegion";
 import { StatCard } from "../StatCard";
 import StatsLink from "../StatsLink";
 import type { StatsContext } from "../useStats";
+import { NO_VALUE, rateText } from "./cellText";
 import "./EndingsTab.css";
+import "./PlayerMatrix.css";
 
 const NOT_FROM_START = "No game recorded from its start yet.";
 
@@ -35,7 +38,7 @@ function GameLink({ record, children }: { record: GameRecord; children: ReactNod
 function OneGame({ record }: { record: GameRecord }): JSX.Element {
   return (
     <>
-      <p className="endings-headline">{`${formatDuration(record.endedAt - record.startedAt)} · ${plural(record.rounds, "round")}`}</p>
+      <p className="endings-headline">{`${formatDuration(gameLength(record))} · ${plural(record.rounds, "round")}`}</p>
       <p className="endings-result">{outcomeLabel(record)}</p>
       <p className="endings-seats">
         {record.seats.map((seat, i) => (
@@ -45,7 +48,7 @@ function OneGame({ record }: { record: GameRecord }): JSX.Element {
           </Fragment>
         ))}
       </p>
-      <div className="endings-see">
+      <div>
         <GameLink record={record}>See this game</GameLink>
       </div>
     </>
@@ -86,8 +89,8 @@ function LengthCells({ length }: { length: LengthStats }): JSX.Element {
   return (
     <>
       <td>{length.games}</td>
-      <td>{length.averageMs === null ? "—" : formatDuration(length.averageMs)}</td>
-      <td>{length.averageRounds === null ? "—" : length.averageRounds.toFixed(1)}</td>
+      <td>{length.averageMs === null ? NO_VALUE : formatDuration(length.averageMs)}</td>
+      <td>{length.averageRounds === null ? NO_VALUE : length.averageRounds.toFixed(1)}</td>
     </>
   );
 }
@@ -124,7 +127,7 @@ export function EndingsTab({ stats }: { stats: StatsContext }): JSX.Element {
         empty={none}
       >
         <ScrollRegion label="Liberal win rate by player count table">
-          <table className="player-matrix endings-table">
+          <table className="player-matrix">
             <thead>
               <tr>
                 <th scope="col">Players</th>
@@ -140,7 +143,7 @@ export function EndingsTab({ stats }: { stats: StatsContext }): JSX.Element {
                   <th scope="row">{size.seats}</th>
                   <td>{size.games}</td>
                   <td>{size.liberalWins}</td>
-                  <td>{size.liberalRate.value === null ? "—" : formatPercent(size.liberalRate.value)}</td>
+                  <td>{rateText(size.liberalRate.value)}</td>
                   <td>{formatPercent(size.smoothedLiberalRate)}</td>
                 </tr>
               ))}
@@ -150,7 +153,7 @@ export function EndingsTab({ stats }: { stats: StatsContext }): JSX.Element {
       </StatCard>
       <StatCard title="Game length" definition="From start to end, over games recorded from their start." empty={noLength}>
         <ScrollRegion label="Game length table">
-          <table className="player-matrix endings-table">
+          <table className="player-matrix">
             <thead>
               <tr>
                 <th scope="col">Players</th>
@@ -186,7 +189,7 @@ export function EndingsTab({ stats }: { stats: StatsContext }): JSX.Element {
         className="endings-wide"
         empty={none}
       >
-        <ul className="endings-list endings-most">
+        <ul className="endings-list">
           <MostLine label="Chaos policies" most={endings.mostChaos} />
           <MostLine label="Failed elections" most={endings.mostFailedElections} />
           <MostLine label="Vetoes" most={endings.mostVetoes} />

@@ -2,17 +2,17 @@ import type { FinishedOutcome } from "./endings";
 import { ev } from "./game/sampleGames";
 import type { GameEvent, GameRecord, Side } from "./record";
 import { game, seatsOf } from "./testGames";
+import { HOUR, lastRound, T0 } from "./testRivals";
 
 /**
  * Builders for ENDINGS' tests (never imported by the page): a finished game of a chosen size,
  * outcome, length and board, and rounds of failed elections, chaos and vetoes to put in it. It
- * imports only `record.ts`, `testGames.ts`, `game/sampleGames.ts` and `endings.ts`'s types.
+ * imports only test builders (`testGames.ts`, `testRivals.ts`, `game/sampleGames.ts`), `record.ts`
+ * and `endings.ts`'s types.
  */
 
 export const MINUTE = 60_000;
 
-const T0 = Date.UTC(2026, 10, 1, 20, 0);
-const HOUR = 3_600_000;
 let made = 0;
 
 const WINNER: Record<FinishedOutcome, Side> = {
@@ -54,7 +54,7 @@ export function ended(seats: number, outcome: FinishedOutcome, options: EndedOpt
   const endedAt = T0 + made * HOUR;
   const length = (options.minutes ?? 30) * MINUTE;
   const before = options.events ?? [];
-  const rounds = options.rounds ?? (options.events ? before.reduce((most, e) => Math.max(most, e.r), 0) : 6);
+  const rounds = options.rounds ?? (options.events ? lastRound(before) : 6);
   const [liberal, fascist] = BOARD[outcome];
   const players = Array.from({ length: seats }, (_, i) => i + 1);
   return game(`e${made}`, endedAt, seatsOf(players), WINNER[outcome], {

@@ -5,6 +5,7 @@ import {
   computeEndings,
   FINISHED_OUTCOMES,
   FINISHES_SHOWN,
+  gameLength,
   isClosestFinish,
   isLopsidedFinish,
   OUTCOME_COLORS,
@@ -117,6 +118,10 @@ describe("how long games last", () => {
     const e = computeEndings([d, restored, c, b, a]);
     expect(e.fastestWin).toBe(b);
     expect(e.longestGame).toBe(c);
+  });
+
+  it("measures a game from its start to its end", () => {
+    expect(gameLength(ended(5, "LIBERAL_POLICIES", { minutes: 42 }))).toBe(42 * MINUTE);
   });
 
   it("has nothing without counted games", () => {

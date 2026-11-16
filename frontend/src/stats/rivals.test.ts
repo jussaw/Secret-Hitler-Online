@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { countedGames, DEFAULT_FILTER, humanSeats } from "./counting";
 import fixture from "./fixtures/recorded-games.json";
 import { parseStatsData, type Role } from "./record";
-import { against, computeRivals, pairKey, pairOf } from "./rivals";
+import { against, computeRivals, namesInOrder, pairKey, pairOf, pairRecord } from "./rivals";
 import { beats, NAMES, nominated, played, repeat, together } from "./testRivals";
 
 describe("pairs", () => {
@@ -31,6 +31,15 @@ describe("pairs", () => {
     expect(against(r, 3, 1)).toEqual({ wins: 0, losses: 1 });
     expect(against(r, 3, 4)).toEqual({ wins: 1, losses: 0 });
     expect(against(r, 1, 2)).toEqual({ wins: 0, losses: 0 });
+  });
+
+  it("turns a pair round to either player, and puts its names in order", () => {
+    const r = computeRivals([...repeat(2, () => beats(2, 1)), beats(1, 2)], new Map([[1, "Zed"], [2, "amy"]]));
+    const pair = pairOf(r, 1, 2)!;
+    expect(pairRecord(pair, 1)).toEqual({ wins: 1, losses: 2 });
+    expect(pairRecord(pair, 2)).toEqual({ wins: 2, losses: 1 });
+    expect(namesInOrder(pair, new Map([[1, "Zed"], [2, "amy"]]))).toEqual([2, 1]);
+    expect(namesInOrder(pair, NAMES)).toEqual([1, 2]);
   });
 
   it("keys a pair by its two numbers, the smaller first", () => {

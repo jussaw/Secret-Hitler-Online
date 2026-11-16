@@ -1,33 +1,40 @@
 import { useMemo, type ReactNode } from "react";
-import { compareNames, MIN_GAMES, nameOf, rate } from "../counting";
+import { MIN_GAMES, nameOf, rate } from "../counting";
 import { plural } from "../format";
-import { formatPercent } from "../numbers";
 import PlayerName from "../PlayerName";
-import { against, computeRivals, pairOf, type Pair, type RivalStats, type Rivalry } from "../rivals";
+import {
+  against,
+  computeRivals,
+  namesInOrder,
+  pairOf,
+  pairRecord,
+  type Pair,
+  type RivalStats,
+  type Rivalry,
+} from "../rivals";
 import { ScrollRegion } from "../ScrollRegion";
 import { StatCard } from "../StatCard";
 import type { StatsContext } from "../useStats";
+import { NO_VALUE, rateText } from "./cellText";
 import { PlayerMatrix, type MatrixCell } from "./PlayerMatrix";
 import "./RivalsTab.css";
 
 const NO_PAIRS = "No two players have shared a game yet.";
 
 /** A name inside a headline: never a link. */
-function Plain({ player, names }: { player: number; names: Map<number, string> }): JSX.Element {
+function HeadlineName({ player, names }: { player: number; names: Map<number, string> }): JSX.Element {
   return <PlayerName player={player} name={nameOf(names, player)} link={false} />;
 }
 
 /** A duo's two names in alphabetical order, its rate and its record together. */
 function Duo({ pair, wins, games, names }: { pair: Pair; wins: number; games: number; names: Map<number, string> }): JSX.Element {
-  const [first, second] =
-    compareNames(nameOf(names, pair.a), nameOf(names, pair.b)) <= 0 ? [pair.a, pair.b] : [pair.b, pair.a];
-  const share = rate(wins, games, MIN_GAMES).value;
+  const [first, second] = namesInOrder(pair, names);
   return (
     <>
       <p className="rivals-headline">
-        <Plain player={first} names={names} /> &amp; <Plain player={second} names={names} />
+        <HeadlineName player={first} names={names} /> &amp; <HeadlineName player={second} names={names} />
       </p>
-      <p className="rivals-figure">{`${share === null ? "—" : formatPercent(share)} · won ${wins} of ${games}`}</p>
+      <p className="rivals-figure">{`${rateText(rate(wins, games, MIN_GAMES).value)} · won ${wins} of ${games}`}</p>
     </>
   );
 }
@@ -35,16 +42,15 @@ function Duo({ pair, wins, games, names }: { pair: Pair; wins: number; games: nu
 /** A rivalry: the one with more wins first (by name when even), their record, and its games. */
 function RivalryLine({ rivalry, names }: { rivalry: Rivalry; names: Map<number, string> }): JSX.Element {
   const { pair } = rivalry;
-  const aWins = pair.aWins;
-  const bWins = pair.opposed - pair.aWins;
-  const aFirst = aWins !== bWins ? aWins > bWins : compareNames(nameOf(names, pair.a), nameOf(names, pair.b)) <= 0;
-  const [first, second] = aFirst ? [pair.a, pair.b] : [pair.b, pair.a];
-  const [won, lost] = aFirst ? [aWins, bWins] : [bWins, aWins];
+  const [x, y] = namesInOrder(pair, names);
+  const xRecord = pairRecord(pair, x);
+  const [first, second] = xRecord.wins >= xRecord.losses ? [x, y] : [y, x];
+  const { wins, losses } = pairRecord(pair, first);
   return (
     <>
       <p className="rivals-headline">
-        <Plain player={first} names={names} /> <span className="rivals-score">{`${won}–${lost}`}</span>{" "}
-        <Plain player={second} names={names} />
+        <HeadlineName player={first} names={names} /> <span className="rivals-score">{`${wins}–${losses}`}</span>{" "}
+        <HeadlineName player={second} names={names} />
       </p>
       <p className="rivals-figure">{plural(pair.opposed, "game")}</p>
     </>
@@ -54,7 +60,7 @@ function RivalryLine({ rivalry, names }: { rivalry: Rivalry; names: Map<number, 
 /** The People table: each player's most played with, nemesis and favourite opponent. */
 function PeopleTable({ rivals, names }: { rivals: RivalStats; names: Map<number, string> }): JSX.Element {
   const name = (player: number) => <PlayerName player={player} name={nameOf(names, player)} />;
-  const cell = (content: ReactNode | null) => <td>{content ?? "—"}</td>;
+  const cell = (content: ReactNode | null) => <td>{content ?? NO_VALUE}</td>;
   /** A row's name, in PlayerMatrix's box, so it wraps on phones as the matrices' do. */
   const rowName = (player: number) => <span className="player-matrix-name">{name(player)}</span>;
   return (
@@ -105,9 +111,8 @@ export function RivalsTab({ stats }: { stats: StatsContext }): JSX.Element {
   const teammate = (row: number, column: number): MatrixCell | null => {
     const pair = pairOf(rivals, row, column);
     if (!pair || pair.together === 0) return null;
-    const share = rate(pair.togetherWins, pair.together, MIN_GAMES).value;
     return {
-      text: share === null ? "—" : formatPercent(share),
+      text: rateText(rate(pair.togetherWins, pair.together, MIN_GAMES).value),
       sub: String(pair.together),
       title: `${name(row)} and ${name(column)}: won ${pair.togetherWins} of ${pair.together} together`,
     };

@@ -18,9 +18,15 @@ export function repeat<T>(n: number, make: () => T): T[] {
   return Array.from({ length: n }, () => make());
 }
 
-const T0 = Date.UTC(2026, 10, 1, 20, 0);
-const HOUR = 3_600_000;
+/** When the first built game ends; each next one ends an hour later. */
+export const T0 = Date.UTC(2026, 10, 1, 20, 0);
+export const HOUR = 3_600_000;
 let made = 0;
+
+/** The largest `r` among `events`: the round a timeline ends in. */
+export function lastRound(events: GameEvent[]): number {
+  return events.reduce((most, e) => Math.max(most, e.r), 0);
+}
 
 /**
  * A finished game of `seats` (a player, or null for a CPU seat, and a role each, in turn order)
@@ -31,7 +37,7 @@ let made = 0;
 export function played(seats: [number | null, Role][], winner: Side, events?: GameEvent[]): GameRecord {
   made += 1;
   const overrides: Partial<GameRecord> =
-    events === undefined ? {} : { events, rounds: events.reduce((most, e) => Math.max(most, e.r), 0) };
+    events === undefined ? {} : { events, rounds: lastRound(events) };
   return game(
     `g${made}`,
     T0 + made * HOUR,
