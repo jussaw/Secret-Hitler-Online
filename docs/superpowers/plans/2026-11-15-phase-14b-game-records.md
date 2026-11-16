@@ -32,7 +32,8 @@ Phase 14B. Where this plan and the spec differ, the spec wins.
    connection), gone at restart. Names are read through the account store (`AccountStore.find`),
    not a join.
 2. **One write per game.** `save` numbers the record's accounts (in `players`, in seat order) and
-   writes the game and its seats in one transaction, which takes the write lock at its start; a
+   writes the game and its seats in one transaction (its own `BEGIN IMMEDIATE`, `COMMIT` and
+   `ROLLBACK`, the connection left in autocommit), which takes the write lock at its start; a
    game ID already there rolls it all back and changes nothing. (As built: a number is looked up
    before one is made, since an `INSERT OR IGNORE` that SQLite ignores still uses up an
    `AUTOINCREMENT` number and left gaps.)
@@ -42,7 +43,8 @@ Phase 14B. Where this plan and the spec differ, the spec wins.
 4. **Wiring in methods tests call.** `main` keeps a few calls: `startUp(GameStore)` (start
    recording, load the lobby backup, drop restored games that have a record, the start-up sweep, in
    that order), `everyMinute()` (the timer's body: the sweep, the session sweep, the retry, the
-   backup) and `onShutdown()` (the hook's body: the flush, then the last backup).
+   backup) and `onShutdown()` (the hook's body: the flush, then the last backup, then a second
+   flush for the records handed over meanwhile).
 5. **A finished game never comes back.** `dropRecordedGames` reads each restored game's ID under its
    lobby's lock, asks the store once under no lock, and drops each one that has a record
    (`Lobby.dropGame()`), logging the lobby. A read that fails keeps every game.
@@ -219,8 +221,8 @@ Phase 14B. Where this plan and the spec differ, the spec wins.
 **Interfaces:**
 - Consumes: `GameStore`, `GameRecorder`, 14A's `Lobby.recordSink`, `Lobby.gameId()`,
   `Lobby.dropGame()`, `GameDriver.stepCpus`.
-- Produces on `SecretHitlerServer` (package-private unless said): `static GameStore games`,
-  `static GameRecorder recorder`; `static void startRecording(GameStore store)` (the recorder,
+- Produces on `SecretHitlerServer` (package-private unless said): `static GameRecorder recorder`
+  (as built, no `games` field: nothing read it); `static void startRecording(GameStore store)` (the recorder,
   started, as `Lobby.recordSink`) and `static void stopRecording()` (stops it; the sink back to
   `GameRecordSink.DROPPING`); `static void dropRecordedGames(Map<String, Lobby> lobbies, GameStore
   store)` (Decision 5; the log line `Dropped the game in lobby <CODE>: it has a record already.`;
@@ -228,7 +230,7 @@ Phase 14B. Where this plan and the spec differ, the spec wins.
   `loadDatabaseBackup()`, `dropRecordedGames(codeToLobby, store)`, `removeInactiveLobbies()`);
   `static void everyMinute()` (today's timer body plus `recorder.retryWaiting()` after the session
   sweep); `static void onShutdown()` (`recorder.stop()` and `recorder.flush()`, then today's hook
-  body). `main`: after the
+  body, then `recorder.flush()` again for the games that ended meanwhile). `main`: after the
   account store, `startUp(GameStore.open(DATABASE_PATH))`; the timer's task calls `everyMinute()`
   and the hook's thread `onShutdown()`. `ServerTesting` passes `dropRecordedGames`, `startUp`,
   `everyMinute` and `onShutdown` on.

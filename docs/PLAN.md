@@ -773,7 +773,7 @@ Issue #31, the second half of the game recorder: the server stores every record 
 - [x] `frontend/src/stats/fixtures/recorded-games.json` from `./gradlew recordedGamesFixture`, checked against the spec's format
 - [x] `frontend/e2e/recorder.spec.ts`: a real game played to its end is served in the spec's key order
 - [x] `CLAUDE.md`, `README.md` and `DEVELOPMENT.md` describe the store, the writer, the route and the fixture
-- [ ] Every finding of the whole-branch review fixed, Minor ones included
+- [x] Every finding of the whole-branch review fixed, Minor ones included
 
 **Phase 14B acceptance**
 
