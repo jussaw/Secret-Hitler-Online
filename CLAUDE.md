@@ -385,7 +385,10 @@ keeps credit to upstream and to the board game's creators.
   tracker or chaos, the president's cards, the chancellor's cards, veto and choice, blame, the
   power, and the term's end, pauses, dropped connections and reshuffle), policies as tiles
   (`role="img"`, Liberal or Fascist) and each decision's time after it; and "Unfinished: the lobby
-  closed" at the end of an unfinished game.
+  closed" at the end of an unfinished game. A round with no nominee says "<P> had yet to nominate"
+  when nothing came after the nomination, and "<P>'s nomination" before a result it has.
+  `game/text.tsx` holds what the header and the rounds share: `joined` (a line's clauses or a
+  list's names), `ROLE_WORDS`, `CARD_WORDS` and `RoleWord` (a role's word in its colour).
   `src/App.tsx` owns the WebSocket, all state and the overlays; prompts live in `src/custom-alert/`,
   in one overlay (`CustomAlert`) that `render()` draws for every page, so a prompt open on the login
   page stays open when the page moves to the lobby (`toLoginPage` bumps `alertKey`, so the overlay
@@ -716,8 +719,10 @@ keeps credit to upstream and to the board game's creators.
   stats fetch their chunk and no clip, the header moving in place, and back, forward, reload and a
   deep link. `stats-game.spec.ts` checks the game page at every size against `bigStatsData()` (its
   largest game, ten twelve-character names voting, its first incomplete and first unfinished
-  games, and an unknown ID; on phones each round's block at least the window's width less 32px),
-  All games moving in place from the not-found page, and (`desktop`) a real seven-seat game's page
+  games, and an unknown ID; at every size each line and name inside its card's padding, and on
+  phones each round's block at least the window's width less 32px), a round's 6px edge in its
+  policy's colour and its lines' 4px spacing, All games moving in place from the not-found page,
+  and (`desktop`) a real seven-seat game's page
   opened by its `gameId`: a block per round, the first election failed, a decision's time and the
   accepted veto. No `e2e/` file imports `src/constants` or anything that does (`api.ts`, `App`): it
   reads `window` when it loads, which throws in Playwright's Node process; specs build stats paths
