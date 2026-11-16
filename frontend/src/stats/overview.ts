@@ -213,13 +213,14 @@ export function playerOfTheMonth(counted: GameRecord[], now: number, timeZone?: 
 }
 
 /**
- * The lines a rating point's tooltip shows: the player's name, the game's end and result, then
- * the change and the rating after it, or "Did not play" and the rating carried through the game.
+ * The lines a rating point's tooltip shows: the player's name, the game's start (as every date on
+ * the stats pages) and result, then the change and the rating after it, or "Did not play" and the
+ * rating carried through the game.
  */
 export function ratingPointDetail(game: GameRecord, name: string, point: RatingLinePoint, timeZone?: string): string[] {
   return [
     name,
-    `${formatLocalDateTime(game.endedAt, timeZone)} · ${outcomeLabel(game)}`,
+    `${formatLocalDateTime(game.startedAt, timeZone)} · ${outcomeLabel(game)}`,
     point.change === null
       ? `Did not play · ${formatRating(point.rating)}`
       : `${formatSigned(point.change)} → ${formatRating(point.rating)}`,

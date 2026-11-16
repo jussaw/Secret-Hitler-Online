@@ -136,15 +136,15 @@ describe("computeOverview", () => {
     const missed = ratingPointDetail(g07, "Ann", ann[5]);
     expect(missed).toEqual([
       "Ann",
-      `${formatLocalDateTime(g07.endedAt)} · Liberals win · 5 Liberal policies`,
+      `${formatLocalDateTime(g07.startedAt)} · Liberals win · 5 Liberal policies`,
       `Did not play · ${formatRating(ann[5].rating)}`,
     ]);
     const played = ratingPointDetail(g06, "Ann", ann[4]);
     expect(played[2]).toMatch(/^\+\d+ → \d+$/);
     expect(played[2]).toBe(`+${Math.round(ann[4].change!)} → ${Math.round(ann[4].rating)}`);
-    // In a zone given.
+    // In a zone given, at the game's start, as every date on the stats pages.
     expect(ratingPointDetail(g07, "Ann", ann[5], "UTC")[1]).toBe(
-      "Fri 13 Nov 2026, 9:00 PM · Liberals win · 5 Liberal policies"
+      "Fri 13 Nov 2026, 8:30 PM · Liberals win · 5 Liberal policies"
     );
   });
 

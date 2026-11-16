@@ -460,8 +460,8 @@ keeps credit to upstream and to the board game's creators.
   the later run) and `playerOfTheMonth(counted, now, timeZone?)` (most wins among counted games
   that started in `now`'s local month, later ones too, null with no person's win, ties by more
   counted games, then the name on the latest counted seat, then number), and
-  `ratingPointDetail`, a point's tooltip lines (the name, the game's end and result, then `+19 →
-  1612` or `Did not play · 1612`). `tabs/OverviewTab.tsx` (`now` from when it opened and the
+  `ratingPointDetail`, a point's tooltip lines (the name, the game's start and result, as every
+  date on the stats pages, then `+19 → 1612` or `Did not play · 1612`). `tabs/OverviewTab.tsx` (`now` from when it opened and the
   viewer's zone unless its tests pass them) draws it in `OverviewTab.css`: the dashboard "At a
   glance" (Since last game, Last game, a link with its result and start, Win streak, Hot hand and
   Player of the month, whose names are `link={false}`; two columns in the phone-only query, a lone
