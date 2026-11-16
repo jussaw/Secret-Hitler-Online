@@ -54,7 +54,10 @@ test("OVERVIEW fits every stats size", async ({ page }) => {
   }
 });
 
-/** Three players: four games of all three won by the Liberals, two of Ann and Cy won by the Fascists, two with a CPU seat. */
+/**
+ * Three players: four games of all three won by the Liberals, two of Ann and Cy won by the
+ * Fascists, and two of Ann, Bo and a CPU seat won by the Liberals.
+ */
 const T0 = Date.UTC(2026, 10, 1, 20, 0);
 const LLF = ["LIBERAL", "LIBERAL", "FASCIST"] as const;
 const FILTERED: StatsData = {
@@ -71,57 +74,63 @@ const FILTERED: StatsData = {
 };
 
 test("the numbers follow the filter and the toggle", async ({ page }) => {
-  await open(page, FILTERED, "/stats");
+  test.slow();
   const gamesPlayed = card(page, "Games played");
-  await expect.poll(() => rows(gamesPlayed)).toEqual([
-    ["1.", "Ann", "6", ""],
-    ["1.", "Cy", "6", ""],
-    ["3.", "Bo", "4", ""],
-  ]);
-
+  /** On phones, opens the filter's panel from its line. */
   const openPanel = async () => {
     if (!(await phoneLayout(page))) return;
     const summary = page.locator(".filter-summary");
     if ((await summary.getAttribute("aria-expanded")) !== "true") await summary.click();
     await expect(page.locator(".filter-panel")).toBeVisible();
   };
-  await openPanel();
-  await page.getByRole("switch", { name: "Include games with CPU players" }).click();
-  await expect(page).toHaveURL(/\/stats\?cpu=1$/);
-  await expect.poll(() => rows(gamesPlayed)).toEqual([
-    ["1.", "Ann", "8", ""],
-    ["2.", "Bo", "6", ""],
-    ["2.", "Cy", "6", ""],
-  ]);
+  for (const size of statsSizesFor(test.info().project.name, page.viewportSize()!)) {
+    const at = `at ${size.width}x${size.height}`;
+    await page.setViewportSize(size);
+    await open(page, FILTERED, "/stats");
+    await expect.poll(() => rows(gamesPlayed), at).toEqual([
+      ["1.", "Ann", "6", ""],
+      ["1.", "Cy", "6", ""],
+      ["3.", "Bo", "4", ""],
+    ]);
 
-  await openPanel();
-  await page.getByRole("group", { name: "Players" }).getByRole("button", { name: "Bo", exact: true }).click();
-  await expect(page).toHaveURL(/\/stats\?players=1,3&cpu=1$/);
-  await expect.poll(() => rows(gamesPlayed)).toEqual([
-    ["1.", "Ann", "2", ""],
-    ["1.", "Cy", "2", ""],
-  ]);
-  await expect(card(page, "Liberal / Fascist wins")).toContainText("0 / 2");
+    await openPanel();
+    await page.getByRole("switch", { name: "Include games with CPU players" }).click();
+    await expect(page, at).toHaveURL(/\/stats\?cpu=1$/);
+    await expect.poll(() => rows(gamesPlayed), at).toEqual([
+      ["1.", "Ann", "8", ""],
+      ["2.", "Bo", "6", ""],
+      ["2.", "Cy", "6", ""],
+    ]);
 
-  // Review Focus 3: back follows the address, and so does every number.
-  await page.goBack();
-  await expect(page).toHaveURL(/\/stats\?cpu=1$/);
-  await expect.poll(async () => (await rows(gamesPlayed))[0]).toEqual(["1.", "Ann", "8", ""]);
-  await expect(card(page, "Liberal / Fascist wins")).toContainText("6 / 2");
+    await openPanel();
+    await page.getByRole("group", { name: "Players" }).getByRole("button", { name: "Bo", exact: true }).click();
+    await expect(page, at).toHaveURL(/\/stats\?players=1,3&cpu=1$/);
+    await expect.poll(() => rows(gamesPlayed), at).toEqual([
+      ["1.", "Ann", "2", ""],
+      ["1.", "Cy", "2", ""],
+    ]);
+    await expect(card(page, "Liberal / Fascist wins"), at).toContainText("0 / 2");
 
-  // A fresh load of the filtered address.
-  await page.goto("/stats?players=1,3&cpu=1");
-  await expect(page.getByRole("region", { name: "At a glance" })).toBeVisible();
-  await expect.poll(async () => (await rows(gamesPlayed))[0]).toEqual(["1.", "Ann", "2", ""]);
+    // Review Focus 3: back follows the address, and so does every number.
+    await page.goBack();
+    await expect(page, at).toHaveURL(/\/stats\?cpu=1$/);
+    await expect.poll(async () => (await rows(gamesPlayed))[0], at).toEqual(["1.", "Ann", "8", ""]);
+    await expect(card(page, "Liberal / Fascist wins"), at).toContainText("6 / 2");
+
+    // A fresh load of the filtered address.
+    await page.goto("/stats?players=1,3&cpu=1");
+    await expect(page.getByRole("region", { name: "At a glance" })).toBeVisible();
+    await expect.poll(async () => (await rows(gamesPlayed))[0], at).toEqual(["1.", "Ann", "2", ""]);
+  }
 });
 
 /** A rating's details: a change and the rating after it, or a game the player missed. */
 const DETAIL = /^([+−]\d+|0) → \d+$|^Did not play · \d+$/;
 
 test("the rating history shows a game's change on hover or tap", async ({ page }) => {
+  test.slow();
   const data = bigStatsData();
   await twoDaysOn(page, data);
-  await open(page, data, "/stats");
   const chart = card(page, "Rating history").getByRole("img", { name: "Rating history" });
   const tooltip = page.locator(".chart-tooltip");
   const touch = test.info().project.name.startsWith("phone");
@@ -132,14 +141,20 @@ test("the rating history shows a game's change on hover or tap", async ({ page }
     else await chart.hover({ position: { x, y } });
   };
 
-  await chart.scrollIntoViewIfNeeded();
-  const box = (await chart.boundingBox())!;
-  await pointAt(box.width / 2, box.height / 2);
-  await expect(tooltip).toBeVisible();
-  const lines = await tooltip.locator(":scope > div").allTextContents();
-  expect(lines).toHaveLength(3);
-  expect(lines[2]).toMatch(DETAIL);
-  expect(lines[1]).toMatch(/ · (Liberals|Fascists) win · /);
+  for (const size of statsSizesFor(test.info().project.name, page.viewportSize()!)) {
+    const at = `at ${size.width}x${size.height}`;
+    await page.setViewportSize(size);
+    await open(page, data, "/stats");
+    await chart.scrollIntoViewIfNeeded();
+    await expect(tooltip, at).toBeHidden();
+    const box = (await chart.boundingBox())!;
+    await pointAt(box.width / 2, box.height / 2);
+    await expect(tooltip, at).toBeVisible();
+    const lines = await tooltip.locator(":scope > div").allTextContents();
+    expect(lines, at).toHaveLength(3);
+    expect(lines[2], at).toMatch(DETAIL);
+    expect(lines[1], at).toMatch(/ · (Liberals|Fascists) win · /);
+  }
 
   // Review Focus 5: the rightmost point's details at 320px push nothing past the page's edge.
   await page.setViewportSize(NARROW_PHONE);
