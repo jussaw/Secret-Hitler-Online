@@ -6,7 +6,7 @@ import { ROLE_WORDS } from "../game/text";
 import { formatPercent, formatSigned } from "../numbers";
 import { RankedTable } from "../RankedTable";
 import { ROLES, type Role } from "../record";
-import { computeRoles, TABLE_SIZES, type RoleStats } from "../roles";
+import { byRole, computeRoles, TABLE_SIZES, type RoleStats } from "../roles";
 import { SplitTable, type SplitCell, type SplitColumn } from "../SplitTable";
 import { StatCard } from "../StatCard";
 import type { StatsContext } from "../useStats";
@@ -18,12 +18,19 @@ function larger(a: number | null, b: number | null): number {
   return b - a;
 }
 
+/** More first: how a count ranks. */
+const more = (a: number, b: number) => b - a;
 const byValue = (a: Rate, b: Rate) => larger(a.value, b.value);
 const percent = (r: Rate) => (r.value === null ? "—" : formatPercent(r.value));
 const handsLabel = (n: number) => plural(n, "hand");
+const sum = (counts: readonly number[]) => counts.reduce((total, n) => total + n, 0);
+/** Each player's stats in a module's `byPlayer`, as rows to filter and map. */
+const entries = <P,>(byPlayer: Map<number, P>) => Array.from(byPlayer, ([player, p]) => ({ player, p }));
 
 /** A rate's cell: its share with its chances ("60%" and 5), "—" and its chances below the minimum. */
 const rateCell = (r: Rate): SplitCell => ({ text: percent(r), count: r.chances });
+/** A plain count's cell: the number as its text, with no count beside it. */
+const countCell = (n: number): SplitCell => ({ text: String(n) });
 
 const ROLE_COLUMNS: SplitColumn[] = ROLES.map((role) => ({ key: role, label: ROLE_WORDS[role] }));
 const SIZE_COLUMNS: SplitColumn[] = TABLE_SIZES.map((n) => ({ key: String(n), label: String(n) }));
@@ -44,8 +51,8 @@ const FORCED_COLUMNS: SplitColumn[] = [
 
 type SplitRow = { player: number; cells: Record<string, SplitCell> };
 
-/** One card: a ranked table or a split table, or its line when it has no rows. */
-interface Card {
+/** One stat card: a ranked table or a split table, or its line when it has no rows. */
+interface CardSpec {
   title: string;
   definition: string;
   wide?: boolean;
@@ -57,7 +64,7 @@ interface Card {
 
 /** The card's ranked table of one value per player, for `rows` with a count above zero. */
 function ranked<T>(
-  stats: StatsContext,
+  names: Map<number, string>,
   rows: { player: number; value: T; count: number }[],
   compare: (a: T, b: T) => number,
   format: (value: T) => string,
@@ -68,43 +75,37 @@ function ranked<T>(
   return {
     rows: shown.length,
     body: (
-      <RankedTable rows={rankRows(shown, compare, stats.names, min)} format={format} names={stats.names} countLabel={countLabel} />
+      <RankedTable rows={rankRows(shown, compare, names, min)} format={format} names={names} countLabel={countLabel} />
     ),
   };
 }
 
 /** The card's split table, for the `rows` that have a cell. */
-function split(stats: StatsContext, title: string, columns: SplitColumn[], rows: SplitRow[], above?: ReactNode) {
+function split(names: Map<number, string>, title: string, columns: SplitColumn[], rows: SplitRow[]) {
   const shown = rows.filter((row) => Object.keys(row.cells).length > 0);
-  return {
-    rows: shown.length,
-    body: (
-      <>
-        {above}
-        <SplitTable title={title} columns={columns} rows={shown} names={stats.names} />
-      </>
-    ),
-  };
+  return { rows: shown.length, body: <SplitTable title={title} columns={columns} rows={shown} names={names} /> };
 }
 
 /** A cell for each role that `make` gives one for (null: none, so the table shows "—"). */
 function roleCells(make: (role: Role) => SplitCell | null): Record<string, SplitCell> {
+  const made = byRole(make);
   const cells: Record<string, SplitCell> = {};
   for (const role of ROLES) {
-    const cell = make(role);
+    const cell = made[role];
     if (cell !== null) cells[role] = cell;
   }
   return cells;
 }
 
-function rolesCards(stats: StatsContext, roles: RoleStats): Card[] {
-  const players = Array.from(roles.byPlayer, ([player, p]) => ({ player, p }));
-  const winAs = (role: Role, title: string, definition: string, none: string): Card => ({
+function rolesCards(stats: StatsContext, roles: RoleStats): CardSpec[] {
+  const { names } = stats;
+  const players = entries(roles.byPlayer);
+  const winAs = (role: Role, title: string, definition: string, none: string): CardSpec => ({
     title,
     definition,
     none,
     ...ranked(
-      stats,
+      names,
       players.map(({ player, p }) => ({ player, value: p.winAs[role], count: p.winAs[role].chances })),
       byValue,
       percent,
@@ -117,7 +118,7 @@ function rolesCards(stats: StatsContext, roles: RoleStats): Card[] {
       definition: "Share of their games as Liberal, as Fascist and as Hitler.",
       wide: true,
       ...split(
-        stats,
+        names,
         "Role split",
         ROLE_COLUMNS,
         players
@@ -129,7 +130,7 @@ function rolesCards(stats: StatsContext, roles: RoleStats): Card[] {
       title: "Role luck",
       definition: "Their Liberal share minus the share their tables' seats would give.",
       ...ranked(
-        stats,
+        names,
         players.map(({ player, p }) => ({ player, value: p.luck, count: p.games })),
         larger,
         (luck) => (luck === null ? "—" : `${formatSigned(luck * 100)}%`),
@@ -140,9 +141,9 @@ function rolesCards(stats: StatsContext, roles: RoleStats): Card[] {
       title: "Times as Hitler",
       definition: "Games played as Hitler.",
       ...ranked(
-        stats,
+        names,
         players.map(({ player, p }) => ({ player, value: p.split.HITLER.hits, count: p.games })),
-        (a, b) => b - a,
+        more,
         String,
         1
       ),
@@ -151,9 +152,9 @@ function rolesCards(stats: StatsContext, roles: RoleStats): Card[] {
       title: "Longest run of one role",
       definition: "Most games in a row in the same role.",
       ...ranked(
-        stats,
+        names,
         players.map(({ player, p }) => ({ player, value: p.longestRun, count: p.games })),
-        (a, b) => b.length - a.length,
+        (a, b) => more(a.length, b.length),
         (run) => `${run.length} as ${ROLE_WORDS[run.role]}`,
         1
       ),
@@ -171,7 +172,7 @@ function rolesCards(stats: StatsContext, roles: RoleStats): Card[] {
       definition: "Games won at each table size, from 5 to 10 seats.",
       wide: true,
       ...split(
-        stats,
+        names,
         "Win rate by player count",
         SIZE_COLUMNS,
         players.map(({ player, p }) => {
@@ -187,9 +188,12 @@ function rolesCards(stats: StatsContext, roles: RoleStats): Card[] {
     {
       title: "First president",
       definition: "Games won when they made the first nomination.",
-      none: "No complete games yet with these players.",
+      // A record restored from an older backup starts late, so only complete games say who began.
+      none: stats.counted.some((record) => record.complete)
+        ? "No player has made the first nomination yet."
+        : "No complete games yet with these players.",
       ...ranked(
-        stats,
+        names,
         players.map(({ player, p }) => ({ player, value: p.firstPresident, count: p.firstPresident.chances })),
         byValue,
         percent,
@@ -199,43 +203,53 @@ function rolesCards(stats: StatsContext, roles: RoleStats): Card[] {
   ];
 }
 
-function presidentCards(stats: StatsContext, cards: CardStats): Card[] {
-  const players = Array.from(cards.byPlayer, ([player, p]) => ({ player, p }));
-  const total = (hands: readonly number[]) => hands.reduce((sum, n) => sum + n, 0);
-  const everyone = total(cards.hands);
-  const group =
-    everyone === 0
-      ? null
-      : `Everyone: ${HAND_LABELS.map((label, i) => `${label} ${formatPercent(cards.hands[i] / everyone)}`).join(" · ")} (${handsLabel(everyone)})`;
+/**
+ * Hands drawn: everyone's shares on a line, then each player's hands. With hands drawn only by CPU
+ * presidents, the line stands alone; with none drawn at all, the card says so.
+ */
+function handsCard(names: Map<number, string>, cards: CardStats): CardSpec {
+  const everyone = sum(cards.hands);
+  const shares = HAND_LABELS.map((label, i) => `${label} ${formatPercent(cards.hands[i] / everyone)}`);
+  const table = split(
+    names,
+    "Hands drawn",
+    HAND_COLUMNS,
+    entries(cards.byPlayer)
+      .filter(({ p }) => sum(p.hands) > 0)
+      .map(({ player, p }) => {
+        const drawn = sum(p.hands);
+        const cells: Record<string, SplitCell> = { total: countCell(drawn) };
+        HAND_LABELS.forEach((label, i) => {
+          cells[label] = { text: percent(rate(p.hands[i], drawn, MIN_CHANCES)), count: p.hands[i] };
+        });
+        return { player, cells };
+      })
+  );
+  return {
+    title: "Hands drawn",
+    definition: "How often their three cards held 0, 1, 2 or 3 Liberals, beside everyone's.",
+    wide: true,
+    none: "No hands drawn yet with these players.",
+    rows: everyone,
+    body: (
+      <>
+        <p className="roles-group">{`Everyone: ${shares.join(" · ")} (${handsLabel(everyone)})`}</p>
+        {table.rows > 0 && table.body}
+      </>
+    ),
+  };
+}
+
+function presidentCards(names: Map<number, string>, cards: CardStats): CardSpec[] {
+  const players = entries(cards.byPlayer);
   return [
-    {
-      title: "Hands drawn",
-      definition: "How often their three cards held 0, 1, 2 or 3 Liberals, beside everyone's.",
-      wide: true,
-      none: "No hands drawn yet with these players.",
-      ...split(
-        stats,
-        "Hands drawn",
-        HAND_COLUMNS,
-        players
-          .filter(({ p }) => total(p.hands) > 0)
-          .map(({ player, p }) => {
-            const drawn = total(p.hands);
-            const cells: Record<string, SplitCell> = { total: { text: String(drawn) } };
-            HAND_LABELS.forEach((label, i) => {
-              cells[label] = { text: percent(rate(p.hands[i], drawn, MIN_CHANCES)), count: p.hands[i] };
-            });
-            return { player, cells };
-          }),
-        group === null ? null : <p className="roles-group">{group}</p>
-      ),
-    },
+    handsCard(names, cards),
     {
       title: "Liberal accuracy",
       definition: "As a Liberal president holding both kinds, how often they discarded a Fascist.",
       none: "No Liberal president has held both kinds yet.",
       ...ranked(
-        stats,
+        names,
         players.map(({ player, p }) => ({ player, value: p.liberalAccuracy, count: p.liberalAccuracy.chances })),
         byValue,
         percent,
@@ -248,9 +262,10 @@ function presidentCards(stats: StatsContext, cards: CardStats): Card[] {
       definition: "As a Fascist or Hitler president holding both kinds: discarded a Fascist · a Liberal.",
       none: "No Fascist or Hitler president has held both kinds yet.",
       ...ranked(
-        stats,
+        names,
         players.map(({ player, p }) => ({ player, value: p.deepCover, count: p.deepCover.chances })),
         byValue,
+        // The second share is what the first leaves after rounding, so the two add up to 100%.
         (r) => (r.value === null ? "—" : `${formatPercent(r.value)} · ${100 - Math.round(r.value * 100)}%`),
         MIN_CHANCES,
         handsLabel
@@ -259,15 +274,15 @@ function presidentCards(stats: StatsContext, cards: CardStats): Card[] {
   ];
 }
 
-function chancellorCards(stats: StatsContext, cards: CardStats): Card[] {
-  const players = Array.from(cards.byPlayer, ([player, p]) => ({ player, p }));
+function chancellorCards(names: Map<number, string>, cards: CardStats): CardSpec[] {
+  const players = entries(cards.byPlayer);
   return [
     {
       title: "Given one of each",
       definition: "Handed a Liberal and a Fascist, how often they enacted the Liberal. Accepted vetoes are left out.",
       none: "No chancellor has been handed one of each yet.",
       ...split(
-        stats,
+        names,
         "Given one of each",
         ROLE_COLUMNS,
         players.map(({ player, p }) => ({
@@ -282,7 +297,7 @@ function chancellorCards(stats: StatsContext, cards: CardStats): Card[] {
       wide: true,
       none: "No policy enacted by a chancellor yet.",
       ...split(
-        stats,
+        names,
         "Policies enacted",
         ROLE_COLUMNS,
         players.map(({ player, p }) => ({
@@ -299,23 +314,22 @@ function chancellorCards(stats: StatsContext, cards: CardStats): Card[] {
       definition: "Vetoes asked for as chancellor, by the two cards they held.",
       none: "No vetoes yet with these players.",
       ...split(
-        stats,
+        names,
         "Vetoes asked for",
         VETO_COLUMNS,
         players
-          .filter(({ p }) => p.vetoes[0] + p.vetoes[1] + p.vetoes[2] > 0)
+          .filter(({ p }) => sum(p.vetoes) > 0)
           .map(({ player, p }) => {
             const [ff, fl, ll] = p.vetoes;
-            const count = (n: number): SplitCell => ({ text: String(n) });
-            return { player, cells: { total: count(ff + fl + ll), FF: count(ff), FL: count(fl), LL: count(ll) } };
+            return { player, cells: { total: countCell(sum(p.vetoes)), FF: countCell(ff), FL: countCell(fl), LL: countCell(ll) } };
           })
       ),
     },
   ];
 }
 
-function blameCards(stats: StatsContext, roles: RoleStats, cards: CardStats): Card[] {
-  const players = Array.from(cards.byPlayer, ([player, p]) => ({ player, p }));
+function blameCards(names: Map<number, string>, roles: RoleStats, cards: CardStats): CardSpec[] {
+  const players = entries(cards.byPlayer);
   const games = (player: number) => roles.byPlayer.get(player)?.games ?? 0;
   return [
     {
@@ -323,9 +337,9 @@ function blameCards(stats: StatsContext, roles: RoleStats, cards: CardStats): Ca
       definition: "Times they chose a Fascist when the government could have enacted a Liberal.",
       none: "No Fascist chosen over a Liberal yet.",
       ...ranked(
-        stats,
+        names,
         players.filter(({ p }) => p.fascistChoices > 0).map(({ player, p }) => ({ player, value: p.fascistChoices, count: games(player) })),
-        (a, b) => b - a,
+        more,
         String,
         1
       ),
@@ -335,14 +349,14 @@ function blameCards(stats: StatsContext, roles: RoleStats, cards: CardStats): Ca
       definition: "As a Liberal: three Fascists drawn as president, or two handed over as chancellor.",
       none: "No forced Fascists yet with these players.",
       ...split(
-        stats,
+        names,
         "Forced Fascists",
         FORCED_COLUMNS,
         players
           .filter(({ p }) => p.forced.president + p.forced.chancellor > 0)
           .map(({ player, p }) => ({
             player,
-            cells: { president: { text: String(p.forced.president) }, chancellor: { text: String(p.forced.chancellor) } },
+            cells: { president: countCell(p.forced.president), chancellor: countCell(p.forced.chancellor) },
           }))
       ),
     },
@@ -350,7 +364,7 @@ function blameCards(stats: StatsContext, roles: RoleStats, cards: CardStats): Ca
 }
 
 /** A section: its heading over its cards in a grid. */
-function Section({ title, cards, noGames }: { title: string; cards: Card[]; noGames: boolean }): JSX.Element {
+function Section({ title, cards, noGames }: { title: string; cards: CardSpec[]; noGames: boolean }): JSX.Element {
   const headingId = useId();
   return (
     <section className="roles-section" aria-labelledby={headingId}>
@@ -384,9 +398,9 @@ export function RolesTab({ stats }: { stats: StatsContext }): JSX.Element {
   return (
     <div className="roles-tab">
       <Section title="Roles" cards={rolesCards(stats, roles)} noGames={noGames} />
-      <Section title="As president" cards={presidentCards(stats, cards)} noGames={noGames} />
-      <Section title="As chancellor" cards={chancellorCards(stats, cards)} noGames={noGames} />
-      <Section title="Blame" cards={blameCards(stats, roles, cards)} noGames={noGames} />
+      <Section title="As president" cards={presidentCards(stats.names, cards)} noGames={noGames} />
+      <Section title="As chancellor" cards={chancellorCards(stats.names, cards)} noGames={noGames} />
+      <Section title="Blame" cards={blameCards(stats.names, roles, cards)} noGames={noGames} />
     </div>
   );
 }

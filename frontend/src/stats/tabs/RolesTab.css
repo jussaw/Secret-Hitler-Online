@@ -22,7 +22,8 @@
     min-width: 0;
 }
 
-/* App.css sizes every h2 by the window; a section's heading is the lobby roster heading's look. */
+/* App.css sizes every h2 by the window; a section's heading is the lobby roster heading's look,
+   colour included: LobbyScreen.css's own #b9ab9f, which no variable in variables.css holds. */
 .stats-screen .roles-section > h2 {
     font-family: var(--headerFont);
     font-weight: normal;
