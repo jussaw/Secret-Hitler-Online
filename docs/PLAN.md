@@ -726,7 +726,7 @@ Issue #31 (game stats), the first of its ten phases: the database is backed up b
 - [x] `devops/backup-db.sh` and `devops/.env.example` (`devops/.env` git-ignored): a checked snapshot while the server writes, retention, and the `AFTER_BACKUP` hook
 - [x] `devops/restore-db.sh`: a bad file refused before anything stops, the file swapped in one move, the startup line waited for
 - [x] `.github/workflows/ci.yml`: a `devops` job runs the backup and restore test against the branch's image on pull requests
-- [ ] `CLAUDE.md`, `README.md` and `DEVELOPMENT.md` describe backups and restores; the pull request says it changes nothing on screen
+- [x] `CLAUDE.md`, `README.md` and `DEVELOPMENT.md` describe backups and restores; the pull request says it changes nothing on screen
 
 **Phase 13 acceptance**
 

@@ -20,7 +20,15 @@ keeps credit to upstream and to the board game's creators.
   (below). JUnit 4 tests in `src/test/java/game/` and
   `src/test/java/server/`. Lobbies are backed up to a SQLite file at `DATABASE_PATH`, which also
   holds the accounts and sessions (unset = no backup, and the accounts in an in-memory database that
-  is gone at restart). The server also serves the built frontend from the
+  is gone at restart). `main` first puts that file in WAL mode, before anything else opens it
+  (`useWriteAheadLog`: `PRAGMA journal_mode = WAL` with a busy timeout of 0, tried again every
+  100 ms while the file is busy or locked, for `WAL_TIMEOUT_MS`, 5 s; any other failure gives up at
+  once, and giving up logs one error and leaves the file in its old mode, so a busy file never keeps
+  the server from starting: `DatabaseWalTest`), so a backup's read never blocks a write; both
+  connections keep their 5 s busy timeout. `startServer` starts the app and then logs
+  `startupLine(port)`, "Secret Hitler Online is listening on port <port>.", the server's own line
+  (not Javalin's, which a dependency update could change) that `devops/restore-db.sh` waits for
+  (`StartupLineTest`). The server also serves the built frontend from the
   classpath directory `/public`, which `processResources` fills from `frontend/dist` when it exists;
   CORS is enabled only in debug mode. Playing needs an account, made by signing in with Discord;
   watching needs none. `server.accounts` has `Usernames` (the page's name rules, which the server
@@ -552,6 +560,35 @@ keeps credit to upstream and to the board game's creators.
   `/me` and `/game`) to `BACKEND_URL` (default `http://localhost:4040`). `VITE_*` variables live
   in `.env.development` (dev server only: `VITE_DEBUG`) and `.env.dev` (`--mode dev`), typed in
   `src/vite-env.d.ts`.
+- `devops/`: host scripts for the database, each self-contained bash (it works copied alone, on
+  macOS's bash 3.2 too) that works on the running container by its name through the `docker` CLI,
+  needs only `docker` and `sha256sum` (or `shasum`), prints its steps as `==> …` and exits 1 with
+  `Error: …` on stderr. `backup-db.sh` takes one `VACUUM INTO` snapshot beside the database inside
+  the container, checks it there (`PRAGMA integrity_check` must print `ok`; its SHA-256), copies it
+  out with `docker cp` and checks its SHA-256 again, then moves it into `BACKUP_DIR` as
+  `secret-hitler-<%Y%m%dT%H%M%SZ>.db` with `<same>.db.sha256` (`<sha256>  <name>`, for
+  `sha256sum -c`), deletes `secret-hitler-*.db` and `.db.sha256` files there older than
+  `RETENTION_DAYS`, and runs `AFTER_BACKUP` as `sh -c "$AFTER_BACKUP" sh <new backup>`; a failing
+  hook keeps the backup and exits 1. A failure before the move leaves no backup behind, and a trap
+  removes the temporary files on both sides on every exit. `restore-db.sh <file>` refuses a file
+  without SQLite's 16-byte header, or with no `<file>.sha256` or one it does not match, before
+  anything stops; asks for the container's name; stops the container; swaps the file in from a
+  one-off container of the container's image ID (`docker run --rm --network none --user root
+  --volumes-from`, the file mounted read-only: the copy is checked again and owned by uid 1000
+  before the `-wal`, `-shm` and `-journal` go and it moves into place, so a failed swap leaves the
+  database as it was and the container starts on it); starts it; and waits for this start's
+  startup line (`docker logs --since` its new `StartedAt`, since the logs keep earlier starts'),
+  failing if the container stops or `STARTUP_TIMEOUT_SECONDS` pass. Settings (`CONTAINER_NAME`,
+  `DB_PATH`, `BACKUP_DIR`, `RETENTION_DAYS`, `AFTER_BACKUP`, `STARTUP_TIMEOUT_SECONDS`) come from
+  the environment, then from `devops/.env` beside the script (git-ignored; `devops/.env.example`
+  documents each) or the file `ENV_FILE` names (which must exist), read and never sourced, then the
+  defaults, and are checked before any `docker` call. `devops/tests/backup-restore.test.sh` runs
+  its `stub_*` cases against a stub `docker` first on `PATH`, then its `real_*` cases in order
+  against a container of the image (built from the checkout under a tag of its own, unless `IMAGE`
+  names one) with `TEST_SIGN_IN=true` on a fresh volume, while test sign-ins keep it writing: the
+  backup's checks and hook, refusals that leave the server running, and a restore that brings back
+  every table's rows (`table_rows`, so tables later phases add are compared too). Every case reads
+  an empty `ENV_FILE`, never `devops/.env`. The image installs `sqlite3` for the backup.
 - `docs/`: `PLAN.md` (phased plan and progress), `superpowers/specs/` (design),
   `superpowers/plans/` (per-phase step-by-step breakdowns), `images/` (the README's screenshots,
   taken from a scripted seven-player game at 1600x900 and at 412x915 on a phone), `pr/` (each pull
@@ -582,6 +619,7 @@ fields from `package-lock.json`.
 | Frontend production build (type-checks the app and the browser tests, then writes `frontend/dist/`) | `cd frontend && npm run build` |
 | Whole app on one port (after the frontend build; `TEST_SIGN_IN=true` before `java` to sign in with test accounts) | `cd backend && ./gradlew jar && java -jar build/libs/secret-hitler-online.jar` |
 | Image (repo root) | `docker build -t secret-hitler-online .` |
+| Backup and restore tests (Docker running and `curl`; builds the image unless `IMAGE` names one) | `bash devops/tests/backup-restore.test.sh` |
 
 `npm run dev:server` points at upstream's hosted dev backend, not anything this fork runs.
 
@@ -589,12 +627,16 @@ fields from `package-lock.json`.
 
 CI (`.github/workflows/ci.yml`) runs the backend and frontend tests, the frontend build and the
 browser tests on every pull request into `development`, and keeps the Playwright report and traces
-of a failed browser run as an artifact. On every push to `development` it also
+of a failed browser run as an artifact. On pull requests only, its `devops` job builds the
+branch's image (its own build cache, `scope=devops`) and runs the backup and restore test against
+it; `image` does not wait for it, since it is skipped on pushes. On every push to `development` it also
 publishes `ghcr.io/jussaw/secret-hitler-online:latest` and `:sha-<short>` for `linux/arm64` and
 `linux/amd64`, once those checks pass.
 A home server runs that image and pulls new `:latest` images once a day. TLS ends at a proxy in
 front of it, so the container serves plain HTTP on `8080`. Lobby backups, accounts and sessions go
-to `/data/backup.db`, so mount a volume at `/data`. Discord sign-in needs `DISCORD_CLIENT_ID`,
+to `/data/backup.db`, so mount a volume at `/data`, on a local disk (the file is in WAL mode).
+Scheduling `devops/backup-db.sh` on the home server, with any `AFTER_BACKUP`, is the user's job,
+outside this repo. Discord sign-in needs `DISCORD_CLIENT_ID`,
 `DISCORD_CLIENT_SECRET` and `DISCORD_REDIRECT_URI` set on the host (README, "Hosting your own"),
 which is the user's job, outside this repo. A game running when an image with accounts first
 starts is dropped, so deploy between games.
@@ -636,7 +678,8 @@ starts is dropped, so deploy between games.
 ## Commits
 
 Conventional Commits, always with a scope: `type(scope): summary`, lowercase imperative summary,
-no trailing period, at most 72 characters. Scopes in use: `frontend`, `backend`, `docker`, `ci`
+no trailing period, at most 72 characters. Scopes in use: `frontend`, `backend`, `docker`, `devops`
+(`devops/`), `ci`
 (CI, `.github/workflows/`), `github` (the rest of `.github/`, such as the issue templates), `plan`
 (`docs/PLAN.md` and its breakdowns), `docs` (other files under `docs/`), `skills`
 (`.claude/skills/`), and for top-level documents the file's name (`readme`, `development`,
@@ -647,7 +690,9 @@ no trailing period, at most 72 characters. Scopes in use: `frontend`, `backend`,
 - `docs/PLAN.md` is the source of truth for progress. Tick a box in the same commit as the work it
   describes.
 - Design spec: `docs/superpowers/specs/2026-11-11-self-hosted-fork-design.md`; accounts:
-  `docs/superpowers/specs/2026-11-15-accounts-design.md`.
+  `docs/superpowers/specs/2026-11-15-accounts-design.md`; game records and stats (#31, Phases 13
+  to 22): `docs/superpowers/specs/2026-11-15-game-stats-design.md`, with the names and file owners
+  the phases share in `docs/superpowers/plans/2026-11-15-game-stats-interfaces.md`.
 
 ## Constraints
 
@@ -656,7 +701,8 @@ no trailing period, at most 72 characters. Scopes in use: `frontend`, `backend`,
 - The WebSocket protocol stays backward compatible for spectators. Players need a signed-in
   session (accounts), and their packets only add fields (`you`); spectator support only adds
   fields and a query parameter, and the END TERM countdown only adds `termTimer` and two commands.
-- Never set `TEST_SIGN_IN` in the `Dockerfile` or CI's image job, and never log a session token,
+- Never set `TEST_SIGN_IN` in the `Dockerfile` or CI's image job (the backup test sets it only on
+  its own `docker run`), and never log a session token,
   an OAuth code, an access token or the Discord client secret, or put one in a URL or a file.
 - Deploys go through the host's deploy tooling, never `docker compose up` from a checkout.
 - This repo is public. Never write details of the personal infrastructure it runs on into files,
