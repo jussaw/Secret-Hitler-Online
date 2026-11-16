@@ -421,7 +421,9 @@ keeps credit to upstream and to the board game's creators.
   a 0 too, and "—" for a cell the row lacks, in a `ScrollRegion`; rows 44px in the stacked query),
   `charts/` (`LineChart`, lines dashed where a point says so, `SERIES_COLORS`, `lineChartGeometry`,
   `describeLines`; `StackedBarChart`, parts bottom-up with its own legend, the hovered part
-  outlined, `stackedBarGeometry`, `describeBars`; both hand-written SVG sized from their box by
+  outlined, `stackedBarGeometry`, `describeBars`, and its labels thinned by Phase 21A's
+  `charts/labelStep.ts` when they would overlap (every few bars; the tooltip and the description
+  still name every bar); both hand-written SVG sized from their box by
   `useChartWidth`, inside `chartParts.tsx`'s `ChartFrame`: an image described in words, the legend,
   `touch-action: pan-y`, and the nearest point's or part's details on a hover, a pen or a tap in
   `.chart-tooltip`, as wide as its text and sliding with the point's share of the plot, so it never
@@ -439,6 +441,49 @@ keeps credit to upstream and to the board game's creators.
   the filter, the tab row and the route's tab, and a filter change stays on the tab (`navigate`).
   `testGames.ts` holds test builders the browser tests may import too (`ROLES` per seat count,
   `seatsOf`, `game`, `match`, and `generateData`, seeded).
+  ACTIVITY (`/stats/activity`, Phase 21A) shows when the group plays and how long each decision
+  takes, in the viewer's time zone. `activity.ts` (`computeActivity(counted, now, timeZone =
+  viewerTimeZone())`): only `localDayKey` and `localHour(ms, timeZone)` (an `Intl` wall-clock hour)
+  read the zone; weeks (Monday first, `weekKey`, its Monday's day key), months (`monthKey`),
+  weekdays (`weekdayOf`, 0 for Monday) and `addDays` are arithmetic on the `YYYY-MM-DD` key, so a
+  clock change moves no game. Every bucket is the game's start's (23:30 to 00:30 counts on its
+  start's day, week, month and hour); only `daysSinceLast` reads an end, the last counted
+  `endedAt`, through `localDaysBetween`, never below 0. It gives each player's games and share
+  (`byPlayer`), games per week (the last `WEEKS_SHOWN`, 52) and per month (every month from the
+  first game's) up to the latest game's, empty periods 0 and `cumulative` all-time, each period's
+  games per player, the calendar's views (`heatmaps`: `LAST_12_MONTHS`, the 365 days ending on the
+  latest start day, then each year with a game, newest first, a day's shade `ceil(games · 4 /
+  busiest)` of its own view), `byWeekday`, `byHour`, `sessions` (from `sessionSummaries`, which
+  Phase 21B reuses), the busiest day, week and month, and `longestGap` between sessions in whole
+  local days; ties go to the later one. Labels are fixed English (`dayLabel` `14 Nov` and
+  `Sat 14 Nov 2026`, `weekLabel`, `monthLabel`, `weekdayLabel`, `hourLabel` `21:00 to 22:00`), and
+  `countLabel(n, [one, many])`. `timing.ts` (`computeTiming(counted)`) averages `rounds()`'s
+  decision times by the seat that decided, a seat with a player only: nominate, vote, discard,
+  chancellor (both choices around a refused veto), power, and END TERM (only terms the president
+  ended), with `asPresident` pooling a president's nominate, discard, power and END TERM, the terms
+  each president ended and how many the countdown did, pauses and dropped connections; a CPU
+  president's term counts nowhere. `slowestPresident` is the highest `asPresident` of 5 or more
+  samples (every one of a tie), `fastestVoter(timing, names)` the one rule the Speed Demon trophy
+  reads (of players with 30 or more timed votes over 8 or more counted games, the lowest average;
+  ties to more votes, then the name; one holder or null), and `formatAverageTime` "4.2 s" (from a
+  minute, `formatDecisionTime`'s). `charts/BarChart.tsx` (bars from their box's width, the y
+  axis's 0 and maximum, x labels thinned by `labelStep` and kept inside the chart, the office
+  orange by default) and `charts/CalendarHeatmap.tsx` (a column per week, Monday on top, cells up
+  to 16px in `HEAT_COLORS`' five shades, drawn from the left of an image as wide as its box, each
+  month's name over the column of its first day unless within 28px of the last, Mon, Wed and Fri
+  where cells are 7px or more) draw in `ChartFrame`, inside a focusable box of their own
+  (`role="group"` named by the chart's label, the stats' focus outline) whose arrow keys move the
+  details (Home and End too; the heatmap's up and down a day, left and right a week), cleared when
+  it loses the focus. `tabs/ActivityTab.tsx` takes optional `now` (else the tab's first draw) and
+  `timeZone` for its tests, memoizes both modules per counted set, and has four sections (Games,
+  When, Sessions and gaps, Timing), each a heading over a grid of cards (`div.activity-cell` with
+  `data-card`, `.activity-wide` across the grid, the rest packed `dense` within their section, each
+  its own height): games over time with PER WEEK and PER MONTH (`button.activity-choice`,
+  `aria-pressed`, 44px at every size), which redraw cumulative games and attendance too (a
+  `StackedBarChart` coloured by `SERIES_COLORS` in the players' order), participation, the calendar
+  with a choice per view, the day of the week, the hour of the day, busiest times, sessions, gaps,
+  decision times (a `SplitTable`, "—" under 5 samples), the fastest voter and the slowest president
+  (names with `link={false}`), the END TERM countdown and dropped connections.
   GAMES (`/stats/games`, `src/stats/games/`) lists
   every recorded game, newest first, under a filter of its own kept in the address:
   `gamesFilter.ts` (`GamesFilter`, `NO_GAMES_FILTER`, `PER_PAGE`, `ENDING_PARAM`,
@@ -823,7 +868,12 @@ keeps credit to upstream and to the board game's creators.
   twelve-character names inside their columns and chips at 320px; on `desktop` it goes through a
   filter, a page, a game and back, forward and reload by the address, and plays a real game of
   seven through `driveGame.ts` whose victory screen opens its page and which GAMES lists under its
-  first seat's player. No `e2e/` file imports `src/constants` or anything that does (`api.ts`, `App`): it
+  first seat's player. `stats-activity.spec.ts` opens ACTIVITY with the clock
+  (`page.clock.setFixedTime`) an hour after the latest game and checks it at every size (no chart
+  outside its card, no wrapped button label, the charts drawn), a tooltip on a hover or a tap of
+  the day-of-week chart and of a heatmap day, and (`desktop`) the arrow keys, PER MONTH, and with
+  `timezoneId` that a game across midnight UTC is Saturday's in Auckland and Friday's in Los
+  Angeles. No `e2e/` file imports `src/constants` or anything that does (`api.ts`, `App`): it
   reads `window` when it loads, which throws in Playwright's Node process; specs build stats paths
   with `routePath`. Shared helpers are `e2e/lobby.ts`
   (`waitForPlayers`, `joinGuests`, with `pickLooks` false for guests who stay on the default
