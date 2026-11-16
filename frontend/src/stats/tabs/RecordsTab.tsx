@@ -141,7 +141,8 @@ export function RecordsTab(props: { stats: StatsContext; now?: number; timeZone?
   /** Players tied for a title: more counted games first, then by name. */
   const byGamesThenName = (a: number, b: number) => games(b) - games(a) || compareNames(name(a), name(b)) || a - b;
   const byName = (a: number, b: number) => compareNames(name(a), name(b)) || a - b;
-  const titled = (players: number[]) => [...players].sort(byGamesThenName);
+  /** A copy of `players` in the order tied holders of a title are listed. */
+  const inTitleOrder = (players: number[]) => [...players].sort(byGamesThenName);
 
   const players = Array.from(records.byPlayer.entries());
   const rowsOf = <T,>(value: (p: PlayerRecords) => T | null) =>
@@ -209,7 +210,7 @@ export function RecordsTab(props: { stats: StatsContext; now?: number; timeZone?
           empty={empty || (month.players.length === 0 && "No wins yet this month.")}
         >
           <p className="records-line">
-            <Names players={titled(month.players)} names={names} />
+            <Names players={inTitleOrder(month.players)} names={names} />
             {DOT}
             <Whole className="records-count">{countLabel(month.wins, WIN_NOUNS)}</Whole>
           </p>
@@ -228,7 +229,7 @@ export function RecordsTab(props: { stats: StatsContext; now?: number; timeZone?
                   <td className="records-who">
                     <span className="records-sub">{holder.long}</span>
                     <ul className="records-holders">
-                      {titled(holder.players).map((player) => (
+                      {inTitleOrder(holder.players).map((player) => (
                         <li key={player}>
                           <PlayerName player={player} name={name(player)} />
                         </li>
@@ -269,7 +270,7 @@ export function RecordsTab(props: { stats: StatsContext; now?: number; timeZone?
         >
           {highestPeak && (
             <p className="records-line records-peak">
-              Highest peak: <Names players={titled(highestPeak.players)} names={names} />
+              Highest peak: <Names players={inTitleOrder(highestPeak.players)} names={names} />
               {DOT}
               <Whole className="records-count">{formatRating(highestPeak.rating)}</Whole>
             </p>
