@@ -116,9 +116,11 @@ export function computeRivals(counted: GameRecord[], names: Map<number, string>)
   const name = (player: number) => nameOf(names, player);
   const byName = (x: number, y: number) => compareNames(name(x), name(y)) || x - y;
 
+  // Counted games are always won; a game nobody won (unfinished) would give one side a win.
+  const decided = counted.filter((record) => record.winner !== null);
   const found = new Map<string, Pair>();
   const people = new Set<number>();
-  for (const record of counted) {
+  for (const record of decided) {
     const humans = humanSeats(record);
     for (const { player } of humans) people.add(player);
     for (let i = 0; i < humans.length; i++) {
@@ -239,7 +241,7 @@ export function computeRivals(counted: GameRecord[], names: Map<number, string>)
     });
   }
 
-  const nominations = nominationsOf(counted, byName);
+  const nominations = nominationsOf(decided, byName);
   return { players, pairs, bestDuo, bestFascistDuo, closest, mostLopsided, nominations, byPlayer };
 }
 

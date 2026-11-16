@@ -52,6 +52,17 @@ describe("pairs", () => {
     expect(new Map(backwards.pairs)).toEqual(new Map(forwards.pairs));
   });
 
+  it("leaves out a game nobody won", () => {
+    const unfinished = { ...beats(1, 2), outcome: "UNFINISHED" as const, winner: null };
+    const withNominations = played([[1, "LIBERAL"], [2, "FASCIST"], [null, "LIBERAL"], [null, "LIBERAL"], [null, "HITLER"]], "LIBERAL", [
+      ...nominated(1, 0, 1, true),
+    ]);
+    const r = computeRivals([beats(1, 2), unfinished, { ...withNominations, outcome: "UNFINISHED", winner: null }], NAMES);
+    expect(pairOf(r, 1, 2)).toMatchObject({ shared: 1, opposed: 1, aWins: 1 });
+    expect(against(r, 2, 1)).toEqual({ wins: 0, losses: 1 });
+    expect(r.nominations.size).toBe(0);
+  });
+
   it("has nothing without counted games", () => {
     const r = computeRivals([], NAMES);
     expect(r.players).toEqual([]);
