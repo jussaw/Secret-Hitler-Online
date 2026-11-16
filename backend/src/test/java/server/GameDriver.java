@@ -7,6 +7,8 @@ import game.datastructures.Policy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
+import server.util.Lobby;
 
 /**
  * Plays a whole game of SecretHitlerGame with fixed moves that pass fascist policies, so a game
@@ -14,6 +16,7 @@ import java.util.function.Consumer;
  */
 public final class GameDriver {
     private static final int MAX_ACTIONS = 500;
+    private static final int MAX_CPU_TICKS = 2_000;
 
     private final SecretHitlerGame game;
     private boolean firstElection = true;
@@ -71,6 +74,29 @@ public final class GameDriver {
             }
             driver.act();
         }
+    }
+
+    /**
+     * Plays a lobby's CPU players, one tick at a time: each call of {@code updateAllUsers}, under
+     * the lobby's lock, makes one CPU move, or one round of CPU votes. The caller sets
+     * {@code Lobby.CPU_ACTION_DELAY_IN_SEC} long (600), so no tick comes by itself during a test.
+     *
+     * @param until checked with the lobby's game before each tick: the ticks stop once it holds,
+     *              or once the lobby has no game.
+     * @throws IllegalStateException if neither happens within 2,000 ticks.
+     */
+    public static void stepCpus(Lobby lobby, Predicate<SecretHitlerGame> until) {
+        for (int ticks = 0; ticks <= MAX_CPU_TICKS; ticks++) {
+            synchronized (lobby) {
+                if (!lobby.isInGame() || until.test(lobby.game())) {
+                    return;
+                }
+                if (ticks < MAX_CPU_TICKS) {
+                    lobby.updateAllUsers();
+                }
+            }
+        }
+        throw new IllegalStateException("The CPU players did not get there in " + MAX_CPU_TICKS + " ticks.");
     }
 
     /**

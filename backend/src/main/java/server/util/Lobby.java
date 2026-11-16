@@ -8,6 +8,10 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.SecretHitlerServer;
+import server.stats.GameRecord;
+import server.stats.GameRecordSink;
+import server.stats.GameSnapshot;
+import server.stats.TimelineDiff;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -22,6 +26,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.LongSupplier;
 import java.util.stream.Collectors;
 
 /**
@@ -74,6 +79,26 @@ public class Lobby implements Serializable {
     transient private boolean backedUpBeforeAccounts;
 
     private Set<CpuPlayer> cpuPlayers;
+
+    // The running game's record (#31): its ID, the clock's time when it started, whether its
+    // timeline starts at its start and holds every move, and the timeline itself (TimelineDiff's
+    // events, then Lobby's own). They are backed up with the game, and hold JDK types only, so a
+    // backup still loads after a rollback to a build with another recorder. In a backup from
+    // before the recorder, gameEvents comes back null: that is how readObject spots one. While a
+    // game runs, gameEvents is never null; gameId stays once the game ends, until the next starts.
+    private String gameId;
+    private long gameStartedAt;
+    private boolean gameComplete;
+    private ArrayList<LinkedHashMap<String, Object>> gameEvents;
+    // The last look at the running game, which the next look is compared with (observeGame). Null
+    // after a restore until something reaches the game, and after a look that failed.
+    transient private GameSnapshot lastSnapshot;
+
+    // Where each game's record goes when it ends or its lobby is swept. It is called under the
+    // lobby's lock, so it never blocks: Phase 14B's writer takes the record and returns.
+    public static volatile GameRecordSink recordSink = GameRecordSink.DROPPING;
+    // The record's clock, in epoch ms (tests set their own).
+    public static volatile LongSupplier recordClock = System::currentTimeMillis;
 
     public static long LOBBY_TIMEOUT_DURATION_IN_MIN = 10;
     public static float PLAYER_TIMEOUT_IN_SEC = 3;
@@ -157,6 +182,11 @@ public class Lobby implements Serializable {
      * the lobby's lock, answer none of its messages. So a handler that looked the lobby up just
      * before the sweep leaves no connection in it, however the two interleave (#64).
      *
+     * <p>A game running in the lobby hands over its record ({@code handOverGame}): as it ended if
+     * it has (a CPU's winning move waits for the next tick to be dropped), and otherwise
+     * {@code UNFINISHED}, ended at the sweep's time. The lobby then drops the game, so no CPU tick
+     * or countdown plays on in it.
+     *
      * @return true iff this call closed the lobby: it had timed out, and was not closed already.
      */
     synchronized public boolean closeIfTimedOut() {
@@ -164,6 +194,10 @@ public class Lobby implements Serializable {
             return false;
         }
         closed = true;
+        if (game != null) {
+            handOverGame(true);
+            dropGame();
+        }
         return true;
     }
 
@@ -636,16 +670,24 @@ public class Lobby implements Serializable {
      *          to each connected WsContext.
      *          ({@code GameToJSONConverter.convert()}). Also
      *          updates all connected CpuPlayers after a set amount of time.
+     *          The timeline takes the move that led here first ({@code observeGame}), and
+     *          each CPU move as it is made. A game that has ended hands over its record
+     *          before its seats are cleared.
      */
     synchronized public void updateAllUsers() {
+        // Every change to the game reaches the players through here: a command, the END TERM
+        // countdown, a disconnect or a CPU tick. Its getState() also lets hasGameFinished() see a
+        // policy victory with no one connected.
+        observeGame(false);
+
         // Spectators are sent the state here too, so they get a finished game before it is cleared.
         sendStateToAll();
 
         // Check if the game ended.
         if (game != null && game.hasGameFinished()) {
-            game = null;
-            gameSeats.clear();
-            cpuPlayers.clear();
+            handOverGame(false);
+            SecretHitlerServer.markLobbiesChanged(); // the next backup holds the lobby without its game
+            dropGame();
         }
 
         // Update all the CpuPlayers so they can act
@@ -660,6 +702,9 @@ public class Lobby implements Serializable {
                     // We're in a voting step, so it doesn't matter if the CPU is
                     // acting unless the gamestate changes.
                     boolean stateUpdated = cpu.act(game);
+                    if (stateUpdated) {
+                        observeGame(false); // each CPU's vote on its own, in the order they vote
+                    }
                     // Did acting cause voting to end?
                     if (stateUpdated && game.getState() != GameState.CHANCELLOR_VOTING) {
                         didCpuUpdateState = true;
@@ -667,6 +712,7 @@ public class Lobby implements Serializable {
                     }
                 } else {
                     if (cpu.act(game)) {
+                        observeGame(false);
                         didCpuUpdateState = true;
                         break;
                     }
@@ -981,11 +1027,22 @@ public class Lobby implements Serializable {
         for (CpuPlayer cpu : cpuPlayers) {
             cpu.initialize(game);
         }
+
+        // The game's record starts with it: a new ID, the start time, an empty timeline and the
+        // first look, which the first move is compared with.
+        gameId = UUID.randomUUID().toString();
+        gameStartedAt = recordClock.getAsLong();
+        gameComplete = true;
+        gameEvents = new ArrayList<>();
+        lastSnapshot = null;
+        takeBaseline();
     }
 
     /**
-     * Returns the current game.
-     * 
+     * Returns the current game. Every command reaches the game through here before it changes
+     * it, so a lobby restored from a backup takes its first look at the game here, and the
+     * command's move is the first one it records.
+     *
      * @throws RuntimeException if called when there is no active game
      *                          ({@code !this.isInGame()}).
      * @return the SecretHitlerGame for this lobby.
@@ -994,7 +1051,165 @@ public class Lobby implements Serializable {
         if (game == null) {
             throw new RuntimeException();
         } else {
+            if (lastSnapshot == null) {
+                takeBaseline();
+            }
             return game;
+        }
+    }
+
+    /**
+     * The running game's ID, or the last finished one's until the next game starts (the victory
+     * packet needs it after the game is dropped), or null if the lobby has run no game.
+     */
+    synchronized public String gameId() {
+        return gameId;
+    }
+
+    /**
+     * A copy of the running game's timeline, oldest first: empty outside a game. The record a
+     * game hands over holds the same events.
+     */
+    synchronized public List<Map<String, Object>> timeline() {
+        List<Map<String, Object>> copy = new ArrayList<>();
+        if (game != null && gameEvents != null) {
+            for (LinkedHashMap<String, Object> event : gameEvents) {
+                LinkedHashMap<String, Object> eventCopy = new LinkedHashMap<>();
+                event.forEach((key, value) -> eventCopy.put(key, value instanceof List<?> list ? List.copyOf(list) : value));
+                copy.add(Collections.unmodifiableMap(eventCopy));
+            }
+        }
+        return copy;
+    }
+
+    /**
+     * Drops the game and everything that belongs to it: its seats, CPU players, END TERM
+     * countdown, timeline and last look. {@code gameId} stays until the next game starts.
+     */
+    synchronized public void dropGame() {
+        game = null;
+        gameSeats.clear();
+        cpuPlayers.clear();
+        stopTermTimer();
+        expiredTermTimer = null;
+        gameEvents = null;
+        lastSnapshot = null;
+    }
+
+    // </editor-fold>
+
+    ////// Game Timeline
+    // <editor-fold desc="Game Timeline">
+
+    /**
+     * Takes a first look at the game, which the next look is compared with. A look that fails
+     * leaves none, and marks the record incomplete: a move may go unrecorded before the next.
+     */
+    private void takeBaseline() {
+        try {
+            lastSnapshot = GameSnapshot.of(game);
+        } catch (RuntimeException e) {
+            lastSnapshot = null;
+            gameComplete = false;
+            logger.warn("Could not look at game " + gameId + ": " + e.getMessage());
+        }
+    }
+
+    /**
+     * Looks at the game and adds the events since the last look to its timeline
+     * ({@code TimelineDiff.between}). With no last look (a restored lobby, or a look that failed),
+     * it only takes one. Nothing here ever stops a game: a move it cannot read is logged and left
+     * out, the record is marked incomplete, and the next look starts afresh.
+     *
+     * @param byCountdown whether the END TERM countdown has just ended the term, so the
+     *                    {@code endTerm} is the countdown's, not the president's.
+     */
+    private void observeGame(boolean byCountdown) {
+        if (game == null) {
+            return;
+        }
+        if (lastSnapshot == null) {
+            takeBaseline();
+            return;
+        }
+        try {
+            GameSnapshot now = GameSnapshot.of(game);
+            List<LinkedHashMap<String, Object>> events = TimelineDiff.between(lastSnapshot, now, eventTime());
+            if (byCountdown) {
+                for (LinkedHashMap<String, Object> event : events) {
+                    if (event.get("type").equals("endTerm")) {
+                        event.put("by", "countdown");
+                    }
+                }
+            }
+            gameEvents.addAll(events);
+            lastSnapshot = now;
+        } catch (RuntimeException e) {
+            logger.warn("Could not record a move of game " + gameId + ": " + e.getMessage());
+            gameComplete = false;
+            takeBaseline();
+        }
+    }
+
+    /** Adds one of the lobby's own events (a pause, a drop, a restore) to the timeline. */
+    private LinkedHashMap<String, Object> addEvent(String type) {
+        LinkedHashMap<String, Object> event = TimelineDiff.event(type, eventTime(), game.getRound());
+        gameEvents.add(event);
+        return event;
+    }
+
+    /**
+     * The time of an event now: ms since the game started on {@code recordClock}, never before
+     * the last event's, so a clock that steps back never makes the timeline go back.
+     */
+    private long eventTime() {
+        long t = Math.max(0, recordClock.getAsLong() - gameStartedAt);
+        if (gameEvents != null && !gameEvents.isEmpty()) {
+            Object last = gameEvents.get(gameEvents.size() - 1).get("t");
+            if (last instanceof Long lastT) {
+                t = Math.max(t, lastT);
+            }
+        }
+        return t;
+    }
+
+    /**
+     * Hands the game's record to {@code recordSink}: the one place a record is made. A game that
+     * has ended keeps its outcome, with exactly one {@code end} (added if its timeline lacks one),
+     * and ended when that {@code end} came; so a game a CPU won in a tick, which the next tick
+     * drops, keeps its outcome when the sweep comes first. Any other game is {@code UNFINISHED},
+     * ended now. A record or sink that fails is logged, and the game is dropped as usual.
+     *
+     * @param swept whether the sweep is closing the lobby, rather than the game having ended.
+     */
+    private void handOverGame(boolean swept) {
+        observeGame(false);
+        try {
+            String outcome = GameSnapshot.outcomeOf(game.getState());
+            long endedAt;
+            if (outcome != null) {
+                Map<String, Object> end = null;
+                for (Map<String, Object> event : gameEvents) {
+                    if (event.get("type").equals("end")) {
+                        end = event;
+                    }
+                }
+                if (end == null) {
+                    end = addEvent("end");
+                    end.put("outcome", outcome);
+                }
+                endedAt = gameStartedAt + (Long) end.get("t");
+            } else {
+                outcome = GameRecord.UNFINISHED;
+                addEvent("end").put("outcome", outcome);
+                endedAt = recordClock.getAsLong();
+            }
+            GameRecord record = GameRecord.of(gameId, gameStartedAt, endedAt, outcome, gameComplete, game,
+                    seatAccounts(), gameEvents);
+            logger.info("Game " + gameId + (swept ? " was swept: " : " ended: ") + outcome + ".");
+            recordSink.submit(record);
+        } catch (RuntimeException e) {
+            logger.error("Could not hand over the record of game " + gameId + ".", e);
         }
     }
 
