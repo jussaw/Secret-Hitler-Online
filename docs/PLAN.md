@@ -933,7 +933,7 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-19-votes-powers.md`](superp
 Issue #31: the VOTES & POWERS tab at `/stats/votes`. It shows each player's elections, votes, presidential powers and survival over the counted games, computed in the page from `rounds(record)`. It runs after Phases 16 and 17A, beside 17B, 18, 20 and 21A: it fills its own tab file and stat modules and shares only the docs.
 
 - [x] `frontend/src/stats/votes.ts`: nominations, nominations passed as president and as chancellor, picking a teammate, failed elections and chaos
-- [ ] `frontend/src/stats/votes.ts`: Ja rate by role, Liberal vote accuracy, Fascist loyalty, voted Hitler in, swing votes and lone dissent, checked against the contract fixture
+- [x] `frontend/src/stats/votes.ts`: Ja rate by role, Liberal vote accuracy, Fascist loyalty, voted Hitler in, swing votes and lone dissent, checked against the contract fixture
 - [ ] `frontend/src/stats/powers.ts`: investigations (whom they investigated and what they saw, Liberal finds, checking a teammate, times investigated), peeks and special elections
 - [ ] `frontend/src/stats/powers.ts`: executions (targets by side, Hitler executed, times executed, first to go), vetoes as president and survival by role, checked against the contract fixture
 - [ ] `frontend/src/stats/tabs/VotesTab.tsx`: the tab's 26 cards in two sections (INVESTIGATIONS naming whom, split cards through Phase 17A's `SplitTable`), each with its empty state
