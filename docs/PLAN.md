@@ -1008,7 +1008,7 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-21b-records.md`](superpower
 Issue #31, after Phases 21A and 17B: the RECORDS tab shows streaks, the best weeks and months, player of the month and its history, the longest game nights, the highest peak rating and the biggest upset, counted in the viewer's time zone and built on OVERVIEW's streaks and player of the month, so the two tabs agree.
 
 - [x] `frontend/src/stats/records.ts`: streaks (on OVERVIEW's `winStreaks`), the most wins in a week and in a month, player of the month (OVERVIEW's `playerOfTheMonth`) and its history, the most games in one session
-- [ ] `records.ts`: rating records (the highest peak, and the biggest upset with its winners' gain and losers' loss)
+- [x] `records.ts`: rating records (the highest peak, and the biggest upset with its winners' gain and losers' loss)
 - [ ] `frontend/src/stats/tabs/RecordsTab.tsx`: the RECORDS tab
 - [ ] `frontend/e2e/stats-records.spec.ts`: RECORDS fits every stats size, its game link opens the game, and the player of the month follows the browser's time zone
 - [ ] `CLAUDE.md` and `README.md` (and `DEVELOPMENT.md` if needed) describe the tab

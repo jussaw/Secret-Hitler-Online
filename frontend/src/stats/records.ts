@@ -12,11 +12,12 @@ import { humanSeats, seatWon } from "./counting";
 import type { EloResult } from "./elo";
 import { localDayKey, viewerTimeZone } from "./format";
 import { playerOfTheMonth, winStreaks, type StreakRun } from "./overview";
-import type { GameRecord } from "./record";
+import type { GameRecord, Side } from "./record";
 
 /**
  * RECORDS' numbers (the spec's "RECORDS"): the longest streaks, each player's best week and
- * month, the player of the month and its history, and the longest game nights. Each player's
+ * month, the player of the month and its history, the longest game nights, the highest peak
+ * rating and the biggest upset. Each player's
  * streaks are OVERVIEW's `winStreaks`, and the player of the month (this month's and each
  * completed month's) its `playerOfTheMonth`, so the two tabs share one rule. Every period counts
  * a game by its start, in the viewer's time zone (or the one passed in, so tests pin one). Pure:
@@ -58,6 +59,27 @@ export interface MonthHolder extends Label {
   wins: number;
 }
 
+/**
+ * The win least expected: the winners' chance before the game (`E` for a Liberal win, `1 − E`
+ * for a Fascist one), and `change`, what each winner gained and each loser lost. `winners` and
+ * `losers` are the game's human players, ascending.
+ */
+export interface Upset {
+  gameId: string;
+  endedAt: number;
+  winner: Side;
+  chance: number;
+  change: number;
+  winners: number[];
+  losers: number[];
+}
+
+/** The highest peak rating, rounded, and every player whose rounded peak is that. */
+export interface HighestPeak {
+  players: number[];
+  rating: number;
+}
+
 export interface RecordStats {
   /** Every human player of a counted game, by number. */
   byPlayer: Map<number, PlayerRecords>;
@@ -70,6 +92,10 @@ export interface RecordStats {
   monthHistory: MonthHolder[];
   /** The sessions with the most games, at most `TOP_SESSIONS`, a tie going to the later one. */
   topSessions: SessionSummary[];
+  /** Null when no one is rated. */
+  highestPeak: HighestPeak | null;
+  /** The lowest winners' chance among games a person won, a tie going to the later game; null when none. */
+  biggestUpset: Upset | null;
 }
 
 /** The period with the most wins, the later of a tie (keys sort as text), or null. */
@@ -87,6 +113,48 @@ function longer(a: Streak | null, b: Streak | null, order: Map<string, number>):
   if (b === null) return a;
   if (a.length !== b.length) return a.length > b.length ? a : b;
   return order.get(b.lastGameId)! > order.get(a.lastGameId)! ? b : a;
+}
+
+/** The highest rounded peak in `elo`, and the players at it, ascending. */
+function highestPeakOf(elo: EloResult): HighestPeak | null {
+  let rating = -Infinity;
+  elo.ratings.forEach((r) => {
+    rating = Math.max(rating, Math.round(r.peak));
+  });
+  if (rating === -Infinity) return null;
+  const players = Array.from(elo.ratings.values())
+    .filter((r) => Math.round(r.peak) === rating)
+    .map((r) => r.player)
+    .sort((a, b) => a - b);
+  return { players, rating };
+}
+
+/**
+ * The counted game a person won with the lowest chance, by its Elo, a tie going to the later game
+ * in counted order. Games with no Elo, and games won by CPU seats alone, are left out.
+ */
+function biggestUpsetOf(counted: GameRecord[], elo: EloResult): Upset | null {
+  let best: Upset | null = null;
+  for (const record of counted) {
+    const game = elo.games.get(record.id);
+    if (!game || record.winner === null) continue;
+    const winners: number[] = [];
+    const losers: number[] = [];
+    for (const { seat, player } of humanSeats(record)) (seatWon(record, seat) ? winners : losers).push(player);
+    if (winners.length === 0) continue;
+    const chance = record.winner === "LIBERAL" ? game.expectedLiberal : 1 - game.expectedLiberal;
+    if (best !== null && chance > best.chance) continue;
+    best = {
+      gameId: record.id,
+      endedAt: record.endedAt,
+      winner: record.winner,
+      chance,
+      change: Math.abs(game.liberalChange),
+      winners: winners.sort((a, b) => a - b),
+      losers: losers.sort((a, b) => a - b),
+    };
+  }
+  return best;
 }
 
 /** Every RECORDS number for the counted games (oldest first), seen at `now` in `timeZone`. */
@@ -189,5 +257,7 @@ export function computeRecords(
     playerOfTheMonth: holder(thisMonth, now) ?? { ...monthLabel(thisMonth), players: [], wins: 0 },
     monthHistory,
     topSessions,
+    highestPeak: highestPeakOf(elo),
+    biggestUpset: biggestUpsetOf(counted, elo),
   };
 }

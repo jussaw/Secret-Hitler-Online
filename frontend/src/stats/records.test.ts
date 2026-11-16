@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
-import type { EloResult } from "./elo";
+import { computeActivity } from "./activity";
+import { countedGames, DEFAULT_FILTER } from "./counting";
+import { replayElo, type EloResult, type GameElo, type PlayerRating } from "./elo";
+import fixture from "./fixtures/recorded-games.json";
 import { winStreaks } from "./overview";
-import type { GameRecord, Role, Side } from "./record";
+import { parseStatsData, type GameRecord, type Role, type Side } from "./record";
 import { computeRecords, TOP_SESSIONS } from "./records";
 import { makeRecord, makeSeats } from "./testRecords";
+import { computeTiming } from "./timing";
 
 /** A side's roles for `n` seats: Liberals, or the Fascist side with Hitler in its first seat. */
 function rolesOf(side: Side, n: number): Role[] {
@@ -159,5 +163,112 @@ describe("computeRecords", () => {
     expect(r.playerOfTheMonth).toMatchObject({ key: "2026-11", players: [], wins: 0 });
     expect(r.monthHistory).toEqual([]);
     expect(r.topSessions).toEqual([]);
+  });
+});
+
+/**
+ * An `EloResult` from `[expectedLiberal, liberalChange]` by game ID and a peak by player (each
+ * player's rating that peak, over 6 games, not provisional), with no history.
+ */
+function eloOf(games: Record<string, [number, number]>, peaks: Record<number, number>): EloResult {
+  const out: EloResult = { ratings: new Map<number, PlayerRating>(), history: [], games: new Map<string, GameElo>() };
+  for (const [gameId, [expectedLiberal, liberalChange]] of Object.entries(games)) {
+    out.games.set(gameId, { gameId, expectedLiberal, handicap: 0, liberalChange });
+  }
+  for (const [n, peak] of Object.entries(peaks)) {
+    const player = Number(n);
+    out.ratings.set(player, { player, rating: peak, games: 6, provisional: false, lastChange: 0, peak });
+  }
+  return out;
+}
+
+const RATED = [
+  played("a", "2026-11-01T20:00:00Z", [1, 2, 3], [4, 5]),
+  played("b", "2026-11-02T20:00:00Z", [4, 5], [1, 2, 3], "FASCIST"),
+  played("c", "2026-11-03T20:00:00Z", [1, 2, 3], [4, 5]),
+  played("d", "2026-11-04T20:00:00Z", [1, 2, 3], [4, 5]),
+  played("e", "2026-11-05T20:00:00Z", [], [1, 2, 3], "FASCIST"), // won by CPU seats alone
+];
+const RATED_ELO = eloOf(
+  { a: [0.5, 16], b: [0.75, -24], c: [0.625, 12], d: [0.25, 24], e: [0.875, -28] },
+  { 1: 1561.4, 2: 1530, 3: 1561.2 }
+);
+
+/** The contract fixture's records, a fresh copy. */
+const fixtureGames = () => parseStatsData(JSON.parse(JSON.stringify(fixture))).games;
+
+describe("computeRecords' rating records", () => {
+  it("ratingRecords", () => {
+    const r = computeRecords(RATED.slice(0, 3), RATED_ELO, NOW, "UTC");
+    expect(r.highestPeak).toEqual({ players: [1, 3], rating: 1561 });
+    expect(r.biggestUpset).toMatchObject({
+      gameId: "b",
+      winner: "FASCIST",
+      chance: 0.25,
+      change: 24,
+      winners: [4, 5],
+      losers: [1, 2, 3],
+    });
+    expect(r.biggestUpset!.endedAt).toBe(RATED[1].endedAt);
+  });
+
+  it("anUpsetTieGoesToTheLaterGame", () => {
+    expect(computeRecords(RATED.slice(0, 4), RATED_ELO, NOW, "UTC").biggestUpset).toEqual({
+      gameId: "d",
+      endedAt: RATED[3].endedAt,
+      winner: "LIBERAL",
+      chance: 0.25,
+      change: 24,
+      winners: [1, 2, 3],
+      losers: [4, 5],
+    });
+  });
+
+  it("aWinByCpuSeatsAloneIsNoUpset", () => {
+    // Review Focus 2: e's winners had a 0.125 chance, but no person won it.
+    expect(computeRecords(RATED, RATED_ELO, NOW, "UTC").biggestUpset).toMatchObject({ gameId: "d", chance: 0.25 });
+  });
+
+  it("noRatingRecordsWithoutGames", () => {
+    const r = computeRecords([], { ratings: new Map(), history: [], games: new Map() }, NOW, "UTC");
+    expect(r.highestPeak).toBeNull();
+    expect(r.biggestUpset).toBeNull();
+  });
+
+  it("onTheContractFixture", () => {
+    // DEFAULT_FILTER leaves out the fixture's games with CPU seats, where a CPU-won swing is no upset.
+    const counted = countedGames(fixtureGames(), DEFAULT_FILTER);
+    const elo = replayElo(counted);
+    const r = computeRecords(counted, elo, NOW, "UTC");
+    // A side moves together, so with no CPU seats the upset is also the biggest swing.
+    expect(r.biggestUpset!.change).toBeCloseTo(Math.max(...counted.map((g) => Math.abs(elo.games.get(g.id)!.liberalChange))));
+    expect(r.highestPeak!.rating).toBe(Math.round(Math.max(...Array.from(elo.ratings.values()).map((p) => p.peak))));
+    r.byPlayer.forEach((p) =>
+      expect(Math.max(Math.abs(p.current), p.longestWin ? p.longestWin.length : 0, p.bestMonth ? p.bestMonth.wins : 0)).toBeLessThanOrEqual(
+        p.games
+      )
+    );
+  });
+
+  it("theStatsModulesOn1000GamesUnderASecond", () => {
+    // The spec: computing the stats for 1,000 games takes well under a second.
+    const base = fixtureGames();
+    const WEEK = 7 * 24 * 60 * 60 * 1000;
+    const games: GameRecord[] = [];
+    for (let copy = 0; games.length < 1000; copy++) {
+      for (const g of base) {
+        if (games.length === 1000) break;
+        games.push({ ...g, id: `${g.id}-${copy}`, startedAt: g.startedAt + copy * WEEK, endedAt: g.endedAt + copy * WEEK });
+      }
+    }
+    const counted = countedGames(games, { players: null, cpu: true });
+    const elo = replayElo(counted);
+    const now = counted[counted.length - 1].endedAt + 60 * 60 * 1000;
+    const start = performance.now();
+    computeActivity(counted, now, "UTC");
+    computeTiming(counted);
+    const r = computeRecords(counted, elo, now, "UTC");
+    expect(performance.now() - start).toBeLessThan(1000);
+    expect(r.monthHistory.length).toBeGreaterThan(3);
   });
 });
