@@ -1011,7 +1011,7 @@ Issue #31, after Phases 21A and 17B: the RECORDS tab shows streaks, the best wee
 - [x] `records.ts`: rating records (the highest peak, and the biggest upset with its winners' gain and losers' loss)
 - [x] `frontend/src/stats/tabs/RecordsTab.tsx`: the RECORDS tab
 - [x] `frontend/e2e/stats-records.spec.ts`: RECORDS fits every stats size, its game link opens the game, and the player of the month follows the browser's time zone
-- [ ] `CLAUDE.md` and `README.md` (and `DEVELOPMENT.md` if needed) describe the tab
+- [x] `CLAUDE.md` and `README.md` (and `DEVELOPMENT.md` if needed) describe the tab
 - [ ] Every finding of the whole-branch review is fixed
 - [ ] The pull request shows the tab before and after, on desktop and on a phone
 
