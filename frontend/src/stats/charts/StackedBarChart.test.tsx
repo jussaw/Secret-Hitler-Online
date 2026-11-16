@@ -77,6 +77,9 @@ describe("StackedBarChart", () => {
     expect(tooltip()).toBeNull();
     fireEvent.pointerMove(chart(), { ...centre(0, "B"), pointerType: "mouse" });
     expect(tooltip()).toHaveTextContent("5 · Fascist 4 of 6");
+    const marked = Array.from(document.querySelectorAll("rect.chart-bar.is-active"));
+    expect(marked).toHaveLength(1);
+    expect(marked[0]).toHaveAttribute("fill", "#e8604a");
     fireEvent.pointerLeave(chart(), { pointerType: "mouse" });
     expect(tooltip()).toBeNull();
     fireEvent.pointerDown(chart(), { ...centre(1, "A"), pointerType: "touch" });

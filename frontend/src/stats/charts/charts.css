@@ -43,6 +43,12 @@
     stroke-width: 2;
 }
 
+/* The bar part under the pointer, outlined as the line chart rings its point. */
+.chart-bar.is-active {
+    stroke: var(--headerTextColor);
+    stroke-width: 2;
+}
+
 .chart-legend {
     list-style: none;
     margin: 6px 0 0;

@@ -165,6 +165,8 @@ test("phones fold the filter into one line", async ({ page }) => {
 
 /** The charts' shared stylesheet, which a chart's tooltip and marks take their look from. */
 const CHARTS_CSS = fileURLToPath(new URL("../src/stats/charts/charts.css", import.meta.url));
+/** The game's colours and fonts, which every page loads before the charts' stylesheet. */
+const VARIABLES_CSS = fileURLToPath(new URL("../src/variables.css", import.meta.url));
 
 test("a chart's tooltip keeps its width at either edge", async ({ page }) => {
   // Review Focus 5: the rightmost point's details stay whole and inside the chart, as LineChart
@@ -178,6 +180,7 @@ test("a chart's tooltip keeps its width at either edge", async ({ page }) => {
       50
     )}${tooltip("right", 100)}</div>`
   );
+  await page.addStyleTag({ path: VARIABLES_CSS });
   await page.addStyleTag({ path: CHARTS_CSS });
   const chart = (await page.locator("#chart").boundingBox())!;
   for (const id of ["left", "middle", "right"]) {
@@ -188,4 +191,22 @@ test("a chart's tooltip keeps its width at either edge", async ({ page }) => {
     const lines = await page.locator(`#${id} > div`).evaluateAll((all) => all.map((line) => line.getClientRects().length));
     expect(lines, `the ${id} tooltip's lines each on one line`).toEqual([1, 1]);
   }
+});
+
+test("a chart's hovered bar is marked", async ({ page }) => {
+  await page.setContent(
+    '<div class="chart"><svg width="200" height="100"><rect class="chart-bar" id="still" width="20" height="40" fill="#5a9ba6" />' +
+      '<rect class="chart-bar is-active" id="hovered" x="40" width="20" height="40" fill="#5a9ba6" /></svg></div>'
+  );
+  await page.addStyleTag({ path: VARIABLES_CSS });
+  await page.addStyleTag({ path: CHARTS_CSS });
+  const stroke = (id: string) =>
+    page.locator(`#${id}`).evaluate((rect) => {
+      const style = getComputedStyle(rect);
+      return { stroke: style.stroke, width: parseFloat(style.strokeWidth) };
+    });
+  expect((await stroke("still")).stroke).toBe("none");
+  const hovered = await stroke("hovered");
+  expect(hovered.stroke).not.toBe("none");
+  expect(hovered.width).toBeGreaterThanOrEqual(2);
 });
