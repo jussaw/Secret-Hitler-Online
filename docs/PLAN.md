@@ -748,7 +748,7 @@ Issue #31, the first half of the game recorder: every game a lobby runs keeps a 
 - [x] `Lobby`: a timeline per game, and one `GameRecord` handed to `GameRecordSink` when the game ends or its lobby times out, a finished game keeping its outcome
 - [x] `Lobby`: pauses, resumes, terms the countdown ends, dropped connections and returns
 - [x] Backups carry the timeline, taken under the lobby's lock; a restore adds `restored`; a game from before the recorder is `complete: false`
-- [ ] `CLAUDE.md` describes the timeline
+- [x] `CLAUDE.md` describes the timeline
 - [ ] Every finding of the whole-branch review fixed, Minor ones included
 
 **Phase 14A acceptance**
