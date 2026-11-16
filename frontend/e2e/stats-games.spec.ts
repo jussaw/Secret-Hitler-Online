@@ -32,15 +32,16 @@ test.describe("the links in", () => {
     await expect(page.getByRole("link", { name: "OVERVIEW" })).toBeVisible();
   });
 
-  test("the lobby's Stats link opens the stats in a new tab", async ({ page }) => {
+  test("the lobby links to the stats only from the victory screen", async ({ page }) => {
     desktopOnly();
     await openFakeGame(page);
-    const popup = page.waitForEvent("popup");
-    await page.locator(".lobby-footer").getByRole("link", { name: "Stats", exact: true }).click();
-    const stats = await popup;
-    await expect(stats).toHaveURL(routePath({ page: "tab", tab: "overview" }));
-    await expect(page.getByRole("button", { name: "LEAVE LOBBY" })).toBeVisible();
-    await expect(page).toHaveURL("/");
+    // The lobby keeps its own header (the title and the speaker), with no stats links.
+    const header = page.locator(".lobby-screen > header");
+    await expect(header).toHaveText(/^SECRET-HITLER/);
+    await expect(header.locator(".sound-control")).toHaveCount(1);
+    await expect(page.getByRole("navigation", { name: "Stats pages" })).toHaveCount(0);
+    await expect(page.locator(".lobby-footer")).toHaveText("About this project · Report a bug");
+    await expect(page.getByRole("link", { name: /stats/i })).toHaveCount(0);
   });
 
   test("See this game sits on the victory screen", async ({ page, isMobile }) => {
