@@ -20,7 +20,9 @@ public class SpectatorStateTest {
     /** Keys every game packet has, whatever the state (null fields are left out by org.json). */
     private static final Set<String> ALWAYS = Set.of("players", "playerOrder", "president", "state", "lastState",
             "electionTracker", "electionTrackerAdvanced", "lastPolicy", "drawSize", "discardSize",
-            "fascistPolicies", "liberalPolicies", "userVotes", "vetoOccurred");
+            "fascistPolicies", "liberalPolicies", "userVotes", "vetoOccurred", "gameId");
+    /** The game's record ID, as the lobby passes it. */
+    private static final String GAME_ID = "game-1";
     /** Public keys that are left out while their value is null. */
     private static final Set<String> SOMETIMES = Set.of("chancellor", "lastPresident", "lastChancellor",
             "targetUser");
@@ -52,7 +54,7 @@ public class SpectatorStateTest {
             Set<String> hand = handKeys(game.getState());
             for (Player player : game.getPlayerList()) {
                 String name = player.getUsername();
-                JSONObject packet = GameToJSONConverter.convert(game, name);
+                JSONObject packet = GameToJSONConverter.convert(game, name, GAME_ID);
                 String at = game.getState() + " for " + name;
                 assertTrue("own role " + at, packet.getJSONObject("players").getJSONObject(name).has("id"));
                 assertTrue("always-present keys " + at, packet.keySet().containsAll(ALWAYS));
@@ -83,7 +85,7 @@ public class SpectatorStateTest {
 
     private static void checkSpectatorPacket(SecretHitlerGame game, Set<GameState> seen) {
         // First, as the server's first conversion after a move would be (see GameDriver.finished).
-        JSONObject packet = GameToJSONConverter.convertForSpectator(game);
+        JSONObject packet = GameToJSONConverter.convertForSpectator(game, GAME_ID);
         GameState state = game.getState();
         if (game.hasGameFinished()) {
             return;
@@ -91,7 +93,7 @@ public class SpectatorStateTest {
         seen.add(state);
         assertEquals("secrets in the spectator packet in " + state, List.of(), Secrets.find(packet));
         // The scan looks for what players really get: the president's role and hand.
-        JSONObject president = GameToJSONConverter.convert(game, game.getCurrentPresident());
+        JSONObject president = GameToJSONConverter.convert(game, game.getCurrentPresident(), GAME_ID);
         assertFalse("the president's packet holds a secret in " + state, Secrets.find(president).isEmpty());
         assertTrue("the president's hand in " + state, president.keySet().containsAll(handKeys(state)));
     }
@@ -105,11 +107,11 @@ public class SpectatorStateTest {
     public void spectatorsSeeEveryRoleWhenTheGameEnds() {
         // The spectator packet built straight after the winning move, before anything settles the state.
         JSONObject[] last = new JSONObject[1];
-        SecretHitlerGame game = GameDriver.play(10, g -> last[0] = GameToJSONConverter.convertForSpectator(g));
+        SecretHitlerGame game = GameDriver.play(10, g -> last[0] = GameToJSONConverter.convertForSpectator(g, GAME_ID));
         JSONObject spectator = last[0];
         assertEquals("the final state", game.getState().toString(), spectator.getString("state"));
         assertTrue("the same as a player's packet",
-                wire(spectator).similar(wire(GameToJSONConverter.convert(game, "P0"))));
+                wire(spectator).similar(wire(GameToJSONConverter.convert(game, "P0", GAME_ID))));
         for (Player player : game.getPlayerList()) {
             String name = player.getUsername();
             assertEquals(name + "'s role", player.getIdentity().toString(),
@@ -128,7 +130,7 @@ public class SpectatorStateTest {
                 liberal[0] = g.getPlayerList().stream()
                         .filter(p -> p.getIdentity() == Identity.LIBERAL).findFirst().get().getUsername();
             }
-            last[0] = GameToJSONConverter.convert(g, liberal[0]);
+            last[0] = GameToJSONConverter.convert(g, liberal[0], GAME_ID);
         });
         JSONObject packet = last[0];
         assertTrue("a policy victory: " + game.getState(), game.getState() == GameState.FASCIST_VICTORY_POLICY
@@ -150,7 +152,7 @@ public class SpectatorStateTest {
             }
             String liberal = game.getPlayerList().stream()
                     .filter(p -> p.getIdentity() == Identity.LIBERAL).findFirst().get().getUsername();
-            JSONObject expected = GameToJSONConverter.convert(game, liberal);
+            JSONObject expected = GameToJSONConverter.convert(game, liberal, GAME_ID);
             expected.remove("presidentChoices");
             expected.remove("chancellorChoices");
             expected.remove("peek");
@@ -158,7 +160,7 @@ public class SpectatorStateTest {
             for (String name : players.keySet()) {
                 players.getJSONObject(name).remove("id");
             }
-            JSONObject spectator = GameToJSONConverter.convertForSpectator(game);
+            JSONObject spectator = GameToJSONConverter.convertForSpectator(game, GAME_ID);
             assertTrue("public fields in " + game.getState() + ": " + spectator,
                     wire(expected).similar(wire(spectator)));
         });

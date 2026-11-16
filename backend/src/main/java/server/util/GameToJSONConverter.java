@@ -21,8 +21,11 @@ public class GameToJSONConverter {
      * @param name the name of the user to create JSON content for. This is used
      *             to determine what player identity information to send to the
      *             user.
+     * @param gameId the game's record ID ({@code Lobby.gameId()}), or null to leave it out.
      * @throws NullPointerException if {@code game} is null.
      * @return a JSONObject with the following properties:
+     *         - {@code gameId}: the game's record ID, the same in every packet of the game, to
+     *         players and spectators alike (left out when null). It is not a secret.
      *         - {@code state}: the state of the game.
      *         - {@code player-order}: an array of names representing the order of
      *         the players in the game.
@@ -59,7 +62,7 @@ public class GameToJSONConverter {
      *         - {@code veto-occurred}: Set to true if a veto has already taken
      *         place on this legislative session.
      */
-    public static JSONObject convert(SecretHitlerGame game, String userName) {
+    public static JSONObject convert(SecretHitlerGame game, String userName, String gameId) {
         if (game == null) {
             throw new NullPointerException();
         }
@@ -74,7 +77,7 @@ public class GameToJSONConverter {
         System.out.println("Show all roles: " + showAllRoles);
 
         // Only include player role for self or under specific rules
-        JSONObject out = publicState(game, player -> player.getUsername().equals(userName) || showAllRoles);
+        JSONObject out = publicState(game, gameId, player -> player.getUsername().equals(userName) || showAllRoles);
 
         if (game.getState() == GameState.LEGISLATIVE_PRESIDENT) {
             out.put("presidentChoices", convertPolicyListToStringArray(game.getPresidentLegislativeChoices()));
@@ -92,27 +95,29 @@ public class GameToJSONConverter {
     /**
      * Creates the state a spectator receives: the public fields of {@code convert}, with no
      * player's role until the game has finished, and never a hand or the peek. A finished game's
-     * packet is the same as a player's.
+     * packet is the same as a player's. It carries {@code gameId} as a player's does.
      *
      * @param game the SecretHitlerGame to convert.
+     * @param gameId the game's record ID ({@code Lobby.gameId()}), or null to leave it out.
      * @throws NullPointerException if {@code game} is null.
      */
-    public static JSONObject convertForSpectator(SecretHitlerGame game) {
+    public static JSONObject convertForSpectator(SecretHitlerGame game, String gameId) {
         if (game == null) {
             throw new NullPointerException();
         }
         // getState() is what notices a policy victory; hasGameFinished() alone can lag behind it.
         game.getState();
         boolean finished = game.hasGameFinished();
-        return publicState(game, player -> finished);
+        return publicState(game, gameId, player -> finished);
     }
 
     /**
      * The fields every viewer of the game may see, with each player's role ({@code id}) only
-     * where {@code showRole} allows it.
+     * where {@code showRole} allows it, and the game's record ID (org.json leaves out a null).
      */
-    private static JSONObject publicState(SecretHitlerGame game, Predicate<Player> showRole) {
+    private static JSONObject publicState(SecretHitlerGame game, String gameId, Predicate<Player> showRole) {
         JSONObject out = new JSONObject();
+        out.put("gameId", gameId);
         JSONObject playerData = new JSONObject();
         String[] playerOrder = new String[game.getPlayerList().size()];
         List<Player> playerList = game.getPlayerList();

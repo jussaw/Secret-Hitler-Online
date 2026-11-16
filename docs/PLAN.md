@@ -46,7 +46,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 13. Database backups | `phase-13-db-backups` | done |
 | 14A. Game timeline | `phase-14a-game-timeline` | done |
 | 14B. Game records | `phase-14b-game-records` | done |
-| 15A. Stats shell | `phase-15a-stats-shell` | planned |
+| 15A. Stats shell | `phase-15a-stats-shell` | done |
 | 15B. Game history | `phase-15b-game-history` | planned |
 | 16. The game page | `phase-16-game-page` | planned |
 | 17A. Stats engine | `phase-17a-stats-engine` | planned |
@@ -792,20 +792,20 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-15a-stats-shell.md`](superp
 
 Issue #31: the stats pages' shell at `/stats`, loaded as a chunk of its own so the game's first download does not grow, with the header, the routes and a placeholder for every page; `gameId` in every game packet; and the record's types, labels, names, links and data, and the browser-test helpers, that Phases 15B, 16 and 17A build on. Needs Phase 14B.
 
-- [ ] `GameToJSONConverter` and `Lobby`: every game packet, to players and spectators, carries `gameId`
-- [ ] `SecretHitlerServer`: every path under `/stats` answers with the page (Javalin's single-page fallback)
-- [ ] `frontend/src/stats/record.ts`: the record's types, parsed with a format check against the contract fixture, and `testRecords.ts`
-- [ ] `frontend/src/stats/format.ts` and `PlayerName.tsx`: results, lengths, local dates and times in the viewer's zone, and names coloured by role
-- [ ] `frontend/src/stats/routes.ts`, `StatsLink.tsx` and `api.ts`: the paths, History API navigation with a working back button, and the games fetched once per visit
-- [ ] `frontend/src/main.tsx`, `statsPath.ts` and `stats/StatsApp.tsx`: the stats as their own lazy chunk, the header, and the placeholder pages; `npm run first-download`
-- [ ] `frontend/e2e/stats.ts` and `stats-shell.spec.ts`: the shared helpers and page check, every page fits every tested size, the game's first download holds no stats code, and `firefox` runs `stats-*.spec`
-- [ ] `CLAUDE.md` and `DEVELOPMENT.md` describe the shell and the stats tests; the pull request shows the new pages
-- [ ] Every finding of the whole-branch review fixed, Minor ones included
+- [x] `GameToJSONConverter` and `Lobby`: every game packet, to players and spectators, carries `gameId`
+- [x] `SecretHitlerServer`: every path under `/stats` answers with the page (Javalin's single-page fallback)
+- [x] `frontend/src/stats/record.ts`: the record's types, parsed with a format check against the contract fixture, and `testRecords.ts`
+- [x] `frontend/src/stats/format.ts` and `PlayerName.tsx`: results, lengths, local dates and times in the viewer's zone, and names coloured by role
+- [x] `frontend/src/stats/routes.ts`, `StatsLink.tsx` and `api.ts`: the paths, History API navigation with a working back button, and the games fetched once per visit
+- [x] `frontend/src/main.tsx`, `statsPath.ts` and `stats/StatsApp.tsx`: the stats as their own lazy chunk, the header, and the placeholder pages; `npm run first-download`
+- [x] `frontend/e2e/stats.ts` and `stats-shell.spec.ts`: the shared helpers and page check, every page fits every tested size, the game's first download holds no stats code, and `firefox` runs `stats-*.spec`
+- [x] `CLAUDE.md` and `DEVELOPMENT.md` describe the shell and the stats tests; the pull request shows the new pages
+- [x] Every finding of the whole-branch review fixed, Minor ones included
 
 **Phase 15A acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects (`desktop` on macOS and `firefox` in the Linux image before the PR, all four in CI)
-- [ ] PR merged into `development`, after Phase 14B's
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects (`desktop` on macOS and `firefox` in the Linux image before the PR, all four in CI)
+- [x] PR merged into `development`, after Phase 14B's
 - [ ] The user opens `/stats` on the deployed build, on a desktop and on a phone, opens a game from the latest games, and moves between the pages with the header and the back button
 
 ---

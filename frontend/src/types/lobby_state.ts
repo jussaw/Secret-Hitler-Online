@@ -64,6 +64,8 @@ export type GameState = {
   peek?: PolicyType[];
   /** Only while there is an END TERM countdown (POST_LEGISLATIVE, with a human president). */
   termTimer?: TermTimerState;
+  /** The game's record ID, in every game packet from a server that records games. */
+  gameId?: string;
 
   usernames?: string[];
   /** Maps from usernames to icon keys */

@@ -27,11 +27,12 @@ export default defineConfig({
     // The game page at the five desktop sizes and in the narrow windows.
     { name: "desktop", use: devices["Desktop Chrome"], testIgnore: /phone\.spec/ },
     // Firefox lays out the game page and the header control with its own rounding, could leave
-    // a closed prompt's box on screen, and hit-tests a held press itself.
+    // a closed prompt's box on screen, and hit-tests a held press itself. It checks every stats
+    // page too (stats-*.spec).
     {
       name: "firefox",
       use: devices["Desktop Firefox"],
-      testMatch: /(no-scroll|sounds|spectator|prompt-close|button-press)\.spec/,
+      testMatch: /(no-scroll|sounds|spectator|prompt-close|button-press|stats-[a-z-]+)\.spec/,
     },
     // Phones in portrait, emulated with touch and their own pixel ratio. Held mouse presses
     // (button-press) are a desktop matter.

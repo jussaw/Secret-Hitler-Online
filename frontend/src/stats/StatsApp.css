@@ -1,0 +1,122 @@
+/* The colours and fonts (variables.css) and the web fonts come with App.css, which the entry always
+   loads, on the stats pages too. */
+
+/* The stats pages, in the game's look. App.css centres every div and styles every p and a, so the
+   stats set what they need: left-aligned text, the cards, the links. Every grid and flex child
+   here has min-width: 0, so a long name wraps inside its column instead of widening the page. */
+.stats-screen {
+    min-height: 100dvh;
+    background-color: var(--backgroundLight);
+    color: var(--textColorOnDark);
+    font-family: var(--textFont);
+    font-weight: 500;
+    text-align: left;
+}
+
+.stats-screen div {
+    text-align: left;
+}
+
+.stats-main {
+    box-sizing: border-box;
+    width: min(100%, 1100px);
+    margin: 0 auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.stats-main > * {
+    min-width: 0;
+}
+
+.stats-screen p {
+    font-family: var(--textFont);
+    font-weight: 500;
+    font-size: 15px;
+    line-height: 1.4;
+    color: var(--textColorOnDark);
+    margin: 0;
+}
+
+.stats-screen h1 {
+    font-family: var(--headerFont);
+    font-weight: normal;
+    font-style: normal;
+    font-size: clamp(22px, 3vh, 32px);
+    line-height: 1.2;
+    color: var(--headerTextColor);
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+/* A card in the game's look (the login page's cards). Phase 17's StatCard reuses it. */
+.stats-card {
+    box-sizing: border-box;
+    min-width: 0;
+    background-color: var(--backgroundDark);
+    border-radius: 0.6em;
+    box-shadow: 0 0.4vh 0 rgba(0, 0, 0, 0.25);
+    padding: 12px 16px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.stats-card > * {
+    min-width: 0;
+}
+
+.stats-card-title {
+    font-family: var(--headerFont);
+    font-weight: normal;
+    font-style: normal;
+    font-size: 22px;
+    line-height: 1.2;
+    color: var(--headerTextColor);
+    margin: 0;
+}
+
+/* A line the page shows in place of its content: loading, or the games could not be loaded. */
+.stats-message {
+    padding: 8px 0;
+}
+
+/* A link of its own, outside a sentence: the office orange, as App.css colours links. */
+.stats-screen a.stats-link {
+    font-family: var(--textFont);
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--buttonHoverFill);
+    align-self: flex-start;
+}
+
+.stats-screen a.stats-link:hover,
+.stats-screen a.stats-link:focus-visible {
+    color: var(--headerTextColor);
+}
+
+/* Touch sizes follow the game's stacked query (phones, phones held sideways, narrow and tall
+   windows): every link is at least a 44px target there. */
+@media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
+    .stats-screen a.stats-link {
+        box-sizing: border-box;
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        min-width: 44px;
+    }
+}
+
+/* Phones (the game's phone-only query): a narrower margin round the page. */
+@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
+    .stats-main {
+        padding: 8px;
+        gap: 8px;
+    }
+
+    .stats-card {
+        padding: 10px 12px 12px;
+    }
+}

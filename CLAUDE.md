@@ -31,7 +31,13 @@ keeps credit to upstream and to the board game's creators.
   (not Javalin's, which a dependency update could change) that `devops/restore-db.sh` waits for
   (`StartupLineTest`). The server also serves the built frontend from the
   classpath directory `/public`, which `processResources` fills from `frontend/dist` when it exists;
-  CORS is enabled only in debug mode. Playing needs an account, made by signing in with Discord;
+  CORS is enabled only in debug mode. `createApp()` is `createApp("/public")`; `createApp(frontendDir)`
+  serves that classpath directory when it has an `index.html` and then adds Javalin's single-page
+  fallback for `/stats` (`config.spaRoot.addFile`), so a GET of any path starting `/stats` (a prefix
+  match: `/statsx` too) that no route or file answered, whose `Accept` has `text/html` or `*/*` or is
+  empty, gets `index.html`: a reload or a link to any stats page works. Routes always answer first,
+  other paths stay 404, and without a frontend there is no fallback (`StatsFallbackTest`, over the
+  test classpath's `/spa-test`). Playing needs an account, made by signing in with Discord;
   watching needs none. `server.accounts` has `Usernames` (the page's name rules, which the server
   applies itself, with the messages both show: `normalize` makes each run of what JavaScript's `\s`
   matches one space and trims, a name has at most 12 UTF-16 code units, `key` lowers it with
@@ -104,6 +110,11 @@ keeps credit to upstream and to the board game's creators.
   `Lobby.rename` (refused while seated) changes only the name packets show (`LobbyRenameTest`).
   Packets keep their shape (`usernames` and `icon` by name, game packets by seat name), and every
   player's packet adds `you`, their name or, in a game, their seat's; a spectator's gets none.
+  Every game packet, a player's or a spectator's, the victory packet included, carries `gameId`,
+  the running game's record ID (`Lobby.gameId()`, not a secret): `GameToJSONConverter.convert(game,
+  name, gameId)` and `convertForSpectator(game, gameId)` put it in (org.json leaves a null out),
+  and `Lobby.updatePlayer` and `updateSpectator` pass it (`LobbyGameIdTest`; `SpectatorStateTest`
+  counts it among the keys every packet has).
   Spectators connect with `/game?lobby=CODE&spectator=true`, with no `name` and no session (checked
   first with `/check-login?lobby=CODE&spectator=true`). In `Lobby` they are a set
   of connections with no seat, name or icon: never counted as users, never backed up, and they do
@@ -302,6 +313,52 @@ keeps credit to upstream and to the board game's creators.
 - `frontend/`: React 18 and TypeScript 5, built with Vite and tested with Vitest. The entry is
   `src/main.tsx`, with `index.html` at the `frontend/` root, whose description is one plain line
   and which has no preview image, so an invite link previews as that line (`linkPreview.test.ts`).
+  `main.tsx` checks the path once (`isStatsPath`, `src/statsPath.ts`: `/stats` or a path under
+  `/stats/`) and renders either `App`, after starting the sound gesture listener and the clips'
+  preload, or the stats pages, `React.lazy`'s `src/stats/StatsApp` in `Suspense`, with neither.
+  The stats are a chunk of their own: nothing outside `src/stats/` imports from it but that
+  `import()`, and nothing in it imports `App`, the game, lobby or login pages or `SoundManager`
+  (leaf modules such as `src/constants` are fine), so the game's first download holds none of it
+  (`npm run first-download` gives its gzipped size). `src/stats/` (issue #31; the interfaces file
+  names who fills what): `record.ts` (the record's types, format 1, with `ROLES`, `SIDES` and
+  `OUTCOMES` the lists their unions come from, `STATS_GAMES_PATH`,
+  `EVENT_FIELDS`, each event type's keys in the spec's order, `parseStatsData`, which checks a
+  response and throws `Unsupported game record format: N` or the path of the first malformed
+  field, `sideOf` and `playerName`, `Player N` for a number with no player; it imports nothing, so
+  the browser tests use it), `testRecords.ts` (`makeRecord`, `makeSeats`, `makeData`, for tests
+  only), `format.ts` (`outcomeLabel`, which starts with `sideWord`'s "Liberals" or "Fascists" for a
+  finished game, `formatDuration`, `plural`, and `formatLocalDate`,
+  `formatLocalTime`, `formatLocalDateTime` and `localDayKey`, English whatever the locale, each in
+  a time zone it is passed, `viewerTimeZone()` by default, so tests pass one and never set
+  `process.env.TZ`), `PlayerName` (the one way a name shows: a `span.player-name` with
+  `overflow-wrap: anywhere`, coloured by role through `stats-liberal`, `stats-fascist` and
+  `stats-hitler`, underlined, which any stats page may use for a side's word through `roleClass`,
+  and `data-player`;
+  `link`, `true` by default, does nothing until Phase 22A makes names links, and a name inside a
+  sentence or a headline passes `link={false}`), `routes.ts` (`TabId`, `TAB_IDS`, `StatsRoute`,
+  `PageProps`, `parseRoute`, `routePath`, `navigate`, which pushes one history entry, none for the
+  address the page is at, and scrolls to the top only for a new path, and `useLocation`, which
+  follows `navigate` and the back and forward buttons; no router library), `StatsLink` (the one
+  in-page link: an `<a href>` whose plain click navigates in place, while a modified or middle
+  click, or a link with a `target`, is the browser's; every other prop goes to the `<a>`),
+  `api.ts` (`fetchStatsData`, which rejects a non-2xx status, a network error, a body that is not
+  JSON and a response `parseStatsData` refuses; `useStatsData`, one shared request per page load,
+  forgotten when it fails so the next mount asks again; `STATS_LOAD_ERROR`;
+  `resetStatsDataForTests`), `StatsApp` (the header and `main.stats-main`: `Loading the games…`
+  while they come, `STATS_LOAD_ERROR` if they cannot, else the route's page, or for an address that
+  names nothing "This page was not found." with Go to the stats, at once; `document.title` is
+  `<Page> · Secret Hitler Online`; no later phase edits it), `StatsHeader` (SECRET-HITLER, then a
+  `nav` "Stats pages" of STATS, GAMES and PLAYERS, `StatsLink`s, and PLAY, a full load of `/`, the
+  current one `aria-current="page"` and underlined, each a 44px target at every size; one row on
+  desktop, the title over a row of four equal columns in the phone-only query) and `StatsApp.css`
+  (`.stats-screen`, left-aligned, `.stats-main`, at most 1100px wide, `.stats-card` and
+  `.stats-card-title`, the game's card look, and `.stats-link`, a 44px target in the stacked
+  query), and placeholders for later phases to fill: `TabsPage` (17A; for now the ten latest games
+  as links and All games ›), `games/GamesPage` (15B), `game/GamePage` (16; for now the result, its
+  first word in the winners' colour, the start, length and rounds, and the seats in order, or "This
+  game was not found."), `players/PlayersPage` and `players/PlayerPage` (22B), each "Coming in a
+  later update." until then. App.css still styles the stats pages' `header`, `a`, `p` and `div`,
+  and the stats CSS sets what it needs over it.
   `src/App.tsx` owns the WebSocket, all state and the overlays; prompts live in `src/custom-alert/`,
   in one overlay (`CustomAlert`) that `render()` draws for every page, so a prompt open on the login
   page stays open when the page moves to the lobby (`toLoginPage` bumps `alertKey`, so the overlay
@@ -606,7 +663,33 @@ keeps credit to upstream and to the board game's creators.
   sockets of `e2e/fakeGame.ts` answer pings (`answerPings`), and `FakeWatch.down` refuses new
   sockets as `LOBBY_GONE`, so the page gives up at once. `recorder.spec.ts` (`desktop`) plays a
   real game to its end through `e2e/driveGame.ts` and finds its record in `GET /api/stats/games`,
-  its keys in the spec's order, with no account ID in the body. Shared helpers are `e2e/lobby.ts`
+  its keys in the spec's order, with no account ID in the body. `e2e/fakeGame.ts`'s victory packet
+  carries `FAKE_GAME_ID`. The stats specs (`stats-*.spec.ts`, which run in all four projects:
+  `firefox`'s `testMatch` takes them) share `e2e/stats.ts`: `statsSizes` (`DESKTOP_SIZES`,
+  `SQUARE_DESKTOPS`, the `NARROW_WINDOWS` and `PHONE_SIZES`, 360x740, 412x915 and 320x568) and
+  `statsSizesFor(project, viewport)` (all of them in `desktop` and `firefox`, the project's own
+  viewport on a phone, and 320x568 too in `phone-360`), `stubStats(page, data)` (routes
+  `/api/stats/games`), `bigStatsData()` (the same 400 games on every call, from a seeded generator:
+  players 1 to 10 named `WWWWWWWWWW01` to `WWWWWWWWWW10`, `big-001` to `big-400` four an evening
+  every third or fourth evening from 6 Oct 2025, sizes cycling 5 to 10, one or two CPU seats in
+  every seventh, Hitler among them at least once, every 25th unfinished and the rest cycling through the four
+  endings, `big-200` also incomplete and opening with `restored`, each timeline played by the rules:
+  rounds, votes, the tracker, which only a policy puts back, and chaos, cards, vetoes, powers by size, the term's end, by the
+  countdown in every fifth, pauses, dropped connections, reshuffles, and the board in the last
+  `enact`; later phases assume nothing else about it), `statsPageProblems(page)` (what is wrong at
+  the current size: anything past either side but inside a box that scrolls sideways itself, never
+  `body`, `.stats-screen` or `.stats-main`; and in the stacked query, controls under 44px, but for a
+  link inline in a sentence of a `p` and never one in a table cell, and field text under 16px),
+  `checkStatsPage(page, size)` (sets the size, waits two frames, and expects none; every stats spec
+  checks its pages with it and writes no sideways check of its own), `STATS_ONLY_STRINGS` and
+  `downloads(page, path)` (every same-origin response of a load, with scripts' and stylesheets'
+  text). `stats-shell.spec.ts` checks `bigStatsData` and the page check itself, every shell page at
+  every size (the loading and error lines too), a twelve-character name of wide letters inside its
+  line at 320px, that the game's first download holds no stats code and fetches the clips while the
+  stats fetch their chunk and no clip, the header moving in place, and back, forward, reload and a
+  deep link. No `e2e/` file imports `src/constants` or anything that does (`api.ts`, `App`): it
+  reads `window` when it loads, which throws in Playwright's Node process; specs build stats paths
+  with `routePath`. Shared helpers are `e2e/lobby.ts`
   (`waitForPlayers`, `joinGuests`, with `pickLooks` false for guests who stay on the default
   portrait, `joinLobby`, `pickPortrait`, `longestLineLobby`, `longestLineViewers`, `actionLabels`,
   `longestLogin`, `accountTargets`, `lobbyStatusCard`, `waitForPrompt`, `watchLobby`, and
@@ -683,6 +766,7 @@ fields from `package-lock.json`.
 | Browser tests on Linux (Firefox, or CI's font widths), against the jar serving on the host with `TEST_SIGN_IN=true` | `docker run … mcr.microsoft.com/playwright:v<version>-noble … npx playwright test --config playwright.linux.config.ts`, written out in `DEVELOPMENT.md` |
 | Backend build (tests + fat jar at `backend/build/libs/secret-hitler-online.jar`) | `cd backend && ./gradlew build` |
 | Frontend production build (type-checks the app and the browser tests, then writes `frontend/dist/`) | `cd frontend && npm run build` |
+| The game's first download, each file `dist/index.html` loads gzipped and the total (after the build; a stats phase leaves it as it was) | `cd frontend && npm run first-download` |
 | Whole app on one port (after the frontend build; `TEST_SIGN_IN=true` before `java` to sign in with test accounts) | `cd backend && ./gradlew jar && java -jar build/libs/secret-hitler-online.jar` |
 | Image (repo root) | `docker build -t secret-hitler-online .` |
 | Backup and restore tests (Docker running and `curl`; builds the image unless `IMAGE` names one) | `bash devops/tests/backup-restore.test.sh` |
@@ -766,7 +850,8 @@ no trailing period, at most 72 characters. Scopes in use: `frontend`, `backend`,
   pack). Sound clips are CC0 only and listed in `docs/SOUND-CREDITS.md`.
 - The WebSocket protocol stays backward compatible for spectators. Players need a signed-in
   session (accounts), and their packets only add fields (`you`); spectator support only adds
-  fields and a query parameter, and the END TERM countdown only adds `termTimer` and two commands.
+  fields and a query parameter, the END TERM countdown only adds `termTimer` and two commands, and
+  recording games only adds `gameId` to every game packet.
 - Never set `TEST_SIGN_IN` in the `Dockerfile` or CI's image job (the backup test sets it only on
   its own `docker run`), and never log a session token,
   an OAuth code, an access token or the Discord client secret, or put one in a URL or a file.

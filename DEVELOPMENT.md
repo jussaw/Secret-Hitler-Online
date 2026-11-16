@@ -82,7 +82,7 @@ npm run dev
 
 Change dependencies with npm 11 (`npx npm@11 install …`): npm 10 drops the `libc` fields from `package-lock.json`.
 
-The dev server proxies `/check-login`, `/new-lobby`, `/ping`, `/auth`, `/me` and the `/game` WebSocket to the backend, so the page talks to its own origin, as it does in production. The proxy target is `BACKEND_URL` (default `http://localhost:4040`; compose sets `http://backend:4040`). `.env.development` only turns on debug logging.
+The dev server proxies `/check-login`, `/new-lobby`, `/ping`, `/auth`, `/me`, `/api` and the `/game` WebSocket to the backend, so the page talks to its own origin, as it does in production. The proxy target is `BACKEND_URL` (default `http://localhost:4040`; compose sets `http://backend:4040`). `.env.development` only turns on debug logging.
 
 ### Signing in locally
 
@@ -107,6 +107,14 @@ npm test -- --run     # single run
 npm run build         # type-check the app and the browser tests, then build into dist/
 npm run preview       # serve dist/ on port 3000
 ```
+
+### The stats pages
+
+The stats pages are at `/stats`: [`http://localhost:3000/stats`](http://localhost:3000/stats) on the dev server, or `/stats` on the jar's port, where the server answers every path under `/stats` with the page, so a reload or a link to any stats page works. They load as a code chunk of their own, so the game's first download does not grow; after `npm run build`, `npm run first-download` prints each file `dist/index.html` loads with its gzipped size and the total, which a stats phase must leave as it was, within the small margin its plan allows.
+
+Games are recorded as they finish (or when their lobby times out), so to see one locally, sign in with one test account, create a lobby and start it: four CPU players fill the seats, and once the game ends its record is in `GET /api/stats/games` and on the stats pages after a reload.
+
+The browser tests never play games for the stats pages: they stub `/api/stats/games` with `bigStatsData()` (`e2e/stats.ts`, 400 games of ten players with twelve-character names, the same on every run), and each `stats-*.spec.ts` runs in every project and checks its pages with `checkStatsPage`, at every size its project covers: no sideways scroll, and wherever the game's stacked query matches (phones, phones held sideways, and narrow and tall windows) 44px targets and 16px field text.
 
 ### The stats pages' fixture
 
