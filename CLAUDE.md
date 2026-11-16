@@ -353,8 +353,8 @@ keeps credit to upstream and to the board game's creators.
   desktop, the title over a row of four equal columns in the phone-only query) and `StatsApp.css`
   (`.stats-screen`, left-aligned, `.stats-main`, at most 1100px wide, `.stats-card` and
   `.stats-card-title`, the game's card look, and `.stats-link`, a 44px target in the stacked
-  query), and placeholders for later phases to fill: `games/GamesPage` (15B), `players/PlayersPage`
-  and `players/PlayerPage` (22B), each "Coming in a later update." until then. App.css still styles
+  query), and placeholders for later phases to fill: `players/PlayersPage` and
+  `players/PlayerPage` (22B), each "Coming in a later update." until then. App.css still styles
   the stats pages' `header`, `a`, `p`, `h2` and `div`, and the stats CSS sets what it needs over it.
   `rounds.ts` (Phase 16) turns a record into rounds, `rounds(record)`, which the game page draws
   and every stat phase reads instead of the raw events: one `Round` per round number in the
@@ -439,6 +439,33 @@ keeps credit to upstream and to the board game's creators.
   the filter, the tab row and the route's tab, and a filter change stays on the tab (`navigate`).
   `testGames.ts` holds test builders the browser tests may import too (`ROLES` per seat count,
   `seatsOf`, `game`, `match`, and `generateData`, seeded).
+  GAMES (`/stats/games`, `src/stats/games/`) lists
+  every recorded game, newest first, under a filter of its own kept in the address:
+  `gamesFilter.ts` (`GamesFilter`, `NO_GAMES_FILTER`, `PER_PAGE`, `ENDING_PARAM`,
+  `parseGamesFilter`, `gamesFilterSearch`, `isFiltered` and `filterGames`: `players`, numbers in
+  ascending order, a game matching if any of them sat in it, `from` and `to`, the local day of the
+  start, both inclusive, `size`, `ending` (`liberal-policies`, `hitler-executed`,
+  `fascist-policies`, `hitler-elected`, `unfinished`), `cpu` (`without` or `with`), `per` (50 or
+  100; 20 by default) and `page`, written in that order with defaults left out, any other value
+  reading as the default; newest first is by `endedAt`, then `id`), `pages.ts` (`pageCount`,
+  `pageLinks`, the first and last pages and the current one's neighbours with `null` for a gap,
+  and `gamesSummary`, "142 games recorded · 37 match · showing 21–37"), `GameRow` (an
+  `li.games-row`: the date and the result, its winners' word in their colour and a `CPU` tag, are
+  its one link, `a.games-row-link`, whose `::after` covers the row; the time and length, the seats
+  as `PlayerName`s, above the link's area, and the seat and round counts sit outside it, so no
+  anchor wraps a name; a subgrid of the row's columns on desktop, of its first three rows on
+  phones) and `GamesPage` (the filter card: Players with a grey chip per chosen player, `Remove
+  <name>`, and Add a player; From and To, whose typed day reaches the address once its year is
+  whole; Seats, Ending and CPU players; Clear filters; then the summary line with Games a page, the
+  rows or "No games match these filters.", and the `Pages` nav; unknown player numbers are dropped,
+  a page past the last shows the last, every control but a page link goes back to page 1, and a
+  new page of the same filter scrolls the summary into view). `GamesPage.css` lays the controls in
+  two columns in the phone-only query (From and To one each below 360px wide) and makes every
+  control a 44px target with 16px text in the stacked query. The links in: the login page's and
+  the lobby's footers have Stats, and the victory screen, under its message, has "See this game"
+  (`p.victory-game` in `App.tsx`, an `OutLink` to `statsGamePath(gameId)`, a 44px target whose
+  margins take back all but its line's height, as Sign out's do); a packet with no `gameId`, from a
+  server that does not record games, gets no link.
   `src/App.tsx` owns the WebSocket, all state and the overlays; prompts live in `src/custom-alert/`,
   in one overlay (`CustomAlert`) that `render()` draws for every page, so a prompt open on the login
   page stays open when the page moves to the lobby (`toLoginPage` bumps `alertKey`, so the overlay
@@ -450,8 +477,9 @@ keeps credit to upstream and to the board game's creators.
   The login page is `src/login/LoginScreen` (markup and `LoginScreen.css`): the header, then three
   cards in the lobby's look, the account card (`AccountCard`), JOIN A GAME (the lobby code, JOIN and
   WATCH, a hint and its error line) and OR START ONE (CREATE LOBBY and its error line), then a
-  footer with How to play (the official rules), About this project, Report a bug and the credit line
-  the licence asks for. The account card is blank, at the signed-in card's height, until `/me`
+  footer with How to play (the official rules), Stats (`/stats`, in the same tab), About this
+  project, Report a bug and the credit line the licence asks for. The account card is blank, at
+  the signed-in card's height, until `/me`
   answers (and says `CONTACT_ERROR` if it fails); signed out it is YOUR ACCOUNT, with SIGN IN WITH
   DISCORD (a `.button-link` to `discordSignInHref` of the code field, in the same tab), "Sign in to
   play. Anyone can watch." and, where `/me` says `testSignIn`, a grey TEST SIGN-IN beside it; where
@@ -483,7 +511,11 @@ keeps credit to upstream and to the board game's creators.
   four letters at most). In `App`, `loginForm` fills or empties the code field and the error lines
   together. The footer links are in `src/constants`:
   `RULES_URL`, and `ABOUT_URL` and `ISSUES_URL`, which the lobby's footer shares, each an `OutLink`
-  (`src/util/`, a new tab). `GameScreen.css` lists `.login-screen` beside the lobby and the game
+  (`src/util/`, a new tab), and `STATS_PATH` (`/stats`), a plain link here and an `OutLink` in the
+  lobby. `src/constants` also has `statsGamePath(id)` (`/stats/games/<id>`, the victory screen's
+  link): the game's pages write the stats' paths out there rather than import `src/stats/routes.ts`,
+  and `statsPaths.test.ts` checks they are the stats' own routes. `GameScreen.css` lists
+  `.login-screen` beside the lobby and the game
   for the page and its header, and `LobbyScreen.css` lists the login page's selectors beside the
   lobby's for the cards' look, the fields' focus, the centred column, the grey buttons and the
   footer; `LoginScreen.css` holds the rest. The cards are a column centred both ways on desktop and
@@ -532,7 +564,8 @@ keeps credit to upstream and to the board game's creators.
   The lobby is `src/lobby/`, built like the game page and on the same three layouts: `LobbyScreen`
   (markup and `LobbyScreen.css`: the header, the roster column, then a code card with the invite
   link and COPY, a status card kept two lines tall, the buttons by viewer, the note, and a footer
-  with the About and Report a bug links), `LobbyRoster` (a `RosterRow` per player, `Picking a look…`
+  with Stats, About this project and Report a bug, each in a new tab, so the lobby stays open),
+  `LobbyRoster` (a `RosterRow` per player, `Picking a look…`
   for a player on the default portrait, HOST on the host's row), `lobbyStatus` (a pure function from
   the usernames, portraits and viewer to the status line; it names who START GAME waits for and says
   when bots fill the table), `joinError` (`joinErrorMessage`, `CONTACT_ERROR`, `CONNECT_ERROR`: the
@@ -780,7 +813,13 @@ keeps credit to upstream and to the board game's creators.
   the tabs keep the filter and a link to a tab shows it in the row, that phones fold the filter into
   one line, that every flex or grid child with text can shrink, that the grey controls share one
   look, and, on `charts.css` alone, that a tooltip keeps its width at either edge and a hovered bar
-  is outlined. No `e2e/` file imports `src/constants` or anything that does (`api.ts`, `App`): it
+  is outlined. `stats-games.spec.ts` follows the login page's Stats link (same tab) and the lobby's
+  (a new tab, the lobby still open) (`desktop`), finds See this game on the victory screen, a 44px
+  target on phones, checks GAMES at a hundred a page and with every filter set at every size, and
+  twelve-character names inside their columns and chips at 320px; on `desktop` it goes through a
+  filter, a page, a game and back, forward and reload by the address, and plays a real game of
+  seven through `driveGame.ts` whose victory screen opens its page and which GAMES lists under its
+  first seat's player. No `e2e/` file imports `src/constants` or anything that does (`api.ts`, `App`): it
   reads `window` when it loads, which throws in Playwright's Node process; specs build stats paths
   with `routePath`. Shared helpers are `e2e/lobby.ts`
   (`waitForPlayers`, `joinGuests`, with `pickLooks` false for guests who stay on the default
