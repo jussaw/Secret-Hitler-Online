@@ -417,7 +417,8 @@ keeps credit to upstream and to the board game's creators.
   value or "—" below the minimum, and the count; four columns that fit 320px, rows 44px tall in the
   stacked query), `ScrollRegion` (a focusable region that scrolls sideways inside its card, named
   "<card title> table"), `SplitTable` (players down by name, roles or sides across, heads in their
-  colours, a sticky name column with the full name as its title, each cell its text then its count,
+  colours, a sticky name column capped at 9em in which a long name wraps whole (never cut short)
+  with the full name as its title, each cell its text then its count,
   a 0 too, and "—" for a cell the row lacks, in a `ScrollRegion`; rows 44px in the stacked query),
   `charts/` (`LineChart`, lines dashed where a point says so, `SERIES_COLORS`, `lineChartGeometry`,
   `describeLines`; `StackedBarChart`, parts bottom-up with its own legend, the hovered part
@@ -929,8 +930,10 @@ keeps credit to upstream and to the board game's creators.
   seven through `driveGame.ts` whose victory screen opens its page and which GAMES lists under its
   first seat's player. `stats-roles.spec.ts` runs `checkStatsPage` on ROLES & CARDS at every
   `statsSizesFor` size against `bigStatsData()` with all seventeen cards shown, checks that a wide
-  table scrolls inside its card at 320px (`phone-360`), and that the tab row opens the tab keeping
-  the filter. `stats-activity.spec.ts` opens ACTIVITY with the clock
+  table scrolls inside its card at 320px (`phone-360`), that two twelve-character names differing
+  only in their last letter are drawn whole inside a split table's name column at 320x568 (by the
+  text's own boxes, not its `textContent`), and that the tab row opens the tab keeping the filter.
+  `stats-activity.spec.ts` opens ACTIVITY with the clock
   (`page.clock.setFixedTime`) an hour after the latest game and checks it at every size (no chart
   outside its card, no wrapped button label, the charts drawn), a tooltip on a hover or a tap of
   the day-of-week chart and of a heatmap day, and (`desktop`) the arrow keys, PER MONTH, and with
