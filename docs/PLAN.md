@@ -1034,7 +1034,7 @@ Issue #31: the fifteen trophies and RECORDS' trophy holders, one player's number
 - [x] `frontend/src/stats/player.ts`: one player's numbers from every stat module, with the CPU toggle and without the player filter, and the PLAYERS rows
 - [x] `frontend/src/stats/PlayerName.tsx`: a player's name in the stats links to their page (plain inside a sentence or headline); CPU seats stay plain text; no link sits inside another link or control
 - [x] `frontend/src/stats/tabs/RecordsTab.tsx`: the trophy holders card, with `players/TrophyBadge.tsx`
-- [ ] `frontend/src/stats/game/gameElo.ts`, `GameHeader.tsx` and `GamePage.tsx`: the game's Elo change when it counted under the default filter
+- [x] `frontend/src/stats/game/gameElo.ts`, `GameHeader.tsx` and `GamePage.tsx`: the game's Elo change when it counted under the default filter
 - [ ] `frontend/e2e/stats-names.spec.ts`: name links in tables are 44px targets that never overlap on phones, a name in GAMES opens its player page, and a game page shows its Elo change
 - [ ] `CLAUDE.md` and `DEVELOPMENT.md` describe trophies, name links and the Elo change; the pull request shows RECORDS and a game page before and after, on desktop and on a phone
 

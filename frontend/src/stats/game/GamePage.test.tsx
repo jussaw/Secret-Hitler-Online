@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { outcomeLabel } from "../format";
 import type { GameRecord } from "../record";
 import { rounds } from "../rounds";
+import { sampleData } from "../players/testStats";
 import { makeData, makeRecord } from "../testRecords";
 import GamePage from "./GamePage";
 import { ev, fiveSeatGame, showcaseGame } from "./sampleGames";
@@ -111,5 +112,14 @@ describe("GamePage", () => {
     expect(page.lastElementChild).toHaveTextContent("Unfinished: the lobby closed");
     expect(page.lastElementChild!.previousElementSibling).toBe(container.querySelector("ol.game-rounds"));
   });
-});
 
+  it("thePageShowsTheEloChange", () => {
+    const data = sampleData();
+    const { container, unmount } = render(<GamePage data={data} route={{ page: "game", id: "g1" }} />);
+    expect(container.querySelector("header.game-header p.game-elo")).toHaveTextContent(/^Elo: Liberals \+16 · Fascists −16$/);
+    unmount();
+    const { container: cpu } = render(<GamePage data={data} route={{ page: "game", id: "cpu" }} />);
+    expect(cpu.querySelector("p.game-elo")).toBeNull();
+    expect(cpu).not.toHaveTextContent("Elo:");
+  });
+});

@@ -30,11 +30,64 @@
     overflow-wrap: anywhere;
 }
 
+/* The seats in turn order: a list read as one line after its label, the names separated by dots,
+   in the header's text (as its other lines, which are p's). */
+.game-seats-line {
+    font-family: var(--textFont);
+    font-weight: 500;
+    font-size: 15px;
+    line-height: 1.4;
+    color: var(--textColorOnDark);
+    overflow-wrap: anywhere;
+}
+
+ol.game-seats {
+    display: inline;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+ol.game-seats > li {
+    display: inline;
+}
+
+ol.game-seats > li + li::before {
+    content: " · ";
+}
+
 /* A line between the cards: the record's first rounds missing, or the lobby closing. */
 .stats-screen p.game-note {
     padding: 0 4px;
     font-style: italic;
     overflow-wrap: anywhere;
+}
+
+/* Where the game's stacked query matches, each seat is a row of a list at least 44px tall, which its
+   name's link fills (PlayerName.css), under the label; the seats wrap, with no dots between them. */
+@media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
+    .game-seats-label {
+        display: block;
+    }
+
+    ol.game-seats {
+        display: flex;
+        flex-wrap: wrap;
+        column-gap: 16px;
+    }
+
+    ol.game-seats > li {
+        display: flex;
+        align-items: center;
+        column-gap: 0.3em;
+        min-height: 44px;
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    ol.game-seats > li + li::before {
+        content: none;
+    }
 }
 
 /* Phones (the game's phone-only query): the cards a little closer together. */
