@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { GameRecord, StatsData } from "../src/stats/record";
 import { routePath, TAB_IDS } from "../src/stats/routes";
+import { MIN_TARGET } from "./layout";
 import { settle } from "./lobby";
 import { bigStatsData, checkStatsPage, STACKED_QUERY, statsSizesFor, stubStats } from "./stats";
 
@@ -81,6 +82,34 @@ test.describe("name links in tables are 44px and never overlap", () => {
         }
       }
     });
+  }
+});
+
+/** A list of seats, as GAMES' rows, a game's header and ENDINGS' fastest win and longest game show them. */
+const SEAT_LISTS: [string, string, string][] = [
+  ["GAMES", routePath({ page: "games" }), ".games-row-seats"],
+  ["a game page", routePath({ page: "game", id: counted.id }), ".game-seats"],
+  ["ENDINGS", routePath({ page: "tab", tab: "endings" }), ".endings-seats"],
+];
+
+test("names in seat lists are 44px targets where the stacked query matches", async ({ page }) => {
+  test.slow();
+  const sizes = statsSizesFor(test.info().project.name, page.viewportSize()!);
+  for (const [label, path, list] of SEAT_LISTS) {
+    await open(page, path);
+    for (const size of sizes) {
+      await page.setViewportSize(size);
+      if (!(await page.evaluate((query) => matchMedia(query).matches, STACKED_QUERY))) continue;
+      const boxes = await page.locator(`${list} a.player-link`).evaluateAll((links) =>
+        links.map((a) => {
+          const r = a.getBoundingClientRect();
+          return { name: (a.textContent ?? "").trim(), width: r.width, height: r.height };
+        })
+      );
+      expect(boxes.length, `${label}: names in ${list}`).toBeGreaterThan(0);
+      const small = boxes.filter((b) => b.width < MIN_TARGET - 0.01 || b.height < MIN_TARGET - 0.01);
+      expect(small, `${label} at ${size.width}x${size.height}`).toEqual([]);
+    }
   }
 });
 

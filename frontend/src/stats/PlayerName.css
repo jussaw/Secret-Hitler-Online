@@ -47,11 +47,12 @@ a.player-link:focus-visible {
 }
 
 /* Where the game's stacked query matches, a name that is a list's or a table's own entry (a table
-   cell, the game page's seats, a GAMES row's seats) is a 44px target: a box at least 44px tall and
-   wide, which makes its row or line that tall rather than reaching over a neighbour, beside any
-   words that follow it in its cell. A name inside a sentence (a p) stays inline. */
+   cell, the game page's seats, a GAMES row's seats, ENDINGS' seats of a game) is a 44px target: a
+   box at least 44px tall and wide, which makes its row or line that tall rather than reaching
+   over a neighbour, beside any words that follow it in its cell. A name inside a sentence (a
+   round's lines on a game page) stays inline. */
 @media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
-    :is(td, th, .game-seats, .games-row-seats) a.player-link {
+    :is(td, th, .game-seats, .games-row-seats, .endings-seats) a.player-link {
         box-sizing: border-box;
         display: inline-flex;
         align-items: center;
