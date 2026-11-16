@@ -1,5 +1,6 @@
 import { useRef, useState, type KeyboardEvent } from "react";
 import { countLabel, weekdayOf, type Heatmap } from "../activity";
+import { ChartFocus } from "./ChartFocus";
 import { ChartFrame, px, type TooltipPlace } from "./chartParts";
 import { useChartWidth } from "./useChartWidth";
 import "./CalendarHeatmap.css";
@@ -40,7 +41,8 @@ function describe(heatmap: Heatmap): string {
  * shade, sized from the card's width up to 16px a cell, with the months' names above and Mon, Wed
  * and Fri at the left where they fit. Hovering (mouse or pen) or tapping a day, or the arrow keys
  * once the chart has the focus (up and down a day, left and right a week), show its date and
- * games. The image is as wide as its box, the cells drawn from its left.
+ * games, and tell a screen reader (`ChartFocus`). The image is as wide as its box, the cells drawn
+ * from its left.
  */
 export function CalendarHeatmap({ heatmap, label }: { heatmap: Heatmap; label: string }): JSX.Element {
   const box = useRef<HTMLDivElement>(null);
@@ -103,7 +105,13 @@ export function CalendarHeatmap({ heatmap, label }: { heatmap: Heatmap; label: s
   });
 
   return (
-    <div className="calendar-heatmap" role="group" aria-label={name} tabIndex={0} onKeyDown={onKeyDown} onBlur={() => setPicked(null)}>
+    <ChartFocus
+      className="calendar-heatmap"
+      label={name}
+      status={tooltip ? tooltip.lines.join(" ") : ""}
+      onKeyDown={onKeyDown}
+      onBlur={() => setPicked(null)}
+    >
       <ChartFrame
         className="calendar-heatmap-frame"
         boxRef={box}
@@ -152,7 +160,7 @@ export function CalendarHeatmap({ heatmap, label }: { heatmap: Heatmap; label: s
           );
         })}
       </ChartFrame>
-    </div>
+    </ChartFocus>
   );
 }
 

@@ -1,5 +1,6 @@
 import { useRef, useState, type KeyboardEvent } from "react";
 import { countLabel } from "../activity";
+import { ChartFocus } from "./ChartFocus";
 import { ChartFrame, px, YAxis, type TooltipPlace } from "./chartParts";
 import { LABEL_CHAR_PX, labelStep } from "./labelStep";
 import { useChartWidth } from "./useChartWidth";
@@ -47,8 +48,8 @@ function geometry(bars: Bar[], width: number, height: number) {
 /**
  * Bars sized from their card's width: the y axis's 0 and maximum at the left, as many x labels as
  * fit under them. Hovering (mouse or pen) or tapping a bar, or the arrow keys once the chart has
- * the focus, show "<long label>: <count>" over it, inside the chart. The focus is on the chart's
- * own box, a group named by its label around the image.
+ * the focus, show "<long label>: <count>" over it, inside the chart, and tell a screen reader. The
+ * focus is on the chart's own box (`ChartFocus`), a group named by its label around the image.
  */
 export function BarChart({ bars, label, unit, color = OFFICE }: BarChartProps): JSX.Element {
   const box = useRef<HTMLDivElement>(null);
@@ -101,7 +102,13 @@ export function BarChart({ bars, label, unit, color = OFFICE }: BarChartProps): 
 
   const ticks = g.most > 0 ? [0, g.most] : [0];
   return (
-    <div className="bar-chart" role="group" aria-label={label} tabIndex={0} onKeyDown={onKeyDown} onBlur={() => setPicked(null)}>
+    <ChartFocus
+      className="bar-chart"
+      label={label}
+      status={tooltip ? tooltip.lines.join(" ") : ""}
+      onKeyDown={onKeyDown}
+      onBlur={() => setPicked(null)}
+    >
       <ChartFrame
         className="bar-chart-frame"
         boxRef={box}
@@ -142,7 +149,7 @@ export function BarChart({ bars, label, unit, color = OFFICE }: BarChartProps): 
           ) : null
         )}
       </ChartFrame>
-    </div>
+    </ChartFocus>
   );
 }
 

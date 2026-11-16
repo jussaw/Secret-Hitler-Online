@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { computeActivity, type Heatmap } from "../activity";
 import { makeRecord } from "../testRecords";
@@ -133,6 +133,13 @@ describe("CalendarHeatmap", () => {
     expect(tip()).toBe("Thu 1 Jan 2026: 2 games");
     fireEvent.blur(group());
     expect(tip()).toBe("");
+  });
+
+  it("aScreenReaderHearsTheDayTheKeysMoveTo", () => {
+    widthIs(500);
+    draw();
+    fireEvent.keyDown(group(), { key: "Home" });
+    expect(within(group()).getByRole("status")).toHaveTextContent("Thu 1 Jan 2026: 2 games");
   });
 
   it("isAFocusableGroupNamedByItsLabelAndView", () => {

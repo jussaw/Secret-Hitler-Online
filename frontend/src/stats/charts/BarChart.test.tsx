@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { BarChart, type Bar } from "./BarChart";
 
@@ -113,6 +113,17 @@ describe("BarChart", () => {
     expect(tip()).toBe("");
     fireEvent.keyDown(group(), { key: "ArrowLeft" });
     expect(tip()).toBe("Sun: 7 games");
+  });
+
+  it("aScreenReaderHearsTheDetailsTheKeysMoveTo", () => {
+    widthIs(500);
+    draw();
+    const status = within(group()).getByRole("status");
+    expect(status).toHaveTextContent(/^$/);
+    fireEvent.keyDown(group(), { key: "End" });
+    expect(status).toHaveTextContent("Sun: 7 games");
+    fireEvent.blur(group());
+    expect(status).toHaveTextContent(/^$/);
   });
 
   it("arrowKeysOnTheImageReachTheGroup", () => {
