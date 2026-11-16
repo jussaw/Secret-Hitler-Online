@@ -65,6 +65,25 @@ jobs:
             frontend/test-results
           retention-days: 14
 
+  devops:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          tags: secret-hitler-online:backup-test
+          cache-from: type=gha,scope=devops
+          cache-to: type=gha,mode=max,scope=devops
+      - name: Backup and restore tests
+        run: bash devops/tests/backup-restore.test.sh
+        env:
+          IMAGE: secret-hitler-online:backup-test
+
   image:
     if: github.event_name == 'push' && github.ref == 'refs/heads/development'
     needs: [test, e2e]
