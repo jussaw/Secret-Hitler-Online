@@ -45,7 +45,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 12. Accounts with Discord sign-in | `phase-12-accounts` | done |
 | 13. Database backups | `phase-13-db-backups` | done |
 | 14A. Game timeline | `phase-14a-game-timeline` | done |
-| 14B. Game records | `phase-14b-game-records` | planned |
+| 14B. Game records | `phase-14b-game-records` | done |
 | 15A. Stats shell | `phase-15a-stats-shell` | planned |
 | 15B. Game history | `phase-15b-game-history` | planned |
 | 16. The game page | `phase-16-game-page` | planned |
@@ -766,22 +766,22 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-14b-game-records.md`](super
 
 Issue #31, the second half of the game recorder: the server stores every record Phase 14A hands over in SQLite exactly once, with player numbers in place of accounts, and serves every record from `GET /api/stats/games`, with the contract fixture the stats pages test against. It changes nothing on screen. It starts once Phase 14A has merged and merges after Phase 13, so the backups land before any record is written.
 
-- [ ] `backend/src/main/java/server/stats/GameStore.java`: `players`, `games` and `game_seats`, player numbers, one write per game ID
-- [ ] `GameRecorder`: the sink, writing on its own thread; a record that fails waits for the next try
-- [ ] `SecretHitlerServer`: start-up (recording, the backup, the drop of a restored game that has a record, the sweep), the minute's retry and the shutdown's flush, each a method the tests call
-- [ ] `GET /api/stats/games`: cached until a record is saved or an account renamed, `ETag` and 304, gzip, 503, no account IDs; the dev server proxies `/api`
-- [ ] `frontend/src/stats/fixtures/recorded-games.json` from `./gradlew recordedGamesFixture`, checked against the spec's format
-- [ ] `frontend/e2e/recorder.spec.ts`: a real game played to its end is served in the spec's key order
-- [ ] `CLAUDE.md`, `README.md` and `DEVELOPMENT.md` describe the store, the writer, the route and the fixture
-- [ ] Every finding of the whole-branch review fixed, Minor ones included
+- [x] `backend/src/main/java/server/stats/GameStore.java`: `players`, `games` and `game_seats`, player numbers, one write per game ID
+- [x] `GameRecorder`: the sink, writing on its own thread; a record that fails waits for the next try
+- [x] `SecretHitlerServer`: start-up (recording, the backup, the drop of a restored game that has a record, the sweep), the minute's retry and the shutdown's flush, each a method the tests call
+- [x] `GET /api/stats/games`: cached until a record is saved or an account renamed, `ETag` and 304, gzip, 503, no account IDs; the dev server proxies `/api`
+- [x] `frontend/src/stats/fixtures/recorded-games.json` from `./gradlew recordedGamesFixture`, checked against the spec's format
+- [x] `frontend/e2e/recorder.spec.ts`: a real game played to its end is served in the spec's key order
+- [x] `CLAUDE.md`, `README.md` and `DEVELOPMENT.md` describe the store, the writer, the route and the fixture
+- [x] Every finding of the whole-branch review fixed, Minor ones included
 
 **Phase 14B acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass (`desktop` on macOS and `firefox` in the Linux image before the PR, all four projects in CI)
-- [ ] Every game played to its end, with or without CPU players, and every game abandoned mid-way, has exactly one stored record
-- [ ] A real game played against the jar with a database file is served by `/api/stats/games` in the spec's key order (`curl`)
-- [ ] The pull request says it changes nothing on screen
-- [ ] PR merged into `development`, after Phase 13's
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass (`desktop` on macOS and `firefox` in the Linux image before the PR, all four projects in CI)
+- [x] Every game played to its end, with or without CPU players, and every game abandoned mid-way, has exactly one stored record
+- [x] A real game played against the jar with a database file is served by `/api/stats/games` in the spec's key order (`curl`)
+- [x] The pull request says it changes nothing on screen
+- [x] PR merged into `development`, after Phase 13's
 - [ ] The user plays a game on the deployed build and finds its record in `https://<subdomain>/api/stats/games`
 
 ---

@@ -15,6 +15,7 @@ export default defineConfig({
       "/ping": backend,
       "/auth": backend,
       "/me": backend,
+      "/api": backend,
       "/game": { target: backend, ws: true },
     },
   },

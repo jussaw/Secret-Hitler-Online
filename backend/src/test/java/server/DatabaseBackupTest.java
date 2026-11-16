@@ -6,6 +6,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -37,6 +38,8 @@ import org.junit.rules.TemporaryFolder;
 import org.slf4j.LoggerFactory;
 import server.stats.GameRecord;
 import server.stats.GameSnapshot;
+import server.stats.TestRecords;
+import server.stats.TestStore;
 import server.stats.TimelineReplay;
 import server.util.FakeSocket;
 import server.util.Lobby;
@@ -477,6 +480,58 @@ public class DatabaseBackupTest {
         assertFalse(backup.isAlive());
         assertNull(failure.get());
         assertTrue(load().get("ABCD").isInGame());
+    }
+
+    /////// A finished game never comes back
+
+    /**
+     * A game whose record is saved but whose lobby was backed up before the game ended (a crash in
+     * the minute after its end, or a database backup taken in it) comes back idle: its record stands.
+     */
+    @Test
+    public void aRestoredGameThatHasARecordIsDropped() throws Exception {
+        Lobby recorded = new Lobby();
+        recorded.startNewGame();
+        Lobby unrecorded = new Lobby();
+        unrecorded.startNewGame();
+        String recordedId = recorded.gameId();
+        store(new ConcurrentHashMap<>(Map.of("ABCD", recorded, "EFGH", unrecorded)));
+        ConcurrentHashMap<String, Lobby> loaded = load();
+        try (TestStore games = new TestStore()) {
+            games.save(TestRecords.record(recordedId, 2_000_000L, GameRecord.FASCIST_POLICIES, TestRecords.seats()));
+            ServerTesting.clearLobbiesChanged();
+
+            List<ILoggingEvent> log = ServerLog.during(() -> ServerTesting.dropRecordedGames(loaded, games));
+
+            assertFalse(loaded.get("ABCD").isInGame());
+            assertEquals(recordedId, loaded.get("ABCD").gameId());
+            assertTrue(loaded.get("EFGH").isInGame());
+            assertEquals(1, log.stream().filter(e -> e.getFormattedMessage()
+                    .equals("Dropped the game in lobby ABCD: it has a record already.")).count());
+            assertEquals(1, games.recordedIdsCalls.get());
+            assertTrue("the next backup holds the lobby without its game", ServerTesting.lobbiesChanged());
+            assertEquals(List.of(), records); // the dropped game hands over no record
+        }
+    }
+
+    @Test
+    public void theDropKeepsGamesWhenTheDatabaseFails() throws Exception {
+        Lobby first = new Lobby();
+        first.startNewGame();
+        Lobby second = new Lobby();
+        second.startNewGame();
+        store(new ConcurrentHashMap<>(Map.of("ABCD", first, "EFGH", second)));
+        ConcurrentHashMap<String, Lobby> loaded = load();
+        try (TestStore games = new TestStore()) {
+            games.failing = true;
+
+            List<ILoggingEvent> log = ServerLog.during(() -> ServerTesting.dropRecordedGames(loaded, games));
+
+            assertTrue(loaded.get("ABCD").isInGame());
+            assertTrue(loaded.get("EFGH").isInGame());
+            assertTrue(log.stream().anyMatch(e -> e.getLevel() == Level.ERROR && e.getFormattedMessage()
+                    .equals("Could not read which restored games have a record: every restored game is kept.")));
+        }
     }
 
     @Test

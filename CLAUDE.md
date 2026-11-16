@@ -14,18 +14,19 @@ keeps credit to upstream and to the board game's creators.
 ## Layout
 
 - `backend/`: Java 17, Gradle (7.4.2 wrapper), Javalin 5. Game rules and CPU players in
-  `src/main/java/game/`; HTTP endpoints (`/check-login`, `/new-lobby`, `/ping` and the account
-  routes below), the `/game` WebSocket, lobbies and state serialization in `src/main/java/server/`,
-  accounts in `src/main/java/server/accounts/` and game records in `src/main/java/server/stats/`
-  (below). JUnit 4 tests in `src/test/java/game/` and
+  `src/main/java/game/`; HTTP endpoints (`/check-login`, `/new-lobby`, `/ping`, `/api/stats/games`
+  and the account routes below), the `/game` WebSocket, lobbies and state serialization in
+  `src/main/java/server/`, accounts in `src/main/java/server/accounts/` and game records in
+  `src/main/java/server/stats/` (below). JUnit 4 tests in `src/test/java/game/` and
   `src/test/java/server/`. Lobbies are backed up to a SQLite file at `DATABASE_PATH`, which also
-  holds the accounts and sessions (unset = no backup, and the accounts in an in-memory database that
-  is gone at restart). `main` first puts that file in WAL mode, before anything else opens it
-  (`useWriteAheadLog`: `PRAGMA journal_mode = WAL` with a busy timeout of 0, tried again every
-  100 ms while the file is busy or locked, for `WAL_TIMEOUT_MS`, 5 s; any other failure gives up at
-  once, and giving up logs one error and leaves the file in its old mode, so a busy file never keeps
-  the server from starting: `DatabaseWalTest`), so a backup's read never blocks a write; both
-  connections keep their 5 s busy timeout. `startServer` starts the app and then logs
+  holds the accounts and sessions and the game records (unset = no backup, and the accounts and the
+  records each in an in-memory database that is gone at restart). `main` first puts that file in WAL
+  mode, before anything else opens it (`useWriteAheadLog`: `PRAGMA journal_mode = WAL` with a busy
+  timeout of 0, tried again every 100 ms while the file is busy or locked, for `WAL_TIMEOUT_MS`, 5
+  s; any other failure gives up at once, and giving up logs one error and leaves the file in its old
+  mode, so a busy file never keeps the server from starting: `DatabaseWalTest`), so a backup's read
+  never blocks a write; all three connections (the backup's, the account store's and the game
+  store's) keep their 5 s busy timeout. `startServer` starts the app and then logs
   `startupLine(port)`, "Secret Hitler Online is listening on port <port>.", the server's own line
   (not Javalin's, which a dependency update could change) that `devops/restore-db.sh` waits for
   (`StartupLineTest`). The server also serves the built frontend from the
@@ -187,8 +188,8 @@ keeps credit to upstream and to the board game's creators.
   (a JUnit rule: a fresh in-memory `AccountStore` per test, and `session(name)` for the account
   `test-<name>` named so), and `TestSocket.connect(port, query, token)` sends the `session` cookie
   and the server's own `Origin`; the lobby tests name each player's account with `LobbyTesting`.
-  Game records (#31; Phase 14B adds the store, the writer and `GET /api/stats/games`) start in
-  `server.stats`, with no database yet: `GameSnapshot` (one look at a `SecretHitlerGame`: state,
+  Game records (#31) are made in `server.stats` and `Lobby`, then stored and served (below):
+  `GameSnapshot` (one look at a `SecretHitlerGame`: state,
   round, seats, roles, deaths, offices, votes, tracker, board, piles, and the hand or peek of the
   state that shows one; `of` reads `getState()` first, which notices a policy victory),
   `TimelineDiff` (`between(before, after, t)`: the events one game method made between two looks,
@@ -201,8 +202,8 @@ keeps credit to upstream and to the board game's creators.
   game hands over: header, seats in turn order with their accounts, null for a CPU's, and the
   timeline; `winner()`, `hasCpu()`, `accountIds()`) and `GameRecordSink` (where
   `Lobby.recordSink` hands each record, under the lobby's lock, so a sink never blocks;
-  `DROPPING`, the default until Phase 14B, drops it with a debug line). `Lobby` keeps the running
-  game's `gameId` (a random UUID; `gameId()` gives it, then the last game's until the next
+  `DROPPING`, the sink until recording starts, drops it with a debug line). `Lobby` keeps the
+  running game's `gameId` (a random UUID; `gameId()` gives it, then the last game's until the next
   starts), `gameStartedAt` (`recordClock`, epoch ms), `gameComplete` and `gameEvents`, all backed
   up, and the transient `lastSnapshot`; `timeline()` gives a copy of the running game's events.
   It takes a snapshot of the game (`observeGame`) first in
@@ -240,6 +241,64 @@ keeps credit to upstream and to the board game's creators.
   plays a lobby's CPU players one tick at a time, `GameDriver.playUntil(game, state, onStep)` calls
   `onStep` after every move as `playOut` does, and `ServerTesting.lobbiesChanged()` and
   `clearLobbiesChanged()` read and reset the server's mark for the next backup.
+  The records are stored by `GameStore`: three tables in the `DATABASE_PATH` file beside the
+  accounts (or an in-memory database of its own without one), on one connection with a 5 s busy
+  timeout, every public method synchronized, each SQL failure an `IllegalStateException`. `players`
+  (`number`, an autoincrement key, `account_id` unique, `created_at`) numbers each account the first
+  time one of its games is saved, in seat order; `games` (`id` the key, `format`, `started_at`,
+  `ended_at` indexed, `outcome`, `has_cpu`, `record`, the JSON) and `game_seats` (`game_id` and
+  `seat` the key, `player_number`, null for a CPU's and indexed, `name`, `role`). `save` is one
+  transaction, its own `BEGIN IMMEDIATE`, `COMMIT` and `ROLLBACK` on a connection left in autocommit
+  (the driver's own transactions begin again after each commit, and one whose begin timed out ran
+  its next save outside any), taking the write lock at its start: a number for each account that has
+  none (looked up before one is made, as an ignored `INSERT OR IGNORE` still uses up an
+  autoincrement number), then the game, with `GameRecord.toJson(numbers)` (format 1 in the spec's
+  key order, each seat's `player` its number, never an account ID), and its seats; an ID already
+  there rolls it all back and returns false, so a game is recorded once. `recordedIds` asks for many
+  IDs in one query, `players()` gives them by number and `recordsJson()` by `ended_at`, then `id`.
+  `GameRecorder` is the sink: `submit` only queues (unbounded: it never blocks, throws or touches
+  the store), one daemon thread, `game-recorder`, saves and then runs `afterSave` (the route's
+  `invalidate`), even when the game was there already (a retry of a save that wrote but reported a
+  failure, say), and a record whose save fails is logged and waits in memory (`waitingCount`) until
+  `retryWaiting` queues it again; `flush` tries every queued and waiting record once on the calling
+  thread, and `stop` interrupts the thread and waits up to 10 s for a save under way.
+  `SecretHitlerServer` keeps `recorder` and `stats`: `startRecording(store)` makes the route and the
+  writer and sets the writer as `Lobby.recordSink` (`stopRecording` puts `DROPPING` back), and
+  `main` calls `startUp(GameStore.open(DATABASE_PATH))` (recording, `loadDatabaseBackup`,
+  `dropRecordedGames`, then the start-up sweep, in that order), runs `everyMinute()` on its timer
+  (the lobby sweep, the session sweep, `retryWaiting`, then the backup if lobbies changed) and
+  `onShutdown()` in its hook (the writer stopped and flushed, then the last lobby backup, so a game
+  whose record is saved never comes back running, then a second flush for the records of games that
+  ended meanwhile, which that backup no longer holds). `dropRecordedGames` is the spec's "a finished
+  game never comes back": it reads each restored game's ID under its lobby's lock, asks the store
+  once under none, and drops each game that has a record (`Lobby.dropGame`), logging "Dropped the
+  game in lobby CODE: it has a record already." and marking the lobbies changed; a read that fails
+  keeps every game, with an error. No database call runs under a lobby's lock. `StatsRoutes` answers
+  `GET /api/stats/games` with no sign-in: `{"players": [{"number", "name"}], "games": [record…]}`,
+  each name the account's now (`currentName`, through the account store; `Player N` for none) and
+  the games oldest first. It reads the games before the players, so a save between the two reads
+  never serves a player number the list lacks. It keeps the serialized body, its gzip and its `ETag`
+  (the body's SHA-256 in hex, quoted, so a restart keeps it) until `invalidate`, after each saved
+  record and each rename `renameAccount` saves; it rebuilds under its own lock from a version read
+  before the database, so a change during a build leaves it stale. Every answer has `Cache-Control:
+  no-cache` and `Vary: Accept-Encoding`; a matching `If-None-Match` (any entry, `W/` or not, or `*`)
+  gets 304; a request whose `Accept-Encoding` names gzip, read as Javalin's own compressor reads it
+  (a substring), gets the kept gzip with `Content-Encoding: gzip`, which that compressor then leaves
+  alone; a database failure is 503 with `UNAVAILABLE` ("Stats are unavailable right now."), as is
+  every request before recording starts. The contract fixture,
+  `frontend/src/stats/fixtures/recorded-games.json`, is the response for 62 or more `CpuGames`
+  recorded as if twelve accounts (Ada to Maximilianus, twelve characters) held the seats: ten
+  finished at each size from 5 to 10, two cut off once round 5 begins, two CPU seats in every sixth,
+  and more games only if an outcome is missing, made by `./gradlew recordedGamesFixture`
+  (`RecordedGamesFixture`, in the test source set) and committed. The games cannot be seeded, so
+  every run changes it; `RecordedGamesFixtureTest` checks it against `RecordFormat` and replays
+  every timeline. The tests: `GameRecordJsonTest`, `GameStoreTest`, `GameRecorderTest` (over
+  `TestStore`, a store that can fail, hold its saves back and count its calls),
+  `RecordingServerTest` (no database call under a lobby's lock, a stuck database, the start-up
+  order, a database down at start-up, the shutdown's flush), `StatsRoutesTest` and
+  `DatabaseBackupTest`'s drops; `TestRecords` builds their records and `ServerLog.during` collects
+  what the server logs. `ServerTesting` passes `dropRecordedGames`, `startUp`, `everyMinute` and
+  `onShutdown` on.
 - `frontend/`: React 18 and TypeScript 5, built with Vite and tested with Vitest. The entry is
   `src/main.tsx`, with `index.html` at the `frontend/` root, whose description is one plain line
   and which has no preview image, so an invite link previews as that line (`linkPreview.test.ts`).
@@ -545,7 +604,9 @@ keeps credit to upstream and to the board game's creators.
   `routeWebSocket`: with the browser noticing and the server's end left open, with no network for
   2.5 s, and with neither end noticing. Each time, the server replaces the dead socket. The scripted
   sockets of `e2e/fakeGame.ts` answer pings (`answerPings`), and `FakeWatch.down` refuses new
-  sockets as `LOBBY_GONE`, so the page gives up at once. Shared helpers are `e2e/lobby.ts`
+  sockets as `LOBBY_GONE`, so the page gives up at once. `recorder.spec.ts` (`desktop`) plays a
+  real game to its end through `e2e/driveGame.ts` and finds its record in `GET /api/stats/games`,
+  its keys in the spec's order, with no account ID in the body. Shared helpers are `e2e/lobby.ts`
   (`waitForPlayers`, `joinGuests`, with `pickLooks` false for guests who stay on the default
   portrait, `joinLobby`, `pickPortrait`, `longestLineLobby`, `longestLineViewers`, `actionLabels`,
   `longestLogin`, `accountTargets`, `lobbyStatusCard`, `waitForPrompt`, `watchLobby`, and
@@ -557,8 +618,8 @@ keeps credit to upstream and to the board game's creators.
   `body` scrolls vertically by itself (`pageHeight` measures both). The client talks to its own
   origin (`src/constants/serverUrls.ts`; `wss:` on `https:` pages) unless `VITE_SERVER_ADDRESS` is
   set, and the dev server proxies the backend paths (`/check-login`, `/new-lobby`, `/ping`, `/auth`,
-  `/me` and `/game`) to `BACKEND_URL` (default `http://localhost:4040`). `VITE_*` variables live
-  in `.env.development` (dev server only: `VITE_DEBUG`) and `.env.dev` (`--mode dev`), typed in
+  `/me`, `/api` and `/game`) to `BACKEND_URL` (default `http://localhost:4040`). `VITE_*` variables
+  live in `.env.development` (dev server only: `VITE_DEBUG`) and `.env.dev` (`--mode dev`), typed in
   `src/vite-env.d.ts`.
 - `devops/`: host scripts for the database, each self-contained bash (it works copied alone, on
   macOS's bash 3.2 too) that works on the running container by its name through the `docker` CLI,
@@ -616,6 +677,7 @@ fields from `package-lock.json`.
 | Run backend (debug mode with test sign-in, `localhost:4040`) | `cd backend && ./gradlew runLocal` |
 | Run frontend dev server (`localhost:3000`, against the local backend) | `cd frontend && npm install && npm run dev` |
 | Backend tests | `cd backend && ./gradlew test` |
+| Remake the stats pages' contract fixture after a change to the record's format (a new file every run; commit it with the change) | `cd backend && ./gradlew recordedGamesFixture` |
 | Frontend tests (single run) | `cd frontend && npm test -- --run` |
 | Browser tests (build the frontend and the jar, serve them on `localhost:4545` with test sign-in, or `E2E_PORT` beside another run; Java 17 active) | `cd frontend && npx playwright install chromium firefox && npm run e2e` (one project: `-- --project=phone-360`) |
 | Browser tests on Linux (Firefox, or CI's font widths), against the jar serving on the host with `TEST_SIGN_IN=true` | `docker run … mcr.microsoft.com/playwright:v<version>-noble … npx playwright test --config playwright.linux.config.ts`, written out in `DEVELOPMENT.md` |
@@ -637,13 +699,13 @@ it; `image` does not wait for it, since it is skipped on pushes. On every push t
 publishes `ghcr.io/jussaw/secret-hitler-online:latest` and `:sha-<short>` for `linux/arm64` and
 `linux/amd64`, once those checks pass.
 A home server runs that image and pulls new `:latest` images once a day. TLS ends at a proxy in
-front of it, so the container serves plain HTTP on `8080`. Lobby backups, accounts and sessions go
-to `/data/backup.db`, so mount a volume at `/data`, on a local disk (the file is in WAL mode).
-Scheduling `devops/backup-db.sh` on the home server, with any `AFTER_BACKUP`, is the user's job,
-outside this repo. Discord sign-in needs `DISCORD_CLIENT_ID`,
-`DISCORD_CLIENT_SECRET` and `DISCORD_REDIRECT_URI` set on the host (README, "Hosting your own"),
-which is the user's job, outside this repo. A game running when an image with accounts first
-starts is dropped, so deploy between games.
+front of it, so the container serves plain HTTP on `8080`. Lobby backups, accounts, sessions and
+game records go to `/data/backup.db`, so mount a volume at `/data`, on a local disk (the file is in
+WAL mode). Scheduling `devops/backup-db.sh` on the home server, with any `AFTER_BACKUP`, is the
+user's job, outside this repo. Discord sign-in needs `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`
+and `DISCORD_REDIRECT_URI` set on the host (README, "Hosting your own"), which is the user's job,
+outside this repo. A game running when an image with accounts first starts is dropped, so deploy
+between games.
 
 ## Workflow
 
