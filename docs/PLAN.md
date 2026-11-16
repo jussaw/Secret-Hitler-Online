@@ -1072,7 +1072,7 @@ Breakdown: [`docs/superpowers/plans/2026-11-16-phase-23-site-header.md`](superpo
 Added after Phases 13 to 22B were planned. The stats pages' top bar (SECRET-HITLER and STATS · GAMES · PLAYERS · PLAY) becomes the login page's header too, so the stats are reached from the top of the home page instead of a footer link. The lobby keeps its own header. Planned to start once Phase 22B had merged, when the stats header is final; it runs beside 22B instead, since 22B does not touch the header.
 
 - [x] One shared header component, taken from 15A's `StatsHeader`, used by the stats pages and the login page; the lobby and the game page keep their own headers
-- [ ] Login page: the shared header, with PLAY marked as the current page (`aria-current="page"`, the tab row's current look); the footer's "Stats" link removed; the header's sound control removed (sounds stay in the lobby and the game)
+- [x] Login page: the shared header, with PLAY marked as the current page (`aria-current="page"`, the tab row's current look); the footer's "Stats" link removed; the header's sound control removed (sounds stay in the lobby and the game)
 - [ ] Lobby: its own header unchanged (sound control and spectator count); only the footer's "Stats" link removed; the victory screen's "See this game" stays
 - [ ] The login page and the lobby still fit one screen at every tested size and keep 44px targets on phones (the cards' spacing re-fitted, checked with Linux fonts in the Playwright image)
 - [ ] Browser and unit tests updated: the header on each page, PLAY current on the login page, no speaker on the login page, no footer "Stats" link

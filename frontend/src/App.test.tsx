@@ -167,9 +167,11 @@ test("pings the server once when it starts", () => {
   expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/ping$/));
 });
 
-test("the login page's banner reads SECRET-HITLER", () => {
+test("the login page's banner reads SECRET-HITLER, in the stats pages' header", () => {
   const { container } = render(<App />);
-  expect(container.querySelector("header")).toHaveTextContent(/^SECRET-HITLER$/);
+  const header = container.querySelector("header.site-header");
+  expect(header?.querySelector(".site-title")).toHaveTextContent(/^SECRET-HITLER$/);
+  expect(header?.querySelector('[aria-current="page"]')).toHaveTextContent(/^PLAY$/);
 });
 
 test("the lobby marks only the first player as HOST", async () => {

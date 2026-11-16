@@ -255,9 +255,11 @@ test("the control fits every header", async ({ page, isMobile }) => {
     }
   };
 
+  // The login page has the stats pages' header, with no sound control: sounds are the lobby's
+  // and the game's.
   await page.goto("/");
-  await settle(page);
-  await check("login");
+  await expect(page.getByRole("navigation", { name: "Stats pages" })).toBeVisible();
+  await expect(page.locator(".sound-control")).toHaveCount(0);
   const game = await openFakeGame(page);
   await settle(page);
   await check("lobby");
@@ -270,7 +272,7 @@ test("the control fits every header", async ({ page, isMobile }) => {
 test("mute and volume survive a reload", async ({ page, browserName, isMobile }) => {
   test.skip(browserName !== "chromium" || isMobile, "the desktop project covers the settings");
   await recordSounds(page);
-  await page.goto("/");
+  await openFakeGame(page);
   const button = page.getByRole("button", { name: "Mute sounds" });
   const slider = page.getByRole("slider", { name: "Volume" });
   await slider.focus();
@@ -280,10 +282,14 @@ test("mute and volume survive a reload", async ({ page, browserName, isMobile })
   await button.click();
   await expect(button).toHaveAttribute("aria-pressed", "true");
 
+  // A player's reload is the login page, which has no control; back in a lobby, it shows the
+  // settings kept.
   await page.reload();
+  await expect(page.getByRole("button", { name: "CREATE LOBBY" })).toBeVisible();
+  await expect(button).toHaveCount(0);
+  const game = await openFakeGame(page); // its click unlocks audio
   await expect(button).toHaveAttribute("aria-pressed", "true");
   await expect(slider).toHaveValue("60");
-  const game = await openFakeGame(page); // its click unlocks audio
   game.send({ type: "lobby", usernames: TEN.slice(0, 9), icon, you: USER });
   game.send({ type: "lobby", usernames: TEN, icon, you: USER });
   const [joined] = await heard(page, 1);
@@ -292,7 +298,7 @@ test("mute and volume survive a reload", async ({ page, browserName, isMobile })
 
 test("hover and keyboard show the slider on desktop", async ({ page, browserName, isMobile }) => {
   test.skip(browserName !== "chromium" || isMobile, "hover and Tab are desktop input");
-  await page.goto("/");
+  await openFakeGame(page);
   const button = page.getByRole("button", { name: "Mute sounds" });
   const slider = page.getByRole("slider", { name: "Volume" });
   const opacity = () => page.locator(".sound-volume").evaluate((el) => getComputedStyle(el).opacity);
@@ -302,6 +308,9 @@ test("hover and keyboard show the slider on desktop", async ({ page, browserName
   await page.mouse.move(5, 600);
   await expect.poll(opacity).toBe("0");
 
+  // Tab on from the header's title, as from the top of the page: the speaker is the header's
+  // only control.
+  await page.locator(".lobby-screen > header").click();
   await page.keyboard.press("Tab");
   await expect(button).toBeFocused();
   await expect.poll(opacity).toBe("1");
@@ -318,14 +327,14 @@ test("hover and keyboard show the slider on desktop", async ({ page, browserName
 
 test("a tap shows the slider on phones", async ({ page, isMobile }) => {
   test.skip(!isMobile, "tapping is phone input");
-  await page.goto("/");
+  await openFakeGame(page);
   const button = page.getByRole("button", { name: "Mute sounds" });
   const opacity = () => page.locator(".sound-volume").evaluate((el) => getComputedStyle(el).opacity);
   expect(await opacity()).toBe("0");
   await button.tap();
   await expect(button).toHaveAttribute("aria-pressed", "true");
   await expect.poll(opacity).toBe("1");
-  await page.getByRole("heading", { name: "JOIN A GAME" }).tap();
+  await page.locator(".lobby-players-head").tap();
   await expect.poll(opacity).toBe("0");
 });
 
@@ -348,7 +357,7 @@ test("a tap shows the slider in a browser without :has()", async ({ page, isMobi
     const css = (await response.text()).replaceAll(":has(", ":-unknown-has(");
     await route.fulfill({ response, body: css });
   });
-  await page.goto("/");
+  await openFakeGame(page);
   const opacity = () => page.locator(".sound-volume").evaluate((el) => getComputedStyle(el).opacity);
   await page.getByRole("button", { name: "Mute sounds" }).tap();
   await expect.poll(opacity).toBe("1");

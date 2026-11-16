@@ -1,7 +1,7 @@
 @import '../variables.css';
 
-/* The login page in the lobby's look: the game's header (GameScreen.css lists .login-screen beside
-   the lobby and the game for the page and its header), then the cards and the footer, in one
+/* The login page in the lobby's look: the stats pages' header (SiteHeader.css; GameScreen.css lists
+   .login-screen beside the lobby and the game for the page), then the cards and the footer, in one
    column centred both ways. On phones the column starts at the top and takes the window's width.
    LobbyScreen.css lists this page's selectors beside the lobby's for the cards' look, the fields'
    focus, the centring, the grey buttons and the footer; this file holds what only the login page

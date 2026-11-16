@@ -63,6 +63,30 @@ test("the page is three cards: the account, joining a game and starting one", ()
   expect(screen.getAllByRole("textbox")).toEqual([codeField()]);
 });
 
+test("the header is the site's, with PLAY the page you are on", () => {
+  renderLogin();
+  const header = screen.getByRole("banner");
+  expect(header).toHaveTextContent(/^SECRET-HITLER/);
+  const nav = within(header).getByRole("navigation", { name: "Stats pages" });
+  expect(within(nav).getAllByRole("link").map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
+    ["STATS", "/stats"],
+    ["GAMES", "/stats/games"],
+    ["PLAYERS", "/stats/players"],
+    ["PLAY", "/"],
+  ]);
+  // The one current link on the page.
+  expect(Array.from(document.querySelectorAll('[aria-current="page"]'), (el) => el.textContent)).toEqual(["PLAY"]);
+  // The stats load in this tab: the login page has nothing to keep open.
+  for (const link of within(nav).getAllByRole("link")) expect(link).not.toHaveAttribute("target");
+});
+
+test("the login page has no sound control", () => {
+  renderLogin();
+  expect(screen.queryByRole("button", { name: "Mute sounds" })).toBeNull();
+  expect(screen.queryByRole("slider", { name: "Volume" })).toBeNull();
+  expect(document.querySelector(".sound-control")).toBeNull();
+});
+
 test("before /me answers, the card is blank and JOIN and CREATE LOBBY are off", () => {
   renderLogin({ account: undefined, lobby: "KQMX" });
   expect(discordLink()).toBeNull();
@@ -233,15 +257,14 @@ test("each card shows its own error", () => {
   expect(within(region("YOUR NAME")).getByRole("status")).toHaveTextContent(/^$/);
 });
 
-test("the footer links to the rules, the stats, the project and its issues", () => {
+test("the footer links to the rules, the project and its issues", () => {
   renderLogin();
   const footer = screen.getByRole("contentinfo");
   const firstLine = footer.querySelector("p")!;
-  expect(firstLine).toHaveTextContent(/^How to play · Stats · About this project · Report a bug$/);
+  expect(firstLine).toHaveTextContent(/^How to play · About this project · Report a bug$/);
   const link = (name: string) => within(footer).getByRole("link", { name });
-  // The stats open in the same tab.
-  expect(link("Stats")).toHaveAttribute("href", "/stats");
-  expect(link("Stats")).not.toHaveAttribute("target");
+  // The stats are in the header now.
+  expect(within(footer).queryByRole("link", { name: /stats/i })).toBeNull();
   expect(link("How to play")).toHaveAttribute("href", RULES_URL);
   expect(link("About this project")).toHaveAttribute("href", ABOUT_URL);
   expect(link("Report a bug")).toHaveAttribute("href", ISSUES_URL);

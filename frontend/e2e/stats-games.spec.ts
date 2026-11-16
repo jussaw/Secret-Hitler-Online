@@ -16,17 +16,20 @@ const data = bigStatsData();
 const desktopOnly = () => test.skip(test.info().project.name !== "desktop", "one browser is enough");
 
 test.describe("the links in", () => {
-  test("the login page's Stats link opens the stats in the same tab", async ({ page }) => {
+  test("the login page's header opens the stats in the same tab", async ({ page }) => {
     desktopOnly();
     await stubMe(page, signedOutMe({ discord: true }));
     await stubStats(page, data);
     await page.goto("/");
-    const stats = page.getByRole("contentinfo").getByRole("link", { name: "Stats", exact: true });
+    const nav = page.getByRole("navigation", { name: "Stats pages" });
+    await expect(nav.getByRole("link", { name: "PLAY", exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("contentinfo").getByRole("link", { name: "Stats" })).toHaveCount(0);
+    const stats = nav.getByRole("link", { name: "STATS", exact: true });
     await expect(stats).not.toHaveAttribute("target");
     await stats.click();
     await expect(page).toHaveURL(routePath({ page: "tab", tab: "overview" }));
-    const nav = page.getByRole("navigation", { name: "Stats pages" });
     await expect(nav.getByRole("link", { name: "STATS", exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("link", { name: "OVERVIEW" })).toBeVisible();
   });
 
   test("the lobby's Stats link opens the stats in a new tab", async ({ page }) => {
