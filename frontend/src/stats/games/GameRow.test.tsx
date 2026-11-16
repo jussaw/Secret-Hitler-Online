@@ -18,9 +18,8 @@ function renderRow(record: GameRecord): HTMLLIElement {
 describe("GameRow", () => {
   it("shows a finished game", () => {
     const row = renderRow(makeRecord({ seats: SEVEN, rounds: 11 }));
-    const link = screen.getByRole("link");
+    const link = screen.getByRole("link", { name: "Sat 14 Nov 2026, 9:42 PM · Liberals win · 5 Liberal policies" });
     expect(link).toHaveAttribute("href", "/stats/games/game-1");
-    expect(link).toHaveAccessibleName("Sat 14 Nov 2026, 9:42 PM · Liberals win · 5 Liberal policies");
     expect(link).toHaveClass("games-row-link");
     expect(row).toHaveTextContent("9:42 PM · 38 min");
     expect(row).toHaveTextContent("7 seats");
@@ -46,9 +45,12 @@ describe("GameRow", () => {
       })
     );
     expect(cpu.querySelector(".games-row-link")).toHaveTextContent("CPU");
-    expect(screen.getByRole("link")).toHaveAccessibleName(
+    expect(cpu.querySelector(".games-row-link")).toHaveAccessibleName(
       "Sat 14 Nov 2026, 9:42 PM · Fascists win · Hitler elected · with CPU players"
     );
+    // A CPU seat's name is plain text; a player's is a link to their page.
+    const seatLinks = Array.from(cpu.querySelectorAll(".games-row-seats a.player-link"));
+    expect(seatLinks.map((a) => a.textContent)).toEqual(["P1", "P2", "P4"]);
     expect(screen.getByText("Fascists")).toHaveClass("stats-fascist");
     expect(cpu.querySelector(".games-row-seats")).toHaveTextContent(/^P1 · P2 · Bot 1 · P4 · Bot 2$/);
     cleanup();
@@ -70,15 +72,18 @@ describe("GameRow", () => {
     expect(unfinished).toHaveTextContent("6 rounds");
   });
 
-  it("one link, and no name inside it", () => {
+  it("one link to the game, and no name inside it; each name a link of its own", () => {
     const row = renderRow(makeRecord({ seats: SEVEN }));
-    const links = row.querySelectorAll("a");
+    const links = row.querySelectorAll("a.games-row-link");
     expect(links.length).toBe(1);
     expect(links[0]).toHaveTextContent("Sat 14 Nov 2026");
     expect(links[0]).toHaveTextContent("Liberals win · 5 Liberal policies");
     expect(links[0].querySelector(".player-name")).toBeNull();
     expect(links[0]).not.toHaveTextContent("9:42 PM");
-    // The seats sit above the link's stretched area, so the names can be links of their own.
+    // The seats sit above the link's stretched area, so the names are links of their own (Phase 22A).
     expect(row.querySelector(".games-row-seats")!.closest("a")).toBeNull();
+    const names = Array.from(row.querySelectorAll(".games-row-seats a.player-link"));
+    expect(names.map((a) => a.getAttribute("href"))).toEqual([1, 2, 3, 4, 5, 6, 7].map((n) => `/stats/players/${n}`));
+    expect(row.querySelectorAll("a a")).toHaveLength(0);
   });
 });

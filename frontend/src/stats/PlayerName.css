@@ -1,18 +1,63 @@
 /* A player's or seat's name in the stats. A long name of wide letters wraps inside its column. */
 .player-name {
-  overflow-wrap: anywhere;
+    overflow-wrap: anywhere;
 }
 
 /* A side's or role's colour, for a name or for the word itself, on any stats page. */
 .stats-liberal {
-  color: var(--textColorLiberal);
+    color: var(--textColorLiberal);
 }
 
 .stats-fascist,
 .stats-hitler {
-  color: var(--textColorFascist);
+    color: var(--textColorFascist);
 }
 
 .stats-hitler {
-  text-decoration: underline;
+    text-decoration: underline;
+}
+
+/* A player's name as a link to their page (Phase 22A) looks as the plain name does: App.css's
+   font and orange for every link give way to the text around it, or to its role's colour. It is
+   underlined only as Hitler's and on hover, and outlined when focused from the keyboard. */
+a.player-link {
+    font: inherit;
+    color: inherit;
+    text-decoration: none;
+}
+
+a.player-link.stats-liberal {
+    color: var(--textColorLiberal);
+}
+
+a.player-link.stats-fascist,
+a.player-link.stats-hitler {
+    color: var(--textColorFascist);
+}
+
+a.player-link.stats-hitler,
+a.player-link:hover {
+    text-decoration: underline;
+}
+
+a.player-link:focus-visible {
+    outline: 2px solid var(--selectionHover);
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+/* Where the game's stacked query matches, a name that is a list's or a table's own entry (a table
+   cell, the game page's seats, a GAMES row's seats) is a 44px target: a box at least 44px tall and
+   wide, which makes its row or line that tall rather than reaching over a neighbour, beside any
+   words that follow it in its cell. A name inside a sentence (a p) stays inline. */
+@media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
+    :is(td, th, .game-seats, .games-row-seats) a.player-link {
+        box-sizing: border-box;
+        display: inline-flex;
+        align-items: center;
+        vertical-align: middle;
+        min-height: 44px;
+        min-width: 44px;
+        max-width: 100%;
+    }
 }
