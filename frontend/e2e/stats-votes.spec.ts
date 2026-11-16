@@ -38,17 +38,28 @@ test("INVESTIGATIONS' longest value wraps inside its card at 320px", async ({ pa
   const longest = Math.max(...(await values.allTextContents()).map((text) => text.length));
   expect(longest, "the longest value").toBeGreaterThan(100);
   await checkStatsPage(page, NARROW_PHONE);
-  const { right, table, cells } = await card.evaluate((el) => ({
-    right: el.getBoundingClientRect().right,
+  // Wrapped as text, a few words to a line, not squeezed to a letter a line beside the name.
+  const { table, widths } = await card.evaluate((el) => ({
     table: el.querySelector("table")!.getBoundingClientRect().width,
-    cells: Array.from(el.querySelectorAll(".ranked-value"), (cell) => {
-      const r = cell.getBoundingClientRect();
-      return { right: r.right, width: r.width };
-    }),
+    widths: Array.from(el.querySelectorAll(".ranked-value"), (cell) => cell.getBoundingClientRect().width),
   }));
-  for (const cell of cells) {
-    expect(cell.right, "a value inside its card").toBeLessThanOrEqual(right + 0.5);
-    // Wrapped as text, a few words to a line, not squeezed to a letter a line beside the name.
-    expect(cell.width, "a value's share of its row").toBeGreaterThanOrEqual(table / 2);
-  }
+  for (const width of widths) expect(width, "a value's share of its row").toBeGreaterThanOrEqual(table / 2);
+});
+
+test("every flex and grid child of the tab with text can shrink", async ({ page }) => {
+  // "Names never overflow": a flex or grid item's min-width is auto unless set, which lets a long
+  // line widen its row instead of wrapping in it.
+  await stubStats(page, bigStatsData());
+  await page.goto("/stats/votes");
+  await expect(page.locator(".votes-card")).toHaveCount(26);
+  const stuck = await page.evaluate(() =>
+    Array.from(document.querySelectorAll(".votes-tab *"))
+      .filter((el) => {
+        const parent = el.parentElement;
+        if (!parent || (el.textContent ?? "").trim() === "") return false;
+        return /flex|grid/.test(getComputedStyle(parent).display) && getComputedStyle(el).minWidth === "auto";
+      })
+      .map((el) => `${el.tagName.toLowerCase()}.${el.className}`)
+  );
+  expect(stuck).toEqual([]);
 });

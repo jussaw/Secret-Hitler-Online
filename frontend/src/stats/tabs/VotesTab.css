@@ -1,7 +1,8 @@
 /* VOTES & POWERS: two sections, each a heading over a grid of cards. App.css centres every div and
-   sizes every h2, so the tab sets its own alignment, sizes and margins. Every grid child has
-   min-width: 0, so a long name wraps inside its card instead of widening the page. The cards'
-   tables are Phase 17A's RankedTable and SplitTable, in their own look. */
+   sizes every h2, so the tab sets its own alignment, sizes and margins. Every flex and grid child
+   has min-width: 0, so a long name wraps inside its card instead of widening the page. The cards'
+   tables are Phase 17A's RankedTable and SplitTable, in their own look but for INVESTIGATIONS'
+   value (below). */
 .votes-tab {
     display: flex;
     flex-direction: column;
@@ -14,6 +15,10 @@
     display: flex;
     flex-direction: column;
     gap: 1em;
+}
+
+.votes-tab > *,
+.votes-section > * {
     min-width: 0;
 }
 
@@ -27,12 +32,12 @@
     margin: 0;
 }
 
+/* Each card as tall as its own table, not the tallest in its row. */
 .votes-grid {
     display: grid;
     gap: 1em;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 20em), 1fr));
     align-items: start;
-    min-width: 0;
 }
 
 .votes-grid > * {
@@ -40,8 +45,10 @@
 }
 
 /* INVESTIGATIONS' value names whom they investigated, so it is a line of text: the card takes a
-   whole row of the grid, and the value two thirds of its table, wrapping there, where RankedTable
-   keeps its short values on one line beside a name that takes the rest. */
+   whole row of the grid, and the value 65% of its table, wrapping there, where RankedTable keeps
+   its short values on one line beside a name that takes the rest. These rules reach into
+   RankedTable's cells (.ranked-name, .ranked-value); stats-votes.spec.ts fails if they stop
+   matching, as the value would then push the page sideways. */
 .votes-grid > .votes-investigations {
     grid-column: 1 / -1;
 }
@@ -57,7 +64,8 @@
     text-align: left;
 }
 
-/* Phones (the game's phone-only query): less room between the parts. */
+/* Phones (the game's phone-only query): less room between the parts, as TabsPage.css has, and a
+   smaller heading. */
 @media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
     .votes-tab,
     .votes-section,
