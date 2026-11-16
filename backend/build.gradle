@@ -74,6 +74,16 @@ task runLocal(type: JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
 }
 
+// Remakes the stats pages' contract fixture: games played by CPU players, recorded as if accounts
+// held the seats, as GET /api/stats/games serves them. The games cannot be seeded, so every run
+// writes a new file: run it after a change to the record's format and commit the file with it.
+// Neither build nor test runs it.
+task recordedGamesFixture(type: JavaExec) {
+    mainClass = 'server.stats.RecordedGamesFixture'
+    classpath = sourceSets.test.runtimeClasspath
+    args file('../frontend/src/stats/fixtures/recorded-games.json').absolutePath
+}
+
 task stage(dependsOn: ['build', 'clean', 'jar'])
 build.mustRunAfter clean
 
