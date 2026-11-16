@@ -1009,7 +1009,7 @@ Issue #31, after Phases 21A and 17B: the RECORDS tab shows streaks, the best wee
 
 - [x] `frontend/src/stats/records.ts`: streaks (on OVERVIEW's `winStreaks`), the most wins in a week and in a month, player of the month (OVERVIEW's `playerOfTheMonth`) and its history, the most games in one session
 - [x] `records.ts`: rating records (the highest peak, and the biggest upset with its winners' gain and losers' loss)
-- [ ] `frontend/src/stats/tabs/RecordsTab.tsx`: the RECORDS tab
+- [x] `frontend/src/stats/tabs/RecordsTab.tsx`: the RECORDS tab
 - [ ] `frontend/e2e/stats-records.spec.ts`: RECORDS fits every stats size, its game link opens the game, and the player of the month follows the browser's time zone
 - [ ] `CLAUDE.md` and `README.md` (and `DEVELOPMENT.md` if needed) describe the tab
 - [ ] Every finding of the whole-branch review is fixed

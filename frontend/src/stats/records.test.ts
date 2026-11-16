@@ -5,7 +5,7 @@ import { replayElo, type EloResult, type GameElo, type PlayerRating } from "./el
 import fixture from "./fixtures/recorded-games.json";
 import { winStreaks } from "./overview";
 import { parseStatsData, type GameRecord, type Role, type Side } from "./record";
-import { computeRecords, TOP_SESSIONS } from "./records";
+import { computeRecords, streakHolders, TOP_SESSIONS } from "./records";
 import { makeRecord, makeSeats } from "./testRecords";
 import { computeTiming } from "./timing";
 
@@ -108,6 +108,22 @@ describe("computeRecords", () => {
     // Review Focus 3: two equally long streaks, the one that ended later holds the record.
     expect(computeRecords([...run(1, "WW", 1), ...run(3, "WW", 10)], NO_ELO, NOW, "UTC").longestWin!.player).toBe(3);
     expect(computeRecords([...run(1, "LL", 1), ...run(3, "LL", 10)], NO_ELO, NOW, "UTC").longestLoss!.player).toBe(3);
+  });
+
+  it("streakHoldersAreEveryPlayerTiedAtTheSameEnd", () => {
+    // 1 and 2 won o1 to o3 together, 3 won three in a row ending at o2: only the later end ties.
+    const counted = [
+      played("o0", day(1), [3]),
+      played("o1", day(2), [1, 2, 3]),
+      played("o2", day(3), [1, 2, 3]),
+      played("o3", day(4), [1, 2], [3]),
+      played("o4", day(5), [4], [1, 2]),
+    ];
+    const r = computeRecords(counted, NO_ELO, NOW, "UTC");
+    expect(r.longestWin).toMatchObject({ length: 3, lastGameId: "o3" });
+    expect(streakHolders(r, "longestWin")).toEqual([1, 2]);
+    expect(streakHolders(r, "longestLoss")).toEqual([1, 2]); // 3's loss, o3, ended earlier
+    expect(streakHolders(computeRecords([], NO_ELO, NOW, "UTC"), "longestWin")).toEqual([]);
   });
 
   it("bestWeekAndMonthTakeTheLaterTie", () => {

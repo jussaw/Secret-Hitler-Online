@@ -83,7 +83,10 @@ export interface HighestPeak {
 export interface RecordStats {
   /** Every human player of a counted game, by number. */
   byPlayer: Map<number, PlayerRecords>;
-  /** The longest streaks across players, a tie going to the one that ended later. */
+  /**
+   * The longest streaks across players, a tie going to the one that ended later (`streakHolders`
+   * gives every player tied at that end).
+   */
   longestWin: Streak | null;
   longestLoss: Streak | null;
   /** This local month's: `playerOfTheMonth(counted, now, timeZone)`. */
@@ -155,6 +158,21 @@ function biggestUpsetOf(counted: GameRecord[], elo: EloResult): Upset | null {
     };
   }
   return best;
+}
+
+/**
+ * Every player whose longest win (or losing) streak ties the record: as long, and ending in the
+ * same game, as teammates' streaks do. Ascending; none when there is no record.
+ */
+export function streakHolders(records: RecordStats, which: "longestWin" | "longestLoss"): number[] {
+  const record = records[which];
+  if (record === null) return [];
+  const out: number[] = [];
+  records.byPlayer.forEach((p, player) => {
+    const run = p[which];
+    if (run !== null && run.length === record.length && run.lastGameId === record.lastGameId) out.push(player);
+  });
+  return out.sort((a, b) => a - b);
 }
 
 /** Every RECORDS number for the counted games (oldest first), seen at `now` in `timeZone`. */

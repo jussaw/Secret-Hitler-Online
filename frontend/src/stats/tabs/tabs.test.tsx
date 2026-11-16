@@ -26,7 +26,7 @@ describe("TABS", () => {
   it("each says it comes later, under its own title", () => {
     const stats = buildStats(generateData(10, 1), DEFAULT_FILTER);
     const titles = ["Records"];
-    const filled: string[] = ["roles", "votes", "rivals", "endings", "activity", "overview"];
+    const filled: string[] = ["roles", "votes", "rivals", "endings", "activity", "overview", "records"];
     TABS.filter(({ id }) => !filled.includes(id)).forEach(({ Component }, i) => {
       const { unmount } = render(<Component stats={stats} />);
       const card = screen.getByRole("region", { name: titles[i] });

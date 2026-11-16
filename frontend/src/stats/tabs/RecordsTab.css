@@ -1,0 +1,167 @@
+/* RECORDS: a grid of cards, each in a column at least 300px wide (the whole width on a phone),
+   under section headings that take a whole row. Every grid child has min-width: 0, so a long
+   name wraps inside its card instead of widening the page. App.css styles every h2, p, a and
+   li, so these set their own sizes and margins. */
+.records-tab {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+    align-items: start;
+    gap: 16px;
+    min-width: 0;
+}
+
+.records-tab > *,
+.records-cell {
+    min-width: 0;
+}
+
+.stats-screen h2.records-heading {
+    grid-column: 1 / -1;
+    font-family: var(--headerFont);
+    font-weight: normal;
+    font-style: normal;
+    font-size: 26px;
+    line-height: 1.2;
+    color: var(--headerTextColor);
+    margin: 4px 0 -4px;
+    overflow-wrap: anywhere;
+}
+
+/* A record's line: the holders, then " · 3 wins · Sun 4 Oct 2026 to Tue 6 Oct 2026". */
+.stats-screen p.records-line {
+    font-family: var(--textFont);
+    font-weight: 700;
+    font-size: 15px;
+    line-height: 1.4;
+    color: var(--textColorOnDark);
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.records-names {
+    font-size: 17px;
+    color: var(--headerTextColor);
+}
+
+.records-count,
+.records-change {
+    color: var(--headerTextColor);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.records-when {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--buttonHoverFill);
+}
+
+/* Each completed month's player of the month: the month, the names (wrapping in their column)
+   and the wins, in RankedTable's look. */
+.records-history {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--textFont);
+    font-size: 15px;
+    line-height: 1.3;
+    color: var(--textColorOnDark);
+}
+
+.records-history td {
+    padding: 4px 6px;
+    vertical-align: middle;
+    min-width: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.records-history tr:first-child td {
+    border-top: none;
+}
+
+.records-history td:first-child {
+    padding-left: 0;
+}
+
+.records-history td:last-child {
+    padding-right: 0;
+}
+
+.records-history-month {
+    font-weight: 600;
+    color: var(--buttonHoverFill);
+}
+
+.records-history-names {
+    width: 100%;
+    font-weight: 500;
+    color: var(--headerTextColor);
+}
+
+.records-history-wins {
+    white-space: nowrap;
+    text-align: right;
+    font-weight: 700;
+    color: var(--headerTextColor);
+    font-variant-numeric: tabular-nums;
+}
+
+/* The longest sessions, most games first. */
+.records-sessions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0;
+    padding: 0 0 0 1.6em;
+    font-family: var(--textFont);
+    font-weight: 700;
+    font-size: 15px;
+    line-height: 1.4;
+    color: var(--headerTextColor);
+    font-variant-numeric: tabular-nums;
+}
+
+.records-sessions > li {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+/* The upset's game: a 44px target at every size, as wide as its words. */
+.stats-screen a.records-game-link {
+    box-sizing: border-box;
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    min-width: 44px;
+    font-family: var(--textFont);
+    font-weight: 700;
+    font-size: 15px;
+    line-height: 1.3;
+    color: var(--buttonHoverFill);
+}
+
+.stats-screen a.records-game-link:hover,
+.stats-screen a.records-game-link:focus-visible {
+    color: var(--headerTextColor);
+}
+
+/* Each history row at least 44px tall wherever the game's stacked query matches, so a name that
+   becomes a link (Phase 22) is a 44px target, as in RankedTable. */
+@media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
+    .records-history td {
+        height: 44px;
+        box-sizing: border-box;
+    }
+}
+
+/* Phones (the game's phone-only query): less room between the cards. */
+@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
+    .records-tab {
+        gap: 8px;
+    }
+
+    .stats-screen h2.records-heading {
+        font-size: 22px;
+        margin: 4px 0 0;
+    }
+}
