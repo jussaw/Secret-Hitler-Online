@@ -44,7 +44,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 11. Lobby redesign | `phase-11-lobby` | done |
 | 12. Accounts with Discord sign-in | `phase-12-accounts` | done |
 | 13. Database backups | `phase-13-db-backups` | planned |
-| 14A. Game timeline | `phase-14a-game-timeline` | in progress |
+| 14A. Game timeline | `phase-14a-game-timeline` | done |
 | 14B. Game records | `phase-14b-game-records` | planned |
 | 15A. Stats shell | `phase-15a-stats-shell` | planned |
 | 15B. Game history | `phase-15b-game-history` | planned |
@@ -753,10 +753,10 @@ Issue #31, the first half of the game recorder: every game a lobby runs keeps a 
 
 **Phase 14A acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass (`desktop` on macOS and `firefox` in the Linux image before the PR, all four projects in CI)
-- [ ] Every game played to its end, with or without CPU players, and every game abandoned mid-way, hands over exactly one record, whose timeline replays to the game's end
-- [ ] The pull request says it changes nothing on screen
-- [ ] PR merged into `development`
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass (`desktop` on macOS and `firefox` in the Linux image before the PR, all four projects in CI)
+- [x] Every game played to its end, with or without CPU players, and every game abandoned mid-way, hands over exactly one record, whose timeline replays to the game's end
+- [x] The pull request says it changes nothing on screen
+- [x] PR merged into `development`
 
 ---
 
