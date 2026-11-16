@@ -49,7 +49,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 15A. Stats shell | `phase-15a-stats-shell` | done |
 | 15B. Game history | `phase-15b-game-history` | planned |
 | 16. The game page | `phase-16-game-page` | done |
-| 17A. Stats engine | `phase-17a-stats-engine` | in progress |
+| 17A. Stats engine | `phase-17a-stats-engine` | done |
 | 17B. OVERVIEW | `phase-17b-overview` | planned |
 | 18. ROLES & CARDS | `phase-18-roles-cards` | planned |
 | 19. VOTES & POWERS | `phase-19-votes-powers` | planned |
@@ -875,8 +875,8 @@ Issue #31: the stats engine every tab reads (the counting rules, the player filt
 
 **Phase 17A acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] PR merged into `development`
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] PR merged into `development`
 - [ ] The user opens `/stats` on the deployed build, on a desktop and on a phone, moves between the tabs, and changes the filter and the toggle
 
 ---
