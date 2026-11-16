@@ -986,7 +986,7 @@ Issue #31, after Phases 16 and 17A, beside 17B, 18, 19 and 20: the ACTIVITY tab 
 - [x] `frontend/src/stats/timing.ts`: decision times, the fastest voter (one rule with Speed Demon), the slowest president, the countdown's share, pauses and dropped connections, and `formatAverageTime`
 - [x] `frontend/src/stats/charts/BarChart.tsx`: bars sized from their card, with a tooltip, arrow keys and a description
 - [x] `frontend/src/stats/charts/CalendarHeatmap.tsx`: a cell per day in four shades, with a tooltip, arrow keys and a description
-- [ ] `frontend/src/stats/tabs/ActivityTab.tsx`: the ACTIVITY tab
+- [x] `frontend/src/stats/tabs/ActivityTab.tsx`: the ACTIVITY tab
 - [ ] `frontend/e2e/stats-activity.spec.ts`: ACTIVITY fits every stats size, its charts show values on hover or tap, and the browser's time zone is used
 - [ ] `CLAUDE.md` and `README.md` (and `DEVELOPMENT.md` if needed) describe the tab
 - [ ] Every finding of the whole-branch review is fixed
