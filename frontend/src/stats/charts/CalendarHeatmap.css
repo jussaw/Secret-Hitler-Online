@@ -1,0 +1,26 @@
+/* The calendar's own box, which takes the keyboard's focus: charts.css draws the rest. */
+.calendar-heatmap {
+    position: relative;
+    min-width: 0;
+    border-radius: 4px;
+}
+
+.calendar-heatmap:focus {
+    outline: none;
+}
+
+.calendar-heatmap:focus-visible {
+    outline: 2px solid var(--selectionHover);
+    outline-offset: 2px;
+}
+
+/* No legend of its own: the card says what the shades mean. */
+.calendar-heatmap .chart-legend:empty {
+    display: none;
+}
+
+/* The day under the pointer or the keys, outlined as charts.css outlines a bar. */
+.calendar-heatmap rect.day.is-active {
+    stroke: var(--headerTextColor);
+    stroke-width: 1.5;
+}
