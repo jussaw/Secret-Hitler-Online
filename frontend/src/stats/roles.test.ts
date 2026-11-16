@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { countedGames, humanSeats, MIN_GAMES, rate } from "./counting";
 import fixture from "./fixtures/recorded-games.json";
+import { ev } from "./game/sampleGames";
 import { parseStatsData, type GameEvent, type GameRecord, type Role, type Side } from "./record";
 import { computeRoles, LIBERAL_SEATS, TABLE_SIZES } from "./roles";
 import { game, ROLES, seatsOf } from "./testGames";
@@ -29,6 +30,19 @@ function play(
   if (extra.events !== undefined) overrides.events = extra.events;
   if (extra.complete !== undefined) overrides.complete = extra.complete;
   return game(`g${i}`, T0 + i * 3_600_000, seatsOf(players, roles), winner, overrides);
+}
+
+/**
+ * Round 1's nomination by `president` of the next seat and its election, passed unless `failed`;
+ * a failed one is followed by the tracker's move and round 2's passed nomination by the next seat.
+ */
+function opening(president: number, failed = false): GameEvent[] {
+  const next = (president + 1) % 5;
+  const events: GameEvent[] = [ev.nominate(1, 1_000, president, next), ev.election(1, 9_000, !failed, failed ? 1 : 4, failed ? 4 : 1)];
+  if (failed) {
+    events.push(ev.tracker(1, 9_000, 1), ev.nominate(2, 12_000, next, (next + 1) % 5), ev.election(2, 20_000, true, 4, 1));
+  }
+  return events;
 }
 
 const SIX: Role[] = ["LIBERAL", "LIBERAL", "FASCIST", "HITLER", "LIBERAL", "LIBERAL"];
@@ -99,5 +113,45 @@ describe("computeRoles", () => {
     for (const [player, p] of byPlayer) {
       expect(p.split.LIBERAL.hits + p.split.FASCIST.hits + p.split.HITLER.hits, `player ${player}`).toBe(p.games);
     }
+  });
+
+  it("win rates by role need MIN_GAMES each", () => {
+    const counted = [
+      ...[1, 2, 3, 4, 5, 6].map((i) => play(i, table(5, "LIBERAL"), i <= 4 ? "LIBERAL" : "FASCIST")),
+      ...[7, 8, 9, 10, 11].map((i) => play(i, table(5, "FASCIST"), i <= 8 ? "FASCIST" : "LIBERAL")),
+      ...[12, 13].map((i) => play(i, table(5, "HITLER"), "FASCIST")),
+    ];
+    const { winAs } = computeRoles(counted).byPlayer.get(1)!;
+    expect(winAs).toEqual({
+      LIBERAL: rate(4, 6, MIN_GAMES),
+      FASCIST: rate(2, 5, MIN_GAMES),
+      HITLER: rate(2, 2, MIN_GAMES),
+    });
+    expect(winAs.FASCIST.value).toBe(0.4);
+    expect(winAs.HITLER.value).toBeNull();
+  });
+
+  it("win rate by player count, MIN_GAMES per size", () => {
+    const counted = [
+      ...[1, 2, 3, 4, 5].map((i) => play(i, table(5, "LIBERAL"), i <= 3 ? "LIBERAL" : "FASCIST")),
+      ...[6, 7].map((i) => play(i, table(7, "LIBERAL"), i === 6 ? "LIBERAL" : "FASCIST")),
+    ];
+    const { bySize } = computeRoles(counted).byPlayer.get(1)!;
+    expect(bySize.get(5)).toEqual(rate(3, 5, MIN_GAMES));
+    expect(bySize.get(5)!.value).toBe(0.6);
+    expect(bySize.get(7)).toEqual({ hits: 1, chances: 2, value: null });
+    expect(bySize.has(6)).toBe(false);
+  });
+
+  it("first president: their seat made the first nomination, failed or not, in complete games only", () => {
+    const counted = [
+      ...[1, 2, 3, 4, 5].map((i) => play(i, table(5, "LIBERAL"), i <= 3 ? "LIBERAL" : "FASCIST", { events: opening(0) })),
+      play(6, table(5, "LIBERAL"), "FASCIST", { events: opening(0, true) }),
+      play(7, table(5, "LIBERAL"), "LIBERAL", { events: opening(0), complete: false }),
+    ];
+    const { byPlayer } = computeRoles(counted);
+    expect(byPlayer.get(1)!.firstPresident).toEqual(rate(3, 6, MIN_GAMES));
+    expect(byPlayer.get(1)!.firstPresident.value).toBe(0.5);
+    expect(byPlayer.get(2)!.firstPresident).toEqual(rate(0, 0, MIN_GAMES));
   });
 });

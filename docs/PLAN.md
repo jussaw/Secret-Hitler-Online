@@ -909,7 +909,7 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-18-roles-cards.md`](superpo
 Issue #31: the ROLES & CARDS tab fills Phase 17A's placeholder with each player's role and card stats over the counted games, read from the records' seats and from `rounds(record)` (Phase 16). Built after Phases 16 and 17A, beside 17B, 19, 20 and 21A; it changes no shared source file, only its own modules, its tab, its browser spec and the docs.
 
 - [x] `frontend/src/stats/roles.ts`: role split, role luck, times as Hitler and the longest run of one role
-- [ ] `roles.ts`: win rates as Liberal, as Fascist and as Hitler, by player count, and as first president
+- [x] `roles.ts`: win rates as Liberal, as Fascist and as Hitler, by player count, and as first president
 - [ ] `frontend/src/stats/cards.ts`: hands drawn beside the group's, Liberal accuracy and deep cover as president
 - [ ] `cards.ts`: given one of each, policies enacted and vetoes as chancellor; Fascist choices and forced Fascists
 - [ ] `frontend/src/stats/tabs/RolesTab.tsx`: the tab's four sections and seventeen cards, split tables that scroll inside their card, and every card's empty state
