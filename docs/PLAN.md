@@ -890,7 +890,7 @@ Issue #31: OVERVIEW at `/stats`, filling Phase 17A's placeholder: the dashboard 
 
 - [x] `frontend/src/stats/overview.ts`: every OVERVIEW number, with `winStreaks` and `playerOfTheMonth` for RECORDS; 1,000 games well under a second
 - [x] `frontend/src/stats/tabs/OverviewTab.tsx`: OVERVIEW, with the power ranking and the rating history
-- [ ] `frontend/e2e/stats-overview.spec.ts`: OVERVIEW fits every stats size; the numbers follow the filter and the toggle; the rating history's details on hover or tap
+- [x] `frontend/e2e/stats-overview.spec.ts`: OVERVIEW fits every stats size; the numbers follow the filter and the toggle; the rating history's details on hover or tap
 - [ ] `CLAUDE.md` and `README.md` describe OVERVIEW; the pull request shows `/stats` before and after
 
 **Phase 17B acceptance**

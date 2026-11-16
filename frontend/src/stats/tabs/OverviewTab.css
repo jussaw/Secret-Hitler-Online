@@ -59,10 +59,12 @@
     overflow-wrap: anywhere;
 }
 
+/* The count after the names stays whole: " · 4 wins" never leaves "wins" on a line of its own. */
 .stats-screen .overview-note {
     font-size: 15px;
     font-weight: 600;
     color: var(--textColorOnDark);
+    white-space: nowrap;
 }
 
 /* A game as a link: the last game (its result over its time) and each of the latest games (its
@@ -246,5 +248,16 @@
 
     .stats-screen p.overview-value {
         font-size: 18px;
+    }
+
+    /* Tighter columns, so a twelve-character name keeps its line at 412px. */
+    .power-ranking {
+        font-size: 14px;
+    }
+
+    .power-ranking th,
+    .power-ranking td {
+        padding-left: 3px;
+        padding-right: 3px;
     }
 }
