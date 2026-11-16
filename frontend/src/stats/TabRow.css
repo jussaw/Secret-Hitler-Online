@@ -1,0 +1,88 @@
+/* The tab row: links in App.css's button look, the current tab the default orange face and the
+   others the lobby's grey. App.css gives every link and .button-link a big size and margin, so
+   these set their own. Desktop and tall windows: a wrapping row. */
+.stats-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+}
+
+.stats-tabs > * {
+    min-width: 0;
+}
+
+.stats-screen a.stats-tab {
+    --button-depth: 3px;
+    margin: 0;
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-family: var(--textFont);
+    font-weight: 700;
+    font-size: 13px;
+    line-height: 1.2;
+    letter-spacing: 0.02em;
+    color: var(--headerTextColor);
+    white-space: nowrap;
+}
+
+.stats-screen a.stats-tab:not([aria-current="page"]) {
+    --button-face: #6e655e;
+    --button-shadow: #4b4440;
+}
+
+.stats-screen a.stats-tab:not([aria-current="page"]):hover,
+.stats-screen a.stats-tab:not([aria-current="page"]):focus-visible {
+    --button-face: #857b73;
+}
+
+.stats-screen a.stats-tab[aria-current="page"]:focus {
+    --button-face: var(--buttonFill);
+}
+
+.stats-screen a.stats-tab[aria-current="page"]:hover,
+.stats-screen a.stats-tab[aria-current="page"]:focus-visible {
+    --button-face: var(--buttonHoverFill);
+}
+
+.stats-screen a.stats-tab:not([aria-current="page"]):focus:not(:focus-visible):not(:hover) {
+    --button-face: #6e655e;
+}
+
+.stats-screen a.stats-tab:focus-visible {
+    outline: 2px solid var(--selectionHover);
+    outline-offset: 2px;
+}
+
+.stats-screen a.stats-tab:not([aria-current="page"]):active {
+    --button-face: #6e655e;
+}
+
+/* Wherever the game's stacked query matches, each tab is a 44px target. */
+@media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
+    .stats-screen a.stats-tab {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: calc(44px + var(--button-depth));
+        min-width: 44px;
+    }
+}
+
+/* Phones (the game's phone-only query): one row that scrolls sideways. */
+@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
+    .stats-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+        overscroll-behavior-x: contain;
+    }
+
+    .stats-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .stats-tabs > * {
+        flex: none;
+    }
+}

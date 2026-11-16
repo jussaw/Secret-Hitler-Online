@@ -33,6 +33,14 @@ async function checkEverySize(page: Page): Promise<void> {
 /** Text in the page's main part, below the header. */
 const inMain = (page: Page, text: string) => page.locator("main").getByText(text, { exact: true }).first();
 
+/** Moves the page to `path` in place, as a link would (the stats home links to no game). */
+async function moveTo(page: Page, path: string): Promise<void> {
+  await page.evaluate((to) => {
+    history.pushState(null, "", to);
+    dispatchEvent(new PopStateEvent("popstate"));
+  }, path);
+}
+
 /** Opens `path` with the big response stubbed, waits for `ready` in the main part, and settles the page. */
 async function open(page: Page, path: string, ready: string): Promise<void> {
   await stubStats(page, data);
@@ -148,7 +156,7 @@ test("the page check catches what it should", async ({ page }) => {
 test.describe("every page fits every size", () => {
   test("the stats home", async ({ page }) => {
     test.slow();
-    await open(page, "/stats", "LATEST GAMES");
+    await open(page, "/stats", "OVERVIEW");
     await checkEverySize(page);
   });
 
@@ -211,7 +219,7 @@ test.describe("every page fits every size", () => {
 
 test("the header's links are 44px targets at every size", async ({ page }) => {
   test.slow();
-  await open(page, "/stats", "LATEST GAMES");
+  await open(page, "/stats", "OVERVIEW");
   const links = page.getByRole("navigation", { name: "Stats pages" }).getByRole("link");
   for (const size of statsSizesFor(test.info().project.name, page.viewportSize()!)) {
     await page.setViewportSize(size);
@@ -272,7 +280,7 @@ test("the game's first download holds no stats code", async ({ browser, baseURL 
 
 test("the header moves between the pages in place", async ({ page }) => {
   desktopOnly();
-  await open(page, "/stats", "LATEST GAMES");
+  await open(page, "/stats", "OVERVIEW");
   await page.evaluate(() => ((window as unknown as { stayed: boolean }).stayed = true));
   const nav = page.getByRole("navigation", { name: "Stats pages" });
   const current = nav.locator('[aria-current="page"]');
@@ -280,14 +288,14 @@ test("the header moves between the pages in place", async ({ page }) => {
   for (const [label, path, ready] of [
     ["GAMES", "/stats/games", "Coming in a later update."],
     ["PLAYERS", "/stats/players", "Coming in a later update."],
-    ["STATS", "/stats", "LATEST GAMES"],
+    ["STATS", "/stats", "OVERVIEW"],
   ]) {
     await nav.getByRole("link", { name: label, exact: true }).click();
     await expect(page).toHaveURL(path);
     await expect(current).toHaveText(label);
     await expect(page.getByText(ready, { exact: true })).toBeVisible();
   }
-  await page.locator(`a[href="${routePath({ page: "game", id: newest.id })}"]`).click();
+  await moveTo(page, routePath({ page: "game", id: newest.id }));
   await expect(page).toHaveURL(routePath({ page: "game", id: newest.id }));
   await expect(current).toHaveText("GAMES");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(outcomeLabel(newest));
@@ -303,13 +311,13 @@ test("back, forward, reload and a deep link", async ({ page }) => {
   desktopOnly();
   const gamePath = routePath({ page: "game", id: newest.id });
   const heading = page.getByRole("heading", { level: 1 });
-  await open(page, "/stats", "LATEST GAMES");
-  await page.locator(`a[href="${gamePath}"]`).click();
+  await open(page, "/stats", "OVERVIEW");
+  await moveTo(page, gamePath);
   await expect(heading).toHaveText(outcomeLabel(newest));
 
   await page.goBack();
   await expect(page).toHaveURL("/stats");
-  await expect(page.getByText("LATEST GAMES", { exact: true })).toBeVisible();
+  await expect(page.getByText("OVERVIEW", { exact: true })).toBeVisible();
 
   await page.goForward();
   await expect(page).toHaveURL(gamePath);

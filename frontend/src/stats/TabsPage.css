@@ -1,40 +1,19 @@
-/* The latest games, one link a line (TabsPage, until Phase 17A fills it). */
-.latest-games-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
+/* The stats' home and its tabs: the filter, the tab row, then the tab's cards, in a column. Every
+   child has min-width: 0, so a long name wraps inside it instead of widening the page. */
+.stats-tabs-page {
     display: flex;
     flex-direction: column;
-}
-
-.latest-games-list > li {
+    gap: 16px;
     min-width: 0;
 }
 
-.stats-screen a.latest-games-link {
-    box-sizing: border-box;
-    display: block;
-    padding: 4px 0;
-    font-family: var(--textFont);
-    font-weight: 500;
-    font-size: 15px;
-    line-height: 1.4;
-    color: var(--textColorOnDark);
-    text-decoration: none;
-    overflow-wrap: anywhere;
+.stats-tabs-page > * {
+    min-width: 0;
 }
 
-.stats-screen a.latest-games-link:hover,
-.stats-screen a.latest-games-link:focus-visible {
-    color: var(--headerTextColor);
-    text-decoration: underline;
-}
-
-/* At least a 44px target wherever the game's stacked query matches. */
-@media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
-    .stats-screen a.latest-games-link {
-        display: flex;
-        align-items: center;
-        min-height: 44px;
+/* Phones (the game's phone-only query): less room between the parts. */
+@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
+    .stats-tabs-page {
+        gap: 8px;
     }
 }

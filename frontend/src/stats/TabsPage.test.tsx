@@ -1,29 +1,108 @@
-import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
-import { formatLocalDateTime, outcomeLabel } from "./format";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { parseFilter } from "./counting";
+import type { StatsData } from "./record";
+import { navigate, useLocation, type TabId } from "./routes";
 import TabsPage from "./TabsPage";
-import { makeData, makeRecord } from "./testRecords";
+import { generateData } from "./testGames";
+import { buildStats, useStats } from "./useStats";
 
-const HOUR = 60 * 60 * 1000;
-const start = new Date(2026, 10, 1, 20, 0).getTime();
-const games = Array.from({ length: 25 }, (_, i) =>
-  makeRecord({ id: `g${String(i + 1).padStart(2, "0")}`, startedAt: start + i * HOUR, endedAt: start + i * HOUR + 1 })
-);
+vi.mock("./useStats", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./useStats")>()),
+  useStats: vi.fn(),
+}));
+vi.mock("./routes", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./routes")>()),
+  useLocation: vi.fn(),
+  navigate: vi.fn(),
+}));
+// Every tab is a stub, so the tabs later phases fill never break these tests.
+vi.mock("./tabs/OverviewTab", () => ({ OverviewTab: () => <p>overview tab</p> }));
+vi.mock("./tabs/RolesTab", () => ({ RolesTab: () => <p>roles tab</p> }));
+vi.mock("./tabs/VotesTab", () => ({ VotesTab: () => <p>votes tab</p> }));
+vi.mock("./tabs/RivalsTab", () => ({ RivalsTab: () => <p>rivals tab</p> }));
+vi.mock("./tabs/EndingsTab", () => ({ EndingsTab: () => <p>endings tab</p> }));
+vi.mock("./tabs/ActivityTab", () => ({ ActivityTab: () => <p>activity tab</p> }));
+vi.mock("./tabs/RecordsTab", () => ({ RecordsTab: () => <p>records tab</p> }));
+
+const data: StatsData = generateData(30, 4, 3);
+let location = { pathname: "/stats", search: "" };
+let loaded = true;
+
+beforeEach(() => {
+  location = { pathname: "/stats", search: "" };
+  loaded = true;
+  vi.mocked(navigate).mockReset();
+  vi.mocked(useLocation).mockImplementation(() => location);
+  vi.mocked(useStats).mockImplementation(() => (loaded ? buildStats(data, parseFilter(location.search)) : null));
+});
+
+function openTab(tab: TabId, pathname: string, search = "") {
+  location = { pathname, search };
+  return render(<TabsPage data={data} route={{ page: "tab", tab }} />);
+}
+
+const tabRow = () => within(screen.getByRole("navigation", { name: "Stats sections" }));
+const cpuSwitch = () => screen.getByRole("switch", { name: "Include games with CPU players" });
 
 describe("TabsPage", () => {
-  it("the ten latest games and a link to the rest", () => {
-    render(<TabsPage data={makeData(games)} route={{ page: "tab", tab: "overview" }} />);
-    const card = screen.getByRole("region", { name: "LATEST GAMES" });
-    const items = within(within(card).getByRole("list")).getAllByRole("link");
-    const ids = Array.from({ length: 10 }, (_, i) => `g${25 - i}`);
-    expect(items.map((a) => a.getAttribute("href"))).toEqual(ids.map((id) => `/stats/games/${id}`));
-    expect(items[0]).toHaveTextContent(`${formatLocalDateTime(games[24].startedAt)} · ${outcomeLabel(games[24])}`);
-    expect(within(card).getByRole("link", { name: "All games ›" })).toHaveAttribute("href", "/stats/games");
+  it("showsTheFilterTheTabRowAndTheRoutesTab", () => {
+    const { container } = openTab("roles", "/stats/roles");
+    expect(screen.getByText("roles tab")).toBeInTheDocument();
+    expect(tabRow().getByRole("link", { name: "ROLES & CARDS" })).toHaveAttribute("aria-current", "page");
+    expect(cpuSwitch()).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByRole("group", { name: "Players" })).toBeInTheDocument();
+    const page = container.querySelector(".stats-tabs-page")!;
+    expect(Array.from(page.children).map((child) => child.className || child.tagName)).toEqual([
+      "filter-bar",
+      "stats-tabs",
+      "P",
+    ]);
   });
 
-  it("no games", () => {
-    render(<TabsPage data={makeData([])} route={{ page: "tab", tab: "overview" }} />);
-    expect(screen.getByText("No games recorded yet.")).toBeInTheDocument();
-    expect(screen.queryByRole("list")).toBeNull();
+  it("eachRouteShowsItsTab", () => {
+    const tabs: [TabId, string, string][] = [
+      ["overview", "/stats", "overview tab"],
+      ["votes", "/stats/votes", "votes tab"],
+      ["rivals", "/stats/rivals", "rivals tab"],
+      ["endings", "/stats/endings", "endings tab"],
+      ["activity", "/stats/activity", "activity tab"],
+      ["records", "/stats/records", "records tab"],
+    ];
+    for (const [tab, path, text] of tabs) {
+      const { unmount } = openTab(tab, path);
+      expect(screen.getByText(text)).toBeInTheDocument();
+      unmount();
+    }
+  });
+
+  it("aFilterChangeStaysOnTheTab", () => {
+    openTab("roles", "/stats/roles");
+    fireEvent.click(cpuSwitch());
+    expect(navigate).toHaveBeenCalledWith("/stats/roles?cpu=1");
+  });
+
+  it("aChipChangeKeepsTheRestOfTheFilter", () => {
+    openTab("overview", "/stats", "?cpu=1");
+    const first = data.players.find((p) => p.number === 1)!;
+    fireEvent.click(within(screen.getByRole("group", { name: "Players" })).getByRole("button", { name: first.name }));
+    expect(navigate).toHaveBeenCalledWith("/stats?players=2,3&cpu=1");
+  });
+
+  it("theTabsCarryTheFilter", () => {
+    openTab("overview", "/stats", "?players=1,3&cpu=1");
+    expect(tabRow().getByRole("link", { name: "ENDINGS" })).toHaveAttribute("href", "/stats/endings?players=1,3&cpu=1");
+    expect(tabRow().getByRole("link", { name: "OVERVIEW" })).toHaveAttribute("href", "/stats?players=1,3&cpu=1");
+  });
+
+  it("theTabsCarryTheFilterAsTheAddressSpellsIt", () => {
+    openTab("overview", "/stats", "?cpu=1&players=3,1,x");
+    expect(tabRow().getByRole("link", { name: "RIVALS" })).toHaveAttribute("href", "/stats/rivals?players=1,3&cpu=1");
+  });
+
+  it("nothingUntilTheRecordsArrive", () => {
+    loaded = false;
+    const { container } = openTab("overview", "/stats");
+    expect(container).toBeEmptyDOMElement();
   });
 });
