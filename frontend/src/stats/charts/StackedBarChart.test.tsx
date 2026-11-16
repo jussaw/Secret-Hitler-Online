@@ -94,6 +94,21 @@ describe("StackedBarChart", () => {
     expect(tooltip()).toHaveTextContent("5 · A 2 games of 6 games");
   });
 
+  it("thinsLabelsThatWouldOverlap", () => {
+    const hours: StackedBar[] = Array.from({ length: 24 }, (_, h) => ({
+      label: String(h).padStart(2, "0"),
+      parts: [{ key: "A", value: h + 1 }],
+    }));
+    const { container } = render(<StackedBarChart bars={hours} colors={colors} legend={legend} label="Wins by size" />);
+    // 24 labels of 2 characters in the 280px plot of the 320px fallback: every second one.
+    const labels = Array.from(container.querySelectorAll("svg > text")).map((t) => t.textContent);
+    expect(labels).toEqual(["00", "02", "04", "06", "08", "10", "12", "14", "16", "18", "20", "22"]);
+    expect(chart()).toHaveAccessibleDescription(hours.map((bar, h) => `${bar.label}: Liberal ${h + 1}.`).join(" "));
+    const rect = stackedBarGeometry(hours, 320, 220).rects[1];
+    fireEvent.pointerMove(chart(), { clientX: rect.x + rect.width / 2, clientY: rect.y + 1, pointerType: "mouse" });
+    expect(tooltip()).toHaveTextContent("01 · Liberal 2 of 2");
+  });
+
   it("theTooltipStaysInsideAtTheRightEdge", () => {
     render(<StackedBarChart bars={bars} colors={colors} legend={legend} label="Wins by size" />);
     fireEvent.pointerMove(chart(), { ...centre(1, "A"), pointerType: "mouse" });

@@ -1,6 +1,7 @@
 import { useRef, useState, type KeyboardEvent } from "react";
 import { countLabel } from "../activity";
 import { ChartFrame, px, YAxis, type TooltipPlace } from "./chartParts";
+import { LABEL_CHAR_PX, labelStep } from "./labelStep";
 import { useChartWidth } from "./useChartWidth";
 import "./BarChart.css";
 
@@ -27,9 +28,6 @@ const OFFICE = "#f08a5d";
 const LEFT = 32;
 const TOP = 8;
 const BOTTOM = 20;
-/** About how wide a character of the axis text is, in px, and the room kept between two labels. */
-const CHAR = 7;
-const GAP = 8;
 
 /** The bars' places in a `width` by `height` chart: one slot each, the bar 80% of it. */
 function geometry(bars: Bar[], width: number, height: number) {
@@ -43,8 +41,7 @@ function geometry(bars: Bar[], width: number, height: number) {
     return { x: LEFT + i * slot + 0.1 * slot, y: base - h, width: 0.8 * slot, height: h };
   });
   const longest = bars.reduce((m, bar) => Math.max(m, bar.label.length), 0);
-  const step = Math.max(1, Math.ceil((n * (CHAR * longest + GAP)) / (width - LEFT)));
-  return { slot, most, base, scale, rects, step, half: (CHAR * longest) / 2 };
+  return { slot, most, base, scale, rects, step: labelStep(n, longest, width - LEFT), half: (LABEL_CHAR_PX * longest) / 2 };
 }
 
 /**
