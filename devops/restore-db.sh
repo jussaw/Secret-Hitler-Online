@@ -56,7 +56,9 @@ read_settings() {
   local file name value
   if [ -n "${ENV_FILE:-}" ]; then
     file=$ENV_FILE
-    [ -f "$file" ] && [ -r "$file" ] || die "ENV_FILE names $file, which is not a readable file."
+    if ! { [ -f "$file" ] && [ -r "$file" ]; }; then
+      die "ENV_FILE names $file, which is not a readable file."
+    fi
   else
     file="$SCRIPT_DIR/.env"
     [ -f "$file" ] || return 0
@@ -100,7 +102,9 @@ is_sha256() {
 
 # Run in the one-off container as `sh -euc "$SWAP" sh <database> <sha256>`. Every check comes
 # before the database's -wal, -shm and -journal go and the copy moves into place, so a failure
-# leaves the database as it was. The mv is a rename within the database's directory: one step.
+# leaves the database as it was. The copy is on disk (sync) before the old files go, and the mv
+# is a rename within the database's directory: one step.
+# shellcheck disable=SC2016 # expanded by sh in the one-off container, not here
 SWAP='copy="$(dirname "$1")/.secret-hitler-restore-$$.db"
 trap '\''rm -f "$copy"'\'' EXIT
 cp /restore/backup.db "$copy"
@@ -110,33 +114,38 @@ if [ "$got" != "$2" ]; then
   exit 1
 fi
 chown 1000:1000 "$copy"
+sync "$copy"
 rm -f "$1-wal" "$1-shm" "$1-journal"
-mv "$copy" "$1"'
+mv "$copy" "$1"
+sync "$(dirname "$1")" || true'
 
-# What the trap knows: whether this run stopped the container, and how far the swap got.
+# Once this run has stopped the container, how far it got: not-replaced, swapping or replaced.
+# Empty again once the container is started.
 STAGE=
 
+# On any exit with the container still stopped by this run (a failed swap, a signal), the trap
+# starts it again, so the game is never left down, and says on which database.
 cleanup() {
-  local status=$?
-  case "$STAGE" in
-    stopped | swapping | swapped)
-      # Stopped early (a signal, say): the game is never left down.
-      if docker start "$CONTAINER_NAME" >/dev/null 2>&1; then
-        printf 'Started %s again.\n' "$CONTAINER_NAME" >&2
-      else
-        printf 'Could not start %s again: run docker start %s.\n' "$CONTAINER_NAME" "$CONTAINER_NAME" >&2
-      fi
-      case "$STAGE" in
-        stopped) printf 'Its database was not replaced.\n' >&2 ;;
-        swapping) printf 'The swap may or may not have finished: check its database.\n' >&2 ;;
-        swapped) printf 'Its database was replaced by %s.\n' "$file" >&2 ;;
-      esac
-      ;;
-  esac
+  local status=$? which
+  if [ -n "$STAGE" ]; then
+    case "$STAGE" in
+      not-replaced) which="on its old database, which was not replaced" ;;
+      swapping) which="but the swap may not have finished: check its database" ;;
+      *) which="on the restored database" ;;
+    esac
+    if docker start "$CONTAINER_NAME" >/dev/null 2>&1; then
+      printf '==> Started %s again, %s.\n' "$CONTAINER_NAME" "$which" >&2
+    else
+      printf 'Error: %s did not start again: run docker start %s.\n' "$CONTAINER_NAME" "$CONTAINER_NAME" >&2
+    fi
+  fi
   exit "$status"
 }
+on_signal() {
+  die "Stopped by a signal."
+}
 trap cleanup EXIT
-trap 'exit 1' HUP INT TERM
+trap on_signal HUP INT TERM
 
 [ "$#" -eq 1 ] || die "Usage: $0 <backup file>"
 
@@ -155,12 +164,14 @@ esac
 file=$1
 [ -f "$file" ] || die "$file is not a file."
 file="$(cd "$(dirname "$file")" && pwd -P)/$(basename "$file")"
+[ -r "$file" ] || die "Cannot read $file."
 case "$file" in
   *:*) die "$file has a colon in its path, which docker cannot mount: move or rename it." ;;
 esac
 head -c 16 "$file" | cmp -s - <(printf 'SQLite format 3\000') || die "$file is not a SQLite database."
 [ -f "$file.sha256" ] || die "$file has no checksum file ($file.sha256)."
-expected=$(awk 'NR == 1 { print tolower($1) }' "$file.sha256")
+[ -r "$file.sha256" ] || die "Cannot read $file.sha256."
+expected=$(awk 'NR == 1 { print tolower($1) }' "$file.sha256") || die "Cannot read $file.sha256."
 is_sha256 "$expected" || die "$file does not match its checksum: $file.sha256 holds no SHA-256."
 actual=$(sha256_of "$file")
 [ "$actual" = "$expected" ] || die "$file does not match its checksum ($file.sha256)."
@@ -177,27 +188,21 @@ image=$(docker inspect --format '{{.Image}}' "$CONTAINER_NAME" 2>/dev/null) || i
 [ -n "$image" ] || die "No container named $CONTAINER_NAME."
 say "Stopping $CONTAINER_NAME"
 docker stop "$CONTAINER_NAME" >/dev/null || die "Could not stop $CONTAINER_NAME; nothing was replaced."
-STAGE=stopped
+STAGE=not-replaced
 
 # 4. The swap, in a one-off container of the same image with the container's volumes.
 say "Putting $file in place of $DB_PATH"
 STAGE=swapping
 if ! docker run --rm --network none --user root --volumes-from "$CONTAINER_NAME" \
   -v "$file:/restore/backup.db:ro" "$image" sh -euc "$SWAP" sh "$DB_PATH" "$expected"; then
-  STAGE=
-  if docker start "$CONTAINER_NAME" >/dev/null; then
-    die "The swap failed, so $DB_PATH was not replaced; $CONTAINER_NAME runs again on it."
-  fi
-  die "The swap failed, so $DB_PATH was not replaced, and $CONTAINER_NAME did not start: run docker start $CONTAINER_NAME."
+  STAGE=not-replaced
+  die "The swap failed, so $DB_PATH was not replaced."
 fi
-STAGE=swapped
+STAGE=replaced
 
 # 5. Start it, and wait for this start's line in its logs (the earlier starts' lines are there too).
 say "Starting $CONTAINER_NAME"
-if ! docker start "$CONTAINER_NAME" >/dev/null; then
-  STAGE=
-  die "$CONTAINER_NAME did not start on the restored database: run docker start $CONTAINER_NAME."
-fi
+docker start "$CONTAINER_NAME" >/dev/null || die "$CONTAINER_NAME did not start on the restored database."
 STAGE=
 started=$(docker inspect --format '{{.State.StartedAt}}' "$CONTAINER_NAME") ||
   die "Could not read when $CONTAINER_NAME started."

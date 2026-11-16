@@ -55,7 +55,9 @@ read_settings() {
   local file name value
   if [ -n "${ENV_FILE:-}" ]; then
     file=$ENV_FILE
-    [ -f "$file" ] && [ -r "$file" ] || die "ENV_FILE names $file, which is not a readable file."
+    if ! { [ -f "$file" ] && [ -r "$file" ]; }; then
+      die "ENV_FILE names $file, which is not a readable file."
+    fi
   else
     file="$SCRIPT_DIR/.env"
     [ -f "$file" ] || return 0
@@ -98,11 +100,12 @@ is_sha256() {
 }
 
 # What the trap removes: the snapshot in the container, and the files on this host until each
-# has been moved into place.
+# has been moved into place (CLAIMED_BACKUP: the backup's own name, until its .sha256 is there).
 SNAPSHOT=
 HOST_TMP=
 SHA_TMP=
-UNFINISHED=
+CLAIMED_BACKUP=
+SAVED_BACKUP=
 
 remove_snapshot() {
   [ -n "$SNAPSHOT" ] || return 0
@@ -118,11 +121,15 @@ cleanup() {
   remove_snapshot
   [ -z "$HOST_TMP" ] || rm -f "$HOST_TMP"
   [ -z "$SHA_TMP" ] || rm -f "$SHA_TMP"
-  [ -z "$UNFINISHED" ] || rm -f "$UNFINISHED"
+  [ -z "$CLAIMED_BACKUP" ] || rm -f "$CLAIMED_BACKUP"
   exit "$status"
 }
+on_signal() {
+  [ -z "$SAVED_BACKUP" ] || die "Stopped by a signal; the backup is kept at $SAVED_BACKUP."
+  die "Stopped by a signal; no backup was left behind."
+}
 trap cleanup EXIT
-trap 'exit 1' HUP INT TERM
+trap on_signal HUP INT TERM
 
 read_settings
 CONTAINER_NAME=${CONTAINER_NAME:-secret-hitler-online}
@@ -162,43 +169,51 @@ running=$(docker inspect --format '{{.State.Running}}' "$CONTAINER_NAME" 2>/dev/
 db_dir=$(dirname "$DB_PATH")
 [ "$db_dir" != / ] || db_dir=
 SNAPSHOT="$db_dir/.secret-hitler-backup-$stamp-$$.db"
-snapshot=$SNAPSHOT
 say "Taking a snapshot of $DB_PATH in $CONTAINER_NAME"
-docker exec "$CONTAINER_NAME" sqlite3 -bail -cmd ".timeout 5000" "$DB_PATH" "VACUUM INTO '$snapshot'" ||
+docker exec "$CONTAINER_NAME" sqlite3 -bail -cmd ".timeout 5000" "$DB_PATH" "VACUUM INTO '$SNAPSHOT'" ||
   die "The snapshot of $DB_PATH failed."
 
 # 3. Its integrity and its SHA-256, inside the container.
-check=$(docker exec "$CONTAINER_NAME" sqlite3 -bail "$snapshot" "PRAGMA integrity_check") ||
+check=$(docker exec "$CONTAINER_NAME" sqlite3 -bail "$SNAPSHOT" "PRAGMA integrity_check") ||
   die "Integrity check failed: sqlite3 could not check the snapshot."
 [ "$check" = ok ] || die "Integrity check failed on the snapshot: $check"
-sum=$(docker exec "$CONTAINER_NAME" sha256sum "$snapshot") || die "Could not take the snapshot's SHA-256."
+sum=$(docker exec "$CONTAINER_NAME" sha256sum "$SNAPSHOT") || die "Could not take the snapshot's SHA-256."
 sum=${sum%% *}
 is_sha256 "$sum" || die "Could not take the snapshot's SHA-256 (got '$sum')."
 
 # 4. Copied out, and checked again here.
 HOST_TMP="$BACKUP_DIR/.secret-hitler-$stamp.db.$$.tmp"
 say "Copying it to $BACKUP_DIR"
-docker cp "$CONTAINER_NAME:$snapshot" "$HOST_TMP" >/dev/null || die "Copying the snapshot out failed."
+docker cp "$CONTAINER_NAME:$SNAPSHOT" "$HOST_TMP" >/dev/null || die "Copying the snapshot out failed."
 copied=$(sha256_of "$HOST_TMP")
 [ "$copied" = "$sum" ] || die "The copy's SHA-256 ($copied) does not match the snapshot's ($sum)."
 remove_snapshot
 
 # 5. Into place: the backup, then its checksum, each through a temporary file and mv. The name
 # is claimed first (noclobber creates it only if it is not there), so two runs in one second
-# never leave one's checksum beside the other's backup.
+# never leave one's checksum beside the other's backup. A signal waits until the step is done
+# or undone, so it never leaves a claimed name, or a .sha256 with no backup, behind.
 SHA_TMP="$BACKUP_DIR/.secret-hitler-$stamp.db.sha256.$$.tmp"
 printf '%s  %s\n' "$sum" "$name" >"$SHA_TMP"
-( set -o noclobber; : >"$backup" ) 2>/dev/null || die "$backup already exists: another backup ran this second."
-UNFINISHED=$backup
-mv -f "$HOST_TMP" "$backup"
+signalled=
+trap 'signalled=1' HUP INT TERM
+if ! ( set -o noclobber; : >"$backup" ) 2>/dev/null; then
+  trap on_signal HUP INT TERM
+  die "$backup already exists: another backup ran this second."
+fi
+CLAIMED_BACKUP=$backup
+mv -f "$HOST_TMP" "$backup" || die "Moving the backup into place failed."
 HOST_TMP=
-mv -f "$SHA_TMP" "$backup.sha256"
+mv -f "$SHA_TMP" "$backup.sha256" || die "Moving its .sha256 into place failed."
 SHA_TMP=
-UNFINISHED=
+CLAIMED_BACKUP=
+SAVED_BACKUP=$backup
+trap on_signal HUP INT TERM
+[ -z "$signalled" ] || on_signal
 say "Saved $backup"
 
-# 6. Backups older than RETENTION_DAYS, and nothing else.
-find "$BACKUP_DIR" -maxdepth 1 -type f \( -name 'secret-hitler-*.db' -o -name 'secret-hitler-*.db.sha256' \) \
+# 6. Backups older than RETENTION_DAYS, and nothing else (-H: BACKUP_DIR may be a symlink).
+find -H "$BACKUP_DIR" -maxdepth 1 -type f \( -name 'secret-hitler-*.db' -o -name 'secret-hitler-*.db.sha256' \) \
   -mmin +$((RETENTION_DAYS * 1440)) -delete ||
   die "Deleting backups older than $RETENTION_DAYS days failed; the new backup is $backup."
 

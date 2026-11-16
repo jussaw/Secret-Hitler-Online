@@ -8,9 +8,14 @@
 #
 # Usage: bash devops/tests/backup-restore.test.sh   (needs Docker and curl; IMAGE=<tag> to skip
 # the build). Prints "backup-restore tests passed" and exits 0, or names the failure and exits 1.
+#
+# The cases are run by name, from main, so shellcheck sees no call to them:
+# shellcheck disable=SC2317
 set -euo pipefail
 
-REPO=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)
+# This file's absolute path: the cases cd about, and main reads the case names from it.
+SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/$(basename "${BASH_SOURCE[0]}")"
+REPO=$(cd "$(dirname "$SELF")/../.." && pwd -P)
 ORIG_PATH=$PATH
 TMP_ROOT=${TMPDIR:-/tmp}
 # A space in the name, so every path the scripts handle has one.
@@ -62,9 +67,20 @@ assert_absent() {
 # assert_none <dir> <glob>: no file in <dir> matches <glob>.
 assert_none() {
   local f
+  # shellcheck disable=SC2231 # $2 is the glob
   for f in "$1"/$2; do
     [ ! -e "$f" ] || fail "$f should not exist"
   done
+}
+
+# files_in <dir>: the names of everything in <dir>, dot files too, space-separated.
+files_in() {
+  local f names=
+  for f in "$1"/* "$1"/.[!.]*; do
+    [ -e "$f" ] || [ -L "$f" ] || continue
+    names="$names $(basename "$f")"
+  done
+  echo "${names# }"
 }
 
 # run <command...>: runs it with stdout and stderr together in OUT and its exit status in
@@ -222,7 +238,7 @@ stub_docker() {
   export STUB_SNAPSHOT="$T/stub-snapshot.db"
   printf 'SQLite format 3\000a stubbed snapshot\n' >"$STUB_SNAPSHOT"
   export STUB_RUNNING=true STUB_INTEGRITY=ok STUB_CP_FROM="$STUB_SNAPSHOT"
-  export STUB_RUN_EXIT=0 STUB_STATUS=running
+  export STUB_RUN_EXIT=0 STUB_STATUS=running STUB_SLEEP=0
   export STUB_LOGS="12:00:00.000 [main] INFO  server.SecretHitlerServer -- $STARTUP_LINE 8080."
   cat >"$T/stub/docker" <<'STUB'
 #!/usr/bin/env bash
@@ -257,7 +273,10 @@ case "$1" in
   exec)
     if [ "$#" -eq 8 ] && [ "$3 $4 $5 $6" = "sqlite3 -bail -cmd .timeout 5000" ]; then
       case "$8" in
-        "VACUUM INTO '"*"'") exit 0 ;;
+        "VACUUM INTO '"*"'")
+          sleep "$STUB_SLEEP"
+          exit 0
+          ;;
       esac
     fi
     if [ "$#" -eq 6 ] && [ "$3 $4 $6" = "sqlite3 -bail PRAGMA integrity_check" ]; then
@@ -281,7 +300,10 @@ case "$1" in
     [ "$#" -eq 2 ] || unexpected "$@"
     echo "$2"
     ;;
-  run) exit "$STUB_RUN_EXIT" ;;
+  run)
+    sleep "$STUB_SLEEP"
+    exit "$STUB_RUN_EXIT"
+    ;;
   logs) printf '%s\n' "$STUB_LOGS" ;;
   *) unexpected "$@" ;;
 esac
@@ -312,16 +334,45 @@ days_ago() {
 # The one backup the last run made in B, named like secret-hitler-<UTC timestamp>.db, other than
 # the names given.
 new_backup() {
-  local name found=
-  for name in $(ls -A "$B" | grep -E '^secret-hitler-[0-9]{8}T[0-9]{6}Z\.db$' || true); do
+  local path name found=
+  for path in "$B"/secret-hitler-*.db; do
+    name=$(basename "$path")
+    case "$name" in
+      secret-hitler-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]T[0-9][0-9][0-9][0-9][0-9][0-9]Z.db) ;;
+      *) continue ;;
+    esac
+    [ -f "$path" ] || continue
     case " $* " in
       *" $name "*) continue ;;
     esac
     [ -z "$found" ] || fail "more than one new backup: $found, $name"
     found=$name
   done
-  [ -n "$found" ] || fail "no new backup in $B: $(ls -A "$B" | xargs)"
+  [ -n "$found" ] || fail "no new backup in $B: $(files_in "$B")"
   echo "$B/$found"
+}
+
+# signal_during <stdin file> <call> <command...>: runs the command in the background, sends it
+# TERM once the stub has logged a call that starts with <call>, and sets STATUS and OUT.
+signal_during() {
+  local input=$1 call=$2 pid waited=0
+  shift 2
+  "$@" <"$input" >"$T/signal.out" 2>&1 &
+  pid=$!
+  until grep -q "^$call" "$DOCKER_LOG"; do
+    if [ "$waited" -ge 100 ]; then
+      kill "$pid" 2>/dev/null || true
+      fail "the run never reached [$call]"
+    fi
+    sleep 0.1
+    waited=$((waited + 1))
+  done
+  kill -TERM "$pid"
+  set +e
+  wait "$pid"
+  STATUS=$?
+  set -e
+  OUT=$(cat "$T/signal.out")
 }
 
 expect_refused_before_docker() {
@@ -376,7 +427,7 @@ stub_backup_needs_a_running_container() {
     assert_eq 1 "$STATUS" "exit when running is $state"
     assert_has "$OUT" "is not running"
     assert_lacks "$(docker_calls)" "exec"
-    assert_eq "" "$(ls -A "$B")" "the backup directory"
+    assert_eq "" "$(files_in "$B")" "the backup directory"
   done
 }
 
@@ -388,7 +439,7 @@ stub_backup_refuses_a_bad_snapshot() {
   assert_has "$OUT" "Integrity check failed"
   assert_lacks " $(docker_subcommands) " " cp "
   assert_has "$(docker_calls)" "exec shtest rm -f /data/.secret-hitler-backup-"
-  assert_eq "" "$(ls -A "$B")" "the backup directory"
+  assert_eq "" "$(files_in "$B")" "the backup directory"
 }
 
 stub_backup_refuses_a_torn_copy() {
@@ -400,7 +451,33 @@ stub_backup_refuses_a_torn_copy() {
   assert_eq 1 "$STATUS" "exit"
   assert_has "$OUT" "does not match"
   assert_has "$(docker_calls)" "exec shtest rm -f /data/.secret-hitler-backup-"
-  assert_eq "" "$(ls -A "$B")" "the backup directory"
+  assert_eq "" "$(files_in "$B")" "the backup directory"
+}
+
+stub_backup_follows_a_linked_directory() {
+  stub_docker
+  rm -rf "$T/linked" "$T/link"
+  mkdir "$T/linked"
+  ln -s "$T/linked" "$T/link"
+  local dir
+  for dir in "$T/link" "$T/link/"; do
+    touch -t 200001010000 "$T/linked/secret-hitler-20000101T000000Z.db"
+    backup_with BACKUP_DIR="$dir"
+    assert_eq 0 "$STATUS" "exit with BACKUP_DIR=$dir: $OUT"
+    assert_absent "$T/linked/secret-hitler-20000101T000000Z.db"
+    rm -f "$T/linked"/secret-hitler-2*
+  done
+}
+
+stub_backup_reports_a_signal() {
+  stub_docker
+  STUB_SLEEP=2
+  signal_during "$T/empty.env" "exec shtest sqlite3 -bail -cmd" \
+    env ENV_FILE="$T/empty.env" CONTAINER_NAME=shtest BACKUP_DIR="$B" "$REPO/devops/backup-db.sh"
+  assert_eq 1 "$STATUS" "exit"
+  assert_has "$OUT" "Error: "
+  assert_has "$(docker_calls)" "exec shtest rm -f /data/.secret-hitler-backup-"
+  assert_eq "" "$(files_in "$B")" "the backup directory"
 }
 
 stub_bad_settings_stop_first() {
@@ -419,7 +496,7 @@ stub_bad_settings_stop_first() {
     backup_with RETENTION_DAYS="$value"
     expect_refused_before_docker RETENTION_DAYS
   done
-  assert_eq "" "$(ls -A "$B")" "the backup directory"
+  assert_eq "" "$(files_in "$B")" "the backup directory"
   # An empty value is the default, 30 days.
   touch -t "$(days_ago 31)" "$B/secret-hitler-20000101T000000Z.db"
   touch -t "$(days_ago 29)" "$B/secret-hitler-20000102T000000Z.db"
@@ -445,7 +522,7 @@ stub_a_taken_name_stops_the_backup() {
   assert_has "$OUT" "already exists"
   assert_eq "an earlier backup" "$(cat "$B/secret-hitler-20260101T000000Z.db")" "the earlier backup"
   assert_lacks "$(docker_calls)" "exec"
-  assert_eq "secret-hitler-20260101T000000Z.db" "$(ls -A "$B" | xargs)" "the backup directory"
+  assert_eq "secret-hitler-20260101T000000Z.db" "$(files_in "$B")" "the backup directory"
 }
 
 stub_a_failing_hook_keeps_the_backup() {
@@ -518,6 +595,21 @@ stub_restore_refuses_a_bad_file() {
   expect_refused_before_docker "Usage"
 }
 
+stub_restore_refuses_an_unreadable_file() {
+  [ "$(id -u)" -ne 0 ] || return 0 # root reads any file
+  stub_docker
+  local f="$T/unreadable/secret-hitler-20260101T000000Z.db"
+  good_backup "$f"
+  chmod 000 "$f.sha256"
+  restore_typing shtest "$f" CONTAINER_NAME=shtest
+  chmod 644 "$f.sha256"
+  expect_refused_before_docker "Error: Cannot read $f.sha256"
+  chmod 000 "$f"
+  restore_typing shtest "$f" CONTAINER_NAME=shtest
+  chmod 644 "$f"
+  expect_refused_before_docker "Error: Cannot read $f"
+}
+
 stub_restore_needs_the_name() {
   stub_docker
   local f="$T/name/secret-hitler-20260101T000000Z.db"
@@ -562,7 +654,9 @@ $(cd "$T/sub dir" && pwd -P)/$(basename "$f"):/restore/backup.db:ro sha256:stubi
   assert_has "$swap" "/data/backup.db $(sha_of "$f")"
   # Every check comes before the old files go and the copy moves into place.
   local step at last=0
-  for step in "cp /restore/backup.db" "sha256sum" "chown 1000:1000" '"$1-wal"' '"$1-shm"' '"$1-journal"' "mv "; do
+  # shellcheck disable=SC2016 # the swap script's own text
+  for step in "cp /restore/backup.db" "sha256sum" "chown 1000:1000" 'sync "$copy"' '"$1-wal"' '"$1-shm"' \
+    '"$1-journal"' "mv "; do
     at=$(awk -v s="$step" '{ print index($0, s) }' <<<"$swap")
     [ "$at" -gt "$last" ] || fail "the swap's [$step] is missing or out of order: $swap"
     last=$at
@@ -578,6 +672,21 @@ stub_failed_swap_starts_the_old_database() {
   restore_typing shtest "$f" CONTAINER_NAME=shtest
   assert_eq 1 "$STATUS" "exit"
   assert_has "$OUT" "was not replaced"
+  assert_eq "inspect stop run start" "$(docker_subcommands)" "the docker calls"
+}
+
+stub_restore_starts_the_container_after_a_signal() {
+  stub_docker
+  STUB_SLEEP=2
+  local f="$T/signal/secret-hitler-20260101T000000Z.db"
+  good_backup "$f"
+  printf 'shtest\n' >"$T/typed"
+  signal_during "$T/typed" "run " \
+    env ENV_FILE="$T/empty.env" CONTAINER_NAME=shtest "$REPO/devops/restore-db.sh" "$f"
+  assert_eq 1 "$STATUS" "exit"
+  assert_has "$OUT" "Error: "
+  assert_has "$OUT" "Started shtest again"
+  assert_has "$OUT" "the swap may not have finished"
   assert_eq "inspect stop run start" "$(docker_subcommands)" "the docker calls"
 }
 
@@ -708,6 +817,7 @@ real_backup_while_writing() {
   done
   local before
   before=$(db_rows 'SELECT count(*) FROM accounts')
+  # shellcheck disable=SC2016 # the hook's own $1
   run env ENV_FILE="$T/empty.env" CONTAINER_NAME="$C" BACKUP_DIR="$T/backups" \
     HOOK_OUT="$T/hook-out" AFTER_BACKUP='printf "%s\n" "$1" > "$HOOK_OUT"' \
     "$REPO/devops/backup-db.sh"
@@ -773,13 +883,18 @@ real_restore_brings_back_the_rows() {
 # The cases, in the order this file defines them: every stub_* but the stub itself, then every
 # real_*, which build on each other.
 cases() {
-  grep -E "^$1_[a-z0-9_]+\(\) \{\$" "${BASH_SOURCE[0]}" | sed 's/().*//' | grep -v '^stub_docker$' || true
+  local found
+  found=$(grep -E "^$1_[a-z0-9_]+\(\) \{\$" "$SELF" | sed 's/().*//' | grep -v '^stub_docker$') ||
+    fail "found no $1_* cases in $SELF"
+  echo "$found"
 }
 
 main() {
   unset CONTAINER_NAME DB_PATH BACKUP_DIR RETENTION_DAYS AFTER_BACKUP STARTUP_TIMEOUT_SECONDS ENV_FILE
-  local name
-  for name in $(cases stub); do
+  local name stub_cases real_cases
+  stub_cases=$(cases stub)
+  real_cases=$(cases real)
+  for name in $stub_cases; do
     CASE=$name
     echo "--- $name"
     "$name"
@@ -789,7 +904,7 @@ main() {
   docker info >/dev/null 2>&1 || fail "needs a running Docker"
   ensure_image
   start_server
-  for name in $(cases real); do
+  for name in $real_cases; do
     CASE=$name
     echo "--- $name"
     "$name"
