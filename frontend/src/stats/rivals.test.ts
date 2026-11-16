@@ -44,12 +44,22 @@ describe("pairs", () => {
     expect(r.players).toEqual([1, 2]);
   });
 
-  it("gives the same pairs for the games in any order", () => {
-    const games = [beats(1, 2), together(1, 3, "FASCIST", true), beats(3, 2), together(2, 4, "LIBERAL", false)];
+  it("gives the same result for the games in any order", () => {
+    const seats: [number | null, Role][] = [[1, "LIBERAL"], [2, "LIBERAL"], [3, "FASCIST"], [4, "LIBERAL"], [null, "HITLER"]];
+    const games = [
+      beats(1, 2), together(1, 3, "FASCIST", true), beats(3, 2), together(2, 4, "LIBERAL", false),
+      ...repeat(5, () => together(1, 2, "LIBERAL", true)), ...repeat(5, () => together(3, 4, "FASCIST", true)),
+      ...repeat(3, () => beats(5, 6)), ...repeat(3, () => beats(6, 5)), ...repeat(5, () => beats(7, 8)),
+      played(seats, "LIBERAL", [...nominated(1, 0, 1, true), ...nominated(2, 1, 3, false), ...nominated(3, 2, 0, true)]),
+      played(seats, "FASCIST", [...nominated(1, 3, 0, true), ...nominated(2, 0, 1, false)]),
+    ];
     const forwards = computeRivals(games, NAMES);
     const backwards = computeRivals([...games].reverse(), NAMES);
-    expect(backwards.players).toEqual(forwards.players);
-    expect(new Map(backwards.pairs)).toEqual(new Map(forwards.pairs));
+    expect(forwards.bestDuo && forwards.bestFascistDuo && forwards.closest && forwards.mostLopsided).toBeTruthy();
+    expect(backwards).toEqual(forwards);
+    expect([...backwards.pairs.keys()]).toEqual([...forwards.pairs.keys()]);
+    expect([...backwards.byPlayer.keys()]).toEqual([...forwards.byPlayer.keys()]);
+    expect([...backwards.nominations.keys()]).toEqual([...forwards.nominations.keys()]);
   });
 
   it("leaves out a game nobody won", () => {
