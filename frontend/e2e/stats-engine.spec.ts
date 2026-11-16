@@ -222,3 +222,25 @@ test("a link to a tab shows that tab in the row", async ({ page }) => {
   expect(boxes.current.right).toBeLessThanOrEqual(boxes.row.right + 0.5);
   expect(boxes.page, "the page itself stays at the top").toBe(0);
 });
+
+test("every flex and grid child with text can shrink", async ({ page }) => {
+  // "Names never overflow": a flex or grid item's min-width is auto unless set, which lets a long
+  // name widen its row instead of wrapping in it.
+  await open(page, bigStatsData(), "/stats");
+  const sizes = test.info().project.name === "phone-360" ? [page.viewportSize()!, NARROW_PHONE] : [page.viewportSize()!];
+  for (const size of sizes) {
+    await page.setViewportSize(size);
+    await openPanel(page);
+    const stuck = await page.evaluate(() =>
+      Array.from(document.querySelectorAll(".stats-main *"))
+        .filter((el) => {
+          const parent = el.parentElement;
+          if (!parent || (el.textContent ?? "").trim() === "") return false;
+          const display = getComputedStyle(parent).display;
+          return /flex|grid/.test(display) && getComputedStyle(el).minWidth === "auto";
+        })
+        .map((el) => `${el.tagName.toLowerCase()}.${el.className}`)
+    );
+    expect(stuck, `at ${size.width}x${size.height}`).toEqual([]);
+  }
+});

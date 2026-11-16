@@ -143,6 +143,10 @@
     display: none;
 }
 
+.filter-summary-text {
+    min-width: 0;
+}
+
 .filter-summary-chevron {
     flex: none;
     width: 18px;
