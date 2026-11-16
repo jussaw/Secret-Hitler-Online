@@ -73,13 +73,28 @@ test("the game page fits every size", async ({ page }) => {
   }
 });
 
-test("a round's lines sit closer together than the header's", async ({ page }) => {
+test("a round's card: its edge and its lines' spacing", async ({ page }) => {
   await stubStats(page, data);
   await openGame(page, largest.id);
-  const gap = (selector: string) => page.locator(selector).first().evaluate((el) => getComputedStyle(el).rowGap);
+  const style = (selector: string) =>
+    page
+      .locator(selector)
+      .first()
+      .evaluate((el) => {
+        const s = getComputedStyle(el);
+        return { gap: s.rowGap, edge: `${s.borderLeftWidth} ${s.borderLeftColor}` };
+      });
   // RoundBlock.css's own spacing, over the card look's 8px, which StatsApp.css sets after it.
-  expect(await gap(".round-block")).toBe("4px");
-  expect(await gap(".game-header")).toBe("8px");
+  expect((await style(".round-block")).gap).toBe("4px");
+  expect((await style(".game-header")).gap).toBe("8px");
+  // A 6px edge in the colour of the policy (variables.css), grey for none.
+  for (const [kind, color] of [
+    ["liberal", "rgb(90, 155, 166)"],
+    ["fascist", "rgb(232, 96, 74)"],
+    ["none", "rgb(146, 128, 121)"],
+  ]) {
+    expect((await style(`.round-block.round-${kind}`)).edge, kind).toBe(`6px ${color}`);
+  }
 });
 
 test("an unknown game says so", async ({ page }) => {

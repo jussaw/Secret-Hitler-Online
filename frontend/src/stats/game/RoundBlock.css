@@ -15,7 +15,8 @@
     min-width: 0;
 }
 
-/* Two classes, so its spacing wins over the card look's, which StatsApp.css sets after it. */
+/* Two classes, so its spacing wins over the card look's, which StatsApp.css sets after it. The
+   edge is grey for a round that enacted nothing (round-none). */
 .stats-card.round-block {
     gap: 4px;
     border-left: 6px solid var(--buttonDisabledFill);
@@ -27,10 +28,6 @@
 
 .round-block.round-fascist {
     border-left-color: var(--textColorFascist);
-}
-
-.round-block.round-none {
-    border-left-color: var(--buttonDisabledFill);
 }
 
 /* App.css sizes every h2 by the window; a round's heading is a small title in the game's font. */
