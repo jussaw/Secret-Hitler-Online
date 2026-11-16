@@ -586,10 +586,14 @@ keeps credit to upstream and to the board game's creators.
   elections passed as president and as chancellor, picking a teammate by side, failed elections,
   chaos, the Ja rate by role, Liberal vote accuracy, Fascist loyalty, voted Hitler in, swing votes
   and lone dissent; `PlayerPowers` has investigations (what they saw, whom, with CPU targets left
-  out of `investigatedPlayers`, Liberal finds, checking a teammate, times investigated by role),
-  peeks, special elections and their teammate picks, executions (targets by the executioner's side,
-  Hitler executed, times executed, first to go), `vetoes` as president by role, and survival over
-  games (`MIN_GAMES`) by role. A swing vote is a Ja in an election that passed with exactly
+  out of `investigatedPlayers` and counted in `investigatedCpu`, Liberal finds, checking a teammate,
+  times investigated by role), peeks, special elections and their teammate picks, executions
+  (targets by the executioner's side, Hitler executed, times executed, first to go), `vetoes` as
+  president by role, and survival over games (`MIN_GAMES`) by role. In a `complete: false` record,
+  a seat that ends dead with no recorded execution was executed before the record starts: it counts
+  as executed, and as first to go when it is the only one. Both modules keep their counts through
+  `tallies.ts` (`Count`, `addChance`, `countRate`, `seatTallies`, a game's seats with each person's
+  tally, and `sideAt`). A swing vote is a Ja in an election that passed with exactly
   `floor(votes / 2) + 1` Ja, or a Nein in one that failed with one fewer (a tie fails), and a lone
   dissent the one vote of its kind among three or more. Chaos is every chaos `enact` (a third
   failed election, or an accepted veto with the tracker at two), counted for that round's
@@ -598,7 +602,10 @@ keeps credit to upstream and to the board game's creators.
   above zero (`RankedTable`), a rate card those with a chance, unranked below `MIN_CHANCES`, and a
   split card (`SplitTable`, by role or by side) lists every player with a chance in any column,
   every cell given; a card with no row shows its own line, and every card `NO_GAMES` when no game
-  counts. INVESTIGATIONS names whom ("4 (3 F, 1 L) · Di 2, Bo 1, CPU 1": most times first, then by
+  counts. A power's two sides can differ with CPU seats in, so the lines say whom: "None of these
+  players has investigated anyone yet." (INVESTIGATIONS) and "has been investigated" (TIMES
+  INVESTIGATED), "has executed anyone" (EXECUTIONS, EXECUTION TARGETS) and "has been executed"
+  (TIMES EXECUTED, FIRST TO GO). INVESTIGATIONS names whom ("4 (3 F, 1 L) · Di 2, Bo 1, CPU 1": most times first, then by
   name, CPU seats last); its card spans the grid's row, and `VotesTab.css` lets its value wrap in
   65% of the table (`.votes-investigations`), the one place it styles a `RankedTable`.
   `votesTestRounds.ts` holds the tests' builders (`term`, `gameOf`, `investigate`, `execute`,
@@ -1004,7 +1011,11 @@ keeps credit to upstream and to the board game's creators.
   `bigStatsData()` (every flex or grid child with text able to shrink, on phones every
   `table.player-matrix` row 44px tall, and on desktops ENDINGS' two tables whole in their cards),
   and on phones that RIVALS' matrices scroll inside their cards with the names held in view and
-  leaving room for the columns. `stats-votes.spec.ts` checks VOTES & POWERS at every size, with CPU games and without, every card's `NO_GAMES` under a filter that counts no game, and INVESTIGATIONS' longest value wrapping inside its card at 320px. No `e2e/` file imports `src/constants` or anything that does (`api.ts`, `App`): it
+  leaving room for the columns. `stats-votes.spec.ts` checks VOTES & POWERS at every size, with
+  CPU games and without, every card's `NO_GAMES` under a filter that counts no game,
+  INVESTIGATIONS' longest value wrapping in at least half its table at 320px, and that every flex
+  and grid child of the tab with text can shrink. No `e2e/` file imports `src/constants` or
+  anything that does (`api.ts`, `App`): it
   reads `window` when it loads, which throws in Playwright's Node process; specs build stats paths
   with `routePath`. Shared helpers are `e2e/lobby.ts`
   (`waitForPlayers`, `joinGuests`, with `pickLooks` false for guests who stay on the default
