@@ -1,9 +1,9 @@
 /* The colours and fonts (variables.css) come with App.css, which the entry always loads. */
 
-/* The stats pages' header: the game header's orange bar and title size. App.css styles every
-   header as a centred column, so this sets its own layout. Desktop: the title at the left, the
-   links at the right, in one row. */
-.stats-header {
+/* The header of the login page and the stats pages (the lobby and the game keep App-header): the
+   game header's orange bar and title size. App.css styles every header as a centred column, so
+   this sets its own layout. Desktop: the title at the left, the links at the right, in one row. */
+.site-header {
     box-sizing: border-box;
     min-height: 0;
     display: flex;
@@ -18,12 +18,12 @@
     text-align: left;
 }
 
-.stats-title {
+.site-title {
     min-width: 0;
     white-space: nowrap;
 }
 
-.stats-nav {
+.site-nav {
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;
@@ -32,7 +32,7 @@
 
 /* White Montserrat, each link at least a 44px target at every size: 44px tall, and wider than
    that from its label and padding (on phones, its column). App.css colours every link. */
-.stats-nav-link {
+.site-nav-link {
     box-sizing: border-box;
     display: inline-flex;
     align-items: center;
@@ -50,17 +50,17 @@
     text-decoration-thickness: 2px;
 }
 
-.stats-nav-link[aria-current="page"] {
+.site-nav-link[aria-current="page"] {
     text-decoration: underline;
 }
 
-.stats-nav-link:hover,
-.stats-nav-link:focus-visible {
+.site-nav-link:hover,
+.site-nav-link:focus-visible {
     color: var(--headerTextColor);
     text-decoration: underline;
 }
 
-.stats-nav-link:focus-visible {
+.site-nav-link:focus-visible {
     outline: 2px solid var(--headerTextColor);
     outline-offset: -4px;
 }
@@ -68,23 +68,23 @@
 /* Phones (the game's phone-only query): the title centred, then the four links as a row of
    equal columns under it. */
 @media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
-    .stats-header {
+    .site-header {
         flex-direction: column;
         flex-wrap: nowrap;
         align-items: stretch;
         padding: 4px 8px 0;
     }
 
-    .stats-title {
+    .site-title {
         text-align: center;
     }
 
-    .stats-nav {
+    .site-nav {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 
-    .stats-nav-link {
+    .site-nav-link {
         padding: 0 4px;
     }
 }

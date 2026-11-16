@@ -1,40 +1,24 @@
-import { routePath, type StatsRoute } from "./routes";
+import SiteHeader, { type SitePlace } from "../header/SiteHeader";
+import type { StatsRoute } from "./routes";
 import StatsLink from "./StatsLink";
-import "./StatsHeader.css";
 
-/** The header's in-page links, each with the pages it is marked on. */
-const NAV_LINKS: { label: string; href: string; marks: StatsRoute["page"][] }[] = [
-  { label: "STATS", href: routePath({ page: "tab", tab: "overview" }), marks: ["tab"] },
-  { label: "GAMES", href: routePath({ page: "games" }), marks: ["games", "game"] },
-  { label: "PLAYERS", href: routePath({ page: "players" }), marks: ["players", "player"] },
-];
+/** The header's place for each page kind: a game is under GAMES, a player under PLAYERS. */
+const PLACES: Record<StatsRoute["page"], SitePlace | null> = {
+  tab: "stats",
+  games: "games",
+  game: "games",
+  players: "players",
+  player: "players",
+  notFound: null,
+};
 
 /**
- * The stats pages' header: SECRET-HITLER, and the links STATS, GAMES and PLAYERS, which move the
- * page in place, and PLAY, a full load of the game. The link of the page you are on is marked
- * (`aria-current="page"`, underlined); a page that was not found marks none.
+ * The stats pages' header: the site header (shared with the login page), with STATS, GAMES and
+ * PLAYERS as `StatsLink`s, which move the page in place, and PLAY a full load of the game. The
+ * link of the page you are on is marked; a page that was not found marks none.
  */
 export function StatsHeader({ route }: { route: StatsRoute }): JSX.Element {
-  return (
-    <header className="stats-header">
-      <span className="stats-title">SECRET-HITLER</span>
-      <nav className="stats-nav" aria-label="Stats pages">
-        {NAV_LINKS.map((link) => (
-          <StatsLink
-            key={link.label}
-            href={link.href}
-            className="stats-nav-link"
-            aria-current={link.marks.includes(route.page) ? "page" : undefined}
-          >
-            {link.label}
-          </StatsLink>
-        ))}
-        <a href="/" className="stats-nav-link">
-          PLAY
-        </a>
-      </nav>
-    </header>
-  );
+  return <SiteHeader current={PLACES[route.page]} link={StatsLink} />;
 }
 
 export default StatsHeader;
