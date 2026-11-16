@@ -25,7 +25,7 @@ describe("TABS", () => {
 
   it("each says it comes later, under its own title", () => {
     const stats = buildStats(generateData(10, 1), DEFAULT_FILTER);
-    const titles = ["Records"];
+    const titles: string[] = [];
     const filled: string[] = ["roles", "votes", "rivals", "endings", "activity", "overview", "records"];
     TABS.filter(({ id }) => !filled.includes(id)).forEach(({ Component }, i) => {
       const { unmount } = render(<Component stats={stats} />);
