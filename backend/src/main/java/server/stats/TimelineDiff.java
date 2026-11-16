@@ -2,6 +2,7 @@ package server.stats;
 
 import game.GameState;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +33,20 @@ public final class TimelineDiff {
         event.put("t", t);
         event.put("r", r);
         return event;
+    }
+
+    /**
+     * A copy of {@code events} that nothing can change: each event's keys in their order, its card
+     * lists copied too.
+     */
+    public static List<Map<String, Object>> copyEvents(List<? extends Map<String, Object>> events) {
+        List<Map<String, Object>> copies = new ArrayList<>();
+        for (Map<String, Object> event : events) {
+            LinkedHashMap<String, Object> copy = new LinkedHashMap<>();
+            event.forEach((key, value) -> copy.put(key, value instanceof List<?> list ? List.copyOf(list) : value));
+            copies.add(Collections.unmodifiableMap(copy));
+        }
+        return Collections.unmodifiableList(copies);
     }
 
     /**

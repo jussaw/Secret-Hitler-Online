@@ -30,54 +30,26 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.LongSupplier;
 import java.util.stream.Collectors;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.slf4j.LoggerFactory;
 import server.stats.GameRecord;
-import server.stats.GameRecordSink;
 import server.stats.GameSnapshot;
 import server.stats.TimelineReplay;
 import server.util.FakeSocket;
 import server.util.Lobby;
+import server.util.RecordedGames;
 
 public class DatabaseBackupTest {
     @Rule
     public TemporaryFolder tmp = new TemporaryFolder();
 
-    private final List<GameRecord> records = Collections.synchronizedList(new ArrayList<>());
-    private final AtomicLong clock = new AtomicLong(1_000_000L);
-    private GameRecordSink savedSink;
-    private LongSupplier savedClock;
-    private float savedCpuDelay;
-    private long savedLobbyTimeout;
-    private float savedEndTerm;
-
-    @Before
-    public void recordInto() {
-        savedSink = Lobby.recordSink;
-        savedClock = Lobby.recordClock;
-        savedCpuDelay = Lobby.CPU_ACTION_DELAY_IN_SEC;
-        savedLobbyTimeout = Lobby.LOBBY_TIMEOUT_DURATION_IN_MIN;
-        savedEndTerm = Lobby.END_TERM_TIMER_IN_SEC;
-        Lobby.recordSink = records::add;
-        Lobby.recordClock = clock::get;
-        Lobby.CPU_ACTION_DELAY_IN_SEC = 600; // no CPU tick comes by itself: stepCpus plays them
-        Lobby.END_TERM_TIMER_IN_SEC = 600;
-    }
-
-    @After
-    public void putBack() {
-        Lobby.recordSink = savedSink;
-        Lobby.recordClock = savedClock;
-        Lobby.CPU_ACTION_DELAY_IN_SEC = savedCpuDelay;
-        Lobby.LOBBY_TIMEOUT_DURATION_IN_MIN = savedLobbyTimeout;
-        Lobby.END_TERM_TIMER_IN_SEC = savedEndTerm;
-    }
+    @Rule
+    public final RecordedGames recorded = new RecordedGames();
+    private final List<GameRecord> records = recorded.records;
+    private final AtomicLong clock = recorded.clock;
 
     private String dbPath() {
         return new File(tmp.getRoot(), "backup.db").getAbsolutePath();
@@ -368,6 +340,60 @@ public class DatabaseBackupTest {
         assertFalse(records.get(0).complete());
         assertEquals(1_000_000L, records.get(0).startedAt());
         assertEquals(id, records.get(0).id());
+    }
+
+    /**
+     * The END TERM countdown changes the game without going through {@code game()}: after a
+     * restore that only a spectator has seen, its end of the term is still recorded.
+     */
+    @Test
+    public void theCountdownsEndOfATermAfterARestoreIsRecorded() throws Exception {
+        Lobby lobby = lobbyInGame(new ConcurrentHashMap<>(), "P1", "P2", "P3", "P4", "P5");
+        GameDriver.playUntil(lobby.game(), GameState.POST_LEGISLATIVE, g -> update(lobby));
+        int round = lobby.game().getRound();
+        int president = indexOfSeat(lobby.game(), lobby.game().getCurrentPresident());
+        Lobby.END_TERM_TIMER_IN_SEC = 0.2f;
+        Lobby restored = roundTrip(lobby);
+
+        FakeSocket spectator = FakeSocket.open();
+        synchronized (restored) { // as a spectator's join does: its packet starts the countdown
+            restored.addSpectator(spectator.ctx);
+            restored.sendStateToAll();
+        }
+        long deadline = System.currentTimeMillis() + 5_000;
+        while (true) {
+            synchronized (restored) {
+                if (spectator.last().getString("state").equals("CHANCELLOR_NOMINATION")) {
+                    break;
+                }
+            }
+            assertTrue("the countdown ended the term", System.currentTimeMillis() < deadline);
+            Thread.sleep(20);
+        }
+
+        List<Map<String, Object>> timeline = restored.timeline();
+        assertEquals(List.of("restored", "endTerm"), types(timeline.subList(timeline.size() - 2, timeline.size())));
+        Map<String, Object> endTerm = timeline.get(timeline.size() - 1);
+        assertEquals("countdown", endTerm.get("by"));
+        assertEquals(president, endTerm.get("seat"));
+        assertEquals(round, endTerm.get("r"));
+    }
+
+    /**
+     * A restore changes a game's timeline (a restored event, and for a game from before the
+     * recorder its ID and start), so the next 60 s tick stores it even if nobody comes back first.
+     */
+    @Test
+    public void aRestoredGameMarksTheBackupStale() throws Exception {
+        store(new ConcurrentHashMap<>(Map.of("WXYZ", new Lobby())));
+        ServerTesting.clearLobbiesChanged();
+        load();
+        assertFalse("an idle lobby comes back as it was", ServerTesting.lobbiesChanged());
+
+        store(new ConcurrentHashMap<>(Map.of("ABCD", lobbyInGame(new ConcurrentHashMap<>(), "P1", "P2", "P3"))));
+        ServerTesting.clearLobbiesChanged();
+        load();
+        assertTrue(ServerTesting.lobbiesChanged());
     }
 
     @Test

@@ -4,15 +4,14 @@ import game.SecretHitlerGame;
 import game.datastructures.Player;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * The record of one game, as a lobby hands it over when the game ends or its lobby is swept: the
- * header, the seats with their accounts and the timeline, all copied, so nothing a lobby does
- * later changes it. Format 1 (the spec's "The record"); the JSON, with player numbers in place of
- * accounts, is Phase 14B's.
+ * The record of one game (#31), as a lobby hands it over when the game ends or its lobby is
+ * swept: the header, the seats with their accounts and the timeline, all copied, so nothing a
+ * lobby does later changes it. Format 1 (the spec's "The record"). A record holds account IDs,
+ * which only the server sees: what is stored and served carries player numbers instead.
  *
  * @param events the timeline, oldest first, each event's keys in the format's order.
  */
@@ -43,16 +42,7 @@ public record GameRecord(String id, long startedAt, long endedAt, String outcome
      */
     public GameRecord {
         seats = Collections.unmodifiableList(new ArrayList<>(seats));
-        List<Map<String, Object>> copied = new ArrayList<>();
-        for (Map<String, Object> event : events) {
-            LinkedHashMap<String, Object> copy = new LinkedHashMap<>();
-            for (Map.Entry<String, Object> entry : event.entrySet()) {
-                Object value = entry.getValue();
-                copy.put(entry.getKey(), value instanceof List<?> list ? List.copyOf(list) : value);
-            }
-            copied.add(Collections.unmodifiableMap(copy));
-        }
-        events = Collections.unmodifiableList(copied);
+        events = TimelineDiff.copyEvents(events);
     }
 
     /**

@@ -275,7 +275,7 @@ public final class TimelineReplay {
             }
             phase = Phase.PASSED;
             if (roles.get(chancellor).equals("HITLER") && fascist >= 3) {
-                endDue = "HITLER_ELECTED";
+                endDue = GameRecord.HITLER_ELECTED;
             }
         }
 
@@ -324,7 +324,7 @@ public final class TimelineReplay {
                     check(roles.get(target).equals(event.get("role")), "names the role " + roles.get(target));
                     dead.add(target);
                     if (roles.get(target).equals("HITLER")) {
-                        endDue = "HITLER_EXECUTED";
+                        endDue = GameRecord.HITLER_EXECUTED;
                     }
                     break;
                 }
@@ -358,9 +358,9 @@ public final class TimelineReplay {
             tracker = 0;
             reshuffleDue = draw < 3 && discard > 0;
             if (liberal == 5) {
-                endDue = "LIBERAL_POLICIES";
+                endDue = GameRecord.LIBERAL_POLICIES;
             } else if (fascist == 6) {
-                endDue = "FASCIST_POLICIES";
+                endDue = GameRecord.FASCIST_POLICIES;
             }
         }
 
@@ -379,7 +379,7 @@ public final class TimelineReplay {
 
         private void end(Map<String, Object> event) {
             outcome = (String) event.get("outcome");
-            check(outcome.equals("UNFINISHED") || outcome.equals(endDue), "ends as the game did");
+            check(outcome.equals(GameRecord.UNFINISHED) || outcome.equals(endDue), "ends as the game did");
             check(index == events.size() - 1, "is the last event");
             phase = Phase.ENDED;
         }

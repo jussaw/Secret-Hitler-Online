@@ -84,13 +84,13 @@ public record GameSnapshot(GameState state, int round, List<String> seats, List<
         }
         switch (state) {
             case LIBERAL_VICTORY_POLICY:
-                return "LIBERAL_POLICIES";
+                return GameRecord.LIBERAL_POLICIES;
             case LIBERAL_VICTORY_EXECUTION:
-                return "HITLER_EXECUTED";
+                return GameRecord.HITLER_EXECUTED;
             case FASCIST_VICTORY_POLICY:
-                return "FASCIST_POLICIES";
+                return GameRecord.FASCIST_POLICIES;
             case FASCIST_VICTORY_ELECTION:
-                return "HITLER_ELECTED";
+                return GameRecord.HITLER_ELECTED;
             default:
                 return null;
         }

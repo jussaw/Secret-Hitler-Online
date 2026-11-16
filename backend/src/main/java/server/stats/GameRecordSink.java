@@ -3,9 +3,9 @@ package server.stats;
 import org.slf4j.LoggerFactory;
 
 /**
- * Where a lobby hands each game's record ({@code Lobby.recordSink}). A lobby calls {@code submit}
- * under its own lock, so a sink must not block or touch a database: it takes the record and
- * returns. Phase 14B's writer is one.
+ * Where a lobby hands each game's record ({@code Lobby.recordSink}, #31). A lobby calls
+ * {@code submit} under its own lock, so a sink must not block or touch a database: it takes the
+ * record and returns, and does any writing on a thread of its own.
  */
 @FunctionalInterface
 public interface GameRecordSink {

@@ -19,54 +19,21 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.LongSupplier;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import server.GameDriver;
 import server.ServerTesting;
 import server.stats.GameRecord;
-import server.stats.GameRecordSink;
 import server.stats.GameSnapshot;
 import server.stats.TimelineReplay;
 
 /** The timeline a lobby keeps of its game, and the one record it hands over when the game ends or is swept. */
 public class LobbyRecordingTest {
-    private final List<GameRecord> records = Collections.synchronizedList(new ArrayList<>());
-    private final AtomicLong clock = new AtomicLong(1_000_000L);
+    @Rule
+    public final RecordedGames recorded = new RecordedGames();
+    private final List<GameRecord> records = recorded.records;
+    private final AtomicLong clock = recorded.clock;
     private final Map<String, FakeSocket> players = new LinkedHashMap<>();
-
-    private GameRecordSink savedSink;
-    private LongSupplier savedClock;
-    private float savedCpuDelay;
-    private long savedLobbyTimeout;
-    private float savedEndTerm;
-    private float savedPlayerTimeout;
-
-    @Before
-    public void setUp() {
-        savedSink = Lobby.recordSink;
-        savedClock = Lobby.recordClock;
-        savedCpuDelay = Lobby.CPU_ACTION_DELAY_IN_SEC;
-        savedLobbyTimeout = Lobby.LOBBY_TIMEOUT_DURATION_IN_MIN;
-        savedEndTerm = Lobby.END_TERM_TIMER_IN_SEC;
-        savedPlayerTimeout = Lobby.PLAYER_TIMEOUT_IN_SEC;
-        Lobby.recordSink = records::add;
-        Lobby.recordClock = clock::get;
-        Lobby.CPU_ACTION_DELAY_IN_SEC = 600; // no CPU tick comes by itself: stepCpus plays them
-        Lobby.END_TERM_TIMER_IN_SEC = 600;
-        Lobby.PLAYER_TIMEOUT_IN_SEC = 60;
-    }
-
-    @After
-    public void tearDown() {
-        Lobby.recordSink = savedSink;
-        Lobby.recordClock = savedClock;
-        Lobby.CPU_ACTION_DELAY_IN_SEC = savedCpuDelay;
-        Lobby.LOBBY_TIMEOUT_DURATION_IN_MIN = savedLobbyTimeout;
-        Lobby.END_TERM_TIMER_IN_SEC = savedEndTerm;
-        Lobby.PLAYER_TIMEOUT_IN_SEC = savedPlayerTimeout;
-    }
 
     /** A lobby whose game has just started, seated by the named players (CPUs fill up to five). */
     private Lobby lobbyInGame(String... names) {
@@ -324,6 +291,26 @@ public class LobbyRecordingTest {
         Map<String, Object> vote = last(lobby.timeline());
         assertEquals("vote", vote.get("type"));
         assertEquals(5_000L, vote.get("t"));
+    }
+
+    /** A swept game ends when its end does, even if the clock has stepped back since its last move. */
+    @Test
+    public void aSweptGameEndsWithItsEndEvenIfTheClockWentBack() {
+        Lobby.LOBBY_TIMEOUT_DURATION_IN_MIN = 0;
+        Lobby lobby = lobbyInGame("P1", "P2", "P3", "P4", "P5");
+        synchronized (lobby) {
+            clock.set(1_005_000L);
+            SecretHitlerGame game = lobby.game();
+            game.nominateChancellor(game.getPlayerList().get(1).getUsername());
+            lobby.updateAllUsers();
+        }
+        clock.set(1_002_000L);
+
+        assertTrue(lobby.closeIfTimedOut());
+
+        GameRecord record = records.get(0);
+        assertEquals(5_000L, last(record.events()).get("t"));
+        assertEquals(1_005_000L, record.endedAt());
     }
 
     @Test
