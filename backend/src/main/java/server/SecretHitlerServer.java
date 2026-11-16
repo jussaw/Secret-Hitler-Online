@@ -456,7 +456,7 @@ public class SecretHitlerServer {
                 }
             } catch (SQLException e) {
                 cause = e;
-                if (!isBusy(e)) {
+                if (!isBusyOrLocked(e)) {
                     break;
                 }
             }
@@ -476,7 +476,7 @@ public class SecretHitlerServer {
     }
 
     /** Whether {@code e} is SQLite's SQLITE_BUSY or SQLITE_LOCKED, whose extended codes included. */
-    private static boolean isBusy(SQLException e) {
+    private static boolean isBusyOrLocked(SQLException e) {
         if (!(e instanceof SQLiteException)) {
             return false;
         }
