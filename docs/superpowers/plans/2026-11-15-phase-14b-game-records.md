@@ -31,9 +31,11 @@ Phase 14B. Where this plan and the spec differ, the spec wins.
    without one, an in-memory database of the recorder's own (the account store's belongs to its one
    connection), gone at restart. Names are read through the account store (`AccountStore.find`),
    not a join.
-2. **One write per game.** `save` numbers the record's accounts (`INSERT OR IGNORE` into
-   `players`, in seat order) and writes the game and its seats in one transaction; a game ID already
-   there rolls it all back and changes nothing.
+2. **One write per game.** `save` numbers the record's accounts (in `players`, in seat order) and
+   writes the game and its seats in one transaction, which takes the write lock at its start; a
+   game ID already there rolls it all back and changes nothing. (As built: a number is looked up
+   before one is made, since an `INSERT OR IGNORE` that SQLite ignores still uses up an
+   `AUTOINCREMENT` number and left gaps.)
 3. **The writer.** `GameRecorder` is the sink: `submit` only queues. One daemon thread saves; a
    record whose save fails waits in memory, goes back on the queue every minute, and is tried once
    more at shutdown before the last lobby backup.
@@ -47,7 +49,9 @@ Phase 14B. Where this plan and the spec differ, the spec wins.
 6. **The route keeps its serialized response until the next record is saved or an account is
    renamed**, as UTF-8 bytes, their gzip and their ETag (the body's SHA-256). A request with
    `Accept-Encoding: gzip` gets the gzip bytes with `Content-Encoding: gzip`; Javalin 5.6.1's
-   compressor skips a response that already has `Content-Encoding`, so it is gzipped once.
+   compressor skips a response that already has `Content-Encoding`, so it is gzipped once. (As
+   built: the header is read as that compressor reads it, a case-blind `gzip` substring with any
+   `q` aside, since it gzips the plain body of any request that names gzip.)
 7. **The contract fixture is made once:** regenerating it changes it. The generator lives in the
    test source set and uses 14A's `CpuGames`; `RecordedGamesFixtureTest` checks the committed file
    against 14A's `RecordFormat`, which `GameRecordJsonTest` holds the Java writer to.
@@ -141,8 +145,8 @@ Phase 14B. Where this plan and the spec differ, the spec wins.
   null or blank; `PRAGMA busy_timeout = 5000`; the tables created if missing; throws
   `IllegalStateException` when it cannot open); `static GameStore open(String databasePath)`; every
   public method `synchronized`, each SQL failure an `IllegalStateException`:
-  `boolean save(GameRecord record)` (Decision 2: `INSERT OR IGNORE` a `players` row per account in
-  seat order and read its number; `INSERT OR IGNORE` the `games` row with `toJson(numbers)`; no row
+  `boolean save(GameRecord record)` (Decision 2: look up each account's number in seat order and
+  insert a `players` row for one that has none; `INSERT OR IGNORE` the `games` row with `toJson(numbers)`; no row
   changed: roll back, false; else the `game_seats` rows, commit, true; any failure rolls back);
   `Set<String> recordedIds(Collection<String> ids)` (one query); `record PlayerRow(int number,
   String accountId)` and `List<PlayerRow> players()` (by number); `List<String> recordsJson()` (by
@@ -223,7 +227,8 @@ Phase 14B. Where this plan and the spec differ, the spec wins.
   marks the lobbies changed); `static void startUp(GameStore store)` (`startRecording`,
   `loadDatabaseBackup()`, `dropRecordedGames(codeToLobby, store)`, `removeInactiveLobbies()`);
   `static void everyMinute()` (today's timer body plus `recorder.retryWaiting()` after the session
-  sweep); `static void onShutdown()` (`recorder.flush()`, then today's hook body). `main`: after the
+  sweep); `static void onShutdown()` (`recorder.stop()` and `recorder.flush()`, then today's hook
+  body). `main`: after the
   account store, `startUp(GameStore.open(DATABASE_PATH))`; the timer's task calls `everyMinute()`
   and the hook's thread `onShutdown()`. `ServerTesting` passes `dropRecordedGames`, `startUp`,
   `everyMinute` and `onShutdown` on.
@@ -462,7 +467,7 @@ curl -s localhost:4624/api/stats/games | node -e '
 
 ## Self-review
 
-- **Spec coverage (this half):** numbering players, one transaction, `INSERT OR IGNORE`, retries on
+- **Spec coverage (this half):** numbering players, one transaction, `INSERT OR IGNORE` of the game, retries on
   the minute and once at shutdown (Tasks 1 to 3); the finished-game drop before the start-up sweep
   (3); the tables and the in-memory case (1, Decision 1); the route with its cache until a record
   or a rename, ETag, 304, gzip, 503, no sign-in (4); the `/api` proxy (4); the fixture (5); the
