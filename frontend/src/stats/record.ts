@@ -8,9 +8,15 @@
  */
 
 export type Card = "L" | "F";
-export type Role = "LIBERAL" | "FASCIST" | "HITLER";
-export type Side = "LIBERAL" | "FASCIST";
-export type Outcome = "LIBERAL_POLICIES" | "HITLER_EXECUTED" | "FASCIST_POLICIES" | "HITLER_ELECTED" | "UNFINISHED";
+/** Every role, Liberal first. */
+export const ROLES = ["LIBERAL", "FASCIST", "HITLER"] as const;
+export type Role = (typeof ROLES)[number];
+/** Both sides: Hitler plays for the Fascists. */
+export const SIDES = ["LIBERAL", "FASCIST"] as const;
+export type Side = (typeof SIDES)[number];
+/** Every way a game ends, the four endings first. */
+export const OUTCOMES = ["LIBERAL_POLICIES", "HITLER_EXECUTED", "FASCIST_POLICIES", "HITLER_ELECTED", "UNFINISHED"] as const;
+export type Outcome = (typeof OUTCOMES)[number];
 
 export interface Seat {
   player: number | null;
@@ -103,17 +109,12 @@ export const EVENT_FIELDS: { readonly [T in GameEvent["type"]]: readonly string[
   end: ["outcome"],
 };
 
-const OUTCOMES: readonly unknown[] = [
-  "LIBERAL_POLICIES",
-  "HITLER_EXECUTED",
-  "FASCIST_POLICIES",
-  "HITLER_ELECTED",
-  "UNFINISHED",
-];
-const ROLES: readonly unknown[] = ["LIBERAL", "FASCIST", "HITLER"];
-const WINNERS: readonly unknown[] = ["LIBERAL", "FASCIST", null];
-
 type Json = Record<string, unknown>;
+
+/** Whether `value` is one of `values`. */
+function isOneOf(values: readonly string[], value: unknown): boolean {
+  return typeof value === "string" && values.includes(value);
+}
 
 function isObject(value: unknown): value is Json {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -137,7 +138,7 @@ function checkSeat(seat: unknown, path: string): void {
   check(s.player === null || isInteger(s.player), `${path}.player`, "is not a player number or null", s.player);
   check(typeof s.name === "string", `${path}.name`, "is not a string", s.name);
   check(typeof s.cpu === "boolean", `${path}.cpu`, "is not a boolean", s.cpu);
-  check(ROLES.includes(s.role), `${path}.role`, "is not a role", s.role);
+  check(isOneOf(ROLES, s.role), `${path}.role`, "is not a role", s.role);
   check(typeof s.alive === "boolean", `${path}.alive`, "is not a boolean", s.alive);
 }
 
@@ -163,8 +164,8 @@ function checkGame(game: unknown, path: string): void {
   check(typeof g.id === "string", `${path}.id`, "is not a string", g.id);
   check(typeof g.startedAt === "number", `${path}.startedAt`, "is not a number", g.startedAt);
   check(typeof g.endedAt === "number", `${path}.endedAt`, "is not a number", g.endedAt);
-  check(OUTCOMES.includes(g.outcome), `${path}.outcome`, "is not an outcome", g.outcome);
-  check(WINNERS.includes(g.winner), `${path}.winner`, "is not a side or null", g.winner);
+  check(isOneOf(OUTCOMES, g.outcome), `${path}.outcome`, "is not an outcome", g.outcome);
+  check(g.winner === null || isOneOf(SIDES, g.winner), `${path}.winner`, "is not a side or null", g.winner);
   check(typeof g.complete === "boolean", `${path}.complete`, "is not a boolean", g.complete);
   check(typeof g.hasCpu === "boolean", `${path}.hasCpu`, "is not a boolean", g.hasCpu);
   for (const key of ["liberalPolicies", "fascistPolicies", "rounds"]) {

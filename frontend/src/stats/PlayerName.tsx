@@ -7,6 +7,14 @@ const ROLE_CLASS: Record<Role, string> = {
   HITLER: "stats-hitler",
 };
 
+/**
+ * The class that colours a role's name or word on any stats page (`PlayerName.css`): Liberal blue,
+ * Fascist red, Hitler red and underlined. A side is a role here too.
+ */
+export function roleClass(role: Role): string {
+  return ROLE_CLASS[role];
+}
+
 export interface PlayerNameProps {
   /** The player's number, or null for a CPU seat. */
   player: number | null;
@@ -25,7 +33,7 @@ export interface PlayerNameProps {
  * given. Never put it inside an `<a>`.
  */
 export function PlayerName({ player, name, role }: PlayerNameProps): JSX.Element {
-  const className = role ? `player-name ${ROLE_CLASS[role]}` : "player-name";
+  const className = role ? `player-name ${roleClass(role)}` : "player-name";
   return (
     <span className={className} data-player={player === null ? undefined : player}>
       {name}

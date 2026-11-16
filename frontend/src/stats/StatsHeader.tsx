@@ -1,11 +1,12 @@
-import type { StatsRoute } from "./routes";
+import { routePath, type StatsRoute } from "./routes";
 import StatsLink from "./StatsLink";
 import "./StatsHeader.css";
 
-const PAGES: { label: string; href: string; marks: StatsRoute["page"][] }[] = [
-  { label: "STATS", href: "/stats", marks: ["tab"] },
-  { label: "GAMES", href: "/stats/games", marks: ["games", "game"] },
-  { label: "PLAYERS", href: "/stats/players", marks: ["players", "player"] },
+/** The header's in-page links, each with the pages it is marked on. */
+const NAV_LINKS: { label: string; href: string; marks: StatsRoute["page"][] }[] = [
+  { label: "STATS", href: routePath({ page: "tab", tab: "overview" }), marks: ["tab"] },
+  { label: "GAMES", href: routePath({ page: "games" }), marks: ["games", "game"] },
+  { label: "PLAYERS", href: routePath({ page: "players" }), marks: ["players", "player"] },
 ];
 
 /**
@@ -18,14 +19,14 @@ export function StatsHeader({ route }: { route: StatsRoute }): JSX.Element {
     <header className="stats-header">
       <span className="stats-title">SECRET-HITLER</span>
       <nav className="stats-nav" aria-label="Stats pages">
-        {PAGES.map((page) => (
+        {NAV_LINKS.map((link) => (
           <StatsLink
-            key={page.label}
-            href={page.href}
+            key={link.label}
+            href={link.href}
             className="stats-nav-link"
-            aria-current={page.marks.includes(route.page) ? "page" : undefined}
+            aria-current={link.marks.includes(route.page) ? "page" : undefined}
           >
-            {page.label}
+            {link.label}
           </StatsLink>
         ))}
         <a href="/" className="stats-nav-link">

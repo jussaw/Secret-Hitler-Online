@@ -1,4 +1,4 @@
-import type { GameRecord } from "./record";
+import type { GameRecord, Side } from "./record";
 
 /**
  * The stats' words for results, lengths, counts and local times. Every local-time function takes
@@ -71,6 +71,11 @@ export function plural(n: number, noun: string): string {
   return `${n} ${n === 1 ? noun : `${noun}s`}`;
 }
 
+/** The winners' word in a result: "Liberals" or "Fascists". */
+export function sideWord(side: Side): string {
+  return side === "LIBERAL" ? "Liberals" : "Fascists";
+}
+
 /**
  * A game's result: "Liberals win · 5 Liberal policies", "Liberals win · Hitler executed",
  * "Fascists win · 6 Fascist policies", "Fascists win · Hitler elected", or for a game the lobby
@@ -79,13 +84,13 @@ export function plural(n: number, noun: string): string {
 export function outcomeLabel(record: GameRecord): string {
   switch (record.outcome) {
     case "LIBERAL_POLICIES":
-      return `Liberals win · ${record.liberalPolicies} Liberal policies`;
+      return `${sideWord("LIBERAL")} win · ${record.liberalPolicies} Liberal policies`;
     case "HITLER_EXECUTED":
-      return "Liberals win · Hitler executed";
+      return `${sideWord("LIBERAL")} win · Hitler executed`;
     case "FASCIST_POLICIES":
-      return `Fascists win · ${record.fascistPolicies} Fascist policies`;
+      return `${sideWord("FASCIST")} win · ${record.fascistPolicies} Fascist policies`;
     case "HITLER_ELECTED":
-      return "Fascists win · Hitler elected";
+      return `${sideWord("FASCIST")} win · Hitler elected`;
     case "UNFINISHED":
       return `Unfinished after round ${record.rounds} · ${record.liberalPolicies} L, ${record.fascistPolicies} F`;
   }

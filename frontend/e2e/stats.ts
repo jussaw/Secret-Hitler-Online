@@ -1,5 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 import {
+  OUTCOMES,
   STATS_GAMES_PATH,
   sideOf,
   type Card,
@@ -71,7 +72,7 @@ function random(seed: number) {
 }
 type Random = ReturnType<typeof random>;
 
-const ENDINGS: Outcome[] = ["LIBERAL_POLICIES", "HITLER_EXECUTED", "FASCIST_POLICIES", "HITLER_ELECTED"];
+const ENDINGS: Outcome[] = OUTCOMES.filter((outcome) => outcome !== "UNFINISHED");
 const DAY = 24 * 60 * 60 * 1000;
 const MINUTE = 60 * 1000;
 /** Each seat count's Liberals and Fascists besides Hitler. */

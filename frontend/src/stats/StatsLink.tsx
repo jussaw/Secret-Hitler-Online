@@ -1,4 +1,4 @@
-import { forwardRef, type AnchorHTMLAttributes, type MouseEvent, type ReactNode } from "react";
+import type { AnchorHTMLAttributes, MouseEvent, ReactNode } from "react";
 import { navigate } from "./routes";
 
 export type StatsLinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> & {
@@ -12,10 +12,7 @@ export type StatsLinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href
  * A click with another button or a modifier key, or on a link with a `target`, is the browser's.
  * Every other prop (`className`, `aria-*`, …) goes to the `<a>`.
  */
-export const StatsLink = forwardRef<HTMLAnchorElement, StatsLinkProps>(function StatsLink(
-  { href, onClick, children, ...rest },
-  ref
-) {
+export function StatsLink({ href, onClick, children, ...rest }: StatsLinkProps): JSX.Element {
   const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
     onClick?.(event);
     if (event.defaultPrevented) return;
@@ -25,10 +22,10 @@ export const StatsLink = forwardRef<HTMLAnchorElement, StatsLinkProps>(function 
     navigate(href);
   };
   return (
-    <a ref={ref} href={href} onClick={handleClick} {...rest}>
+    <a href={href} onClick={handleClick} {...rest}>
       {children}
     </a>
   );
-});
+}
 
 export default StatsLink;

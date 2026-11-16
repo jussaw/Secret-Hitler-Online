@@ -7,6 +7,7 @@ import {
   localDayKey,
   outcomeLabel,
   plural,
+  sideWord,
   viewerTimeZone,
 } from "./format";
 import type { GameRecord } from "./record";
@@ -29,6 +30,15 @@ describe("outcomeLabel", () => {
     expect(
       outcomeLabel(record({ outcome: "UNFINISHED", winner: null, rounds: 6, liberalPolicies: 4, fascistPolicies: 3 }))
     ).toBe("Unfinished after round 6 · 4 L, 3 F");
+  });
+});
+
+describe("sideWord", () => {
+  it("names the winners as the result does", () => {
+    expect([sideWord("LIBERAL"), sideWord("FASCIST")]).toEqual(["Liberals", "Fascists"]);
+    expect(outcomeLabel(record({ outcome: "HITLER_ELECTED", winner: "FASCIST" })).startsWith(sideWord("FASCIST"))).toBe(
+      true
+    );
   });
 });
 

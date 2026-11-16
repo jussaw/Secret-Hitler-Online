@@ -1,6 +1,6 @@
-import { formatDuration, formatLocalDateTime, outcomeLabel, plural } from "../format";
-import PlayerName from "../PlayerName";
-import type { PageProps } from "../routes";
+import { formatDuration, formatLocalDateTime, outcomeLabel, plural, sideWord } from "../format";
+import PlayerName, { roleClass } from "../PlayerName";
+import { routePath, type PageProps } from "../routes";
 import StatsLink from "../StatsLink";
 
 /**
@@ -15,23 +15,23 @@ export default function GamePage({ data, route }: PageProps): JSX.Element {
     return (
       <section className="stats-card">
         <p>This game was not found.</p>
-        <StatsLink href="/stats/games" className="stats-link">
+        <StatsLink href={routePath({ page: "games" })} className="stats-link">
           All games
         </StatsLink>
       </section>
     );
   }
 
+  // The result starts with the winners' word (outcomeLabel), which takes their colour.
   const label = outcomeLabel(record);
-  const space = label.indexOf(" ");
-  const side = record.winner === "LIBERAL" ? "stats-liberal" : record.winner === "FASCIST" ? "stats-fascist" : null;
+  const winners = record.winner ? sideWord(record.winner) : null;
   return (
     <section className="stats-card game-page">
       <h1>
-        {side ? (
+        {record.winner && winners && label.startsWith(winners) ? (
           <>
-            <span className={side}>{label.slice(0, space)}</span>
-            {label.slice(space)}
+            <span className={roleClass(record.winner)}>{winners}</span>
+            {label.slice(winners.length)}
           </>
         ) : (
           label

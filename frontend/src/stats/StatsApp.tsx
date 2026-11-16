@@ -4,7 +4,7 @@ import GamePage from "./game/GamePage";
 import GamesPage from "./games/GamesPage";
 import PlayerPage from "./players/PlayerPage";
 import PlayersPage from "./players/PlayersPage";
-import { parseRoute, useLocation, type PageProps, type StatsRoute } from "./routes";
+import { parseRoute, routePath, useLocation, type PageProps, type StatsRoute } from "./routes";
 import StatsHeader from "./StatsHeader";
 import StatsLink from "./StatsLink";
 import TabsPage from "./TabsPage";
@@ -49,7 +49,7 @@ export default function StatsApp(): JSX.Element {
     body = (
       <section className="stats-card stats-not-found">
         <p>This page was not found.</p>
-        <StatsLink href="/stats" className="stats-link">
+        <StatsLink href={routePath({ page: "tab", tab: "overview" })} className="stats-link">
           Go to the stats
         </StatsLink>
       </section>

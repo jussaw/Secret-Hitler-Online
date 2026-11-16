@@ -1,6 +1,6 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import PlayerName from "./PlayerName";
+import PlayerName, { roleClass } from "./PlayerName";
 
 describe("PlayerName", () => {
   it("colours a name by role", () => {
@@ -19,6 +19,14 @@ describe("PlayerName", () => {
       "player-name stats-fascist",
       "player-name stats-hitler",
       "player-name",
+    ]);
+  });
+
+  it("gives each role's class, for a side's word too", () => {
+    expect([roleClass("LIBERAL"), roleClass("FASCIST"), roleClass("HITLER")]).toEqual([
+      "stats-liberal",
+      "stats-fascist",
+      "stats-hitler",
     ]);
   });
 
