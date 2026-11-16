@@ -252,6 +252,28 @@ describe("computeCards", () => {
     ]);
   });
 
+  it("a CPU chancellor's policies and a CPU seat's blame credit no one", () => {
+    const counted = [
+      cardGame(
+        1,
+        [
+          { president: 0, chancellor: 2, hand: "FFL", discard: 0, enact: "F" }, // blames the CPU chancellor
+          { president: 1, chancellor: 2, hand: "FFL", discard: 2, enact: "F" }, // blames player 2
+          { president: 0, chancellor: 2, hand: "FLL", discard: 1, enact: "L" },
+        ],
+        { players: [1, 2, null, 4, 5] }
+      ),
+    ];
+    const { byPlayer } = computeCards(counted);
+    expect(Array.from(byPlayer.keys()).sort((a, b) => a - b)).toEqual([1, 2, 4, 5]);
+    for (const [player, p] of byPlayer) {
+      expect(p.enacted, `player ${player}`).toEqual({ LIBERAL: { L: 0, F: 0 }, FASCIST: { L: 0, F: 0 }, HITLER: { L: 0, F: 0 } });
+      expect([p.oneOfEach.LIBERAL.chances, p.oneOfEach.FASCIST.chances, p.oneOfEach.HITLER.chances], `player ${player}`).toEqual([0, 0, 0]);
+      expect(p.forced.chancellor, `player ${player}`).toBe(0);
+    }
+    expect([1, 2, 4, 5].map((p) => byPlayer.get(p)!.fascistChoices)).toEqual([0, 1, 0, 0]);
+  });
+
   it("Fascist choices follow each round's blame", () => {
     const counted = [
       cardGame(1, [

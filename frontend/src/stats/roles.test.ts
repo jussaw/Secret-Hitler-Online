@@ -100,6 +100,10 @@ describe("computeRoles", () => {
     expect(byPlayer.get(2)!.games).toBe(1);
   });
 
+  it("knows the Liberal seats of every table size", () => {
+    expect(Object.keys(LIBERAL_SEATS).map(Number)).toEqual([...TABLE_SIZES]);
+  });
+
   it("agrees with the contract fixture", () => {
     const { games } = parseStatsData(fixture);
     for (const record of games) {
