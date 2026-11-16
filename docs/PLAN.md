@@ -842,7 +842,7 @@ Issue #31: each game's record, round by round. `rounds(record)` turns a timeline
 - [x] `rounds.test.ts`: every game in the contract fixture lines up with its final board, deaths, outcome and the president rotation
 - [x] `frontend/src/stats/game/GameHeader.tsx` and `GamePage.tsx`: the header, the incomplete and unfinished notes, and "This game was not found"
 - [x] `frontend/src/stats/game/RoundBlock.tsx`: each round as a block edged in its policy's colour
-- [ ] `frontend/e2e/stats-game.spec.ts`: the page never scrolls sideways at any tested size and has 44px targets on phones, and a real game's page shows every round
+- [x] `frontend/e2e/stats-game.spec.ts`: the page never scrolls sideways at any tested size and has 44px targets on phones, and a real game's page shows every round
 - [ ] `CLAUDE.md` and `README.md` describe `rounds` and the game page
 - [ ] Every review finding is fixed or answered with a reason
 - [ ] The pull request shows the game page before and after, on desktop and on a phone
