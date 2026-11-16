@@ -195,11 +195,25 @@ public class SecretHitlerServer {
      * on all of them as soon as it listens (#13). Package-private for ServerStartupTest.
      */
     static Javalin createApp() {
+        return createApp("/public");
+    }
+
+    /**
+     * Builds the server's app as {@code createApp()} does, serving the frontend from the
+     * classpath directory {@code frontendDir}. When that directory has an {@code index.html},
+     * every path under {@code /stats} that no route or file answers is answered with it
+     * (Javalin's single-page fallback, for GETs that ask for HTML), so a reload or a link to
+     * any stats page works. Package-private for StatsFallbackTest.
+     */
+    static Javalin createApp(String frontendDir) {
         return Javalin.create(config -> {
             // Serve the built frontend when it was bundled into the jar (see build.gradle).
-            // Javalin refuses to start if a classpath static directory is missing.
-            if (SecretHitlerServer.class.getResource("/public/index.html") != null) {
-                config.staticFiles.add("/public", Location.CLASSPATH);
+            // Javalin refuses to start if a classpath static directory is missing, and the
+            // fallback refuses a missing file.
+            String indexHtml = frontendDir + "/index.html";
+            if (SecretHitlerServer.class.getResource(indexHtml) != null) {
+                config.staticFiles.add(frontendDir, Location.CLASSPATH);
+                config.spaRoot.addFile("/stats", indexHtml, Location.CLASSPATH);
             }
             // The frontend is served from this same origin, so CORS is only needed when a
             // separately hosted dev frontend calls the server directly (debug mode). Outside

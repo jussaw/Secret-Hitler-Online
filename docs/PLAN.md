@@ -793,7 +793,7 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-15a-stats-shell.md`](superp
 Issue #31: the stats pages' shell at `/stats`, loaded as a chunk of its own so the game's first download does not grow, with the header, the routes and a placeholder for every page; `gameId` in every game packet; and the record's types, labels, names, links and data, and the browser-test helpers, that Phases 15B, 16 and 17A build on. Needs Phase 14B.
 
 - [x] `GameToJSONConverter` and `Lobby`: every game packet, to players and spectators, carries `gameId`
-- [ ] `SecretHitlerServer`: every path under `/stats` answers with the page (Javalin's single-page fallback)
+- [x] `SecretHitlerServer`: every path under `/stats` answers with the page (Javalin's single-page fallback)
 - [ ] `frontend/src/stats/record.ts`: the record's types, parsed with a format check against the contract fixture, and `testRecords.ts`
 - [ ] `frontend/src/stats/format.ts` and `PlayerName.tsx`: results, lengths, local dates and times in the viewer's zone, and names coloured by role
 - [ ] `frontend/src/stats/routes.ts`, `StatsLink.tsx` and `api.ts`: the paths, History API navigation with a working back button, and the games fetched once per visit
