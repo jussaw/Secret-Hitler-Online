@@ -1,11 +1,11 @@
 import { ev } from "./game/sampleGames";
 import type { GameEvent, GameRecord, Role, Side } from "./record";
 import { game, seatsOf } from "./testGames";
+import { buildStats, type StatsContext } from "./useStats";
 
 /**
- * Builders for RIVALS' and ENDINGS' tests (never imported by the page): ten named players, games
- * of chosen seats and sides, and a round's nomination. It imports only `record.ts`,
- * `testGames.ts` and `game/sampleGames.ts`.
+ * Builders for RIVALS' and ENDINGS' tests (never imported by the page or the browser tests): ten
+ * named players, games of chosen seats and sides, a round's nomination, and the tabs' stats.
  */
 
 /** Players 1 to 10, in alphabetical order. */
@@ -71,4 +71,10 @@ export function nominated(r: number, president: number, chancellor: number, pass
     passed ? ev.election(r, t, true, 3, 2) : ev.election(r, t, false, 1, 4),
     ...(passed ? [] : [ev.tracker(r, t, 1)]),
   ];
+}
+
+/** The stats of `games` with `NAMES` as the players, every player on and CPU games counted when `cpu`. */
+export function statsOf(games: GameRecord[], cpu = false): StatsContext {
+  const players = Array.from(NAMES, ([number, name]) => ({ number, name }));
+  return buildStats({ players, games }, { players: null, cpu });
 }

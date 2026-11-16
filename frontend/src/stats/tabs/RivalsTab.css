@@ -1,0 +1,49 @@
+/* RIVALS: the four headline cards in a grid of columns at least 18em wide (one on phones), then
+   the four wide cards across the whole row. Every child has min-width: 0, so a long name wraps
+   inside its card, and the tables scroll inside theirs (PlayerMatrix.css). */
+.rivals-tab {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 18em), 1fr));
+    gap: 16px;
+    min-width: 0;
+}
+
+.rivals-tab > * {
+    min-width: 0;
+}
+
+.rivals-tab > .rivals-wide {
+    grid-column: 1 / -1;
+}
+
+.stats-screen .rivals-headline {
+    font-family: var(--textFont);
+    font-weight: 700;
+    font-size: 1.4em;
+    line-height: 1.25;
+    color: var(--headerTextColor);
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.stats-screen .rivals-figure {
+    font-family: var(--textFont);
+    font-weight: 500;
+    font-size: 15px;
+    line-height: 1.4;
+    color: var(--textColorOnDark);
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+/* The people's table reads left to right, names first in each cell. */
+.player-matrix.rivals-people td {
+    text-align: left;
+}
+
+/* Phones (the game's phone-only query): less room between the cards. */
+@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
+    .rivals-tab {
+        gap: 8px;
+    }
+}
