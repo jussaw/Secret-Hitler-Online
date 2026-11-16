@@ -441,6 +441,26 @@ keeps credit to upstream and to the board game's creators.
   the filter, the tab row and the route's tab, and a filter change stays on the tab (`navigate`).
   `testGames.ts` holds test builders the browser tests may import too (`ROLES` per seat count,
   `seatsOf`, `game`, `match`, and `generateData`, seeded).
+  ROLES & CARDS (Phase 18, `/stats/roles`) is `tabs/RolesTab.tsx`, from `computeRoles`
+  (`roles.ts`, from each record's seats, winner and first round: `LIBERAL_SEATS` per size and
+  `TABLE_SIZES`; each player's `split` by role, `expectedLiberalGames`, the sum over their games of
+  Liberal seats ÷ seats, and `luck`, their Liberal share less that over their games, null under
+  `MIN_GAMES`; `longestRun`; `winAs` by role, `bySize` and `firstPresident`, each `MIN_GAMES`) and
+  `computeCards` (`cards.ts`, from `rounds(record)` only: `hands` by Liberals, `HAND_LABELS` FFF to
+  LLL, beside the group's; `liberalAccuracy` and `deepCover` as president over mixed hands;
+  `oneOfEach` and `enacted` per role that game, `vetoes` by the two cards, `fascistChoices` from
+  each round's `blame`, and `forced`), both memoized per counted games; `byPlayer` never has a key
+  for a CPU seat, whose choices credit no one. Four sections (Roles, As president, As chancellor,
+  Blame, each an `h2` over `.roles-grid`) hold seventeen `StatCard`s: one number per player through
+  `rankRows` and `RankedTable`, and every split through `SplitTable`, with the group's hand shares
+  on a line above Hands drawn (`.roles-group`); the four widest cards span the grid
+  (`.roles-wide`). A card with games but no rows says its own line (the three win rates by role
+  too). The choices it made: the group's hands include CPU presidents', First president skips
+  `complete: false` records (their first recorded nomination is not the game's), a tie for the
+  longest run goes to the later run and a game a player missed breaks no run, an accepted veto (and
+  chaos) counts toward no chancellor's choice or policy while the enact after a refused one does,
+  Forced Fascists counts every FF handed to a Liberal whatever followed, and each table size's cell
+  needs `MIN_GAMES`.
   ACTIVITY (`/stats/activity`, Phase 21A) shows when the group plays and how long each decision
   takes, in the viewer's time zone. `activity.ts` (`computeActivity(counted, now, timeZone =
   viewerTimeZone())`): only `localDayKey` and `localHour(ms, timeZone)` (an `Intl` wall-clock hour)
@@ -907,7 +927,10 @@ keeps credit to upstream and to the board game's creators.
   twelve-character names inside their columns and chips at 320px; on `desktop` it goes through a
   filter, a page, a game and back, forward and reload by the address, and plays a real game of
   seven through `driveGame.ts` whose victory screen opens its page and which GAMES lists under its
-  first seat's player. `stats-activity.spec.ts` opens ACTIVITY with the clock
+  first seat's player. `stats-roles.spec.ts` runs `checkStatsPage` on ROLES & CARDS at every
+  `statsSizesFor` size against `bigStatsData()` with all seventeen cards shown, checks that a wide
+  table scrolls inside its card at 320px (`phone-360`), and that the tab row opens the tab keeping
+  the filter. `stats-activity.spec.ts` opens ACTIVITY with the clock
   (`page.clock.setFixedTime`) an hour after the latest game and checks it at every size (no chart
   outside its card, no wrapped button label, the charts drawn), a tooltip on a hover or a tap of
   the day-of-week chart and of a heatmap day, and (`desktop`) the arrow keys, PER MONTH, and with
