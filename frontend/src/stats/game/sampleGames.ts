@@ -1,4 +1,4 @@
-import type { Card, GameEvent, GameRecord, Outcome, Role, Side } from "../record";
+import type { Card, GameEvent, GameRecord, Outcome, Player, Role, Side } from "../record";
 import { makeRecord, makeSeats } from "../testRecords";
 
 /**
@@ -84,3 +84,145 @@ export function fiveSeatGame(events: GameEvent[], overrides: Partial<GameRecord>
     ...overrides,
   });
 }
+
+/** The showcase game's players, Maya to Blair, numbered 1 to 7 in seat order. */
+export const SHOWCASE_PLAYERS: Player[] = ["Maya", "Rowan", "Theo", "Priya", "Sam", "Ash", "Blair"].map((name, i) => ({
+  number: i + 1,
+  name,
+}));
+
+/**
+ * A seven-seat game won by the Liberals' fifth policy, in twelve rounds, that holds every kind of
+ * round the game page draws: a round with every decision timed, blame on a president (round 2)
+ * and on a chancellor (3), an investigation (3), a special election (4), a countdown end after a
+ * pause and a reshuffle (5), a dropped connection (7), an execution (8), three failed elections
+ * ending in chaos with a reshuffle (9 to 11), and a refused veto and the enact after it (12). Theo
+ * and Ash are Fascists and Sam is Hitler; Blair executes Ash. Its cards follow one deck from the
+ * shuffle, and its board adds up. For the PR screenshots and the page's tests.
+ */
+export function showcaseGame(): GameRecord {
+  const [MAYA, ROWAN, THEO, PRIYA, SAM, ASH, BLAIR] = [0, 1, 2, 3, 4, 5, 6];
+  const events: GameEvent[] = [];
+  let t = 0;
+  let board: [number, number] = [0, 0];
+  let alive = [MAYA, ROWAN, THEO, PRIYA, SAM, ASH, BLAIR];
+  const add = (wait: number, make: (r: number, at: number) => GameEvent, r: number) => {
+    t += wait;
+    events.push(make(r, t));
+  };
+  /**
+   * A nomination after `wait`, `between` it and the votes, then a vote from each living seat (in
+   * `order`, else seat order), the `nein` seats saying Nein, and the result.
+   */
+  const elect = (
+    r: number,
+    wait: number,
+    president: number,
+    chancellor: number,
+    nein: number[],
+    order = alive,
+    between: () => void = () => undefined
+  ) => {
+    add(wait, (rr, at) => ev.nominate(rr, at, president, chancellor), r);
+    between();
+    const gaps = [2_100, 1_400, 2_600, 1_900, 3_200, 1_100, 4_300];
+    order.forEach((seat, i) => add(gaps[i % gaps.length], (rr, at) => ev.vote(rr, at, seat, !nein.includes(seat)), r));
+    const ja = order.length - nein.length;
+    add(0, (rr, at) => ev.election(rr, at, ja > nein.length, ja, nein.length), r);
+  };
+  /** The president's hand and discard, then the chancellor's policy. */
+  const legislate = (r: number, president: number, chancellor: number, hand: string, index: number, policy: Card) => {
+    add(200, (rr, at) => ev.draw(rr, at, president, hand), r);
+    add(5_400, (rr, at) => ev.discard(rr, at, president, index, hand[index] as Card), r);
+    board = policy === "L" ? [board[0] + 1, board[1]] : [board[0], board[1] + 1];
+    const [liberal, fascist] = board;
+    add(3_200, (rr, at) => ev.enact(rr, at, policy, "chancellor", chancellor, liberal, fascist), r);
+  };
+  const endTerm = (r: number, wait: number, president: number, by: "president" | "countdown" = "president") =>
+    add(wait, (rr, at) => ev.endTerm(rr, at, president, by), r);
+  const failed = (r: number, value: number) => add(0, (rr, at) => ev.tracker(rr, at, value), r);
+
+  // 1: every decision timed.
+  elect(1, 41_000, MAYA, ROWAN, [THEO, SAM], [ROWAN, MAYA, BLAIR, PRIYA, THEO, ASH, SAM]);
+  legislate(1, MAYA, ROWAN, "LFF", 1, "L");
+  endTerm(1, 46_100, MAYA);
+  // 2: Rowan discards the one Liberal (blame on the president).
+  elect(2, 63_000, ROWAN, THEO, [MAYA, BLAIR, PRIYA], [THEO, ROWAN, ASH, MAYA, SAM, BLAIR, PRIYA]);
+  legislate(2, ROWAN, THEO, "FFL", 2, "F");
+  endTerm(2, 74_800, ROWAN);
+  // 3: Sam enacts the Fascist of one of each (blame on the chancellor); Theo investigates Maya.
+  elect(3, 87_000, THEO, SAM, [PRIYA, BLAIR]);
+  legislate(3, THEO, SAM, "LFF", 1, "F");
+  add(18_400, (r, at) => ev.investigate(r, at, THEO, MAYA, "LIBERAL"), 3);
+  endTerm(3, 35_200, THEO);
+  // 4: three Fascists drawn; Priya calls a special election for Blair.
+  elect(4, 52_000, PRIYA, ASH, [SAM]);
+  legislate(4, PRIYA, ASH, "FFF", 0, "F");
+  add(16_300, (r, at) => ev.specialElection(r, at, PRIYA, BLAIR), 4);
+  endTerm(4, 28_400, PRIYA);
+  // 5: Blair's special term; the deck runs low; Blair pauses, and the countdown ends the term.
+  elect(5, 71_000, BLAIR, ROWAN, [THEO, ASH]);
+  legislate(5, BLAIR, ROWAN, "LFF", 2, "L");
+  add(0, (r, at) => ev.reshuffle(r, at, 12), 5);
+  add(2_500, (r, at) => ev.timerPause(r, at, BLAIR), 5);
+  add(31_000, (r, at) => ev.timerResume(r, at, BLAIR), 5);
+  endTerm(5, 7_500, BLAIR, "countdown");
+  // 6: back to the seat after Priya.
+  elect(6, 48_000, SAM, MAYA, [ROWAN, PRIYA, BLAIR]);
+  legislate(6, SAM, MAYA, "LLF", 2, "L");
+  endTerm(6, 52_900, SAM);
+  // 7: Rowan drops out during the vote and comes back.
+  elect(7, 39_000, ASH, PRIYA, [THEO, SAM], alive, () => {
+    add(2_000, (r, at) => ev.disconnect(r, at, ROWAN), 7);
+    add(14_000, (r, at) => ev.reconnect(r, at, ROWAN), 7);
+  });
+  legislate(7, ASH, PRIYA, "LFF", 1, "L");
+  endTerm(7, 41_400, ASH);
+  // 8: Blair executes Ash.
+  elect(8, 94_000, BLAIR, THEO, [MAYA, ROWAN, PRIYA]);
+  legislate(8, BLAIR, THEO, "FFF", 0, "F");
+  add(24_800, (r, at) => ev.execute(r, at, BLAIR, ASH, "FASCIST"), 8);
+  alive = alive.filter((seat) => seat !== ASH);
+  endTerm(8, 63_600, BLAIR);
+  // 9 to 11: three failed elections, and chaos.
+  elect(9, 33_000, MAYA, ROWAN, [THEO, SAM, PRIYA, BLAIR]);
+  failed(9, 1);
+  endTerm(9, 23_300, MAYA);
+  elect(10, 58_000, ROWAN, PRIYA, [THEO, SAM, MAYA]);
+  failed(10, 2);
+  endTerm(10, 31_900, ROWAN);
+  elect(11, 76_000, THEO, SAM, [MAYA, ROWAN, PRIYA, BLAIR]);
+  failed(11, 3);
+  board = [board[0], board[1] + 1];
+  const [chaosL, chaosF] = board;
+  add(0, (r, at) => ev.enact(r, at, "F", "chaos", undefined, chaosL, chaosF), 11);
+  add(0, (r, at) => ev.reshuffle(r, at, 8), 11);
+  endTerm(11, 48_100, THEO);
+  // 12: Theo asks to veto two Liberals, Priya refuses, and Theo enacts the fifth Liberal.
+  elect(12, 69_000, PRIYA, THEO, [ROWAN, BLAIR]);
+  add(200, (r, at) => ev.draw(r, at, PRIYA, "LLF"), 12);
+  add(4_700, (r, at) => ev.discard(r, at, PRIYA, 2, "F"), 12);
+  add(6_300, (r, at) => ev.veto(r, at, THEO), 12);
+  add(5_200, (r, at) => ev.vetoAnswer(r, at, PRIYA, false), 12);
+  board = [board[0] + 1, board[1]];
+  const [finalL, finalF] = board;
+  add(3_800, (r, at) => ev.enact(r, at, "L", "chancellor", THEO, finalL, finalF), 12);
+  add(1_000, (r, at) => ev.end(r, at, "LIBERAL_POLICIES"), 12);
+
+  const seats = makeSeats(["LIBERAL", "LIBERAL", "FASCIST", "LIBERAL", "HITLER", "FASCIST", "LIBERAL"], [1, 2, 3, 4, 5, 6, 7]).map(
+    (seat, i) => ({ ...seat, name: SHOWCASE_PLAYERS[i].name, alive: i !== ASH })
+  );
+  const base = makeRecord();
+  return makeRecord({
+    id: "5b2e8f14-7c3a-4d9e-b1f6-0a2c4e6d8f10",
+    endedAt: base.startedAt + t,
+    outcome: "LIBERAL_POLICIES",
+    winner: "LIBERAL",
+    liberalPolicies: board[0],
+    fascistPolicies: board[1],
+    rounds: 12,
+    seats,
+    events,
+  });
+}
+
