@@ -47,7 +47,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 14A. Game timeline | `phase-14a-game-timeline` | done |
 | 14B. Game records | `phase-14b-game-records` | done |
 | 15A. Stats shell | `phase-15a-stats-shell` | done |
-| 15B. Game history | `phase-15b-game-history` | in progress |
+| 15B. Game history | `phase-15b-game-history` | done |
 | 16. The game page | `phase-16-game-page` | done |
 | 17A. Stats engine | `phase-17a-stats-engine` | done |
 | 17B. OVERVIEW | `phase-17b-overview` | planned |
@@ -825,8 +825,8 @@ Issue #31: GAMES at `/stats/games`, every recorded game, newest first, with its 
 
 **Phase 15B acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects (`desktop` on macOS and `firefox` in the Linux image before the PR, all four in CI)
-- [ ] PR merged into `development`, after Phase 15A's
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects (`desktop` on macOS and `firefox` in the Linux image before the PR, all four in CI)
+- [x] PR merged into `development`, after Phase 15A's
 - [ ] The user opens GAMES and a game's link from a real game on the deployed build, on a desktop and on a phone
 
 ---
