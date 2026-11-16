@@ -50,7 +50,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 15B. Game history | `phase-15b-game-history` | done |
 | 16. The game page | `phase-16-game-page` | done |
 | 17A. Stats engine | `phase-17a-stats-engine` | done |
-| 17B. OVERVIEW | `phase-17b-overview` | planned |
+| 17B. OVERVIEW | `phase-17b-overview` | done |
 | 18. ROLES & CARDS | `phase-18-roles-cards` | done |
 | 19. VOTES & POWERS | `phase-19-votes-powers` | planned |
 | 20. RIVALS and ENDINGS | `phase-20-rivals-endings` | done |
@@ -888,16 +888,16 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-17b-overview.md`](superpowe
 
 Issue #31: OVERVIEW at `/stats`, filling Phase 17A's placeholder: the dashboard (days since the last game, the last game, win streak, hot hand, player of the month), the power ranking, the rating history, the headline numbers and the latest games, under the filter and the toggle. `winStreaks` and `playerOfTheMonth` are shared with RECORDS (Phase 21B). Needs Phase 17A; runs beside Phases 18, 19, 20 and 21A, touching none of their files.
 
-- [ ] `frontend/src/stats/overview.ts`: every OVERVIEW number, with `winStreaks` and `playerOfTheMonth` for RECORDS; 1,000 games well under a second
-- [ ] `frontend/src/stats/tabs/OverviewTab.tsx`: OVERVIEW, with the power ranking and the rating history
-- [ ] `frontend/e2e/stats-overview.spec.ts`: OVERVIEW fits every stats size; the numbers follow the filter and the toggle; the rating history's details on hover or tap
-- [ ] `CLAUDE.md` and `README.md` describe OVERVIEW; the pull request shows `/stats` before and after
+- [x] `frontend/src/stats/overview.ts`: every OVERVIEW number, with `winStreaks` and `playerOfTheMonth` for RECORDS; 1,000 games well under a second
+- [x] `frontend/src/stats/tabs/OverviewTab.tsx`: OVERVIEW, with the power ranking and the rating history
+- [x] `frontend/e2e/stats-overview.spec.ts`: OVERVIEW fits every stats size; the numbers follow the filter and the toggle; the rating history's details on hover or tap
+- [x] `CLAUDE.md` and `README.md` describe OVERVIEW; the pull request shows `/stats` before and after
 
 **Phase 17B acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] OVERVIEW shows the numbers this design gives for a known set of records, under the filter and the toggle
-- [ ] PR merged into `development`
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] OVERVIEW shows the numbers this design gives for a known set of records, under the filter and the toggle
+- [x] PR merged into `development`
 - [ ] The user opens OVERVIEW on the deployed build, on a desktop and on a phone, once games are recorded, and changes the filter and the toggle
 
 ---

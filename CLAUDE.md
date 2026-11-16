@@ -442,6 +442,39 @@ keeps credit to upstream and to the board game's creators.
   the filter, the tab row and the route's tab, and a filter change stays on the tab (`navigate`).
   `testGames.ts` holds test builders the browser tests may import too (`ROLES` per seat count,
   `seatsOf`, `game`, `match`, and `generateData`, seeded).
+  OVERVIEW (`/stats`, Phase 17B): `overview.ts`'s `computeOverview(stats, now, timeZone?)`, a
+  pure function of the context, `now` and a time zone (the viewer's by default), over the counted
+  games in one pass of each player's results: days since the last counted game ended
+  (`localDaysBetween`, never below 0), the last game, the win streak's leaders (current wins in a
+  row above 0, their last counted game started at most `RECENT_MS`, 7 days, before `now`), the hot
+  hand's (5 or more counted games, at least 3 wins in the last 5, and played within 7 days; the
+  most such wins), both with every tied player, by more counted games, then name, then number;
+  the player of the month; the power ranking (`PowerRow`s: settled players ranked on rounded
+  ratings, then the provisional ones unranked by rating); the rating history (a `RatingLine` per
+  player from their first counted game, a point per counted game, `change` null and the rating
+  carried flat for a game they missed, `provisional` while they have under 5 games after it); the
+  headline rows (games, wins, win rate from 5 games, current and longest win streak, each player's
+  games their count) and the side's wins; and the ten latest counted games, newest first. It also
+  exports what RECORDS (Phase 21B) shares: `winStreaks(counted)` (each player's `PlayerStreaks`:
+  games, `current` wins in a row, 0 or more, and the longest win and losing `StreakRun`s, a tie to
+  the later run) and `playerOfTheMonth(counted, now, timeZone?)` (most wins among counted games
+  that started in `now`'s local month, later ones too, null with no person's win, ties by more
+  counted games, then the name on the latest counted seat, then number), and
+  `ratingPointDetail`, a point's tooltip lines (the name, the game's start and result, as every
+  date on the stats pages, then `+19 → 1612` or `Did not play · 1612`). `tabs/OverviewTab.tsx` (`now` from when it opened and the
+  viewer's zone unless its tests pass them) draws it in `OverviewTab.css`: the dashboard "At a
+  glance" (Since last game, Last game, a link with its result and start, Win streak, Hot hand and
+  Player of the month, whose names are `link={false}`; two columns in the phone-only query, a lone
+  last card across both), then Ratings (`tabs/PowerRanking`, a `ScrollRegion` "Power ranking table"
+  of rank, name, Elo, the last change and games in `RankedTable`'s look, its classes and
+  `RankedTable.css`, with `PowerRanking.css` adding the header row and provisional rows,
+  `.is-provisional`, in italics; and
+  the rating history's `LineChart`, a colour per player by number so a filter never changes it),
+  Headline (five `RankedTable`s and Liberal / Fascist wins) and Games (the latest games, each a
+  link of its start and result, no names in it). Each card says `NO_GAMES` with no counted games,
+  and the win streak, hot hand and month say why when they have no one. Power-ranking rows and
+  game links are 44px in the stacked query. `testOverview.ts` is its test fixture
+  (`overviewFixture`, `OVERVIEW_NOW`, `overviewDay`).
   ROLES & CARDS (Phase 18, `/stats/roles`) is `tabs/RolesTab.tsx`, from `computeRoles`
   (`roles.ts`, from each record's seats, winner and first round: `LIBERAL_SEATS` per size and
   `TABLE_SIZES`; each player's `split` by role, `expectedLiberalGames`, the sum over their games of
@@ -922,7 +955,10 @@ keeps credit to upstream and to the board game's creators.
   the tabs keep the filter and a link to a tab shows it in the row, that phones fold the filter into
   one line, that every flex or grid child with text can shrink, that the grey controls share one
   look, and, on `charts.css` alone, that a tooltip keeps its width at either edge and a hovered bar
-  is outlined. `stats-games.spec.ts` follows the login page's Stats link (same tab) and the lobby's
+  is outlined. `stats-overview.spec.ts` checks OVERVIEW at every size against `bigStatsData()`
+  two days after its last game (twelve-character leaders, CPU games off and on), that its numbers
+  follow the chips, the CPU switch, back and a fresh load, and that a hover or a tap on the rating
+  history shows a game's change, at the right edge of a 320px phone too. `stats-games.spec.ts` follows the login page's Stats link (same tab) and the lobby's
   (a new tab, the lobby still open) (`desktop`), finds See this game on the victory screen, a 44px
   target on phones, checks GAMES at a hundred a page and with every filter set at every size, and
   twelve-character names inside their columns and chips at 320px; on `desktop` it goes through a

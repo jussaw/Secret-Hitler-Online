@@ -1,0 +1,178 @@
+/* OVERVIEW (OverviewTab; PowerRanking has its own file): the dashboard, then the Ratings, Headline and Games
+   sections, each a grid of StatCards. App.css styles every h2, p and a, so these set their own
+   sizes and margins. Every grid and flex child has min-width: 0, so a twelve-character name of
+   wide letters wraps inside its column (PlayerName wraps anywhere) instead of widening the page. */
+
+.overview-tab {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+}
+
+.overview-tab > * {
+    min-width: 0;
+}
+
+.overview-grid {
+    display: grid;
+    gap: 16px;
+    align-items: start;
+}
+
+.overview-grid > * {
+    min-width: 0;
+}
+
+.overview-dashboard {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 11em), 1fr));
+    align-items: stretch;
+}
+
+.overview-ratings {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 22em), 1fr));
+}
+
+.overview-headline {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 17em), 1fr));
+}
+
+.stats-screen h2.overview-heading {
+    font-family: var(--headerFont);
+    font-weight: normal;
+    font-style: normal;
+    font-size: 26px;
+    line-height: 1.2;
+    color: var(--headerTextColor);
+    margin: 4px 0 -4px;
+    overflow-wrap: anywhere;
+}
+
+/* A dashboard value: "2 days", "Ann, Bo · 4 wins", "58 / 44". */
+.stats-screen p.overview-value {
+    font-family: var(--textFont);
+    font-weight: 700;
+    font-size: 22px;
+    line-height: 1.25;
+    color: var(--headerTextColor);
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+/* The count after the names stays whole: " · 4 wins" never leaves "wins" on a line of its own. */
+.stats-screen .overview-note {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--textColorOnDark);
+    white-space: nowrap;
+}
+
+/* A game as a link: the last game (its result over its time) and each of the latest games (its
+   time, then its result). White text, the side's word in its colour. */
+.stats-screen a.overview-game-link {
+    box-sizing: border-box;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 12px;
+    font-family: var(--textFont);
+    font-weight: 700;
+    font-size: 15px;
+    line-height: 1.3;
+    color: var(--headerTextColor);
+    text-decoration: none;
+    border-radius: 4px;
+}
+
+.overview-game-link > * {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.stats-screen a.overview-game-link:hover .overview-game-result,
+.stats-screen a.overview-game-link:focus-visible .overview-game-result {
+    text-decoration: underline;
+}
+
+.stats-screen a.overview-game-link:focus-visible {
+    outline: 2px solid var(--headerTextColor);
+    outline-offset: 2px;
+}
+
+.overview-game-when {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--buttonHoverFill);
+}
+
+.stats-screen a.overview-last-game {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    font-size: 17px;
+}
+
+.overview-games {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.overview-games > li {
+    min-width: 0;
+    padding: 5px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.overview-games > li:first-child {
+    border-top: none;
+}
+
+.overview-games .overview-game-when {
+    flex: 0 0 auto;
+    min-width: 0;
+}
+
+/* Touch sizes follow the game's stacked query: each game link is a 44px target (the power
+   ranking's rows are RankedTable's, 44px there too). */
+@media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
+    .stats-screen a.overview-game-link {
+        min-height: 44px;
+        align-content: center;
+    }
+
+    .stats-screen a.overview-last-game {
+        justify-content: center;
+    }
+
+    .overview-games > li {
+        padding: 0;
+    }
+}
+
+/* Phones (the game's phone-only query): two dashboard columns, less room between the cards, and
+   a lone last card across both columns. */
+@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
+    .overview-tab,
+    .overview-grid {
+        gap: 8px;
+    }
+
+    .overview-dashboard {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .overview-dashboard > :last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+    }
+
+    .stats-screen h2.overview-heading {
+        font-size: 22px;
+        margin: 4px 0 0;
+    }
+
+    .stats-screen p.overview-value {
+        font-size: 18px;
+    }
+}
