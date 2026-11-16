@@ -1,33 +1,5 @@
-/* ENDINGS: the cards in RIVALS' grid (columns at least 22em wide: two on desktops and wide
-   windows, one on phones), How games are won, Most in one game and the two finish lists across the
-   whole row, so the other four pair up. Every child has min-width: 0, so a long name wraps inside
-   its card, and the tables scroll inside theirs (PlayerMatrix.css) where they do not fit. App.css
+/* ENDINGS' own lines, lists and links; the grid and the headline are cardGrid.css's. App.css
    styles every p and a, so these set their own sizes and margins. */
-.endings-tab {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 22em), 1fr));
-    gap: 16px;
-    min-width: 0;
-}
-
-.endings-tab > * {
-    min-width: 0;
-}
-
-.endings-tab > .endings-wide {
-    grid-column: 1 / -1;
-}
-
-.stats-screen .endings-headline {
-    font-family: var(--textFont);
-    font-weight: 700;
-    font-size: 1.4em;
-    line-height: 1.25;
-    color: var(--headerTextColor);
-    margin: 0;
-    font-variant-numeric: tabular-nums;
-}
-
 .stats-screen .endings-result,
 .stats-screen .endings-seats,
 .stats-screen .endings-count {
@@ -86,11 +58,4 @@
 .player-matrix .endings-all > * {
     font-weight: 700;
     color: var(--headerTextColor);
-}
-
-/* Phones (the game's phone-only query): less room between the cards. */
-@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
-    .endings-tab {
-        gap: 8px;
-    }
 }

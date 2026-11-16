@@ -87,7 +87,7 @@ for (const tab of TABS) {
 }
 
 test("RIVALS' matrices scroll inside their cards", async ({ page }) => {
-  test.skip(!isPhone(), "the phones' check (Review Focus 5)");
+  test.skip(!isPhone(), "a phone's check: ten long names in a narrow card");
   test.slow();
   await open(page, TABS[0].path, TABS[0].ready);
   for (const size of statsSizesFor(test.info().project.name, page.viewportSize()!)) {

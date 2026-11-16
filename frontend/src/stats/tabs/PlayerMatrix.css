@@ -1,6 +1,7 @@
 /* RIVALS' and ENDINGS' tables (`table.player-matrix`), inside a ScrollRegion (its own stylesheet):
-   cells never wrap, so the region scrolls sideways instead of the page, and each row's first cell
-   stays at the left while the rest scroll. The table sets its own font, size and colours. */
+   a cell's text never wraps (only a long name in a head does, inside its box), so the region
+   scrolls sideways instead of the page, and each row's first cell stays at the left while the rest
+   scroll. The table sets its own font, size and colours. */
 .player-matrix {
     border-collapse: separate;
     border-spacing: 0;
@@ -67,7 +68,8 @@
     vertical-align: middle;
 }
 
-/* A row's name on desktop keeps to one line: there is room. */
+/* A row's name keeps to one line outside the phone-only query (desktops, tall windows): there is
+   room. */
 .player-matrix tbody th .player-matrix-name {
     max-width: none;
     white-space: nowrap;

@@ -17,6 +17,7 @@ import { StatCard } from "../StatCard";
 import type { StatsContext } from "../useStats";
 import { NO_VALUE, rateText } from "./cellText";
 import { PlayerMatrix, type MatrixCell } from "./PlayerMatrix";
+import "./cardGrid.css";
 import "./RivalsTab.css";
 
 const NO_PAIRS = "No two players have shared a game yet.";
