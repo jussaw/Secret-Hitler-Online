@@ -799,7 +799,7 @@ Issue #31: the stats pages' shell at `/stats`, loaded as a chunk of its own so t
 - [x] `frontend/src/stats/routes.ts`, `StatsLink.tsx` and `api.ts`: the paths, History API navigation with a working back button, and the games fetched once per visit
 - [x] `frontend/src/main.tsx`, `statsPath.ts` and `stats/StatsApp.tsx`: the stats as their own lazy chunk, the header, and the placeholder pages; `npm run first-download`
 - [x] `frontend/e2e/stats.ts` and `stats-shell.spec.ts`: the shared helpers and page check, every page fits every tested size, the game's first download holds no stats code, and `firefox` runs `stats-*.spec`
-- [ ] `CLAUDE.md` and `DEVELOPMENT.md` describe the shell and the stats tests; the pull request shows the new pages
+- [x] `CLAUDE.md` and `DEVELOPMENT.md` describe the shell and the stats tests; the pull request shows the new pages
 - [x] Every finding of the whole-branch review fixed, Minor ones included
 
 **Phase 15A acceptance**
