@@ -1,0 +1,78 @@
+/* One round of a recorded game (RoundBlock): a card edged at its left in the colour of the policy
+   it enacted, then a line per part of the round. Every line wraps (a name wraps inside it), and
+   every flex child has min-width: 0. */
+.game-rounds {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+
+.game-rounds > li {
+    min-width: 0;
+}
+
+/* Two classes, so its spacing wins over the card look's, which StatsApp.css sets after it. The
+   edge is grey for a round that enacted nothing (round-none). */
+.stats-card.round-block {
+    gap: 4px;
+    border-left: 6px solid var(--buttonDisabledFill);
+}
+
+.round-block.round-liberal {
+    border-left-color: var(--textColorLiberal);
+}
+
+.round-block.round-fascist {
+    border-left-color: var(--textColorFascist);
+}
+
+/* App.css sizes every h2 by the window; a round's heading is a small title in the game's font. */
+.stats-screen h2.round-title {
+    font-family: var(--headerFont);
+    font-weight: normal;
+    font-style: normal;
+    font-size: 19px;
+    line-height: 1.2;
+    color: var(--headerTextColor);
+    margin: 0;
+}
+
+.round-block p {
+    overflow-wrap: anywhere;
+}
+
+/* A policy: a small card in Liberal blue or Fascist red, beside the next. */
+.policy-tiles {
+    white-space: nowrap;
+}
+
+.policy-tile {
+    display: inline-block;
+    box-sizing: border-box;
+    width: 0.8em;
+    height: 1.1em;
+    margin: 0 1px;
+    border-radius: 2px;
+    vertical-align: -0.2em;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+
+.policy-tile.policy-liberal {
+    background-color: var(--textColorLiberal);
+}
+
+.policy-tile.policy-fascist {
+    background-color: var(--textColorFascist);
+}
+
+/* A decision's time: quieter than the words it follows. */
+.decision-time {
+    font-size: 0.85em;
+    font-weight: 500;
+    color: var(--playerDisabledTextColor);
+    white-space: nowrap;
+}
