@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { GameRecord, Player } from "../record";
 import { NO_GAMES } from "../StatCard";
 import { buildStats } from "../useStats";
-import { ALL, FIVE, gameOf, investigate, range, term } from "../votesTestRounds";
+import { ALL, execute, FIVE, gameOf, investigate, range, term } from "../votesTestRounds";
 import { VotesTab } from "./VotesTab";
 
 const PLAYERS: Player[] = ["Ann", "Bo", "Cy", "Di", "Ed"].map((name, i) => ({ number: i + 1, name }));
@@ -51,6 +51,13 @@ describe("VotesTab", () => {
     expect(at).toEqual([...at].sort((a, b) => a - b));
   });
 
+  it("ranks a tie in a count card by more games first", () => {
+    const failed = (players: number[]) => gameOf(FIVE, [term(1, 0, 3, [3], [0, 1, 2, 4])], { players });
+    show([failed([1, 2, 3, 4, 5]), failed([2, 3, 4, 5, 6])], [...PLAYERS, { number: 6, name: "Fy" }]); // Ann 1 of 1 game, Bo 1 of 2
+    const text = card("FAILED ELECTIONS").textContent!;
+    expect(text.indexOf("Bo")).toBeLessThan(text.indexOf("Ann"));
+  });
+
   it("shows a split cell's value with its count, and — below the minimum", () => {
     const five = gameOf(FIVE, range(0, 5).map((i) => term(i + 1, 1, 2, i < 3 ? ALL : [1, 2, 3, 4], i < 3 ? [] : [0])));
     const once = gameOf(["HITLER", "LIBERAL", "LIBERAL", "FASCIST", "LIBERAL"], [term(1, 1, 2, ALL, [])]);
@@ -66,6 +73,28 @@ describe("VotesTab", () => {
       term(3, 0, 2, ALL, [], investigate(0, 1, "LIBERAL")), term(4, 0, 2, ALL, [], investigate(0, 3, "FASCIST"))],
       { players: [1, 2, 3, 4, null] })]);
     expect(within(card("INVESTIGATIONS")).getByText("4 (3 F, 1 L) · Di 2, Bo 1, CPU 1")).toBeInTheDocument();
+  });
+
+  it("says none of these players was investigated or executed when only CPU seats were", () => {
+    show([gameOf(FIVE, [term(1, 0, 1, ALL, [], investigate(0, 4, "FASCIST")), term(2, 0, 1, ALL, [], execute(0, 4, "HITLER"))],
+      { players: [1, 2, 3, 4, null], outcome: "HITLER_EXECUTED" })]);
+    expect(within(card("INVESTIGATIONS")).getByText("1 (1 F, 0 L) · CPU 1")).toBeInTheDocument();
+    expect(card("TIMES INVESTIGATED").textContent).toContain("None of these players has been investigated yet.");
+    expect(within(card("EXECUTIONS")).getByText("Ann")).toBeInTheDocument();
+    for (const title of ["TIMES EXECUTED", "FIRST TO GO"]) {
+      expect(card(title).textContent).toContain("None of these players has been executed yet.");
+    }
+  });
+
+  it("says none of these players investigated or executed anyone when only CPU seats did", () => {
+    show([gameOf(FIVE, [term(1, 4, 1, ALL, [], investigate(4, 0, "LIBERAL")), term(2, 4, 1, ALL, [], execute(4, 0, "LIBERAL"))],
+      { players: [1, 2, 3, 4, null], outcome: "FASCIST_POLICIES" })]);
+    expect(card("INVESTIGATIONS").textContent).toContain("None of these players has investigated anyone yet.");
+    expect(within(card("TIMES INVESTIGATED")).getByText("Ann")).toBeInTheDocument();
+    for (const title of ["EXECUTIONS", "EXECUTION TARGETS"]) {
+      expect(card(title).textContent).toContain("None of these players has executed anyone yet.");
+    }
+    expect(within(card("TIMES EXECUTED")).getByText("Ann")).toBeInTheDocument();
   });
 
   it("shows a renamed player once, under their current name", () => {
