@@ -104,7 +104,9 @@ Where this plan and the spec differ, the spec wins.
   Linux image as `DEVELOPMENT.md` ("Browser tests on Linux") describes. Nothing changes on screen,
   so there are no "before" shots (their port would be 4714).
 - **Phase 13 runs beside this phase:** never touch `devops/`, the `Dockerfile`, `ci.yml` or
-  `SecretHitlerServer.main`. In `SecretHitlerServer` this phase only adds `markLobbiesChanged`.
+  `SecretHitlerServer.main`. In `SecretHitlerServer` this phase only adds `markLobbiesChanged`
+  (and makes `hasLobbyChanged` package-private and `volatile`, Task 3); the sweep's unfinished
+  record is made in `Lobby.closeIfTimedOut`, which the sweep calls.
 - **Branch and commits:** worktree and branch `phase-14a-game-timeline` from `origin/development`.
   Conventional Commits with a scope (`backend`, `plan`, `docs`, `claude`), at most 72 characters.
   Task N (1 to 7) ticks the Nth box of Phase 14A in `docs/PLAN.md` in its last commit; Task 1's

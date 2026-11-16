@@ -749,7 +749,7 @@ Issue #31, the first half of the game recorder: every game a lobby runs keeps a 
 - [x] `Lobby`: pauses, resumes, terms the countdown ends, dropped connections and returns
 - [x] Backups carry the timeline, taken under the lobby's lock; a restore adds `restored`; a game from before the recorder is `complete: false`
 - [x] `CLAUDE.md` describes the timeline
-- [ ] Every finding of the whole-branch review fixed, Minor ones included
+- [x] Every finding of the whole-branch review fixed, Minor ones included
 
 **Phase 14A acceptance**
 
