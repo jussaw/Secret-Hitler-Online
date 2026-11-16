@@ -965,12 +965,12 @@ Issue #31: the RIVALS tab (teammates, opponents, rivalries, each player's people
 - [x] `frontend/src/stats/tabs/EndingsTab.tsx`: the ENDINGS tab
 - [x] `frontend/e2e/stats-rivals.spec.ts`: both tabs fit every stats size against the large stubbed data, the matrices scroll inside their cards, 44px targets on phones
 - [x] `CLAUDE.md` (and `README.md`, `DEVELOPMENT.md` where they list the tabs) describe RIVALS and ENDINGS
-- [ ] Every review finding fixed on the branch
+- [x] Every review finding fixed on the branch
 - [ ] The pull request shows both tabs before and after, on desktop and on a phone
 
 **Phase 20 acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
 - [ ] PR merged into `development`
 - [ ] The user opens RIVALS and ENDINGS on the deployed build, on a desktop and on a phone, and finds the games they played in them
 
