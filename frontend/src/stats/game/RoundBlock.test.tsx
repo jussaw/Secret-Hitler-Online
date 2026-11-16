@@ -78,6 +78,18 @@ describe("RoundBlock", () => {
     expect(lines(makeRound({ chancellor: null }))).toEqual(["P1 had yet to nominate"]);
   });
 
+  it("a result whose nomination was not recorded", () => {
+    // A record that starts at a restore during the vote: its nominee is not known.
+    const votes = [P1, P2, P3].map((seat) => ({ seat, ja: seat === P1, ms: null }));
+    expect(lines(makeRound({ chancellor: null, votes, election: { passed: false, ja: 1, nein: 2 }, trackerAfter: 1 }))).toEqual([
+      "P1's nomination · fails 1\u20132",
+      "Ja: P1 · Nein: P2, P3",
+      "election tracker 1",
+    ]);
+    // A late record's first round known only by its END TERM says nothing of a nomination.
+    expect(lines(makeRound({ chancellor: null, endTerm: { by: "countdown" } }))).toEqual(["END TERM by the countdown"]);
+  });
+
   it("the votes in seat order, and the result", () => {
     const votes = [P3, P1, P4, P2].map((seat) => ({ seat, ja: seat !== P4, ms: null }));
     expect(lines(makeRound({ votes, election: { passed: true, ja: 3, nein: 1 } }))).toEqual([

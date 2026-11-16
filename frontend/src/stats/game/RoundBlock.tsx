@@ -76,7 +76,8 @@ export function RoundBlock({ round, seats }: { round: Round; seats: Seat[] }): J
   const edge = round.enacted === null ? "round-none" : round.enacted.policy === "L" ? "round-liberal" : "round-fascist";
 
   // The nomination and its result. A round that holds nothing past its nomination, and names no
-  // chancellor, is one whose lobby closed first.
+  // chancellor, is one whose lobby closed first; one with a result but no nominee started at a
+  // restore during the vote, so its nomination goes unnamed.
   const playedOn =
     round.votes.length > 0 ||
     round.election !== null ||
@@ -94,6 +95,8 @@ export function RoundBlock({ round, seats }: { round: Round; seats: Seat[] }): J
         {P} nominates {C}
         <Time ms={ms.nominate} />
       </>
+    ) : election !== null ? (
+      <>{P}&apos;s nomination</>
     ) : playedOn ? null : (
       <>{P} had yet to nominate</>
     ),
