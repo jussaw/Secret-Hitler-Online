@@ -769,7 +769,7 @@ Issue #31, the second half of the game recorder: the server stores every record 
 - [x] `backend/src/main/java/server/stats/GameStore.java`: `players`, `games` and `game_seats`, player numbers, one write per game ID
 - [x] `GameRecorder`: the sink, writing on its own thread; a record that fails waits for the next try
 - [x] `SecretHitlerServer`: start-up (recording, the backup, the drop of a restored game that has a record, the sweep), the minute's retry and the shutdown's flush, each a method the tests call
-- [ ] `GET /api/stats/games`: cached until a record is saved or an account renamed, `ETag` and 304, gzip, 503, no account IDs; the dev server proxies `/api`
+- [x] `GET /api/stats/games`: cached until a record is saved or an account renamed, `ETag` and 304, gzip, 503, no account IDs; the dev server proxies `/api`
 - [ ] `frontend/src/stats/fixtures/recorded-games.json` from `./gradlew recordedGamesFixture`, checked against the spec's format
 - [ ] `frontend/e2e/recorder.spec.ts`: a real game played to its end is served in the spec's key order
 - [ ] `CLAUDE.md`, `README.md` and `DEVELOPMENT.md` describe the store, the writer, the route and the fixture
