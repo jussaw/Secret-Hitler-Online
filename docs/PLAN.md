@@ -53,7 +53,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 17B. OVERVIEW | `phase-17b-overview` | planned |
 | 18. ROLES & CARDS | `phase-18-roles-cards` | planned |
 | 19. VOTES & POWERS | `phase-19-votes-powers` | planned |
-| 20. RIVALS and ENDINGS | `phase-20-rivals-endings` | planned |
+| 20. RIVALS and ENDINGS | `phase-20-rivals-endings` | done |
 | 21A. ACTIVITY | `phase-21a-activity` | done |
 | 21B. RECORDS | `phase-21b-records` | planned |
 | 22A. Trophies and name links | `phase-22a-trophies-links` | planned |
@@ -956,22 +956,22 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-20-rivals-endings.md`](supe
 
 Issue #31: the RIVALS tab (teammates, opponents, rivalries, each player's people, and who nominates whom) and the ENDINGS tab (how games are won by player count, the Liberal win rate beside the smoothed rate the Elo handicap uses, game length, final boards, and the most chaos policies, failed elections and vetoes in one game) fill Phase 17A's placeholders. Built after Phases 16 and 17A, beside 17B, 18, 19 and 21A, touching no shared source file.
 
-- [ ] `frontend/src/stats/rivals.ts`: pairs on the same and opposite sides, the best duo and best Fascist duo, the closest and most lopsided rivalries
-- [ ] `rivals.ts`: each player's most played with, best teammate, nemesis, favourite opponent and record against each opponent, and who nominated whom
-- [ ] `frontend/src/stats/endings.ts`: games by player count and outcome, the Liberal win rate with its smoothed rate, game length, the fastest win and the longest game
-- [ ] `endings.ts`: the closest and most lopsided final boards, and the most chaos policies, failed elections and vetoes in one game
-- [ ] `frontend/src/stats/tabs/PlayerMatrix.tsx`: player-by-player tables that scroll inside their card, the names held in view
-- [ ] `frontend/src/stats/tabs/RivalsTab.tsx`: the RIVALS tab
-- [ ] `frontend/src/stats/tabs/EndingsTab.tsx`: the ENDINGS tab
-- [ ] `frontend/e2e/stats-rivals.spec.ts`: both tabs fit every stats size against the large stubbed data, the matrices scroll inside their cards, 44px targets on phones
-- [ ] `CLAUDE.md` (and `README.md`, `DEVELOPMENT.md` where they list the tabs) describe RIVALS and ENDINGS
-- [ ] Every review finding fixed on the branch
-- [ ] The pull request shows both tabs before and after, on desktop and on a phone
+- [x] `frontend/src/stats/rivals.ts`: pairs on the same and opposite sides, the best duo and best Fascist duo, the closest and most lopsided rivalries
+- [x] `rivals.ts`: each player's most played with, best teammate, nemesis, favourite opponent and record against each opponent, and who nominated whom
+- [x] `frontend/src/stats/endings.ts`: games by player count and outcome, the Liberal win rate with its smoothed rate, game length, the fastest win and the longest game
+- [x] `endings.ts`: the closest and most lopsided final boards, and the most chaos policies, failed elections and vetoes in one game
+- [x] `frontend/src/stats/tabs/PlayerMatrix.tsx`: player-by-player tables that scroll inside their card, the names held in view
+- [x] `frontend/src/stats/tabs/RivalsTab.tsx`: the RIVALS tab
+- [x] `frontend/src/stats/tabs/EndingsTab.tsx`: the ENDINGS tab
+- [x] `frontend/e2e/stats-rivals.spec.ts`: both tabs fit every stats size against the large stubbed data, the matrices scroll inside their cards, 44px targets on phones
+- [x] `CLAUDE.md` (and `README.md`, `DEVELOPMENT.md` where they list the tabs) describe RIVALS and ENDINGS
+- [x] Every review finding fixed on the branch
+- [x] The pull request shows both tabs before and after, on desktop and on a phone
 
 **Phase 20 acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] PR merged into `development`
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] PR merged into `development`
 - [ ] The user opens RIVALS and ENDINGS on the deployed build, on a desktop and on a phone, and finds the games they played in them
 
 ---

@@ -1,0 +1,207 @@
+import { compareByEnd, MIN_GAMES, rate, type Rate } from "./counting";
+import { ELO_PRIOR } from "./elo";
+import { firstBy } from "./pick";
+import type { GameRecord, Outcome } from "./record";
+import { rounds, type Round } from "./rounds";
+
+/**
+ * ENDINGS (the spec's "ENDINGS"): how counted games are won by the number of players, the Liberal
+ * win rate beside the smoothed rate the Elo handicap uses, how long games last, the closest and
+ * most lopsided final boards, and the most chaos policies, failed elections and vetoes in one game
+ * (counted from `rounds`, never from the raw events). Length is
+ * `endedAt − startedAt` over complete games only: a record restored from a backup with no timeline
+ * (`complete: false`) starts at the restore, so its length is wrong, though it counts everywhere
+ * else. Pure: it reads only its argument, and gives the same result for the games in any order.
+ *
+ * This module imports nothing that reads the browser, so the browser tests can use it.
+ */
+
+/** The four ways a game is won, the Liberals' first, in the order the charts stack them. */
+export const FINISHED_OUTCOMES = ["LIBERAL_POLICIES", "HITLER_EXECUTED", "FASCIST_POLICIES", "HITLER_ELECTED"] as const;
+export type FinishedOutcome = (typeof FINISHED_OUTCOMES)[number];
+
+/** Each way of winning in the chart's legend and tooltip. */
+export const OUTCOME_LABELS: Record<FinishedOutcome, string> = {
+  LIBERAL_POLICIES: "Liberal policies",
+  HITLER_EXECUTED: "Hitler executed",
+  FASCIST_POLICIES: "Fascist policies",
+  HITLER_ELECTED: "Hitler elected",
+};
+
+/** Each way of winning's colour, from the game's (`variables.css`): two blues, two reds. */
+export const OUTCOME_COLORS: Record<FinishedOutcome, string> = {
+  LIBERAL_POLICIES: "#5a9ba6",
+  HITLER_EXECUTED: "#386f8b",
+  FASCIST_POLICIES: "#e8604a",
+  HITLER_ELECTED: "#b4431a",
+};
+
+/** How many final boards the tab lists, the latest first, under the count of all. */
+export const FINISHES_SHOWN = 10;
+
+/** A game and how many of something it had. */
+export interface GameCount {
+  game: GameRecord;
+  count: number;
+}
+
+/** Games recorded from their start, and their average length and rounds (null with none). */
+export interface LengthStats {
+  games: number;
+  averageMs: number | null;
+  averageRounds: number | null;
+}
+
+/** The counted games with one number of seats. */
+export interface SizeEndings {
+  seats: number;
+  games: number;
+  outcomes: Record<FinishedOutcome, number>;
+  liberalWins: number;
+  /** The Liberal win rate, from 5 games. */
+  liberalRate: Rate;
+  /** The Liberal win rate the next game of this size's Elo handicap uses, at any count. */
+  smoothedLiberalRate: number;
+  length: LengthStats;
+}
+
+export interface EndingStats {
+  /** Every size with a counted game, ascending. */
+  bySize: SizeEndings[];
+  /** Every size's games together. */
+  length: LengthStats;
+  /** The shortest game recorded from its start (ties: fewer rounds, then the earlier game). */
+  fastestWin: GameRecord | null;
+  /** The longest game recorded from its start (ties: more rounds, then the earlier game). */
+  longestGame: GameRecord | null;
+  /** Every game won with the losing side one policy from winning, newest first. */
+  closestFinishes: GameRecord[];
+  /** Every game won with the losing side's track still at 0, newest first. */
+  lopsidedFinishes: GameRecord[];
+  /**
+   * The most chaos policies (whether a third failed election or an accepted veto caused them),
+   * failed elections and vetoed agendas in one game: the highest count above 0, ties to the
+   * earlier game; null when no game had one.
+   */
+  mostChaos: GameCount | null;
+  mostFailedElections: GameCount | null;
+  mostVetoes: GameCount | null;
+}
+
+/**
+ * Whether the losing side was one policy from winning: the Fascists won with 4 Liberal policies
+ * down, or the Liberals with 5 Fascist ones.
+ */
+export function isClosestFinish(record: GameRecord): boolean {
+  return (
+    (record.winner === "FASCIST" && record.liberalPolicies === 4) || (record.winner === "LIBERAL" && record.fascistPolicies === 5)
+  );
+}
+
+/** Whether the losing side's track was still at 0 when the game was won. */
+export function isLopsidedFinish(record: GameRecord): boolean {
+  return (record.winner === "FASCIST" && record.liberalPolicies === 0) || (record.winner === "LIBERAL" && record.fascistPolicies === 0);
+}
+
+/**
+ * The Liberal win rate pulled towards a half by `ELO_PRIOR` imaginary games each way: the `p` the
+ * Elo handicap of the next game of that size uses, and a half with no games.
+ */
+export function smoothedLiberalRate(liberalWins: number, games: number): number {
+  return (liberalWins + ELO_PRIOR) / (games + 2 * ELO_PRIOR);
+}
+
+/**
+ * One bar per size, labelled by its number of seats alone (so six labels fit under a phone's
+ * chart), its parts the four outcomes in `FINISHED_OUTCOMES` order.
+ */
+export function outcomeBars(stats: EndingStats): { label: string; parts: { key: string; value: number }[] }[] {
+  return stats.bySize.map((size) => ({
+    label: String(size.seats),
+    parts: FINISHED_OUTCOMES.map((key) => ({ key, value: size.outcomes[key] })),
+  }));
+}
+
+function isFinished(outcome: Outcome): outcome is FinishedOutcome {
+  return (FINISHED_OUTCOMES as readonly string[]).includes(outcome);
+}
+
+/** A game's length, from its start to its end (wrong for a game not recorded from its start). */
+export function gameLength(record: GameRecord): number {
+  return record.endedAt - record.startedAt;
+}
+
+/** The average length and rounds of the complete games among `games`. */
+function lengthOf(games: GameRecord[]): LengthStats {
+  const complete = games.filter((record) => record.complete);
+  if (complete.length === 0) return { games: 0, averageMs: null, averageRounds: null };
+  const ms = complete.reduce((sum, record) => sum + gameLength(record), 0);
+  const rounds = complete.reduce((sum, record) => sum + record.rounds, 0);
+  return { games: complete.length, averageMs: ms / complete.length, averageRounds: rounds / complete.length };
+}
+
+/** How the counted games ended and how long they lasted. */
+export function computeEndings(counted: GameRecord[]): EndingStats {
+  const finished = counted.filter((record) => isFinished(record.outcome));
+  const sizes = new Map<number, GameRecord[]>();
+  for (const record of finished) {
+    const list = sizes.get(record.seats.length);
+    if (list) list.push(record);
+    else sizes.set(record.seats.length, [record]);
+  }
+
+  const bySize: SizeEndings[] = Array.from(sizes.keys())
+    .sort((a, b) => a - b)
+    .map((seats) => {
+      const games = sizes.get(seats)!;
+      const outcomes = { LIBERAL_POLICIES: 0, HITLER_EXECUTED: 0, FASCIST_POLICIES: 0, HITLER_ELECTED: 0 };
+      let liberalWins = 0;
+      for (const record of games) {
+        outcomes[record.outcome as FinishedOutcome]++;
+        if (record.winner === "LIBERAL") liberalWins++;
+      }
+      return {
+        seats,
+        games: games.length,
+        outcomes,
+        liberalWins,
+        liberalRate: rate(liberalWins, games.length, MIN_GAMES),
+        smoothedLiberalRate: smoothedLiberalRate(liberalWins, games.length),
+        length: lengthOf(games),
+      };
+    });
+
+  const complete = finished.filter((record) => record.complete);
+  const fastestWin = firstBy(
+    complete,
+    (x, y) => gameLength(x) - gameLength(y) || x.rounds - y.rounds || compareByEnd(x, y)
+  );
+  const longestGame = firstBy(
+    complete,
+    (x, y) => gameLength(y) - gameLength(x) || y.rounds - x.rounds || compareByEnd(x, y)
+  );
+
+  const newestFirst = (x: GameRecord, y: GameRecord) => compareByEnd(y, x);
+  const closestFinishes = finished.filter(isClosestFinish).sort(newestFirst);
+  const lopsidedFinishes = finished.filter(isLopsidedFinish).sort(newestFirst);
+
+  const timelines = finished.map((game) => ({ game, rounds: rounds(game) }));
+  /** The game with the most rounds that `counts`, above 0; ties to the earlier game. */
+  const most = (counts: (round: Round) => boolean): GameCount | null =>
+    firstBy(
+      timelines.map(({ game, rounds }) => ({ game, count: rounds.filter(counts).length })).filter((c) => c.count > 0),
+      (x, y) => y.count - x.count || compareByEnd(x.game, y.game)
+    );
+
+  return {
+    bySize,
+    length: lengthOf(finished),
+    fastestWin,
+    longestGame,
+    closestFinishes,
+    lopsidedFinishes,
+    mostChaos: most((round) => round.enacted?.by === "chaos"),
+    mostFailedElections: most((round) => round.election?.passed === false),
+    mostVetoes: most((round) => round.veto?.accepted === true),
+  };
+}

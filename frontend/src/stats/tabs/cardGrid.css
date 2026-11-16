@@ -1,0 +1,42 @@
+/* RIVALS' and ENDINGS' cards: a grid of columns at least 22em wide (two on desktops and wide
+   windows, one on phones), each tab's wide cards across the whole row, so the others pair up and
+   fill their rows. Every child has min-width: 0, so a long name wraps inside its card, and the
+   tables scroll inside theirs (PlayerMatrix.css) where they do not fit. Each tab's headline (a
+   duo, a rivalry, a game's length) is the cards' one large line. */
+.rivals-tab,
+.endings-tab {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 22em), 1fr));
+    gap: 16px;
+    min-width: 0;
+}
+
+.rivals-tab > *,
+.endings-tab > * {
+    min-width: 0;
+}
+
+.rivals-tab > .rivals-wide,
+.endings-tab > .endings-wide {
+    grid-column: 1 / -1;
+}
+
+/* App.css styles every p, so these set their own size and margins. */
+.stats-screen .rivals-headline,
+.stats-screen .endings-headline {
+    font-family: var(--textFont);
+    font-weight: 700;
+    font-size: 1.4em;
+    line-height: 1.25;
+    color: var(--headerTextColor);
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Phones (the game's phone-only query): less room between the cards. */
+@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
+    .rivals-tab,
+    .endings-tab {
+        gap: 8px;
+    }
+}

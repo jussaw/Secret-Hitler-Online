@@ -1,0 +1,22 @@
+/* RIVALS' own lines and tables; the grid and the headline are cardGrid.css's. App.css styles every
+   p, so these set their own size and margins. */
+.stats-screen .rivals-figure {
+    font-family: var(--textFont);
+    font-weight: 500;
+    font-size: 15px;
+    line-height: 1.4;
+    color: var(--textColorOnDark);
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+/* A rivalry's score stays on one line between its names. */
+.rivals-score {
+    white-space: nowrap;
+}
+
+/* The people's table reads left to right, names first in each cell. */
+.player-matrix.rivals-people th,
+.player-matrix.rivals-people td {
+    text-align: left;
+}

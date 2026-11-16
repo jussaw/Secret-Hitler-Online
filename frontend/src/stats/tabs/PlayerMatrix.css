@@ -1,0 +1,102 @@
+/* RIVALS' and ENDINGS' tables (`table.player-matrix`), inside a ScrollRegion (its own stylesheet):
+   a cell's text never wraps (only a long name in a head does, inside its box), so the region
+   scrolls sideways instead of the page, and each row's first cell stays at the left while the rest
+   scroll. The table sets its own font, size and colours. */
+.player-matrix {
+    border-collapse: separate;
+    border-spacing: 0;
+    font-family: var(--textFont);
+    font-weight: 500;
+    font-size: 15px;
+    line-height: 1.3;
+    color: var(--textColorOnDark);
+}
+
+.player-matrix th,
+.player-matrix td {
+    padding: 0.35em 0.6em;
+    white-space: nowrap;
+    text-align: center;
+    vertical-align: middle;
+    font-variant-numeric: tabular-nums;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.player-matrix thead th,
+.player-matrix thead td {
+    border-top: none;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--textColorOnDark);
+}
+
+/* Each row's first cell (the names, or the corner) stays put while the rest scroll under it. */
+.player-matrix tr > :first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background-color: var(--backgroundDark);
+    text-align: left;
+    padding-left: 0;
+}
+
+.player-matrix tbody th {
+    font-weight: 500;
+    color: var(--headerTextColor);
+}
+
+.player-matrix td.is-ahead {
+    color: var(--textColorWhite);
+    font-weight: 700;
+}
+
+.player-matrix td.is-behind {
+    color: var(--playerDisabledTextColor);
+}
+
+.player-matrix td.is-self {
+    background-color: rgba(0, 0, 0, 0.25);
+}
+
+/* A name in a head: a long one wraps inside 6em of its head (PlayerName wraps anywhere) instead
+   of widening its column; a short one keeps its own width. */
+.player-matrix-name {
+    display: inline-block;
+    width: max-content;
+    max-width: 6em;
+    white-space: normal;
+    vertical-align: middle;
+}
+
+/* A row's name keeps to one line outside the phone-only query (desktops, tall windows): there is
+   room. */
+.player-matrix tbody th .player-matrix-name {
+    max-width: none;
+    white-space: nowrap;
+}
+
+.player-matrix-sub {
+    display: block;
+    font-size: 0.75em;
+    font-weight: 500;
+    color: var(--textColorOnDark);
+}
+
+/* Each row at least 44px tall wherever the game's stacked query matches, so a name that becomes a
+   link (Phase 22) is a 44px target: a cell's height is its row's minimum. */
+@media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
+    .player-matrix th,
+    .player-matrix td {
+        height: 44px;
+        box-sizing: border-box;
+    }
+}
+
+/* Phones (the game's phone-only query): a row's long name wraps inside 7em, two lines in its 44px
+   row, so the names leave room for the columns. */
+@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
+    .player-matrix tbody th .player-matrix-name {
+        max-width: 7em;
+        white-space: normal;
+    }
+}

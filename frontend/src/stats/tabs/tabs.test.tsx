@@ -25,8 +25,8 @@ describe("TABS", () => {
 
   it("each says it comes later, under its own title", () => {
     const stats = buildStats(generateData(10, 1), DEFAULT_FILTER);
-    const titles = ["Overview", "Roles & cards", "Votes & powers", "Rivals", "Endings", "Records"];
-    TABS.filter(({ id }) => id !== "activity").forEach(({ Component }, i) => {
+    const titles = ["Overview", "Roles & cards", "Votes & powers", "Records"];
+    TABS.filter(({ id }) => id !== "activity" && id !== "rivals" && id !== "endings").forEach(({ Component }, i) => {
       const { unmount } = render(<Component stats={stats} />);
       const card = screen.getByRole("region", { name: titles[i] });
       expect(card).toHaveTextContent("Coming in a later update.");
