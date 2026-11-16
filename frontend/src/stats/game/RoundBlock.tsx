@@ -2,6 +2,7 @@ import { useId, type ReactNode } from "react";
 import PlayerName, { roleClass } from "../PlayerName";
 import type { Card, Seat } from "../record";
 import { formatDecisionTime, type Round } from "../rounds";
+import { joined } from "./text";
 import "./RoundBlock.css";
 
 /** A seat's name, plain (a round shows no roles); a seat the record does not have is `Seat <n>`. */
@@ -43,16 +44,14 @@ function Time({ ms }: { ms: number | null }): JSX.Element | null {
   );
 }
 
-/** Clauses of one line, joined by ` · `; null when there are none. */
-function joined(clauses: (ReactNode | null)[]): ReactNode | null {
-  const shown = clauses.filter((c) => c !== null && c !== false);
-  if (shown.length === 0) return null;
-  return shown.map((clause, i) => (
-    <span key={i}>
-      {i > 0 && " · "}
-      {clause}
-    </span>
-  ));
+/** A line's clauses, joined by ` · `; null when there are none. */
+function clauses(parts: ReactNode[]): ReactNode | null {
+  return joined(parts, " · ");
+}
+
+/** Seats' names, joined by `, `, in the order given. */
+function NameList({ list, seats }: { list: number[]; seats: Seat[] }): JSX.Element {
+  return <>{joined(list.map((seat) => <Name seat={seat} seats={seats} />), ", ")}</>;
 }
 
 /** A side's or role's word in its colour. */
@@ -89,7 +88,7 @@ export function RoundBlock({ round, seats }: { round: Round; seats: Seat[] }): J
     round.power !== null ||
     round.endTerm !== null;
   const election = round.election;
-  const nomination = joined([
+  const nomination = clauses([
     C !== null ? (
       <>
         {P} nominates {C}
@@ -110,17 +109,11 @@ export function RoundBlock({ round, seats }: { round: Round; seats: Seat[] }): J
     if (voters.length === 0) return null;
     return (
       <>
-        {label}{" "}
-        {voters.map((v, i) => (
-          <span key={i}>
-            {i > 0 && ", "}
-            <Name seat={v.seat} seats={seats} />
-          </span>
-        ))}
+        {label} <NameList list={voters.map((v) => v.seat)} seats={seats} />
       </>
     );
   };
-  const votes = joined([side("Ja:", true), side("Nein:", false)]);
+  const votes = clauses([side("Ja:", true), side("Nein:", false)]);
 
   // The tracker, or the top policy it enacted.
   const tracker =
@@ -181,7 +174,7 @@ export function RoundBlock({ round, seats }: { round: Round; seats: Seat[] }): J
             <Time ms={ms.chancellorAfterVeto} />
           </>
         ) : null;
-      chancellorLine = joined([
+      chancellorLine = clauses([
         <>
           {got ?? C}
           {got ? ", asked to veto" : " asked to veto"}
@@ -261,7 +254,7 @@ export function RoundBlock({ round, seats }: { round: Round; seats: Seat[] }): J
   // The term's end, pauses, dropped connections (each seat once, in order of its first drop) and
   // the reshuffle.
   const dropped = round.disconnects.filter((seat, i) => round.disconnects.indexOf(seat) === i);
-  const end = joined([
+  const end = clauses([
     round.endTerm &&
       (round.endTerm.by === "president" ? (
         <>
@@ -274,13 +267,7 @@ export function RoundBlock({ round, seats }: { round: Round; seats: Seat[] }): J
     round.pauses > 0 && (round.pauses === 1 ? "Countdown paused once" : `Countdown paused ${round.pauses} times`),
     dropped.length > 0 && (
       <>
-        {"Lost connection: "}
-        {dropped.map((seat, i) => (
-          <span key={i}>
-            {i > 0 && ", "}
-            <Name seat={seat} seats={seats} />
-          </span>
-        ))}
+        Lost connection: <NameList list={dropped} seats={seats} />
       </>
     ),
     round.reshuffled && "Discards shuffled into the draw pile",

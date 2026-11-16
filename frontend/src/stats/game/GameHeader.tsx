@@ -1,6 +1,7 @@
 import { formatDuration, formatLocalDateTime, outcomeLabel, plural, sideWord } from "../format";
 import PlayerName, { roleClass } from "../PlayerName";
 import type { GameRecord } from "../record";
+import { joined } from "./text";
 
 /**
  * A game page's header card: the result, its first word in the winners' colour; the start, the
@@ -32,19 +33,21 @@ export function GameHeader({ record }: { record: GameRecord }): JSX.Element {
       <p className="game-facts">{facts}</p>
       <p className="game-seats">
         {"Seats in order: "}
-        {record.seats.map((seat, i) => (
-          <span key={i}>
-            {i > 0 && " · "}
-            <PlayerName player={seat.player} name={seat.name} role={seat.role} />
-            {seat.role === "HITLER" && (
-              <>
-                {" ("}
-                <span className={roleClass("HITLER")}>Hitler</span>
-                {")"}
-              </>
-            )}
-          </span>
-        ))}
+        {joined(
+          record.seats.map((seat) => (
+            <>
+              <PlayerName player={seat.player} name={seat.name} role={seat.role} />
+              {seat.role === "HITLER" && (
+                <>
+                  {" ("}
+                  <span className={roleClass("HITLER")}>Hitler</span>
+                  {")"}
+                </>
+              )}
+            </>
+          )),
+          " · "
+        )}
       </p>
     </header>
   );
