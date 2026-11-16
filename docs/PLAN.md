@@ -870,7 +870,7 @@ Issue #31: the stats engine every tab reads (the counting rules, the player filt
 - [x] `frontend/src/stats/charts/StackedBarChart.tsx`: stacked bars with their legend, ready for Phases 20 and 21A
 - [x] `frontend/src/stats/FilterBar.tsx`: player chips and the CPU toggle, kept in the address; one line and a panel on phones; the toggle alone for the player page
 - [x] `TabRow.tsx`, `tabs/` and `TabsPage.tsx`: seven tabs, each a "Coming in a later update." placeholder until filled, each keeping the filter
-- [ ] `frontend/e2e/stats-engine.spec.ts`: the tab row and the filter fit every stats size; the filter and toggle change the address; the tabs keep the filter
+- [x] `frontend/e2e/stats-engine.spec.ts`: the tab row and the filter fit every stats size; the filter and toggle change the address; the tabs keep the filter
 - [ ] `CLAUDE.md` and `README.md` describe the stats engine; the pull request shows `/stats` before and after
 
 **Phase 17A acceptance**

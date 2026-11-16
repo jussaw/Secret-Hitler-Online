@@ -165,11 +165,14 @@
 
 /* Phones (the game's phone-only query): one line that opens the panel below it. */
 @media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
+    /* The line stands on the page like the tabs; the open panel gets the dark box. */
     .filter-bar {
-        padding: 6px 8px;
+        background-color: transparent;
+        padding: 0;
     }
 
     .filter-bar.is-switch-only {
+        background-color: var(--backgroundDark);
         padding: 6px 8px;
     }
 
@@ -187,6 +190,9 @@
         flex-direction: column;
         align-items: stretch;
         margin-top: 8px;
+        padding: 8px;
+        border-radius: 0.6em;
+        background-color: var(--backgroundDark);
     }
 
     .filter-panel.is-open {
