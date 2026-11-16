@@ -244,21 +244,29 @@ export function computeRecords(
   }
 
   // The player of the month: this month's at `now`, and each completed month's at its latest
-  // counted start, so both follow OVERVIEW's rule.
-  const holder = (month: string, at: number): MonthHolder | null => {
-    const leaders = playerOfTheMonth(counted, at, timeZone);
+  // start, both by OVERVIEW's rule. A completed month passes only its own games, so the months
+  // cost one pass in all: its holders and wins are the same, and only the order of tied players
+  // in `players` reads that month's games (the tab lists them by all counted games).
+  const holder = (games: GameRecord[], month: string, at: number): MonthHolder | null => {
+    const leaders = playerOfTheMonth(games, at, timeZone);
     return leaders === null ? null : { ...monthLabel(month), players: leaders.players, wins: leaders.value };
   };
   const thisMonth = monthKey(localDayKey(now, timeZone));
-  const latestStart = new Map<string, number>();
+  const pastMonths = new Map<string, GameRecord[]>();
   for (const record of counted) {
     const month = monthKey(days.get(record.id)!);
-    if (month < thisMonth) latestStart.set(month, Math.max(latestStart.get(month) ?? -Infinity, record.startedAt));
+    if (month >= thisMonth) continue;
+    const games = pastMonths.get(month);
+    if (games) games.push(record);
+    else pastMonths.set(month, [record]);
   }
-  const monthHistory = Array.from(latestStart.keys())
+  const monthHistory = Array.from(pastMonths.keys())
     .sort()
     .reverse()
-    .map((month) => holder(month, latestStart.get(month)!))
+    .map((month) => {
+      const games = pastMonths.get(month)!;
+      return holder(games, month, Math.max(...games.map((g) => g.startedAt)));
+    })
     .filter((month): month is MonthHolder => month !== null);
 
   // The longest sessions: most games first, then the later session.
@@ -272,7 +280,7 @@ export function computeRecords(
     byPlayer,
     longestWin,
     longestLoss,
-    playerOfTheMonth: holder(thisMonth, now) ?? { ...monthLabel(thisMonth), players: [], wins: 0 },
+    playerOfTheMonth: holder(counted, thisMonth, now) ?? { ...monthLabel(thisMonth), players: [], wins: 0 },
     monthHistory,
     topSessions,
     highestPeak: highestPeakOf(elo),

@@ -266,6 +266,23 @@ describe("computeRecords' rating records", () => {
     );
   });
 
+});
+
+describe("computeRecords' speed", () => {
+  it("theRecordsOf1000MonthsUnderASecond", () => {
+    // The spec's "well under a second", however many months the games span: a game a month.
+    const games = Array.from({ length: 1000 }, (_, i) => {
+      const start = new Date(Date.UTC(1950, i, 10, 20)).toISOString();
+      return played(`m${i}`, start, [(i % 5) + 1], [((i + 1) % 5) + 1, ((i + 2) % 5) + 1]);
+    });
+    const now = games[games.length - 1].endedAt + 60 * 60 * 1000;
+    const start = performance.now();
+    const r = computeRecords(games, NO_ELO, now, "UTC");
+    expect(performance.now() - start).toBeLessThan(1000);
+    expect(r.monthHistory).toHaveLength(999);
+    expect(r.monthHistory[0]).toMatchObject({ key: "2033-03", players: [4], wins: 1 }); // m998
+  });
+
   it("theStatsModulesOn1000GamesUnderASecond", () => {
     // The spec: computing the stats for 1,000 games takes well under a second.
     const base = fixtureGames();
