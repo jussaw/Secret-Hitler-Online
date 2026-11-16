@@ -55,7 +55,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 19. VOTES & POWERS | `phase-19-votes-powers` | done |
 | 20. RIVALS and ENDINGS | `phase-20-rivals-endings` | done |
 | 21A. ACTIVITY | `phase-21a-activity` | done |
-| 21B. RECORDS | `phase-21b-records` | in progress |
+| 21B. RECORDS | `phase-21b-records` | done |
 | 22A. Trophies and name links | `phase-22a-trophies-links` | planned |
 | 22B. Player pages | `phase-22b-player-pages` | planned |
 | 23. One header for the site | `phase-23-site-header` | planned |
@@ -1017,8 +1017,8 @@ Issue #31, after Phases 21A and 17B: the RECORDS tab shows streaks, the best wee
 
 **Phase 21B acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] PR merged into `development`
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] PR merged into `development`
 - [ ] The user opens RECORDS on the deployed build after a game night, on a desktop and on a phone, and finds the night's session and the player of the month
 
 ---
