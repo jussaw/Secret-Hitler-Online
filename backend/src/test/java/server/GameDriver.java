@@ -67,12 +67,24 @@ public final class GameDriver {
      * @throws IllegalStateException if the game ends first.
      */
     public static void playUntil(SecretHitlerGame game, GameState state) {
+        playUntil(game, state, g -> {
+        });
+    }
+
+    /**
+     * Plays {@code game} until it is in {@code state}, as {@code playUntil(game, state)} does.
+     *
+     * @param onStep called with the game now and after every action, as {@code playOut} calls it.
+     */
+    public static void playUntil(SecretHitlerGame game, GameState state, Consumer<SecretHitlerGame> onStep) {
         GameDriver driver = new GameDriver(game);
+        onStep.accept(game);
         for (int actions = 0; game.getState() != state; actions++) {
             if (actions == MAX_ACTIONS || finished(game)) {
                 throw new IllegalStateException("The game never reached " + state + ".");
             }
             driver.act();
+            onStep.accept(game);
         }
     }
 

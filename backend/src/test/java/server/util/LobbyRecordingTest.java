@@ -10,6 +10,7 @@ import static server.util.LobbyTesting.account;
 import static server.util.LobbyTesting.join;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import game.GameState;
 import game.SecretHitlerGame;
 import game.datastructures.Player;
 import java.util.ArrayList;
@@ -341,6 +342,242 @@ public class LobbyRecordingTest {
         assertTrue(records.isEmpty());
         assertEquals(List.of("nominate", "vote", "vote"),
                 lobby.timeline().stream().map(e -> e.get("type")).toList());
+    }
+
+    /** Sends the state as the server does after every move, under the lobby's lock. */
+    private static void update(Lobby lobby) {
+        synchronized (lobby) {
+            lobby.updateAllUsers();
+        }
+    }
+
+    /** A five-player lobby whose game waits for END TERM, with the state sent after every move. */
+    private Lobby lobbyAtEndTerm() {
+        Lobby lobby = lobbyInGame("P1", "P2", "P3", "P4", "P5");
+        GameDriver.playUntil(lobby.game(), GameState.POST_LEGISLATIVE, g -> update(lobby));
+        return lobby;
+    }
+
+    private static int seatOf(Lobby lobby, String name) {
+        synchronized (lobby) {
+            List<Player> seats = lobby.game().getPlayerList();
+            for (int i = 0; i < seats.size(); i++) {
+                if (seats.get(i).getUsername().equals(name)) {
+                    return i;
+                }
+            }
+        }
+        throw new IllegalArgumentException(name);
+    }
+
+    private static List<String> types(List<Map<String, Object>> events) {
+        return events.stream().map(e -> (String) e.get("type")).toList();
+    }
+
+    @Test
+    public void pausesAndResumesAreRecorded() {
+        Lobby lobby = lobbyAtEndTerm();
+        int before = lobby.timeline().size();
+        String president;
+        synchronized (lobby) {
+            president = lobby.game().getCurrentPresident();
+            lobby.pauseTermTimer();
+            lobby.pauseTermTimer(); // already paused: no event
+            lobby.resumeTermTimer();
+            lobby.resumeTermTimer(); // already running: no event
+        }
+        List<Map<String, Object>> events = lobby.timeline();
+        int seat = seatOf(lobby, president);
+        int round = lobby.game().getRound();
+        assertEquals(List.of("timerPause", "timerResume"), types(events.subList(before, events.size())));
+        for (Map<String, Object> event : events.subList(before, events.size())) {
+            assertEquals(seat, event.get("seat"));
+            assertEquals(round, event.get("r"));
+        }
+    }
+
+    @Test
+    public void theCountdownEndsTheTermByCountdown() throws Exception {
+        Lobby.END_TERM_TIMER_IN_SEC = 0.2f;
+        Lobby lobby = lobbyAtEndTerm(); // the last state sent shows END TERM, which starts the countdown
+        int round;
+        String president;
+        synchronized (lobby) {
+            round = lobby.game().getRound();
+            president = lobby.game().getCurrentPresident();
+        }
+        long deadline = System.currentTimeMillis() + 5_000;
+        while (true) {
+            synchronized (lobby) {
+                if (lobby.game().getRound() == round + 1) {
+                    break;
+                }
+            }
+            assertTrue("the countdown ended the term", System.currentTimeMillis() < deadline);
+            Thread.sleep(20);
+        }
+        List<Map<String, Object>> endTerms = lobby.timeline().stream()
+                .filter(e -> e.get("type").equals("endTerm") && e.get("r").equals(round)).toList();
+        assertEquals(1, endTerms.size());
+        assertEquals("countdown", endTerms.get(0).get("by"));
+        assertEquals(seatOf(lobby, president), endTerms.get(0).get("seat"));
+        assertTrue(lobby.isLateForTerm(president));
+    }
+
+    @Test
+    public void aPresidentsEndTermIsByPresident() {
+        Lobby lobby = lobbyAtEndTerm();
+        synchronized (lobby) {
+            lobby.game().endPresidentialTerm();
+            lobby.updateAllUsers();
+        }
+        Map<String, Object> endTerm = last(lobby.timeline());
+        assertEquals("endTerm", endTerm.get("type"));
+        assertEquals("president", endTerm.get("by"));
+    }
+
+    @Test
+    public void dropsAndReturnsAreRecorded() {
+        Lobby lobby = new Lobby();
+        FakeSocket p3 = FakeSocket.open();
+        int icon = 1;
+        for (String name : List.of("P1", "P2", "P3", "P4", "P5")) {
+            FakeSocket socket = name.equals("P3") ? p3 : FakeSocket.open();
+            join(lobby, socket.ctx, name, name.equals("P3") ? "k" : null);
+            lobby.trySetUserIcon("p" + icon++, socket.ctx);
+            players.put(name, socket);
+        }
+        lobby.startNewGame();
+        int p2 = seatOf(lobby, "P2");
+
+        synchronized (lobby) {
+            lobby.removeUser(players.get("P2").ctx);
+            lobby.updateAllUsers();
+        }
+        assertEquals(List.of("disconnect"), types(lobby.timeline()));
+        assertEquals(p2, last(lobby.timeline()).get("seat"));
+
+        FakeSocket back = FakeSocket.open();
+        join(lobby, back.ctx, "P2");
+        update(lobby);
+        assertEquals(List.of("disconnect", "reconnect"), types(lobby.timeline()));
+        assertEquals(p2, last(lobby.timeline()).get("seat"));
+
+        FakeSocket p3Again = FakeSocket.open();
+        assertEquals(p3.ctx, join(lobby, p3Again.ctx, "P3", "k")); // the same page, back by its key
+        update(lobby);
+        FakeSocket spectator = FakeSocket.open();
+        lobby.addSpectator(spectator.ctx);
+        lobby.removeSpectator(spectator.ctx);
+        update(lobby);
+        assertEquals(List.of("disconnect", "reconnect"), types(lobby.timeline()));
+    }
+
+    /** The move {@code me} owes the game now, if any: what a page would send. */
+    private static void humanMove(SecretHitlerGame game, String me) {
+        String president = game.getCurrentPresident();
+        List<Player> seats = game.getPlayerList();
+        List<String> others = new ArrayList<>();
+        for (Player player : seats) {
+            if (player.isAlive() && !player.getUsername().equals(me)) {
+                others.add(player.getUsername());
+            }
+        }
+        boolean presiding = me.equals(president);
+        switch (game.getState()) {
+            case CHANCELLOR_NOMINATION:
+                if (presiding) {
+                    for (String name : others) {
+                        if (!name.equals(game.getLastChancellor())
+                                && !(name.equals(game.getLastPresident()) && game.getLivingPlayerCount() > 5)) {
+                            game.nominateChancellor(name);
+                            return;
+                        }
+                    }
+                }
+                break;
+            case CHANCELLOR_VOTING:
+                if (game.getPlayer(me).isAlive() && !game.hasPlayerVoted(me)) {
+                    game.registerVote(me, true);
+                }
+                break;
+            case LEGISLATIVE_PRESIDENT:
+                if (presiding) {
+                    game.presidentDiscardPolicy(0);
+                }
+                break;
+            case LEGISLATIVE_CHANCELLOR:
+                if (me.equals(game.getCurrentChancellor())) {
+                    game.chancellorEnactPolicy(0);
+                }
+                break;
+            case LEGISLATIVE_PRESIDENT_VETO:
+                if (presiding) {
+                    game.presidentialVeto(false);
+                }
+                break;
+            case PRESIDENTIAL_POWER_PEEK:
+                if (presiding) {
+                    game.endPeek();
+                }
+                break;
+            case PRESIDENTIAL_POWER_INVESTIGATE:
+                if (presiding) {
+                    game.investigatePlayer(others.stream().filter(n -> !game.getPlayer(n).hasBeenInvestigated())
+                            .findFirst().orElseThrow());
+                }
+                break;
+            case PRESIDENTIAL_POWER_EXECUTION:
+                if (presiding) {
+                    game.executePlayer(others.get(0));
+                }
+                break;
+            case PRESIDENTIAL_POWER_ELECTION:
+                if (presiding) {
+                    game.electNextPresident(others.get(0));
+                }
+                break;
+            case POST_LEGISLATIVE:
+                if (presiding) {
+                    game.endPresidentialTerm();
+                }
+                break;
+            default:
+        }
+    }
+
+    /**
+     * A CPU's winning move is dropped only at the next tick. A seated player who drops in between
+     * adds nothing: the timeline ends with the game's end, and so does its record.
+     */
+    @Test
+    public void nothingIsAddedAfterTheEnd() {
+        for (int attempt = 0; attempt < 100; attempt++) {
+            Lobby lobby = lobbyInGame("P1"); // four CPU players
+            SecretHitlerGame game = lobby.game();
+            for (int step = 0; step < 2_000 && lobby.isInGame() && !GameSnapshot.of(game).finished(); step++) {
+                synchronized (lobby) {
+                    humanMove(game, "P1");
+                    lobby.updateAllUsers();
+                }
+            }
+            if (!lobby.isInGame()) {
+                records.clear(); // P1 made the last move, so the game was dropped at once: try again
+                continue;
+            }
+            assertEquals("end", last(lobby.timeline()).get("type"));
+            synchronized (lobby) {
+                lobby.removeUser(players.get("P1").ctx);
+                lobby.updateAllUsers();
+            }
+            assertEquals(1, records.size());
+            GameRecord record = records.get(0);
+            assertEquals("end", last(record.events()).get("type"));
+            assertEquals(0, countOf(record, "disconnect"));
+            assertReplays(record, game);
+            return;
+        }
+        throw new AssertionError("No CPU made the winning move in 100 games.");
     }
 
     @Test

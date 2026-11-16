@@ -3,6 +3,7 @@ package server.util;
 import game.CpuPlayer;
 import game.GameState;
 import game.SecretHitlerGame;
+import game.datastructures.Player;
 import io.javalin.websocket.WsContext;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -463,7 +464,9 @@ public class Lobby implements Serializable {
      * remembers the rejoin key the connection brought. A connection that brings the key its
      * account's live connection was opened with ({@code hasLiveConnectionWithKey}) takes that
      * connection's place instead: the account keeps its seat, portrait and place in the lobby,
-     * and only the connection changes.
+     * and only the connection changes. A seat of the running game that comes back after a
+     * {@code disconnect} gets a {@code reconnect} in the timeline; a connection that takes
+     * another's place by its key is neither.
      *
      * @param context   the websocket connection context.
      * @param accountId the account of the player to be added.
@@ -498,6 +501,9 @@ public class Lobby implements Serializable {
         }
         addNewConnection(context, accountId, name);
         cancelPendingRemoval(accountId); // back inside the window: the account keeps its place
+        if (isSeated(accountId) && "disconnect".equals(lastDropOrReturn(gameSeats.get(accountId)))) {
+            addSeatEvent("reconnect", gameSeats.get(accountId));
+        }
         if (rejoinKey == null) {
             accountToRejoinKey.remove(accountId); // an older client: nothing can take its place
         } else {
@@ -536,7 +542,8 @@ public class Lobby implements Serializable {
      *                                  Lobby.
      * @modifies this
      * @effects removes the user context (websocket connection) of the player from
-     *          the lobby. The account keeps its place for {@code PLAYER_TIMEOUT_IN_SEC},
+     *          the lobby, and records a {@code disconnect} for a seat in the running game.
+     *          The account keeps its place for {@code PLAYER_TIMEOUT_IN_SEC},
      *          counted from this disconnect, and loses it then unless a connection
      *          for the account has called the removal off.
      */
@@ -547,6 +554,9 @@ public class Lobby implements Serializable {
             // Delay removing players from the list by adding it to a timer.
             int delay_in_ms = (int) (PLAYER_TIMEOUT_IN_SEC * 1000);
             final String accountId = userToAccount.get(context);
+            if (isSeated(accountId)) {
+                addSeatEvent("disconnect", gameSeats.get(accountId)); // the seat's last connection closed
+            }
             RemoveUserTask removal = new RemoveUserTask(accountId);
             pendingRemovals.put(accountId, removal);
 
@@ -1158,6 +1168,60 @@ public class Lobby implements Serializable {
         return event;
     }
 
+    /** Whether the timeline ends with the game's {@code end}: nothing is added after it. */
+    private boolean timelineEnded() {
+        return gameEvents != null && !gameEvents.isEmpty()
+                && "end".equals(gameEvents.get(gameEvents.size() - 1).get("type"));
+    }
+
+    /**
+     * Adds one of the lobby's own events about a seat of the running game (a pause or resume, a
+     * drop or a return), with the seat's index in turn order. Nothing is added once the game has
+     * ended (a CPU's winning move waits for the next tick to be dropped).
+     */
+    private void addSeatEvent(String type, String seatName) {
+        if (game == null || gameEvents == null || timelineEnded()) {
+            return;
+        }
+        int seat = indexOfSeat(seatName);
+        if (seat >= 0) {
+            addEvent(type).put("seat", seat);
+        }
+    }
+
+    /** The seat's index in the running game's turn order, or -1. */
+    private int indexOfSeat(String seatName) {
+        List<Player> seats = game.getPlayerList();
+        for (int i = 0; i < seats.size(); i++) {
+            if (seats.get(i).getUsername().equals(seatName)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * The seat's latest {@code disconnect} or {@code reconnect}, looking back no further than the
+     * last {@code restored} (no connection outlives a restart), or null for none.
+     */
+    private String lastDropOrReturn(String seatName) {
+        if (gameEvents == null) {
+            return null;
+        }
+        int seat = indexOfSeat(seatName);
+        for (int i = gameEvents.size() - 1; i >= 0; i--) {
+            Map<String, Object> event = gameEvents.get(i);
+            Object type = event.get("type");
+            if (type.equals("restored")) {
+                return null;
+            }
+            if ((type.equals("disconnect") || type.equals("reconnect")) && Integer.valueOf(seat).equals(event.get("seat"))) {
+                return (String) type;
+            }
+        }
+        return null;
+    }
+
     /**
      * The time of an event now: ms since the game started on {@code recordClock}, never before
      * the last event's, so a clock that steps back never makes the timeline go back.
@@ -1293,6 +1357,7 @@ public class Lobby implements Serializable {
             if (game != null && timer.isFor(game, game.getRound()) && game.getState() == GameState.POST_LEGISLATIVE) {
                 game.endPresidentialTerm();
                 expiredTermTimer = timer;
+                observeGame(true); // the countdown's endTerm, not the president's
                 logger.info("The END TERM countdown ended " + timer.president + "'s term.");
                 updateAllUsers();
             }
@@ -1303,7 +1368,7 @@ public class Lobby implements Serializable {
 
     /**
      * Pauses the END TERM countdown, which then keeps the term open until the president resumes
-     * it or ends the term. Pausing it again changes nothing.
+     * it or ends the term, and records a {@code timerPause}. Pausing it again changes nothing.
      *
      * @throws IllegalStateException if the game is not waiting for a human president to end the
      *                               term, so there is no countdown.
@@ -1313,13 +1378,17 @@ public class Lobby implements Serializable {
         if (termTimer == null) {
             throw new IllegalStateException("There is no END TERM countdown to pause.");
         }
+        boolean wasPaused = termTimer.isPaused();
         termTimer.pause();
         cancelTermEnd();
+        if (!wasPaused) {
+            addSeatEvent("timerPause", termTimer.president);
+        }
     }
 
     /**
-     * Runs a paused END TERM countdown on from the time it had left. Resuming a running countdown
-     * changes nothing.
+     * Runs a paused END TERM countdown on from the time it had left, and records a
+     * {@code timerResume}. Resuming a running countdown changes nothing.
      *
      * @throws IllegalStateException if there is no countdown, as for {@code pauseTermTimer}.
      */
@@ -1331,6 +1400,7 @@ public class Lobby implements Serializable {
         if (termTimer.isPaused()) {
             termTimer.resume();
             scheduleTermEnd();
+            addSeatEvent("timerResume", termTimer.president);
         }
     }
 
