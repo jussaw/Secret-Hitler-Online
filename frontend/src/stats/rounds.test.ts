@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ev, fiveSeatGame } from "./game/sampleGames";
 import type { Card, GameEvent } from "./record";
-import { rounds } from "./rounds";
+import { formatDecisionTime, rounds } from "./rounds";
 import { makeRecord } from "./testRecords";
 
 // fiveSeatGame's seats: P1, P2, P3 (Fascist), P4 (Hitler) and the CPU Bot 1.
@@ -318,3 +318,151 @@ describe("rounds", () => {
     expect(rs[0]).toMatchObject({ votes: [{ seat: 9, ja: true }], discard: { index: 5, card: "F" }, chancellorHand: null });
   });
 });
+
+describe("blame and decision times", () => {
+  it("times a passed election's decisions", () => {
+    const [r1] = rounds(PASSED_TERM);
+    expect(r1.ms).toEqual({ nominate: 4_000, discard: 3_000, chancellor: 3_000,
+      chancellorAfterVeto: null, vetoAnswer: null, power: null, endTerm: 3_000 });
+    expect(r1.votes.map((v) => v.ms)).toEqual([1_000, 2_000, null, 3_000, 5_000]);
+  });
+
+  it("formats one decision's time", () => {
+    expect([400, 8_000, 8_499, 59_600, 65_000, 3_725_000].map(formatDecisionTime))
+      .toEqual(["1 s", "8 s", "8 s", "1 min 00 s", "1 min 05 s", "62 min 05 s"]);
+  });
+
+  it("a CPU decides untimed", () => {
+    const [round] = rounds(
+      fiveSeatGame([
+        ...passed(1, 4_000, BOT, B),
+        ev.draw(1, 6_000, BOT, "FFF"), ev.discard(1, 7_000, BOT, 0, "F"),
+        ev.enact(1, 10_000, "F", "chancellor", B, 0, 3),
+        ev.peek(1, 11_000, BOT, "LLF"),
+        ev.endTerm(1, 12_000, BOT, "president"),
+      ])
+    );
+    expect(round.ms).toMatchObject({ nominate: null, discard: null, chancellor: 3_000, power: null, endTerm: null });
+  });
+
+  it("a restart voids only the spans across it", () => {
+    const [round] = rounds(
+      fiveSeatGame([
+        ...passed(1, 4_000, A, B),
+        ev.draw(1, 9_000, A, "LFF"),
+        ev.restored(1, 50_000),
+        ev.discard(1, 52_000, A, 1, "F"),
+        ev.enact(1, 55_000, "L", "chancellor", B, 1, 0),
+      ])
+    );
+    expect(round.ms).toMatchObject({ nominate: 4_000, discard: null, chancellor: 3_000 });
+  });
+
+  describe("a nomination is timed from the previous term's end, or a restart", () => {
+    const firstTerm = [...term(1, 0, A, B, "LFF", 1, "L", [1, 0])]; // its END TERM at 20 000
+    it("from the previous END TERM", () => {
+      expect(rounds(fiveSeatGame([...firstTerm, ev.nominate(2, 22_000, B, C)]))[1].ms.nominate).toBe(2_000);
+    });
+    it("from a restart after it", () => {
+      const rs = rounds(fiveSeatGame([...firstTerm, ev.restored(2, 21_000), ev.nominate(2, 22_000, B, C)]));
+      expect(rs[1].ms.nominate).toBe(1_000);
+    });
+    it("from the game's start", () => {
+      expect(rounds(fiveSeatGame([ev.nominate(1, 4_000, A, B)]))[0].ms.nominate).toBe(4_000);
+      expect(rounds(fiveSeatGame([ev.restored(1, 1_000), ev.nominate(1, 4_000, A, B)]))[0].ms.nominate).toBe(3_000);
+    });
+    it("from the restore that a late record opens with", () => {
+      const rs = rounds(
+        fiveSeatGame([ev.restored(3, 30_000), ev.nominate(3, 34_000, C, D)], {
+          complete: false, outcome: "UNFINISHED", winner: null,
+        })
+      );
+      expect(rs[0].ms.nominate).toBe(4_000);
+    });
+    it("not at all in a late record that has neither", () => {
+      const rs = rounds(fiveSeatGame([ev.nominate(3, 34_000, C, D)], { complete: false, outcome: "UNFINISHED", winner: null }));
+      expect(rs[0].ms.nominate).toBeNull();
+    });
+  });
+
+  it("veto times", () => {
+    const vetoed = (accepted: boolean) =>
+      rounds(
+        fiveSeatGame([
+          ...passed(1, 4_000, A, B),
+          ev.draw(1, 6_000, A, "LFF"), ev.discard(1, 8_000, A, 0, "L"),
+          ev.veto(1, 10_000, B), ev.vetoAnswer(1, 13_000, A, accepted),
+          ...(accepted ? [ev.tracker(1, 13_000, 1)] : [ev.enact(1, 16_000, "F", "chancellor", B, 0, 6)]),
+        ])
+      )[0];
+    expect(vetoed(false).ms).toMatchObject({ chancellor: 2_000, vetoAnswer: 3_000, chancellorAfterVeto: 3_000 });
+    expect(vetoed(true).ms).toMatchObject({ chancellor: 2_000, vetoAnswer: 3_000, chancellorAfterVeto: null });
+  });
+
+  it("a power is timed from its policy", () => {
+    const [round] = rounds(
+      fiveSeatGame([
+        ...passed(1, 4_000, A, B),
+        ev.draw(1, 9_000, A, "FFL"), ev.discard(1, 12_000, A, 2, "L"),
+        ev.enact(1, 15_000, "F", "chancellor", B, 0, 2),
+        ev.investigate(1, 36_000, A, C, "FASCIST"),
+      ])
+    );
+    expect(round.ms.power).toBe(21_000);
+  });
+
+  it("END TERM is timed from the term's last action", () => {
+    const [round] = rounds(
+      fiveSeatGame([
+        ...passed(1, 4_000, A, B),
+        ev.draw(1, 9_000, A, "FFL"), ev.discard(1, 12_000, A, 2, "L"),
+        ev.enact(1, 15_000, "F", "chancellor", B, 0, 2),
+        ev.investigate(1, 36_000, A, C, "FASCIST"),
+        ev.timerPause(1, 38_000, A), ev.disconnect(1, 39_000, C), ev.timerResume(1, 41_000, A),
+        ev.endTerm(1, 45_000, A, "countdown"),
+      ])
+    );
+    expect(round.ms.endTerm).toBe(9_000);
+    const [afterFailure] = rounds(
+      fiveSeatGame([
+        ev.nominate(1, 4_000, A, B),
+        ev.election(1, 9_000, false, 0, 5), ev.tracker(1, 9_000, 1),
+        ev.endTerm(1, 12_000, A, "president"),
+      ])
+    );
+    expect(afterFailure.ms.endTerm).toBe(3_000);
+  });
+
+  it("blame", () => {
+    const blame = (hand: string, index: number, policy: Card) =>
+      rounds(fiveSeatGame(term(1, 0, A, B, hand, index, policy, policy === "L" ? [1, 0] : [0, 1])))[0].blame;
+    expect(blame("FFL", 2, "F"), "the Liberal of FFL discarded").toBe(A);
+    expect(blame("FFL", 0, "F"), "a Fascist of FFL discarded").toBe(B);
+    expect(blame("FLL", 1, "F"), "a Liberal of FLL discarded").toBe(B);
+    expect(blame("FFF", 0, "F"), "FFF").toBeNull();
+    expect(blame("LFF", 1, "L"), "a Liberal enacted").toBeNull();
+
+    const chaos = rounds(
+      fiveSeatGame([...failed(1, 0, A, B, 3), ev.enact(1, 3_000, "F", "chaos", undefined, 0, 1)])
+    )[0];
+    expect(chaos.blame, "a chaos policy").toBeNull();
+
+    const afterVeto = rounds(
+      fiveSeatGame([
+        ...passed(1, 4_000, A, B),
+        ev.draw(1, 6_000, A, "LFF"), ev.discard(1, 8_000, A, 1, "F"),
+        ev.veto(1, 10_000, B), ev.vetoAnswer(1, 13_000, A, false),
+        ev.enact(1, 16_000, "F", "chancellor", B, 0, 6),
+      ])
+    )[0];
+    expect(afterVeto.blame, "a refused veto, then F from L, F").toBe(B);
+
+    const noDraw = rounds(
+      fiveSeatGame([ev.restored(2, 0), ev.enact(2, 3_000, "F", "chancellor", B, 0, 2), ev.endTerm(2, 6_000, A, "president")], {
+        complete: false, outcome: "UNFINISHED", winner: null,
+      })
+    )[0];
+    expect(noDraw.blame, "no draw recorded").toBeNull();
+  });
+});
+
