@@ -64,8 +64,8 @@ function NameList({ list, seats }: { list: number[]; seats: Seat[] }): JSX.Eleme
 export function RoundBlock({ round, seats }: { round: Round; seats: Seat[] }): JSX.Element {
   const titleId = useId();
   const { president, chancellor, ms } = round;
-  const P = <Name seat={president} seats={seats} />;
-  const C = chancellor === null ? null : <Name seat={chancellor} seats={seats} />;
+  const presidentName = <Name seat={president} seats={seats} />;
+  const chancellorName = chancellor === null ? null : <Name seat={chancellor} seats={seats} />;
   const edge = round.enacted === null ? "round-none" : round.enacted.policy === "L" ? "round-liberal" : "round-fascist";
 
   // The nomination and its result. A round that holds nothing past its nomination, and names no
@@ -83,15 +83,15 @@ export function RoundBlock({ round, seats }: { round: Round; seats: Seat[] }): J
     round.endTerm !== null;
   const election = round.election;
   const nomination = clauses([
-    C !== null ? (
+    chancellorName !== null ? (
       <>
-        {P} nominates {C}
+        {presidentName} nominates {chancellorName}
         <Time ms={ms.nominate} />
       </>
     ) : election !== null ? (
-      <>{P}&apos;s nomination</>
+      <>{presidentName}&apos;s nomination</>
     ) : playedOn ? null : (
-      <>{P} had yet to nominate</>
+      <>{presidentName} had yet to nominate</>
     ),
     election && `${election.passed ? "passes" : "fails"} ${election.ja}–${election.nein}`,
   ]);
@@ -124,7 +124,7 @@ export function RoundBlock({ round, seats }: { round: Round; seats: Seat[] }): J
   const presidentCards =
     round.hand !== null || round.discard !== null ? (
       <>
-        {P}
+        {presidentName}
         {round.hand !== null && (
           <>
             {" drew "}
@@ -144,33 +144,33 @@ export function RoundBlock({ round, seats }: { round: Round; seats: Seat[] }): J
   // The chancellor's two, the veto and the choice.
   const enactedByChancellor = round.enacted?.by === "chancellor" ? round.enacted : null;
   let chancellorLine: ReactNode | null = null;
-  if (C !== null) {
+  if (chancellorName !== null) {
     const got =
       round.chancellorHand !== null ? (
         <>
-          {C} got <Tiles cards={round.chancellorHand} />
+          {chancellorName} got <Tiles cards={round.chancellorHand} />
         </>
       ) : null;
     if (round.veto !== null) {
       const answer =
         round.veto.accepted === null ? (
-          <>{P} had yet to answer</>
+          <>{presidentName} had yet to answer</>
         ) : (
           <>
-            {P} {round.veto.accepted ? "accepted" : "refused"} the veto
+            {presidentName} {round.veto.accepted ? "accepted" : "refused"} the veto
             <Time ms={ms.vetoAnswer} />
           </>
         );
       const after =
         round.veto.accepted === false && enactedByChancellor ? (
           <>
-            {C} enacted <Tile card={enactedByChancellor.policy} />
+            {chancellorName} enacted <Tile card={enactedByChancellor.policy} />
             <Time ms={ms.chancellorAfterVeto} />
           </>
         ) : null;
       chancellorLine = clauses([
         <>
-          {got ?? C}
+          {got ?? chancellorName}
           {got ? ", asked to veto" : " asked to veto"}
           <Time ms={ms.chancellor} />
         </>,
@@ -180,7 +180,7 @@ export function RoundBlock({ round, seats }: { round: Round; seats: Seat[] }): J
     } else if (enactedByChancellor) {
       chancellorLine = (
         <>
-          {got ?? C}
+          {got ?? chancellorName}
           {got ? ", enacted " : " enacted "}
           <Tile card={enactedByChancellor.policy} />
           <Time ms={ms.chancellor} />
@@ -199,45 +199,45 @@ export function RoundBlock({ round, seats }: { round: Round; seats: Seat[] }): J
     );
 
   // The power and its result.
-  let power: ReactNode | null = null;
-  const p = round.power;
-  if (p !== null) {
-    const by = <Name seat={p.seat} seats={seats} />;
+  let powerLine: ReactNode | null = null;
+  const power = round.power;
+  if (power !== null) {
+    const by = <Name seat={power.seat} seats={seats} />;
     let what: ReactNode;
-    switch (p.kind) {
+    switch (power.kind) {
       case "peek":
         what = (
           <>
-            {by} peeked at <Tiles cards={p.cards} />
+            {by} peeked at <Tiles cards={power.cards} />
           </>
         );
         break;
       case "investigate":
         what = (
           <>
-            {by} investigated <Name seat={p.target} seats={seats} /> and saw{" "}
-            <RoleWord role={p.result} />
+            {by} investigated <Name seat={power.target} seats={seats} /> and saw{" "}
+            <RoleWord role={power.result} />
           </>
         );
         break;
       case "execute":
         what = (
           <>
-            {by} executed <Name seat={p.target} seats={seats} />
-            {p.role === "HITLER" ? ", " : ", a "}
-            <RoleWord role={p.role} />
+            {by} executed <Name seat={power.target} seats={seats} />
+            {power.role === "HITLER" ? ", " : ", a "}
+            <RoleWord role={power.role} />
           </>
         );
         break;
       case "specialElection":
         what = (
           <>
-            {by} chose <Name seat={p.target} seats={seats} /> as the next president
+            {by} chose <Name seat={power.target} seats={seats} /> as the next president
           </>
         );
         break;
     }
-    power = (
+    powerLine = (
       <>
         Power: {what}
         <Time ms={ms.power} />
@@ -252,7 +252,7 @@ export function RoundBlock({ round, seats }: { round: Round; seats: Seat[] }): J
     round.endTerm &&
       (round.endTerm.by === "president" ? (
         <>
-          END TERM by {P}
+          END TERM by {presidentName}
           <Time ms={ms.endTerm} />
         </>
       ) : (
@@ -275,7 +275,7 @@ export function RoundBlock({ round, seats }: { round: Round; seats: Seat[] }): J
     ["round-chancellor", chancellorLine],
     ["round-tracker", trackerAfterVeto ? tracker : null],
     ["round-blame", blame],
-    ["round-power", power],
+    ["round-power", powerLine],
     ["round-end", end],
   ];
   return (

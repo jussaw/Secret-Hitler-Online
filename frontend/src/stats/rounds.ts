@@ -74,9 +74,9 @@ interface Draft {
   /** The seat of the round's first president's move (a draw, a power, END TERM, …), or null. */
   mover: number | null;
   /** The places of the round's events in `events`, in order. */
-  at: number[];
+  places: number[];
   /** The place of each of `round.votes`' events. */
-  voteAt: number[];
+  votePlaces: number[];
 }
 
 /** Events that name the president by `seat`, for a round whose nomination was not recorded. */
@@ -126,7 +126,7 @@ function isChancellorEnact(event: GameEvent): boolean {
 }
 
 /** A round's fields from its own events, in order (its president, blame and times come later). */
-function draft(r: number, at: number[], events: GameEvent[]): Draft {
+function draft(r: number, places: number[], events: GameEvent[]): Draft {
   const round: Round = {
     r,
     president: 0,
@@ -155,13 +155,13 @@ function draft(r: number, at: number[], events: GameEvent[]): Draft {
       endTerm: null,
     },
   };
-  const voteAt: number[] = [];
+  const votePlaces: number[] = [];
   let nominator: number | null = null;
   let nominee: number | null = null;
   let mover: number | null = null;
   let enactor: number | null = null;
   let vetoer: number | null = null;
-  for (const i of at) {
+  for (const i of places) {
     const e = events[i];
     if (mover === null && PRESIDENT_MOVES.has(e.type)) mover = (e as { seat: number }).seat;
     switch (e.type) {
@@ -173,7 +173,7 @@ function draft(r: number, at: number[], events: GameEvent[]): Draft {
         break;
       case "vote":
         round.votes.push({ seat: e.seat, ja: e.ja, ms: null });
-        voteAt.push(i);
+        votePlaces.push(i);
         break;
       case "election":
         round.election = { passed: e.passed, ja: e.ja, nein: e.nein };
@@ -236,7 +236,7 @@ function draft(r: number, at: number[], events: GameEvent[]): Draft {
       round.chancellorHand = round.hand.filter((_, i) => i !== index);
     }
   }
-  return { round, nominator, mover, at, voteAt };
+  return { round, nominator, mover, places, votePlaces };
 }
 
 /** The first seat after `seat` in turn order that is not in `dead` (itself, if every other is). */
@@ -283,20 +283,20 @@ function blameOf(round: Round): number | null {
  * when either event is missing, or when a `restored` event lies between the two. Events are found
  * by their place in `events`, so the restart check compares places, not times.
  */
-function time(d: Draft, record: GameRecord, restoredAt: number[]): void {
+function fillDecisionTimes(d: Draft, record: GameRecord, restoredPlaces: number[]): void {
   const { events, seats } = record;
-  const { round, at } = d;
+  const { round, places } = d;
   const cpu = (seat: number | null) => seat !== null && seats[seat] !== undefined && seats[seat].cpu === true;
   /** The time from the event at `from` (-1: the game's start) to the one at `to`, decided by `seat`. */
   const span = (from: number | undefined, to: number | undefined, seat: number | null): number | null => {
     if (from === undefined || to === undefined || cpu(seat)) return null;
-    if (restoredAt.some((k) => from < k && k < to)) return null;
+    if (restoredPlaces.some((k) => from < k && k < to)) return null;
     return events[to].t - (from < 0 ? 0 : events[from].t);
   };
   /** The place of the round's first event after `from` that `matches`. */
   const next = (from: number | undefined, matches: (e: GameEvent) => boolean): number | undefined =>
-    from === undefined ? undefined : at.find((i) => i > from && matches(events[i]));
-  const firstOf = (matches: (e: GameEvent) => boolean) => at.find((i) => matches(events[i]));
+    from === undefined ? undefined : places.find((i) => i > from && matches(events[i]));
+  const firstOf = (matches: (e: GameEvent) => boolean) => places.find((i) => matches(events[i]));
 
   const nominate = firstOf((e) => e.type === "nominate");
   if (nominate !== undefined) {
@@ -311,7 +311,7 @@ function time(d: Draft, record: GameRecord, restoredAt: number[]): void {
     round.ms.nominate = span(from, nominate, round.president);
   }
   round.votes.forEach((vote, k) => {
-    const to = d.voteAt[k];
+    const to = d.votePlaces[k];
     vote.ms = nominate !== undefined && to > nominate ? span(nominate, to, vote.seat) : null;
   });
 
@@ -334,7 +334,7 @@ function time(d: Draft, record: GameRecord, restoredAt: number[]): void {
   const endTerm = firstOf((e) => e.type === "endTerm");
   if (endTerm !== undefined) {
     let from: number | undefined;
-    for (const i of at) {
+    for (const i of places) {
       if (i >= endTerm) break;
       if (!NOT_ACTIONS.has(events[i].type)) from = i;
     }
@@ -353,10 +353,10 @@ function time(d: Draft, record: GameRecord, restoredAt: number[]): void {
 export function rounds(record: GameRecord): Round[] {
   const { events } = record;
   const byRound = new Map<number, number[]>();
-  const restoredAt: number[] = [];
+  const restoredPlaces: number[] = [];
   events.forEach((event, i) => {
     if (!isKnown(event)) return;
-    if (event.type === "restored") restoredAt.push(i);
+    if (event.type === "restored") restoredPlaces.push(i);
     const list = byRound.get(event.r);
     if (list) list.push(i);
     else byRound.set(event.r, [i]);
@@ -365,7 +365,7 @@ export function rounds(record: GameRecord): Round[] {
   const drafts = Array.from(byRound.keys())
     .sort((a, b) => a - b)
     .map((r) => draft(r, byRound.get(r)!, events))
-    .filter((d) => !(finished && d.at.every((i) => NOT_MOVES.has(events[i].type))));
+    .filter((d) => !(finished && d.places.every((i) => NOT_MOVES.has(events[i].type))));
 
   // A seat is dead once an execution targets it; in a record that starts late, also from the start
   // when it ends dead and no recorded execution killed it.
@@ -386,12 +386,12 @@ export function rounds(record: GameRecord): Round[] {
     else if (d.mover !== null) d.round.president = d.mover; // a record that starts mid-term
     else if (!record.complete) continue; // a leading round of a late record that names no one
     else d.round.president = 0; // round 1's first president, or a record that cannot say
-    for (const i of d.at) {
+    for (const i of d.places) {
       const e = events[i];
       if (e.type === "execute") dead.add(e.target);
     }
     d.round.blame = blameOf(d.round);
-    time(d, record, restoredAt);
+    fillDecisionTimes(d, record, restoredPlaces);
     out.push(d.round);
   }
   return out;
