@@ -2,7 +2,6 @@ import { formatDuration, formatLocalDateTime, outcomeLabel, plural } from "../fo
 import PlayerName from "../PlayerName";
 import type { PageProps } from "../routes";
 import StatsLink from "../StatsLink";
-import "./GamePage.css";
 
 /**
  * One game's page (`/stats/games/<id>`). A placeholder until Phase 16 fills it: the result, its
