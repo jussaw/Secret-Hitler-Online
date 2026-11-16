@@ -16,8 +16,11 @@ import { OUTCOMES, type GameRecord, type Outcome } from "../record";
  * This module imports nothing that reads the browser, so the browser tests can use it.
  */
 
-/** Whether games with CPU players are shown: all, none of them, or only them. */
-export type CpuChoice = "any" | "without" | "with";
+/** Whether games with CPU players are shown: all, none of them, or only them; "any" first, the default. */
+export const CPU_CHOICES = ["any", "without", "with"] as const;
+export type CpuChoice = (typeof CPU_CHOICES)[number];
+/** The seat counts a game can have. */
+export const SEAT_COUNTS = [5, 6, 7, 8, 9, 10] as const;
 /** The page sizes GAMES offers, the default first. */
 export const PER_PAGE = [20, 50, 100] as const;
 export type PerPage = (typeof PER_PAGE)[number];
@@ -59,10 +62,6 @@ export const ENDING_PARAM: Record<Outcome, string> = {
   UNFINISHED: "unfinished",
 };
 
-/** The seat counts a game can have. */
-const MIN_SEATS = 5;
-const MAX_SEATS = 10;
-
 /** A whole number from 1, as an address writes it: no sign, no leading zero. */
 const COUNTING_NUMBER = /^[1-9][0-9]*$/;
 const DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -85,6 +84,11 @@ function calendarDay(text: string | null): string | null {
   return real ? text : null;
 }
 
+/** The ending an address spells `param` (`ENDING_PARAM`), or null for any other value. */
+export function endingFromParam(param: string | null): Outcome | null {
+  return OUTCOMES.find((outcome) => ENDING_PARAM[outcome] === param) ?? null;
+}
+
 /** GAMES' filter from an address's search (`?players=1,3&page=2`, or `""`). */
 export function parseGamesFilter(search: string): GamesFilter {
   const params = new URLSearchParams(search);
@@ -93,18 +97,16 @@ export function parseGamesFilter(search: string): GamesFilter {
     const n = countingNumber(part);
     if (n !== null) players.add(n);
   }
-  const size = countingNumber(params.get("size"));
-  const endingParam = params.get("ending");
-  const ending = OUTCOMES.find((outcome) => ENDING_PARAM[outcome] === endingParam) ?? null;
-  const cpuParam = params.get("cpu");
+  const size = SEAT_COUNTS.find((n) => String(n) === params.get("size")) ?? null;
+  const cpu = CPU_CHOICES.find((choice) => choice === params.get("cpu")) ?? NO_GAMES_FILTER.cpu;
   const per = PER_PAGE.find((n) => String(n) === params.get("per")) ?? NO_GAMES_FILTER.per;
   return {
     players: Array.from(players).sort((a, b) => a - b),
     from: calendarDay(params.get("from")),
     to: calendarDay(params.get("to")),
-    size: size !== null && size >= MIN_SEATS && size <= MAX_SEATS ? size : null,
-    ending,
-    cpu: cpuParam === "without" || cpuParam === "with" ? cpuParam : "any",
+    size,
+    ending: endingFromParam(params.get("ending")),
+    cpu,
     per,
     page: countingNumber(params.get("page")) ?? 1,
   };
@@ -126,14 +128,7 @@ export function gamesFilterSearch(filter: GamesFilter): string {
 
 /** Whether the filter leaves any game out: players, dates, size, ending or CPU set (not the page or its size). */
 export function isFiltered(filter: GamesFilter): boolean {
-  return (
-    filter.players.length > 0 ||
-    filter.from !== null ||
-    filter.to !== null ||
-    filter.size !== null ||
-    filter.ending !== null ||
-    filter.cpu !== "any"
-  );
+  return gamesFilterSearch({ ...filter, per: NO_GAMES_FILTER.per, page: 1 }) !== "";
 }
 
 /** Newest first: by `endedAt`, then `id`, both descending. */

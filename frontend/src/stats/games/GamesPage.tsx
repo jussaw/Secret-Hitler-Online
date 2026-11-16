@@ -6,12 +6,16 @@ import { navigate, routePath, useLocation, type PageProps } from "../routes";
 import StatsLink from "../StatsLink";
 import GameRow from "./GameRow";
 import {
+  CPU_CHOICES,
   ENDING_PARAM,
+  endingFromParam,
   filterGames,
   gamesFilterSearch,
   isFiltered,
+  NO_GAMES_FILTER,
   parseGamesFilter,
   PER_PAGE,
+  SEAT_COUNTS,
   type CpuChoice,
   type GamesFilter,
   type PerPage,
@@ -30,13 +34,12 @@ const ENDING_LABEL: Record<Outcome, string> = {
   UNFINISHED: "Unfinished",
 };
 
-const SIZES = [5, 6, 7, 8, 9, 10];
-
-const CPU_LABEL: [CpuChoice, string][] = [
-  ["any", "With or without CPU"],
-  ["without", "Without CPU players"],
-  ["with", "With CPU players"],
-];
+/** Each choice's name in the CPU players select. */
+const CPU_LABEL: Record<CpuChoice, string> = {
+  any: "With or without CPU",
+  without: "Without CPU players",
+  with: "With CPU players",
+};
 
 /** GAMES' address for `filter`. */
 function gamesHref(filter: GamesFilter): string {
@@ -50,9 +53,14 @@ function gamesHref(filter: GamesFilter): string {
  */
 const WHOLE_DAY = /^[1-9]\d{3}-\d{2}-\d{2}$/;
 
+/** How long a date field waits after the last part typed before it puts the day in the address. */
+const DAY_SETTLE_MS = 800;
+
 /**
- * From or To: a date field and its label. What is typed stays in the field and reaches the
- * address once it is a whole day, or empty; leaving the field puts back the address's day.
+ * From or To: a date field and its label. What is typed stays in the field, and reaches the
+ * address once it is a whole day (or empty) and typing has paused for DAY_SETTLE_MS, or at once on
+ * Enter or on leaving the field. So a day typed part by part (the 1st, then the 14th) is one step
+ * back, not one per part. Leaving the field with no whole day in it puts back the address's day.
  */
 function DateField(props: {
   label: string;
@@ -63,12 +71,25 @@ function DateField(props: {
 }): JSX.Element {
   const { label, value, min, max, onDay } = props;
   const [draft, setDraft] = useState(value ?? "");
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => setDraft(value ?? ""), [value]);
+  const cancel = () => {
+    if (timer.current !== null) clearTimeout(timer.current);
+    timer.current = null;
+  };
+  useEffect(() => cancel, []);
+  /** Puts `typed` in the address if it is a day the address can take; false if it is not. */
+  const commit = (typed: string): boolean => {
+    cancel();
+    if (typed !== "" && !WHOLE_DAY.test(typed)) return false;
+    if (typed !== (value ?? "")) onDay(typed === "" ? null : typed);
+    return true;
+  };
   const change = (event: ChangeEvent<HTMLInputElement>) => {
     const typed = event.target.value;
     setDraft(typed);
-    if (typed === "") onDay(null);
-    else if (WHOLE_DAY.test(typed)) onDay(typed);
+    cancel();
+    if (typed === "" || WHOLE_DAY.test(typed)) timer.current = setTimeout(() => commit(typed), DAY_SETTLE_MS);
   };
   return (
     <label className="games-field games-date">
@@ -79,9 +100,23 @@ function DateField(props: {
         min={min ?? undefined}
         max={max ?? undefined}
         onChange={change}
-        onBlur={() => setDraft(value ?? "")}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") commit(draft);
+        }}
+        onBlur={() => {
+          if (!commit(draft)) setDraft(value ?? "");
+        }}
       />
     </label>
+  );
+}
+
+/** Previous on the first page, or Next on the last: a link with nowhere to go, announced as unavailable. */
+function DisabledLink({ text }: { text: string }): JSX.Element {
+  return (
+    <span role="link" aria-disabled="true">
+      {text}
+    </span>
   );
 }
 
@@ -102,8 +137,8 @@ export default function GamesPage({ data }: PageProps): JSX.Element {
     return { filter: known, games: filterGames(data.games, known) };
   }, [data.games, names, search]);
 
-  const count = pageCount(games.length, filter.per);
-  const page = Math.min(filter.page, count);
+  const pageTotal = pageCount(games.length, filter.per);
+  const page = Math.min(filter.page, pageTotal);
   const start = (page - 1) * filter.per;
   const shown = games.slice(start, start + filter.per);
   const filtered = isFiltered(filter);
@@ -122,7 +157,7 @@ export default function GamesPage({ data }: PageProps): JSX.Element {
   }, [filterKey, page]);
 
   /** Moves to the filter with `change`, on its first page. */
-  const go = (change: Partial<GamesFilter>) => navigate(gamesHref({ ...filter, ...change, page: 1 }));
+  const applyFilter = (change: Partial<GamesFilter>) => navigate(gamesHref({ ...filter, ...change, page: 1 }));
 
   const others = data.players
     .filter((p) => !filter.players.includes(p.number))
@@ -157,7 +192,7 @@ export default function GamesPage({ data }: PageProps): JSX.Element {
                 type="button"
                 className="games-chip"
                 aria-label={`Remove ${name}`}
-                onClick={() => go({ players: filter.players.filter((n) => n !== number) })}
+                onClick={() => applyFilter({ players: filter.players.filter((n) => n !== number) })}
               >
                 <PlayerName player={number} name={name} link={false} />
                 <X aria-hidden="true" size={16} strokeWidth={2.5} />
@@ -171,7 +206,7 @@ export default function GamesPage({ data }: PageProps): JSX.Element {
             disabled={others.length === 0}
             onChange={(event) => {
               const n = Number(event.target.value);
-              if (n > 0) go({ players: [...filter.players, n].sort((a, b) => a - b) });
+              if (n > 0) applyFilter({ players: [...filter.players, n].sort((a, b) => a - b) });
             }}
           >
             <option value="">Add a player</option>
@@ -183,15 +218,15 @@ export default function GamesPage({ data }: PageProps): JSX.Element {
           </select>
         </div>
         <div className="games-controls">
-          <DateField label="From" value={filter.from} max={filter.to} onDay={(from) => go({ from })} />
-          <DateField label="To" value={filter.to} min={filter.from} onDay={(to) => go({ to })} />
+          <DateField label="From" value={filter.from} max={filter.to} onDay={(from) => applyFilter({ from })} />
+          <DateField label="To" value={filter.to} min={filter.from} onDay={(to) => applyFilter({ to })} />
           <select
             aria-label="Seats"
             value={filter.size === null ? "" : String(filter.size)}
-            onChange={(event) => go({ size: event.target.value === "" ? null : Number(event.target.value) })}
+            onChange={(event) => applyFilter({ size: event.target.value === "" ? null : Number(event.target.value) })}
           >
             <option value="">Any size</option>
-            {SIZES.map((size) => (
+            {SEAT_COUNTS.map((size) => (
               <option key={size} value={size}>
                 {`${size} seats`}
               </option>
@@ -200,7 +235,7 @@ export default function GamesPage({ data }: PageProps): JSX.Element {
           <select
             aria-label="Ending"
             value={filter.ending === null ? "" : ENDING_PARAM[filter.ending]}
-            onChange={(event) => go({ ending: OUTCOMES.find((o) => ENDING_PARAM[o] === event.target.value) ?? null })}
+            onChange={(event) => applyFilter({ ending: endingFromParam(event.target.value) })}
           >
             <option value="">Any ending</option>
             {OUTCOMES.map((outcome) => (
@@ -213,16 +248,16 @@ export default function GamesPage({ data }: PageProps): JSX.Element {
             className="games-cpu"
             aria-label="CPU players"
             value={filter.cpu}
-            onChange={(event) => go({ cpu: event.target.value as CpuChoice })}
+            onChange={(event) => applyFilter({ cpu: event.target.value as CpuChoice })}
           >
-            {CPU_LABEL.map(([cpu, label]) => (
+            {CPU_CHOICES.map((cpu) => (
               <option key={cpu} value={cpu}>
-                {label}
+                {CPU_LABEL[cpu]}
               </option>
             ))}
           </select>
           {filtered && (
-            <StatsLink href={GAMES_PATH} className="stats-link games-clear">
+            <StatsLink href={gamesHref({ ...NO_GAMES_FILTER, per: filter.per })} className="stats-link games-clear">
               Clear filters
             </StatsLink>
           )}
@@ -237,7 +272,7 @@ export default function GamesPage({ data }: PageProps): JSX.Element {
           className="games-per"
           aria-label="Games a page"
           value={String(filter.per)}
-          onChange={(event) => go({ per: Number(event.target.value) as PerPage })}
+          onChange={(event) => applyFilter({ per: Number(event.target.value) as PerPage })}
         >
           {PER_PAGE.map((per) => (
             <option key={per} value={per}>
@@ -248,7 +283,8 @@ export default function GamesPage({ data }: PageProps): JSX.Element {
       </div>
 
       {shown.length > 0 ? (
-        <ol className="games-list">
+        // role="list": Safari drops a list's role when it has no bullets.
+        <ol className="games-list" role="list">
           {shown.map((record) => (
             <GameRow key={record.id} record={record} />
           ))}
@@ -259,10 +295,10 @@ export default function GamesPage({ data }: PageProps): JSX.Element {
         </div>
       )}
 
-      {count > 1 && (
+      {pageTotal > 1 && (
         <nav className="games-pages" aria-label="Pages">
-          {page > 1 ? pageLink(page - 1, "‹ Previous") : <span aria-disabled="true">‹ Previous</span>}
-          {pageLinks(page, count).map((n, i) =>
+          {page > 1 ? pageLink(page - 1, "‹ Previous") : <DisabledLink text="‹ Previous" />}
+          {pageLinks(page, pageTotal).map((n, i) =>
             n === null ? (
               <span key={`gap-${i}`} className="games-gap">
                 …
@@ -275,7 +311,7 @@ export default function GamesPage({ data }: PageProps): JSX.Element {
               pageLink(n, String(n))
             )
           )}
-          {page < count ? pageLink(page + 1, "Next ›") : <span aria-disabled="true">Next ›</span>}
+          {page < pageTotal ? pageLink(page + 1, "Next ›") : <DisabledLink text="Next ›" />}
         </nav>
       )}
     </div>

@@ -2,12 +2,15 @@ import { describe, expect, it } from "vitest";
 import type { GameRecord } from "../record";
 import { makeRecord, makeSeats } from "../testRecords";
 import {
+  CPU_CHOICES,
   ENDING_PARAM,
+  endingFromParam,
   filterGames,
   gamesFilterSearch,
   isFiltered,
   NO_GAMES_FILTER,
   parseGamesFilter,
+  SEAT_COUNTS,
   type GamesFilter,
 } from "./gamesFilter";
 
@@ -56,6 +59,18 @@ describe("gamesFilter", () => {
     expect(parseGamesFilter("?size=7.0").size).toBeNull();
     expect(parseGamesFilter("?size=10").size).toBe(10);
     expect(parseGamesFilter("?ending=UNFINISHED").ending).toBeNull();
+  });
+
+  it("names each ending, seat count and CPU choice once", () => {
+    expect(endingFromParam("hitler-elected")).toBe("HITLER_ELECTED");
+    expect(endingFromParam("unfinished")).toBe("UNFINISHED");
+    expect(endingFromParam("draw")).toBeNull();
+    expect(endingFromParam("")).toBeNull();
+    expect(endingFromParam(null)).toBeNull();
+    expect(SEAT_COUNTS).toEqual([5, 6, 7, 8, 9, 10]);
+    expect(CPU_CHOICES).toEqual(["any", "without", "with"]);
+    for (const size of SEAT_COUNTS) expect(parseGamesFilter(`?size=${size}`).size).toBe(size);
+    for (const cpu of CPU_CHOICES) expect(parseGamesFilter(`?cpu=${cpu}`).cpu).toBe(cpu);
   });
 
   it("knows when anything but the page is set", () => {

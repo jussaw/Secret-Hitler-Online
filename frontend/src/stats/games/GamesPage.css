@@ -39,6 +39,7 @@
 }
 
 .games-field-label {
+    min-width: 0;
     font-family: var(--textFont);
     font-weight: 700;
     font-size: 14px;
@@ -280,6 +281,10 @@
     font-size: 12px;
     text-align: right;
     white-space: nowrap;
+}
+
+.games-row-counts > * {
+    min-width: 0;
 }
 
 /* ---- The page links ---- */

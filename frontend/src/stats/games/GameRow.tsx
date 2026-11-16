@@ -1,23 +1,30 @@
 import { Fragment } from "react";
-import { formatDuration, formatLocalDate, formatLocalDateTime, formatLocalTime, outcomeLabel, plural } from "../format";
-import PlayerName from "../PlayerName";
+import {
+  formatDuration,
+  formatLocalDate,
+  formatLocalDateTime,
+  formatLocalTime,
+  outcomeLabel,
+  plural,
+  sideWord,
+} from "../format";
+import PlayerName, { roleClass } from "../PlayerName";
 import type { GameRecord } from "../record";
 import { routePath } from "../routes";
 import StatsLink from "../StatsLink";
 
 /**
- * A game's result as a row shows it: `outcomeLabel`, its first word (the winners) in their side's
- * colour when the game has a winner.
+ * A game's result as a row shows it: `outcomeLabel`, whose first word for a finished game is the
+ * winners' (`sideWord`), in their side's colour.
  */
 function Result({ record }: { record: GameRecord }): JSX.Element {
   const label = outcomeLabel(record);
   if (record.winner === null) return <>{label}</>;
-  const space = label.indexOf(" ");
-  const winners = record.winner === "LIBERAL" ? "stats-liberal" : "stats-fascist";
+  const winners = sideWord(record.winner);
   return (
     <>
-      <span className={winners}>{label.slice(0, space)}</span>
-      {label.slice(space)}
+      <span className={roleClass(record.winner)}>{winners}</span>
+      {label.slice(winners.length)}
     </>
   );
 }

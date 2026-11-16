@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { GameRecord, Role } from "../record";
 import { makeData, makeRecord, makeSeats } from "../testRecords";
@@ -65,9 +65,13 @@ describe("GamesPage", () => {
     open();
     expect(rowIds()).toEqual(ids(45, 26));
     expect(screen.getByText("45 games recorded · showing 1–20")).toBeInTheDocument();
+    expect(screen.getByRole("list")).toHaveAttribute("role", "list"); // kept by Safari without bullets
     const pages = screen.getByRole("navigation", { name: "Pages" });
-    expect(within(pages).queryByRole("link", { name: "‹ Previous" })).toBeNull();
-    expect(within(pages).getByText("‹ Previous")).toHaveAttribute("aria-disabled", "true");
+    // On the first page Previous is a disabled link: no address to go to.
+    const previous = within(pages).getByRole("link", { name: "‹ Previous" });
+    expect(previous).toHaveAttribute("aria-disabled", "true");
+    expect(previous).not.toHaveAttribute("href");
+    expect(previous.tagName).toBe("SPAN");
     expect(within(pages).getByRole("link", { name: "Next ›" })).toHaveAttribute("href", "/stats/games?page=2");
     expect(within(pages).getByText("1")).toHaveAttribute("aria-current", "page");
     expect(within(pages).getByRole("link", { name: "2" })).toHaveAttribute("href", "/stats/games?page=2");
@@ -79,7 +83,9 @@ describe("GamesPage", () => {
     expect(rowIds()).toEqual(ids(5, 1));
     expect(screen.getByText("45 games recorded · showing 41–45")).toBeInTheDocument();
     const pages = screen.getByRole("navigation", { name: "Pages" });
-    expect(within(pages).getByText("Next ›")).toHaveAttribute("aria-disabled", "true");
+    const next = within(pages).getByRole("link", { name: "Next ›" });
+    expect(next).toHaveAttribute("aria-disabled", "true");
+    expect(next).not.toHaveAttribute("href");
     expect(within(pages).getByRole("link", { name: "‹ Previous" })).toHaveAttribute("href", "/stats/games?page=2");
     expect(within(pages).getByRole("link", { name: "1" })).toHaveAttribute("href", "/stats/games");
   });
@@ -144,14 +150,18 @@ describe("GamesPage", () => {
     open();
     const from = screen.getByLabelText("From");
     const to = screen.getByLabelText("To");
+    // Leaving a field puts its day in the address at once.
     fireEvent.change(from, { target: { value: "2026-10-02" } });
+    fireEvent.blur(from);
     expect(address()).toBe("/stats/games?from=2026-10-02");
     expect(screen.getByLabelText("To")).toHaveAttribute("min", "2026-10-02");
     fireEvent.change(to, { target: { value: "2026-10-02" } });
+    fireEvent.keyDown(to, { key: "Enter" });
     expect(address()).toBe("/stats/games?from=2026-10-02&to=2026-10-02");
     expect(screen.getByLabelText("From")).toHaveAttribute("max", "2026-10-02");
     expect(screen.getByText("45 games recorded · 24 match · showing 1–20")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("From"), { target: { value: "" } });
+    fireEvent.blur(screen.getByLabelText("From"));
     expect(address()).toBe("/stats/games?to=2026-10-02");
 
     open();
@@ -188,6 +198,39 @@ describe("GamesPage", () => {
       "9 seats",
       "10 seats",
     ]);
+  });
+
+  it("a day typed part by part is one step back", () => {
+    vi.useFakeTimers();
+    try {
+      open();
+      const pushes = vi.spyOn(history, "pushState");
+      const from = screen.getByLabelText("From");
+      // A date field reports each part as it is typed: the 1st, then the 14th, then a year being typed.
+      for (const day of ["2026-10-01", "2026-10-14", "0002-10-14", "0020-10-14", "2025-10-14"]) {
+        fireEvent.change(from, { target: { value: day } });
+        act(() => vi.advanceTimersByTime(200));
+      }
+      expect(pushes).not.toHaveBeenCalled();
+      act(() => vi.advanceTimersByTime(1000));
+      expect(pushes).toHaveBeenCalledTimes(1);
+      expect(address()).toBe("/stats/games?from=2025-10-14");
+      expect(screen.getByLabelText("From")).toHaveValue("2025-10-14");
+
+      // A year left half typed is not put in the address, and leaving the field shows the address's day.
+      fireEvent.change(from, { target: { value: "0202-10-14" } });
+      act(() => vi.advanceTimersByTime(2000));
+      expect(pushes).toHaveBeenCalledTimes(1);
+      fireEvent.blur(from);
+      expect(screen.getByLabelText("From")).toHaveValue("2025-10-14");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("Clear filters keeps the page size", () => {
+    open("?size=7&per=50&page=2");
+    expect(screen.getByRole("link", { name: "Clear filters" })).toHaveAttribute("href", "/stats/games?per=50");
   });
 
   it("an unknown player in the address is ignored", () => {
