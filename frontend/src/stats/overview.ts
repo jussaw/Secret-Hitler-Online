@@ -103,16 +103,20 @@ export interface OverviewStats {
   latestGames: GameRecord[];
 }
 
-/** One of a player's counted games: the game, its index in the counted games, and whether they won. */
-interface Result {
+/** One of a player's counted games: the game, its index in the counted games, their seat, and whether they won. */
+interface PlayerResult {
   record: GameRecord;
   index: number;
+  seat: number;
   won: boolean;
 }
 
-/** Each player's results, in the counted games' order: the one pass every stat reads. */
-function resultsByPlayer(counted: GameRecord[]): Map<number, Result[]> {
-  const out = new Map<number, Result[]>();
+/**
+ * Each player's results, in the counted games' order: the one pass over the counted games that
+ * every stat here reads (`winStreaks` and `playerOfTheMonth` make it for themselves).
+ */
+function resultsByPlayer(counted: GameRecord[]): Map<number, PlayerResult[]> {
+  const out = new Map<number, PlayerResult[]>();
   counted.forEach((record, index) => {
     for (const { seat, player } of humanSeats(record)) {
       let results = out.get(player);
@@ -120,14 +124,14 @@ function resultsByPlayer(counted: GameRecord[]): Map<number, Result[]> {
         results = [];
         out.set(player, results);
       }
-      results.push({ record, index, won: seatWon(record, seat) });
+      results.push({ record, index, seat, won: seatWon(record, seat) });
     }
   });
   return out;
 }
 
 /** A player's streaks from their results in order: a longest run ties to the later one. */
-function streaksOf(player: number, results: Result[]): PlayerStreaks {
+function streaksOf(player: number, results: PlayerResult[]): PlayerStreaks {
   let longestWin: StreakRun | null = null;
   let longestLoss: StreakRun | null = null;
   let wins = 0;
@@ -154,24 +158,38 @@ function streaksOf(player: number, results: Result[]): PlayerStreaks {
   return { games: results.length, current: wins, longestWin, longestLoss };
 }
 
+/** Every player's streaks from their results. */
+function streaksFrom(results: Map<number, PlayerResult[]>): Map<number, PlayerStreaks> {
+  const out = new Map<number, PlayerStreaks>();
+  results.forEach((list, player) => out.set(player, streaksOf(player, list)));
+  return out;
+}
+
 /**
  * Each player's streaks over the counted games, in order (oldest first): their counted games, the
  * wins in a row up to their last game, and their longest winning and losing runs, a tie going to
  * the later run. Only players with a counted game, never a CPU seat.
  */
 export function winStreaks(counted: GameRecord[]): Map<number, PlayerStreaks> {
-  const out = new Map<number, PlayerStreaks>();
-  resultsByPlayer(counted).forEach((results, player) => out.set(player, streaksOf(player, results)));
-  return out;
+  return streaksFrom(resultsByPlayer(counted));
 }
 
-/** The players with the highest `value` (above none), in `order`; null when there are none. */
+/**
+ * How tied players are listed: more counted games (in `results`) first, then `name` by
+ * `compareNames`, then number.
+ */
+function byGamesThenName(results: Map<number, PlayerResult[]>, name: (player: number) => string) {
+  const games = (player: number) => results.get(player)?.length ?? 0;
+  return (a: number, b: number) => games(b) - games(a) || compareNames(name(a), name(b)) || a - b;
+}
+
+/** The players with the highest `value`, every tied one, in `order`; null when there are none. */
 function leadersOf(values: Map<number, number>, order: (a: number, b: number) => number): Leaders | null {
+  if (values.size === 0) return null;
   let value = -Infinity;
   values.forEach((v) => {
     if (v > value) value = v;
   });
-  if (values.size === 0) return null;
   const players = Array.from(values.keys())
     .filter((player) => values.get(player) === value)
     .sort(order);
@@ -183,6 +201,22 @@ function monthOf(ms: number, timeZone?: string): string {
   return localDayKey(ms, timeZone).slice(0, 7);
 }
 
+/** `playerOfTheMonth` from the players' results. */
+function playerOfTheMonthFrom(results: Map<number, PlayerResult[]>, now: number, timeZone?: string): Leaders | null {
+  const month = monthOf(now, timeZone);
+  const wins = new Map<number, number>();
+  results.forEach((list, player) => {
+    const won = list.filter((r) => r.won && monthOf(r.record.startedAt, timeZone) === month).length;
+    if (won > 0) wins.set(player, won);
+  });
+  const latestSeatName = (player: number) => {
+    const list = results.get(player)!;
+    const { record, seat } = list[list.length - 1];
+    return record.seats[seat].name;
+  };
+  return leadersOf(wins, byGamesThenName(results, latestSeatName));
+}
+
 /**
  * The player of the month: the most wins among the counted games that started in `now`'s local
  * month in `timeZone` (the viewer's by default), including any that started after `now`, so a
@@ -191,25 +225,7 @@ function monthOf(ms: number, timeZone?: string): string {
  * counted seat, then number.
  */
 export function playerOfTheMonth(counted: GameRecord[], now: number, timeZone?: string): Leaders | null {
-  const month = monthOf(now, timeZone);
-  const wins = new Map<number, number>();
-  const games = new Map<number, number>();
-  const latestName = new Map<number, string>();
-  for (const record of counted) {
-    const inMonth = monthOf(record.startedAt, timeZone) === month;
-    for (const { seat, player } of humanSeats(record)) {
-      games.set(player, (games.get(player) ?? 0) + 1);
-      latestName.set(player, record.seats[seat].name);
-      if (inMonth && seatWon(record, seat)) wins.set(player, (wins.get(player) ?? 0) + 1);
-    }
-  }
-  return leadersOf(
-    wins,
-    (a, b) =>
-      (games.get(b) ?? 0) - (games.get(a) ?? 0) ||
-      compareNames(latestName.get(a) ?? "", latestName.get(b) ?? "") ||
-      a - b
-  );
+  return playerOfTheMonthFrom(resultsByPlayer(counted), now, timeZone);
 }
 
 /**
@@ -227,28 +243,19 @@ export function ratingPointDetail(game: GameRecord, name: string, point: RatingL
   ];
 }
 
-/** Higher first: a `rankRows` compare for counts. */
-const higher = (a: number, b: number) => b - a;
-
 /** Every OVERVIEW number for the counted games in `stats`, seen at `now` in `timeZone`. */
 export function computeOverview(stats: StatsContext, now: number, timeZone?: string): OverviewStats {
   const { counted, elo, names } = stats;
   const last = counted.length > 0 ? counted[counted.length - 1] : null;
   const results = resultsByPlayer(counted);
-  const streaks = new Map<number, PlayerStreaks>();
-  results.forEach((list, player) => streaks.set(player, streaksOf(player, list)));
+  const streaks = streaksFrom(results);
+  const tied = byGamesThenName(results, (player) => nameOf(names, player));
 
-  /** Tied leaders: more counted games first, then the player's current name, then number. */
-  const byGamesThenName = (a: number, b: number) =>
-    (results.get(b)?.length ?? 0) - (results.get(a)?.length ?? 0) ||
-    compareNames(nameOf(names, a), nameOf(names, b)) ||
-    a - b;
-  const recent = (list: Result[]) => now - list[list.length - 1].record.startedAt <= RECENT_MS;
-
+  // The dashboard's leaders: players whose last counted game started within RECENT_MS of now.
   const current = new Map<number, number>();
   const hot = new Map<number, number>();
   results.forEach((list, player) => {
-    if (!recent(list)) return;
+    if (now - list[list.length - 1].record.startedAt > RECENT_MS) return;
     const streak = streaks.get(player)!.current;
     if (streak > 0) current.set(player, streak);
     if (list.length >= HOT_HAND_GAMES) {
@@ -260,24 +267,25 @@ export function computeOverview(stats: StatsContext, now: number, timeZone?: str
   // The power ranking: settled players ranked on rounded ratings, then the provisional ones by
   // rounded rating, then more games, then name.
   const rated = Array.from(elo.ratings.values());
+  const shown = (player: number) => Math.round(elo.ratings.get(player)!.rating);
   const settled = rankRows(
-    rated.filter((r) => !r.provisional).map((r) => ({ player: r.player, value: Math.round(r.rating), count: r.games })),
-    higher,
+    rated.filter((r) => !r.provisional).map((r) => ({ player: r.player, value: shown(r.player), count: r.games })),
+    (a, b) => b - a,
     names,
     0
   );
+  const provisionalOrder = (a: number, b: number) =>
+    shown(b) - shown(a) ||
+    elo.ratings.get(b)!.games - elo.ratings.get(a)!.games ||
+    compareNames(nameOf(names, a), nameOf(names, b)) ||
+    a - b;
   const provisional = rated
     .filter((r) => r.provisional)
-    .sort(
-      (a, b) =>
-        Math.round(b.rating) - Math.round(a.rating) ||
-        b.games - a.games ||
-        compareNames(nameOf(names, a.player), nameOf(names, b.player)) ||
-        a.player - b.player
-    );
+    .map((r) => r.player)
+    .sort(provisionalOrder);
   const powerRanking: PowerRow[] = [
     ...settled.map((row) => ({ player: row.player, rank: row.rank })),
-    ...provisional.map((r) => ({ player: r.player, rank: null })),
+    ...provisional.map((player) => ({ player, rank: null })),
   ].map(({ player, rank }) => {
     const r = elo.ratings.get(player)!;
     return { player, rank, rating: r.rating, lastChange: r.lastChange, games: r.games, provisional: r.provisional };
@@ -302,36 +310,29 @@ export function computeOverview(stats: StatsContext, now: number, timeZone?: str
       return { player, points };
     });
 
-  // The headline numbers.
-  const rows = (value: (list: Result[], player: number) => number) =>
+  // The headline numbers: a row per player, their counted games the count.
+  const rows = <T>(value: (list: PlayerResult[], player: number) => T) =>
     Array.from(results.entries()).map(([player, list]) => ({ player, value: value(list, player), count: list.length }));
-  const winsOf = (list: Result[]) => list.filter((r) => r.won).length;
-  const liberalWins = counted.filter((g) => g.winner === "LIBERAL").length;
+  /** Most first, every player ranked. */
+  const most = (value: (list: PlayerResult[], player: number) => number) => rankRows(rows(value), (a, b) => b - a, names, 0);
+  const winsOf = (list: PlayerResult[]) => list.filter((r) => r.won).length;
+  const winRates = rows((list) => rate(winsOf(list), list.length, MIN_GAMES));
 
   return {
     daysSinceLastGame: last ? Math.max(0, localDaysBetween(last.endedAt, now, timeZone)) : null,
     lastGame: last,
-    winStreak: leadersOf(current, byGamesThenName),
-    hotHand: leadersOf(hot, byGamesThenName),
-    playerOfMonth: playerOfTheMonth(counted, now, timeZone),
+    winStreak: leadersOf(current, tied),
+    hotHand: leadersOf(hot, tied),
+    playerOfMonth: playerOfTheMonthFrom(results, now, timeZone),
     powerRanking,
     ratingHistory,
     headline: {
-      games: rankRows(rows((list) => list.length), higher, names, 0),
-      wins: rankRows(rows(winsOf), higher, names, 0),
-      winRate: rankRows(
-        Array.from(results.entries()).map(([player, list]) => ({
-          player,
-          value: rate(winsOf(list), list.length, MIN_GAMES),
-          count: list.length,
-        })),
-        (a, b) => (b.value ?? -1) - (a.value ?? -1),
-        names,
-        MIN_GAMES
-      ),
-      currentStreak: rankRows(rows((_, player) => streaks.get(player)!.current), higher, names, 0),
-      longestStreak: rankRows(rows((_, player) => streaks.get(player)!.longestWin?.length ?? 0), higher, names, 0),
-      liberalWins,
+      games: most((list) => list.length),
+      wins: most(winsOf),
+      winRate: rankRows(winRates, (a, b) => (b.value ?? -1) - (a.value ?? -1), names, MIN_GAMES),
+      currentStreak: most((_, player) => streaks.get(player)!.current),
+      longestStreak: most((_, player) => streaks.get(player)!.longestWin?.length ?? 0),
+      liberalWins: counted.filter((g) => g.winner === "LIBERAL").length,
       fascistWins: counted.filter((g) => g.winner === "FASCIST").length,
     },
     latestGames: counted.slice(-LATEST_GAMES).reverse(),
