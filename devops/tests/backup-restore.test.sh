@@ -222,9 +222,12 @@ stub_docker() {
   export STUB_SNAPSHOT="$T/stub-snapshot.db"
   printf 'SQLite format 3\000a stubbed snapshot\n' >"$STUB_SNAPSHOT"
   export STUB_RUNNING=true STUB_INTEGRITY=ok STUB_CP_FROM="$STUB_SNAPSHOT"
+  export STUB_RUN_EXIT=0 STUB_STATUS=running
+  export STUB_LOGS="12:00:00.000 [main] INFO  server.SecretHitlerServer -- $STARTUP_LINE 8080."
   cat >"$T/stub/docker" <<'STUB'
 #!/usr/bin/env bash
-printf '%s\n' "$*" >>"$DOCKER_LOG"
+# One line per call, even for an argument with line breaks in it (the restore's swap script).
+{ printf '%s' "$*" | tr '\n' ' '; echo; } >>"$DOCKER_LOG"
 unexpected() {
   echo "unexpected docker call: $*" >&2
   exit 99
@@ -245,6 +248,9 @@ case "$1" in
     fi
     case "$3" in
       '{{.State.Running}}') echo "$STUB_RUNNING" ;;
+      '{{.Image}}') echo sha256:stubimage ;;
+      '{{.State.StartedAt}}') echo 2026-01-01T00:00:00.000000000Z ;;
+      '{{.State.Status}}') echo "$STUB_STATUS" ;;
       *) unexpected "$@" ;;
     esac
     ;;
@@ -271,6 +277,12 @@ case "$1" in
     [ "$#" -eq 3 ] || unexpected "$@"
     cp "$STUB_CP_FROM" "$3"
     ;;
+  stop | start)
+    [ "$#" -eq 2 ] || unexpected "$@"
+    echo "$2"
+    ;;
+  run) exit "$STUB_RUN_EXIT" ;;
+  logs) printf '%s\n' "$STUB_LOGS" ;;
   *) unexpected "$@" ;;
 esac
 STUB
@@ -447,6 +459,164 @@ stub_a_failing_hook_keeps_the_backup() {
   assert_none "$B" '.secret-hitler-*'
 }
 
+# ---------------------------------------------------------------------------------------------
+# The restore, against the stub
+
+# with_sha <file>: writes <file>.sha256 for it, as the backup does.
+with_sha() {
+  printf '%s  %s\n' "$(sha_of "$1")" "$(basename "$1")" >"$1.sha256"
+}
+
+# good_backup <file>: a file with SQLite's header, and its .sha256.
+good_backup() {
+  mkdir -p "$(dirname "$1")"
+  printf 'SQLite format 3\000a backup\n' >"$1"
+  with_sha "$1"
+}
+
+# restore_typing <typed> <file> [NAME=value...]: the restore through run, from the current
+# directory, with <typed> as the answer to its question. Run it after a plain cd, never in a
+# subshell, so STATUS and OUT reach the caller.
+restore_typing() {
+  local typed=$1 file=$2
+  shift 2
+  run env ENV_FILE="$T/empty.env" "$@" "$REPO/devops/restore-db.sh" "$file" <<EOF
+$typed
+EOF
+}
+
+stub_restore_refuses_a_bad_file() {
+  stub_docker
+  mkdir "$T/bad"
+  printf 'just some text, long enough for a header\n' >"$T/bad/text.db"
+  with_sha "$T/bad/text.db"
+  printf '0123456789' >"$T/bad/short.db"
+  with_sha "$T/bad/short.db"
+  printf 'SQLite format 3!and the rest\n' >"$T/bad/bang.db"
+  with_sha "$T/bad/bang.db"
+  local f
+  for f in text short bang; do
+    restore_typing shtest "$T/bad/$f.db" CONTAINER_NAME=shtest
+    expect_refused_before_docker "is not a SQLite database"
+  done
+  good_backup "$T/bad/bare.db"
+  rm "$T/bad/bare.db.sha256"
+  restore_typing shtest "$T/bad/bare.db" CONTAINER_NAME=shtest
+  expect_refused_before_docker "no checksum file"
+  good_backup "$T/bad/other.db"
+  printf '%s  other.db\n' "$(sha_of "$T/bad/text.db")" >"$T/bad/other.db.sha256"
+  restore_typing shtest "$T/bad/other.db" CONTAINER_NAME=shtest
+  expect_refused_before_docker "does not match its checksum"
+  printf 'not a checksum\n' >"$T/bad/other.db.sha256"
+  restore_typing shtest "$T/bad/other.db" CONTAINER_NAME=shtest
+  expect_refused_before_docker "does not match its checksum"
+  restore_typing shtest "$T/bad/none.db" CONTAINER_NAME=shtest
+  expect_refused_before_docker "is not a file"
+  restore_typing shtest "$T/bad" CONTAINER_NAME=shtest
+  expect_refused_before_docker "is not a file"
+  run env ENV_FILE="$T/empty.env" "$REPO/devops/restore-db.sh" </dev/null
+  expect_refused_before_docker "Usage"
+}
+
+stub_restore_needs_the_name() {
+  stub_docker
+  local f="$T/name/secret-hitler-20260101T000000Z.db"
+  good_backup "$f"
+  restore_typing nope "$f" CONTAINER_NAME=shtest
+  expect_refused_before_docker "Restore cancelled"
+  restore_typing " shtest" "$f" CONTAINER_NAME=shtest
+  expect_refused_before_docker "Restore cancelled"
+  run env ENV_FILE="$T/empty.env" CONTAINER_NAME=shtest "$REPO/devops/restore-db.sh" "$f" </dev/null
+  expect_refused_before_docker "Restore cancelled"
+  assert_has "$OUT" "$f"
+  assert_has "$OUT" "shtest"
+  assert_has "$OUT" "Type the container's name to go on: "
+}
+
+stub_restore_needs_the_container() {
+  stub_docker
+  STUB_RUNNING=missing
+  local f="$T/container/secret-hitler-20260101T000000Z.db"
+  good_backup "$f"
+  restore_typing shtest "$f" CONTAINER_NAME=shtest
+  assert_eq 1 "$STATUS" "exit"
+  assert_has "$OUT" "No container"
+  assert_eq inspect "$(docker_subcommands)" "the docker calls"
+}
+
+stub_restore_swaps_and_waits() {
+  stub_docker
+  local f="$T/sub dir/secret-hitler-20260101T000000Z.db"
+  good_backup "$f"
+  cd "$T"
+  restore_typing shtest "./sub dir/$(basename "$f")" CONTAINER_NAME=shtest
+  cd "$REPO"
+  assert_eq 0 "$STATUS" "exit: $OUT"
+  assert_has "$OUT" "Restore complete"
+  assert_eq "inspect stop run start inspect logs" "$(docker_subcommands)" "the order"
+  assert_has "$(docker_calls)" "inspect --format {{.Image}} shtest"
+  assert_has "$(docker_calls)" "run --rm --network none --user root --volumes-from shtest -v \
+$(cd "$T/sub dir" && pwd -P)/$(basename "$f"):/restore/backup.db:ro sha256:stubimage sh -euc"
+  local swap
+  swap=$(grep '^run ' "$DOCKER_LOG")
+  assert_has "$swap" "/data/backup.db $(sha_of "$f")"
+  # Every check comes before the old files go and the copy moves into place.
+  local step at last=0
+  for step in "cp /restore/backup.db" "sha256sum" "chown 1000:1000" '"$1-wal"' '"$1-shm"' '"$1-journal"' "mv "; do
+    at=$(awk -v s="$step" '{ print index($0, s) }' <<<"$swap")
+    [ "$at" -gt "$last" ] || fail "the swap's [$step] is missing or out of order: $swap"
+    last=$at
+  done
+  assert_has "$(docker_calls)" "logs --since 2026-01-01T00:00:00.000000000Z shtest"
+}
+
+stub_failed_swap_starts_the_old_database() {
+  stub_docker
+  STUB_RUN_EXIT=1
+  local f="$T/failed/secret-hitler-20260101T000000Z.db"
+  good_backup "$f"
+  restore_typing shtest "$f" CONTAINER_NAME=shtest
+  assert_eq 1 "$STATUS" "exit"
+  assert_has "$OUT" "was not replaced"
+  assert_eq "inspect stop run start" "$(docker_subcommands)" "the docker calls"
+}
+
+stub_restore_reports_a_server_that_does_not_start() {
+  stub_docker
+  local f="$T/start/secret-hitler-20260101T000000Z.db" began
+  good_backup "$f"
+  STUB_STATUS=exited
+  STUB_LOGS=boom
+  began=$SECONDS
+  restore_typing shtest "$f" CONTAINER_NAME=shtest
+  assert_eq 1 "$STATUS" "exit when the container exits"
+  assert_has "$OUT" "did not start"
+  assert_has "$OUT" "boom"
+  [ $((SECONDS - began)) -lt 3 ] || fail "an exited container took $((SECONDS - began)) s to report"
+  stub_docker
+  STUB_LOGS="12:00:00.000 [main] INFO  server.SecretHitlerServer -- Loaded backup."
+  began=$SECONDS
+  restore_typing shtest "$f" CONTAINER_NAME=shtest STARTUP_TIMEOUT_SECONDS=1
+  assert_eq 1 "$STATUS" "exit when the line never comes"
+  assert_has "$OUT" "did not start"
+  [ $((SECONDS - began)) -lt 5 ] || fail "a 1 s timeout took $((SECONDS - began)) s"
+}
+
+stub_bad_restore_settings_stop_first() {
+  stub_docker
+  local f="$T/settings/secret-hitler-20260101T000000Z.db" value
+  good_backup "$f"
+  for value in abc 0 -1 5s; do
+    restore_typing shtest "$f" CONTAINER_NAME=shtest STARTUP_TIMEOUT_SECONDS="$value"
+    expect_refused_before_docker STARTUP_TIMEOUT_SECONDS
+  done
+  restore_typing shtest "$f" CONTAINER_NAME=shtest DB_PATH=backup.db
+  expect_refused_before_docker DB_PATH
+}
+
+# ---------------------------------------------------------------------------------------------
+# Both scripts
+
 stub_settings_precedence() {
   stub_docker
   cat >"$T/settings.env" <<EOF
@@ -483,6 +653,30 @@ EOF
   run env "$T/alone/backup-db.sh"
   assert_eq 0 "$STATUS" "exit with a .env beside it"
   assert_has "$(docker_calls)" "inspect --format {{.State.Running}} from-default"
+
+  # The restore reads the same way.
+  local f="$T/precedence/secret-hitler-20260101T000000Z.db"
+  good_backup "$f"
+  stub_docker
+  restore_typing from-file "$f" ENV_FILE="$T/settings.env"
+  assert_eq 0 "$STATUS" "the restore's exit with the settings file: $OUT"
+  assert_has "$(docker_calls)" "stop from-file"
+  assert_lacks "$(docker_calls)" "an-earlier-line"
+  stub_docker
+  restore_typing from-env "$f" ENV_FILE="$T/settings.env" CONTAINER_NAME=from-env
+  assert_eq 0 "$STATUS" "the restore's exit with the environment: $OUT"
+  assert_has "$(docker_calls)" "stop from-env"
+  assert_lacks "$(docker_calls)" "from-file"
+  stub_docker
+  restore_typing shtest "$f" ENV_FILE="$T/missing.env" CONTAINER_NAME=shtest
+  expect_refused_before_docker ENV_FILE
+  stub_docker
+  cp "$REPO/devops/restore-db.sh" "$T/alone/"
+  run "$T/alone/restore-db.sh" "$f" <<EOF
+from-default
+EOF
+  assert_eq 0 "$STATUS" "the restore's exit with a .env beside it: $OUT"
+  assert_has "$(docker_calls)" "stop from-default"
 }
 
 stub_env_file_is_ignored() {
@@ -532,6 +726,46 @@ real_backup_while_writing() {
   BACKUP_ROWS=$(table_rows file_rows "$BACKUP") # the writer keeps going, for the restore
   assert_has "$BACKUP_ROWS" "== accounts"
   assert_has "$BACKUP_ROWS" "== sessions"
+}
+
+real_refusals_keep_it_running() {
+  local started f
+  started=$(docker inspect --format '{{.State.StartedAt}}' "$C")
+  mkdir "$T/refused"
+  printf 'not a database\n' >"$T/refused/junk.db"
+  with_sha "$T/refused/junk.db"
+  cp "$BACKUP" "$T/refused/torn.db"
+  printf 'X' | dd of="$T/refused/torn.db" bs=1 seek=100 conv=notrunc 2>/dev/null
+  cmp -s "$BACKUP" "$T/refused/torn.db" && fail "the torn copy is not torn"
+  cp "$BACKUP.sha256" "$T/refused/torn.db.sha256"
+  cp "$BACKUP" "$T/refused/bare.db"
+  for f in "junk:is not a SQLite database" "torn:does not match its checksum" "bare:no checksum file"; do
+    restore_typing "$C" "$T/refused/${f%%:*}.db" CONTAINER_NAME="$C"
+    assert_eq 1 "$STATUS" "${f%%:*}"
+    assert_has "$OUT" "${f#*:}"
+  done
+  restore_typing nope "$BACKUP" CONTAINER_NAME="$C"
+  assert_eq 1 "$STATUS" "a wrong name"
+  assert_has "$OUT" "Restore cancelled"
+  assert_eq true "$(docker inspect --format '{{.State.Running}}' "$C")" "still running"
+  assert_eq "$started" "$(docker inspect --format '{{.State.StartedAt}}' "$C")" "never restarted"
+}
+
+real_restore_brings_back_the_rows() {
+  stop_writer
+  [ "$(table_rows db_rows)" != "$BACKUP_ROWS" ] || fail "nothing was written after the backup"
+  cd "$T/backups"
+  restore_typing "$C" "./$(basename "$BACKUP")" CONTAINER_NAME="$C"
+  cd "$REPO"
+  assert_eq 0 "$STATUS" "exit: $OUT"
+  assert_has "$OUT" "Restore complete"
+  assert_eq OK "$(curl -fsS "$(base_url)/ping")" "the server, the moment the restore returns"
+  # No lobby is ever made, so the backup table has no row whose load the start would count.
+  assert_eq "$BACKUP_ROWS" "$(table_rows db_rows)" "every table's rows"
+  assert_eq wal "$(db_rows 'PRAGMA journal_mode')" "WAL again"
+  assert_eq 1000 "$(docker exec "$C" stat -c %u /data/backup.db)" "the owner"
+  assert_lacks "$(docker exec "$C" ls -A /data)" ".secret-hitler-restore-"
+  sign_in after-restore >/dev/null || fail "the restored file takes no writes"
 }
 
 # ---------------------------------------------------------------------------------------------
