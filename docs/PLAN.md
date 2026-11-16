@@ -42,7 +42,22 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 9. Phase 8 follow-ups | `phase-9-follow-ups` | done |
 | 10. Baseline bugs | `fix/issue-N`, one per issue | done |
 | 11. Lobby redesign | `phase-11-lobby` | done |
-| 12. Accounts with Discord sign-in | `phase-12-accounts` | in progress |
+| 12. Accounts with Discord sign-in | `phase-12-accounts` | done |
+| 13. Database backups | `phase-13-db-backups` | planned |
+| 14A. Game timeline | `phase-14a-game-timeline` | planned |
+| 14B. Game records | `phase-14b-game-records` | planned |
+| 15A. Stats shell | `phase-15a-stats-shell` | planned |
+| 15B. Game history | `phase-15b-game-history` | planned |
+| 16. The game page | `phase-16-game-page` | planned |
+| 17A. Stats engine | `phase-17a-stats-engine` | planned |
+| 17B. OVERVIEW | `phase-17b-overview` | planned |
+| 18. ROLES & CARDS | `phase-18-roles-cards` | planned |
+| 19. VOTES & POWERS | `phase-19-votes-powers` | planned |
+| 20. RIVALS and ENDINGS | `phase-20-rivals-endings` | planned |
+| 21A. ACTIVITY | `phase-21a-activity` | planned |
+| 21B. RECORDS | `phase-21b-records` | planned |
+| 22A. Trophies and name links | `phase-22a-trophies-links` | planned |
+| 22B. Player pages | `phase-22b-player-pages` | planned |
 
 ---
 
@@ -688,6 +703,364 @@ Issue #30: playing needs an account, made by signing in with Discord; each accou
 - [x] PR merged into `development`
 - [ ] The user creates the Discord application and sets `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` and `DISCORD_REDIRECT_URI` on the home server
 - [ ] The user signs in with Discord on the deployed build, on a desktop and on a phone, chooses a name, renames in a lobby, and plays a game
+
+---
+
+## Phases 13 to 22: Game records and stats
+
+Spec: [`docs/superpowers/specs/2026-11-15-game-stats-design.md`](superpowers/specs/2026-11-15-game-stats-design.md) · Shared names and file ownership: [`docs/superpowers/plans/2026-11-15-game-stats-interfaces.md`](superpowers/plans/2026-11-15-game-stats-interfaces.md)
+
+Issue #31: the server records every game as it is played, and a stats section at `/stats` reads the records. Fifteen phases (13 to 22, five of them in an A and a B part), each its own branch and pull request, each built by one subagent from its breakdown; a manager session runs them. Phases that do not depend on each other run at the same time, in eight waves: **13 and 14A**; **14B** (merged after 13, so the backups land before the first record is written); **15A**; **15B, 16 and 17A**; **17B, 18, 19, 20 and 21A**; **21B**; **22A**; **22B**. Added after the first ten phases were done, so the "Done when" below covers Phases 1 to 10.
+
+---
+
+## Phase 13: Database backups
+
+Breakdown: [`docs/superpowers/plans/2026-11-15-phase-13-db-backups.md`](superpowers/plans/2026-11-15-phase-13-db-backups.md) · Spec: [`docs/superpowers/specs/2026-11-15-game-stats-design.md`](superpowers/specs/2026-11-15-game-stats-design.md), "Database backups (Phase 13)"
+
+Issue #31 (game stats), the first of its ten phases: the database is backed up before the first game is recorded. The server keeps its SQLite file in WAL mode and logs one line once it listens, the image gains `sqlite3`, and two host scripts take a consistent, checked snapshot while the server writes and put one back. Builds on Phase 12 and merges before Phase 14.
+
+- [ ] `backend/src/main/java/server/SecretHitlerServer.java`: the database file in WAL mode at start, retried while busy for up to 5 s
+- [ ] `SecretHitlerServer`: one startup line once the server listens, which the restore waits for
+- [ ] `Dockerfile`: `sqlite3` in the final stage; `devops/tests/backup-restore.test.sh` checks it, the startup line and WAL mode in the branch's image
+- [ ] `devops/backup-db.sh` and `devops/.env.example` (`devops/.env` git-ignored): a checked snapshot while the server writes, retention, and the `AFTER_BACKUP` hook
+- [ ] `devops/restore-db.sh`: a bad file refused before anything stops, the file swapped in one move, the startup line waited for
+- [ ] `.github/workflows/ci.yml`: a `devops` job runs the backup and restore test against the branch's image on pull requests
+- [ ] `CLAUDE.md`, `README.md` and `DEVELOPMENT.md` describe backups and restores; the pull request says it changes nothing on screen
+
+**Phase 13 acceptance**
+
+- [ ] Backend and frontend unit tests pass, the frontend builds, the backup and restore test passes, and the browser tests pass in all four Playwright projects
+- [ ] PR merged into `development`
+- [ ] The user schedules the nightly backup on the home server, with `AFTER_BACKUP` copying each backup off the host if wanted
+- [ ] The user takes one restore drill on the home server: restores a recent backup and signs in to find their account and name
+
+---
+
+## Phase 14A: Game timeline
+
+Breakdown: [`docs/superpowers/plans/2026-11-15-phase-14a-game-timeline.md`](superpowers/plans/2026-11-15-phase-14a-game-timeline.md) · Spec: [`docs/superpowers/specs/2026-11-15-game-stats-design.md`](superpowers/specs/2026-11-15-game-stats-design.md)
+
+Issue #31, the first half of the game recorder: every game a lobby runs keeps a timeline of everything that happens in it, survives a backup with it, and hands one record to a sink when it ends or its lobby times out. Nothing is stored or served yet (Phase 14B), and nothing changes on screen. It is built beside Phase 13 and needs no database.
+
+- [ ] `backend/src/main/java/server/stats/GameSnapshot.java` and `TimelineDiff.java`: the events between two looks at a game, spelled out in order where one move makes several, with only the living seats' votes
+- [ ] Random games played by CPU players in every seat replay to their final board, deaths, tracker, piles and outcome, and between them make every event type and outcome
+- [ ] `Lobby`: a timeline per game, and one `GameRecord` handed to `GameRecordSink` when the game ends or its lobby times out, a finished game keeping its outcome
+- [ ] `Lobby`: pauses, resumes, terms the countdown ends, dropped connections and returns
+- [ ] Backups carry the timeline, taken under the lobby's lock; a restore adds `restored`; a game from before the recorder is `complete: false`
+- [ ] `CLAUDE.md` describes the timeline
+- [ ] Every finding of the whole-branch review fixed, Minor ones included
+
+**Phase 14A acceptance**
+
+- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass (`desktop` on macOS and `firefox` in the Linux image before the PR, all four projects in CI)
+- [ ] Every game played to its end, with or without CPU players, and every game abandoned mid-way, hands over exactly one record, whose timeline replays to the game's end
+- [ ] The pull request says it changes nothing on screen
+- [ ] PR merged into `development`
+
+---
+
+## Phase 14B: Game records
+
+Breakdown: [`docs/superpowers/plans/2026-11-15-phase-14b-game-records.md`](superpowers/plans/2026-11-15-phase-14b-game-records.md) · Spec: [`docs/superpowers/specs/2026-11-15-game-stats-design.md`](superpowers/specs/2026-11-15-game-stats-design.md)
+
+Issue #31, the second half of the game recorder: the server stores every record Phase 14A hands over in SQLite exactly once, with player numbers in place of accounts, and serves every record from `GET /api/stats/games`, with the contract fixture the stats pages test against. It changes nothing on screen. It starts once Phase 14A has merged and merges after Phase 13, so the backups land before any record is written.
+
+- [ ] `backend/src/main/java/server/stats/GameStore.java`: `players`, `games` and `game_seats`, player numbers, one write per game ID
+- [ ] `GameRecorder`: the sink, writing on its own thread; a record that fails waits for the next try
+- [ ] `SecretHitlerServer`: start-up (recording, the backup, the drop of a restored game that has a record, the sweep), the minute's retry and the shutdown's flush, each a method the tests call
+- [ ] `GET /api/stats/games`: cached until a record is saved or an account renamed, `ETag` and 304, gzip, 503, no account IDs; the dev server proxies `/api`
+- [ ] `frontend/src/stats/fixtures/recorded-games.json` from `./gradlew recordedGamesFixture`, checked against the spec's format
+- [ ] `frontend/e2e/recorder.spec.ts`: a real game played to its end is served in the spec's key order
+- [ ] `CLAUDE.md`, `README.md` and `DEVELOPMENT.md` describe the store, the writer, the route and the fixture
+- [ ] Every finding of the whole-branch review fixed, Minor ones included
+
+**Phase 14B acceptance**
+
+- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass (`desktop` on macOS and `firefox` in the Linux image before the PR, all four projects in CI)
+- [ ] Every game played to its end, with or without CPU players, and every game abandoned mid-way, has exactly one stored record
+- [ ] A real game played against the jar with a database file is served by `/api/stats/games` in the spec's key order (`curl`)
+- [ ] The pull request says it changes nothing on screen
+- [ ] PR merged into `development`, after Phase 13's
+- [ ] The user plays a game on the deployed build and finds its record in `https://<subdomain>/api/stats/games`
+
+---
+
+## Phase 15A: Stats shell
+
+Breakdown: [`docs/superpowers/plans/2026-11-15-phase-15a-stats-shell.md`](superpowers/plans/2026-11-15-phase-15a-stats-shell.md) · Spec: [`docs/superpowers/specs/2026-11-15-game-stats-design.md`](superpowers/specs/2026-11-15-game-stats-design.md)
+
+Issue #31: the stats pages' shell at `/stats`, loaded as a chunk of its own so the game's first download does not grow, with the header, the routes and a placeholder for every page; `gameId` in every game packet; and the record's types, labels, names, links and data, and the browser-test helpers, that Phases 15B, 16 and 17A build on. Needs Phase 14B.
+
+- [ ] `GameToJSONConverter` and `Lobby`: every game packet, to players and spectators, carries `gameId`
+- [ ] `SecretHitlerServer`: every path under `/stats` answers with the page (Javalin's single-page fallback)
+- [ ] `frontend/src/stats/record.ts`: the record's types, parsed with a format check against the contract fixture, and `testRecords.ts`
+- [ ] `frontend/src/stats/format.ts` and `PlayerName.tsx`: results, lengths, local dates and times in the viewer's zone, and names coloured by role
+- [ ] `frontend/src/stats/routes.ts`, `StatsLink.tsx` and `api.ts`: the paths, History API navigation with a working back button, and the games fetched once per visit
+- [ ] `frontend/src/main.tsx`, `statsPath.ts` and `stats/StatsApp.tsx`: the stats as their own lazy chunk, the header, and the placeholder pages; `npm run first-download`
+- [ ] `frontend/e2e/stats.ts` and `stats-shell.spec.ts`: the shared helpers and page check, every page fits every tested size, the game's first download holds no stats code, and `firefox` runs `stats-*.spec`
+- [ ] `CLAUDE.md` and `DEVELOPMENT.md` describe the shell and the stats tests; the pull request shows the new pages
+- [ ] Every finding of the whole-branch review fixed, Minor ones included
+
+**Phase 15A acceptance**
+
+- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects (`desktop` on macOS and `firefox` in the Linux image before the PR, all four in CI)
+- [ ] PR merged into `development`, after Phase 14B's
+- [ ] The user opens `/stats` on the deployed build, on a desktop and on a phone, opens a game from the latest games, and moves between the pages with the header and the back button
+
+---
+
+## Phase 15B: Game history
+
+Breakdown: [`docs/superpowers/plans/2026-11-15-phase-15b-game-history.md`](superpowers/plans/2026-11-15-phase-15b-game-history.md) · Spec: [`docs/superpowers/specs/2026-11-15-game-stats-design.md`](superpowers/specs/2026-11-15-game-stats-design.md)
+
+Issue #31: GAMES at `/stats/games`, every recorded game, newest first, with its own filter in the address, 20, 50 or 100 to a page; and the links in, from the login page's and the lobby's footers and the victory screen's "See this game". Needs Phase 15A; built beside Phases 16 and 17A, touching none of their files.
+
+- [ ] `frontend/src/stats/games/gamesFilter.ts` and `pages.ts`: GAMES' filter read from and written to the address, any other value read as the default, local days both inclusive, and the page links
+- [ ] `frontend/src/stats/games/GameRow.tsx` and `GamesPage.tsx`: GAMES as in `games.jpg`, one link stretched over each row, filling 15A's placeholder
+- [ ] The links in: Stats in the login page's and the lobby's footers, See this game on the victory screen
+- [ ] `frontend/e2e/stats-games.spec.ts`: GAMES fits every tested size, names stay in their columns at 320px, filters and pages go through the address, and a real game shows up in GAMES and its victory link opens it
+- [ ] `CLAUDE.md`, `README.md` and `DEVELOPMENT.md` describe GAMES and the links in; the pull request shows the footers, the victory screen and GAMES before and after
+- [ ] Every finding of the whole-branch review fixed, Minor ones included
+
+**Phase 15B acceptance**
+
+- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects (`desktop` on macOS and `firefox` in the Linux image before the PR, all four in CI)
+- [ ] PR merged into `development`, after Phase 15A's
+- [ ] The user opens GAMES and a game's link from a real game on the deployed build, on a desktop and on a phone
+
+---
+
+## Phase 16: The game page
+
+Breakdown: [`docs/superpowers/plans/2026-11-15-phase-16-game-page.md`](superpowers/plans/2026-11-15-phase-16-game-page.md) · Spec: [`docs/superpowers/specs/2026-11-15-game-stats-design.md`](superpowers/specs/2026-11-15-game-stats-design.md)
+
+Issue #31: each game's record, round by round. `rounds(record)` turns a timeline into one entry per round, with its government, votes, cards, veto, power, blame and decision times. Every stat phase after this one reads it. `/stats/games/<id>` shows a game's header and its rounds. Built after Phase 15A, beside 15B and 17A, touching none of their files.
+
+- [ ] `frontend/src/stats/rounds.ts`: one `Round` per round from a record's timeline: the government, votes, election, tracker, cards, veto, policy, power, the term's end, pauses, reshuffles and dropped connections
+- [ ] `rounds.ts`: blame and each decision's time, by the spec's rules
+- [ ] `rounds.test.ts`: every game in the contract fixture lines up with its final board, deaths, outcome and the president rotation
+- [ ] `frontend/src/stats/game/GameHeader.tsx` and `GamePage.tsx`: the header, the incomplete and unfinished notes, and "This game was not found"
+- [ ] `frontend/src/stats/game/RoundBlock.tsx`: each round as a block edged in its policy's colour
+- [ ] `frontend/e2e/stats-game.spec.ts`: the page never scrolls sideways at any tested size and has 44px targets on phones, and a real game's page shows every round
+- [ ] `CLAUDE.md` and `README.md` describe `rounds` and the game page
+- [ ] Every review finding is fixed or answered with a reason
+- [ ] The pull request shows the game page before and after, on desktop and on a phone
+
+**Phase 16 acceptance**
+
+- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [ ] PR merged into `development`
+- [ ] The user opens a game they played, from GAMES and from its victory screen, on a desktop and on a phone, and reads its rounds
+
+---
+
+## Phase 17A: Stats engine
+
+Breakdown: [`docs/superpowers/plans/2026-11-15-phase-17a-stats-engine.md`](superpowers/plans/2026-11-15-phase-17a-stats-engine.md) · Spec: [`docs/superpowers/specs/2026-11-15-game-stats-design.md`](superpowers/specs/2026-11-15-game-stats-design.md)
+
+Issue #31: the stats engine every tab reads (the counting rules, the player filter and the CPU toggle kept in the address, Elo with a handicap per player count), the shared cards, tables and charts, and the tab row with all seven tabs, each "Coming in a later update." until its phase fills it. Needs Phase 15A; runs beside Phases 15B and 16, touching none of their files.
+
+- [ ] `frontend/src/stats/counting.ts`: the filter in the address, counted games, rates with their minimum, ranks with ties, sessions, local days in any time zone
+- [ ] `frontend/src/stats/elo.ts`: Elo replayed over counted games, with the handicap per player count, provisional players and the spec's worked case
+- [ ] `frontend/src/stats/useStats.ts`: counted games, Elo and names, memoized per records and filter
+- [ ] `StatCard`, `RankedTable` and `numbers.ts`: the card look, empty states, ranked tables with "—" below the minimum
+- [ ] `ScrollRegion` and `SplitTable`: tables that scroll inside their card, split by role or side, for Phases 18 to 20
+- [ ] `frontend/src/stats/charts/LineChart.tsx`: lines dashed while provisional, details on hover or tap, a description for screen readers
+- [ ] `frontend/src/stats/charts/StackedBarChart.tsx`: stacked bars with their legend, ready for Phases 20 and 21A
+- [ ] `frontend/src/stats/FilterBar.tsx`: player chips and the CPU toggle, kept in the address; one line and a panel on phones; the toggle alone for the player page
+- [ ] `TabRow.tsx`, `tabs/` and `TabsPage.tsx`: seven tabs, each a "Coming in a later update." placeholder until filled, each keeping the filter
+- [ ] `frontend/e2e/stats-engine.spec.ts`: the tab row and the filter fit every stats size; the filter and toggle change the address; the tabs keep the filter
+- [ ] `CLAUDE.md` and `README.md` describe the stats engine; the pull request shows `/stats` before and after
+
+**Phase 17A acceptance**
+
+- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [ ] PR merged into `development`
+- [ ] The user opens `/stats` on the deployed build, on a desktop and on a phone, moves between the tabs, and changes the filter and the toggle
+
+---
+
+## Phase 17B: OVERVIEW
+
+Breakdown: [`docs/superpowers/plans/2026-11-15-phase-17b-overview.md`](superpowers/plans/2026-11-15-phase-17b-overview.md) · Spec: [`docs/superpowers/specs/2026-11-15-game-stats-design.md`](superpowers/specs/2026-11-15-game-stats-design.md)
+
+Issue #31: OVERVIEW at `/stats`, filling Phase 17A's placeholder: the dashboard (days since the last game, the last game, win streak, hot hand, player of the month), the power ranking, the rating history, the headline numbers and the latest games, under the filter and the toggle. `winStreaks` and `playerOfTheMonth` are shared with RECORDS (Phase 21B). Needs Phase 17A; runs beside Phases 18, 19, 20 and 21A, touching none of their files.
+
+- [ ] `frontend/src/stats/overview.ts`: every OVERVIEW number, with `winStreaks` and `playerOfTheMonth` for RECORDS; 1,000 games well under a second
+- [ ] `frontend/src/stats/tabs/OverviewTab.tsx`: OVERVIEW, with the power ranking and the rating history
+- [ ] `frontend/e2e/stats-overview.spec.ts`: OVERVIEW fits every stats size; the numbers follow the filter and the toggle; the rating history's details on hover or tap
+- [ ] `CLAUDE.md` and `README.md` describe OVERVIEW; the pull request shows `/stats` before and after
+
+**Phase 17B acceptance**
+
+- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [ ] OVERVIEW shows the numbers this design gives for a known set of records, under the filter and the toggle
+- [ ] PR merged into `development`
+- [ ] The user opens OVERVIEW on the deployed build, on a desktop and on a phone, once games are recorded, and changes the filter and the toggle
+
+---
+
+## Phase 18: ROLES & CARDS
+
+Breakdown: [`docs/superpowers/plans/2026-11-15-phase-18-roles-cards.md`](superpowers/plans/2026-11-15-phase-18-roles-cards.md) · Spec: [`docs/superpowers/specs/2026-11-15-game-stats-design.md`](superpowers/specs/2026-11-15-game-stats-design.md)
+
+Issue #31: the ROLES & CARDS tab fills Phase 17A's placeholder with each player's role and card stats over the counted games, read from the records' seats and from `rounds(record)` (Phase 16). Built after Phases 16 and 17A, beside 17B, 19, 20 and 21A; it changes no shared source file, only its own modules, its tab, its browser spec and the docs.
+
+- [ ] `frontend/src/stats/roles.ts`: role split, role luck, times as Hitler and the longest run of one role
+- [ ] `roles.ts`: win rates as Liberal, as Fascist and as Hitler, by player count, and as first president
+- [ ] `frontend/src/stats/cards.ts`: hands drawn beside the group's, Liberal accuracy and deep cover as president
+- [ ] `cards.ts`: given one of each, policies enacted and vetoes as chancellor; Fascist choices and forced Fascists
+- [ ] `frontend/src/stats/tabs/RolesTab.tsx`: the tab's four sections and seventeen cards, split tables that scroll inside their card, and every card's empty state
+- [ ] `frontend/e2e/stats-roles.spec.ts`: the tab never scrolls sideways at any `statsSizes` size against `bigStatsData()`, with 44px targets on phones
+- [ ] `CLAUDE.md` and `README.md` describe ROLES & CARDS
+- [ ] Every finding of the whole-branch review fixed, Minor ones included
+- [ ] The pull request shows the tab before and after, on desktop and on a phone
+
+**Phase 18 acceptance**
+
+- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [ ] PR merged into `development`
+- [ ] The user opens ROLES & CARDS on the deployed build, on a desktop and on a phone, and finds their games' numbers
+
+---
+
+## Phase 19: VOTES & POWERS
+
+Breakdown: [`docs/superpowers/plans/2026-11-15-phase-19-votes-powers.md`](superpowers/plans/2026-11-15-phase-19-votes-powers.md) · Spec: [`docs/superpowers/specs/2026-11-15-game-stats-design.md`](superpowers/specs/2026-11-15-game-stats-design.md)
+
+Issue #31: the VOTES & POWERS tab at `/stats/votes`. It shows each player's elections, votes, presidential powers and survival over the counted games, computed in the page from `rounds(record)`. It runs after Phases 16 and 17A, beside 17B, 18, 20 and 21A: it fills its own tab file and stat modules and shares only the docs.
+
+- [ ] `frontend/src/stats/votes.ts`: nominations, nominations passed as president and as chancellor, picking a teammate, failed elections and chaos
+- [ ] `frontend/src/stats/votes.ts`: Ja rate by role, Liberal vote accuracy, Fascist loyalty, voted Hitler in, swing votes and lone dissent, checked against the contract fixture
+- [ ] `frontend/src/stats/powers.ts`: investigations (whom they investigated and what they saw, Liberal finds, checking a teammate, times investigated), peeks and special elections
+- [ ] `frontend/src/stats/powers.ts`: executions (targets by side, Hitler executed, times executed, first to go), vetoes as president and survival by role, checked against the contract fixture
+- [ ] `frontend/src/stats/tabs/VotesTab.tsx`: the tab's 26 cards in two sections (INVESTIGATIONS naming whom, split cards through Phase 17A's `SplitTable`), each with its empty state
+- [ ] `frontend/e2e/stats-votes.spec.ts`: the tab fits every stats size against the large stubbed response, with 44px targets on phones
+- [ ] `CLAUDE.md` and `README.md` describe VOTES & POWERS
+- [ ] Every finding of the whole-branch review fixed, Minor ones included
+- [ ] The pull request shows the tab before and after, on a desktop and on a phone
+
+**Phase 19 acceptance**
+
+- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [ ] PR merged into `development`
+- [ ] The user opens VOTES & POWERS on the deployed build after real games, on a desktop and on a phone, and its numbers match the games played
+
+---
+
+## Phase 20: RIVALS and ENDINGS
+
+Breakdown: [`docs/superpowers/plans/2026-11-15-phase-20-rivals-endings.md`](superpowers/plans/2026-11-15-phase-20-rivals-endings.md) · Spec: [`docs/superpowers/specs/2026-11-15-game-stats-design.md`](superpowers/specs/2026-11-15-game-stats-design.md)
+
+Issue #31: the RIVALS tab (teammates, opponents, rivalries, each player's people, and who nominates whom) and the ENDINGS tab (how games are won by player count, the Liberal win rate beside the smoothed rate the Elo handicap uses, game length, final boards, and the most chaos policies, failed elections and vetoes in one game) fill Phase 17A's placeholders. Built after Phases 16 and 17A, beside 17B, 18, 19 and 21A, touching no shared source file.
+
+- [ ] `frontend/src/stats/rivals.ts`: pairs on the same and opposite sides, the best duo and best Fascist duo, the closest and most lopsided rivalries
+- [ ] `rivals.ts`: each player's most played with, best teammate, nemesis, favourite opponent and record against each opponent, and who nominated whom
+- [ ] `frontend/src/stats/endings.ts`: games by player count and outcome, the Liberal win rate with its smoothed rate, game length, the fastest win and the longest game
+- [ ] `endings.ts`: the closest and most lopsided final boards, and the most chaos policies, failed elections and vetoes in one game
+- [ ] `frontend/src/stats/tabs/PlayerMatrix.tsx`: player-by-player tables that scroll inside their card, the names held in view
+- [ ] `frontend/src/stats/tabs/RivalsTab.tsx`: the RIVALS tab
+- [ ] `frontend/src/stats/tabs/EndingsTab.tsx`: the ENDINGS tab
+- [ ] `frontend/e2e/stats-rivals.spec.ts`: both tabs fit every stats size against the large stubbed data, the matrices scroll inside their cards, 44px targets on phones
+- [ ] `CLAUDE.md` (and `README.md`, `DEVELOPMENT.md` where they list the tabs) describe RIVALS and ENDINGS
+- [ ] Every review finding fixed on the branch
+- [ ] The pull request shows both tabs before and after, on desktop and on a phone
+
+**Phase 20 acceptance**
+
+- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [ ] PR merged into `development`
+- [ ] The user opens RIVALS and ENDINGS on the deployed build, on a desktop and on a phone, and finds the games they played in them
+
+---
+
+## Phase 21A: ACTIVITY
+
+Breakdown: [`docs/superpowers/plans/2026-11-15-phase-21a-activity.md`](superpowers/plans/2026-11-15-phase-21a-activity.md) · Spec: [`docs/superpowers/specs/2026-11-15-game-stats-design.md`](superpowers/specs/2026-11-15-game-stats-design.md)
+
+Issue #31, after Phases 16 and 17A, beside 17B, 18, 19 and 20: the ACTIVITY tab shows when the group plays (games over time, attendance, a calendar heatmap, the day and hour games start, sessions and gaps) and how long each decision takes, counted in the viewer's time zone. Adds the bar chart and the calendar heatmap, and the fastest-voter rule Speed Demon shares.
+
+- [ ] `frontend/src/stats/activity.ts`: the viewer's local calendar, games over time, attendance, participation, day of the week and hour of the day
+- [ ] `activity.ts`: the calendar heatmap, sessions, the busiest day, week and month, the longest gap and days since the last game
+- [ ] `frontend/src/stats/timing.ts`: decision times, the fastest voter (one rule with Speed Demon), the slowest president, the countdown's share, pauses and dropped connections, and `formatAverageTime`
+- [ ] `frontend/src/stats/charts/BarChart.tsx`: bars sized from their card, with a tooltip, arrow keys and a description
+- [ ] `frontend/src/stats/charts/CalendarHeatmap.tsx`: a cell per day in four shades, with a tooltip, arrow keys and a description
+- [ ] `frontend/src/stats/tabs/ActivityTab.tsx`: the ACTIVITY tab
+- [ ] `frontend/e2e/stats-activity.spec.ts`: ACTIVITY fits every stats size, its charts show values on hover or tap, and the browser's time zone is used
+- [ ] `CLAUDE.md` and `README.md` (and `DEVELOPMENT.md` if needed) describe the tab
+- [ ] Every finding of the whole-branch review is fixed
+- [ ] The pull request shows the tab before and after, on desktop and on a phone
+
+**Phase 21A acceptance**
+
+- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [ ] PR merged into `development`
+- [ ] The user opens ACTIVITY on the deployed build after a game night, on a desktop and on a phone, and finds the night's games in the charts and the calendar
+
+---
+
+## Phase 21B: RECORDS
+
+Breakdown: [`docs/superpowers/plans/2026-11-15-phase-21b-records.md`](superpowers/plans/2026-11-15-phase-21b-records.md) · Spec: [`docs/superpowers/specs/2026-11-15-game-stats-design.md`](superpowers/specs/2026-11-15-game-stats-design.md)
+
+Issue #31, after Phases 21A and 17B: the RECORDS tab shows streaks, the best weeks and months, player of the month and its history, the longest game nights, the highest peak rating and the biggest upset, counted in the viewer's time zone and built on OVERVIEW's streaks and player of the month, so the two tabs agree.
+
+- [ ] `frontend/src/stats/records.ts`: streaks (on OVERVIEW's `winStreaks`), the most wins in a week and in a month, player of the month (OVERVIEW's `playerOfTheMonth`) and its history, the most games in one session
+- [ ] `records.ts`: rating records (the highest peak, and the biggest upset with its winners' gain and losers' loss)
+- [ ] `frontend/src/stats/tabs/RecordsTab.tsx`: the RECORDS tab
+- [ ] `frontend/e2e/stats-records.spec.ts`: RECORDS fits every stats size, its game link opens the game, and the player of the month follows the browser's time zone
+- [ ] `CLAUDE.md` and `README.md` (and `DEVELOPMENT.md` if needed) describe the tab
+- [ ] Every finding of the whole-branch review is fixed
+- [ ] The pull request shows the tab before and after, on desktop and on a phone
+
+**Phase 21B acceptance**
+
+- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [ ] PR merged into `development`
+- [ ] The user opens RECORDS on the deployed build after a game night, on a desktop and on a phone, and finds the night's session and the player of the month
+
+---
+
+## Phase 22A: Trophies and name links
+
+Breakdown: [`docs/superpowers/plans/2026-11-15-phase-22a-trophies-links.md`](superpowers/plans/2026-11-15-phase-22a-trophies-links.md) · Spec: [`docs/superpowers/specs/2026-11-15-game-stats-design.md`](superpowers/specs/2026-11-15-game-stats-design.md)
+
+Issue #31: the fifteen trophies and RECORDS' trophy holders, one player's numbers as a pure module for Phase 22B, the game page's Elo change, and every player's name in the stats a link to their page (which stays Phase 15A's placeholder until 22B). It reads Phases 18 to 21B's stat modules through their `byPlayer` maps and changes no stat they compute. Starts once 17B, 18, 19, 20 and 21B have merged.
+
+- [ ] `frontend/src/stats/trophies.ts`: the fifteen trophies, each rule held at its threshold and not below it, with the 8-game minimum wherever the spec does not lift it
+- [ ] `trophies.ts` and `allStats.ts`: each player's trophies worked out from the counted games through the earlier stat modules, the Speed Demon from ACTIVITY's fastest voter
+- [ ] `frontend/src/stats/player.ts`: one player's numbers from every stat module, with the CPU toggle and without the player filter, and the PLAYERS rows
+- [ ] `frontend/src/stats/PlayerName.tsx`: a player's name in the stats links to their page (plain inside a sentence or headline); CPU seats stay plain text; no link sits inside another link or control
+- [ ] `frontend/src/stats/tabs/RecordsTab.tsx`: the trophy holders card, with `players/TrophyBadge.tsx`
+- [ ] `frontend/src/stats/game/gameElo.ts`, `GameHeader.tsx` and `GamePage.tsx`: the game's Elo change when it counted under the default filter
+- [ ] `frontend/e2e/stats-names.spec.ts`: name links in tables are 44px targets that never overlap on phones, a name in GAMES opens its player page, and a game page shows its Elo change
+- [ ] `CLAUDE.md` and `DEVELOPMENT.md` describe trophies, name links and the Elo change; the pull request shows RECORDS and a game page before and after, on desktop and on a phone
+
+**Phase 22A acceptance**
+
+- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [ ] PR merged into `development`
+
+---
+
+## Phase 22B: Player pages
+
+Breakdown: [`docs/superpowers/plans/2026-11-15-phase-22b-player-pages.md`](superpowers/plans/2026-11-15-phase-22b-player-pages.md) · Spec: [`docs/superpowers/specs/2026-11-15-game-stats-design.md`](superpowers/specs/2026-11-15-game-stats-design.md)
+
+Issue #31, its last phase: PLAYERS lists every player with counted games by Elo, and each player gets a page of their numbers and trophies, drawn from Phase 22A's `player.ts`. Starts once 22A has merged.
+
+- [ ] `frontend/src/stats/players/PlayersPage.tsx`: PLAYERS (name, games, win rate, Elo, last played), by Elo, under the stats filter
+- [ ] `frontend/src/stats/players/PlayerPage.tsx`: the player page in the spec's order, with the CPU toggle on its own, trophies, "+N with CPU players, not counted" and "All N games" into GAMES; an unknown player is not found
+- [ ] `frontend/e2e/stats-players.spec.ts`: PLAYERS and a player page fit every tested size, a name in GAMES opens its player page, "All N games" opens GAMES filtered to them, and the CPU switch counts CPU games
+- [ ] `CLAUDE.md`, `README.md` (the stats section as a whole, with screenshots) and `DEVELOPMENT.md` describe the stats; the pull request shows PLAYERS and a player page before and after, on desktop and on a phone
+
+**Phase 22B acceptance**
+
+- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [ ] PR merged into `development`
+- [ ] The user browses the stats on the deployed build, on a desktop and on a phone: PLAYERS, their own page and its trophies, a name followed from GAMES, and a game page's Elo change
+- [ ] The user closes issue #31 once every phase (13 to 22B) is merged
 
 ---
 
