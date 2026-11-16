@@ -610,6 +610,37 @@ keeps credit to upstream and to the board game's creators.
   65% of the table (`.votes-investigations`), the one place it styles a `RankedTable`.
   `votesTestRounds.ts` holds the tests' builders (`term`, `gameOf`, `investigate`, `execute`,
   `eventsOf`, `sum`).
+  RECORDS (`/stats/records`, Phase 21B) reads `records.ts`'s `computeRecords(counted, elo, now,
+  timeZone = viewerTimeZone())`, built on OVERVIEW's `winStreaks` and `playerOfTheMonth`, so the
+  two tabs share one rule: `byPlayer` (`PlayerRecords`, which Phase 22 reads: `games`, `current`,
+  the wins in a row that end a player's counted games or minus the losses in a row that do, and
+  `longestWin` and `longestLoss`, OVERVIEW's runs as `Streak`s with `from` and `to`, the long day
+  labels of their first and last game's start; and `bestWeek` and `bestMonth`, the period with the
+  most wins, the later of a tie), the longest win and losing streak across players (a tie to the
+  run whose last game is later, and `streakHolders` names every player tied at that end, as
+  teammates are), this local month's player of the month (`MonthHolder`, `[]` and 0 when nobody
+  won) and `monthHistory` (each completed month's, `playerOfTheMonth` at its latest counted start,
+  months with no holder left out, newest first), `topSessions` (`sessionSummaries`, the
+  `TOP_SESSIONS`, 5, with the most games, a tie to the later), `highestPeak` (the highest rounded
+  peak and every player at it) and `biggestUpset` (the lowest winners' chance, `E` for a Liberal
+  win and `1 − E` for a Fascist one, among games a person won, so a win by CPU seats alone is
+  none, a tie to the later game; `change` is each winner's gain and each loser's loss, and its
+  `winners` and `losers` are the human players). Every period is the game's start's, in the zone
+  (a win at 23:30 on a month's last day is that month's), and `now` is passed in.
+  `tabs/RecordsTab.tsx` takes optional `now` (else the tab's first draw) and `timeZone` for its
+  tests, memoizes the module per counted set and Elo, and lays out nine `StatCard`s, each in a
+  `div.records-cell` with `data-card`, in one grid of columns at least 300px wide under four
+  `h2.records-heading`s (Streaks, Wins, Sessions, Ratings): the longest win and losing streaks (a
+  line per first and last day naming every tied holder), current streaks (a `RankedTable`, "3
+  wins" or "2 losses"), the most wins in a week and in a month (a `table.records-table` of the
+  rank, the name over its period and the wins, so a long name keeps its width), the player of the
+  month (every tied player) and the players of the month (the month over its holders, one a line,
+  and the wins), the most games in one session (up to five lines of games, day and length), and
+  the rating records (the highest peak, then the upset, its winners' gain and its losers' loss, a
+  side with no person left out, and See the game, `a.records-game-link`, 44px at every size).
+  Tied players are listed by more counted games, then name; names in a record's line are
+  `link={false}`, names in its tables are not, and those tables' rows are 44px tall in the stacked
+  query. A record's parts wrap only between them (a no-break space before each " · ").
   GAMES (`/stats/games`, `src/stats/games/`) lists
   every recorded game, newest first, under a filter of its own kept in the address:
   `gamesFilter.ts` (`GamesFilter`, `NO_GAMES_FILTER`, `PER_PAGE`, `ENDING_PARAM`,
@@ -1014,8 +1045,12 @@ keeps credit to upstream and to the board game's creators.
   leaving room for the columns. `stats-votes.spec.ts` checks VOTES & POWERS at every size, with
   CPU games and without, every card's `NO_GAMES` under a filter that counts no game,
   INVESTIGATIONS' longest value wrapping in at least half its table at 320px, and that every flex
-  and grid child of the tab with text can shrink. No `e2e/` file imports `src/constants` or
-  anything that does (`api.ts`, `App`): it
+  and grid child of the tab with text can shrink. `stats-records.spec.ts` checks RECORDS with
+  `checkStatsPage` at every `statsSizesFor` size against `bigStatsData()`, its game link 44px both
+  ways, and (`desktop`) that See the game opens one of its games, and with `timezoneId` that a
+  game from 23:30 UTC on 31 October makes Ann November's player of the month in Paris and
+  October's in Los Angeles. No `e2e/` file imports `src/constants` or anything that does
+  (`api.ts`, `App`): it
   reads `window` when it loads, which throws in Playwright's Node process; specs build stats paths
   with `routePath`. Shared helpers are `e2e/lobby.ts`
   (`waitForPlayers`, `joinGuests`, with `pickLooks` false for guests who stay on the default
