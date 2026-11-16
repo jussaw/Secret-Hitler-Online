@@ -106,9 +106,10 @@ export function showcaseGame(): GameRecord {
   let t = 0;
   let board: [number, number] = [0, 0];
   let alive = [MAYA, ROWAN, THEO, PRIYA, SAM, ASH, BLAIR];
-  const add = (wait: number, make: (r: number, at: number) => GameEvent, r: number) => {
+  /** Adds the event `make` gives for the time `wait` after the last one. */
+  const add = (wait: number, make: (at: number) => GameEvent) => {
     t += wait;
-    events.push(make(r, t));
+    events.push(make(t));
   };
   /**
    * A nomination after `wait`, `between` it and the votes, then a vote from each living seat (in
@@ -123,24 +124,24 @@ export function showcaseGame(): GameRecord {
     order = alive,
     between: () => void = () => undefined
   ) => {
-    add(wait, (rr, at) => ev.nominate(rr, at, president, chancellor), r);
+    add(wait, (at) => ev.nominate(r, at, president, chancellor));
     between();
     const gaps = [2_100, 1_400, 2_600, 1_900, 3_200, 1_100, 4_300];
-    order.forEach((seat, i) => add(gaps[i % gaps.length], (rr, at) => ev.vote(rr, at, seat, !nein.includes(seat)), r));
+    order.forEach((seat, i) => add(gaps[i % gaps.length], (at) => ev.vote(r, at, seat, !nein.includes(seat))));
     const ja = order.length - nein.length;
-    add(0, (rr, at) => ev.election(rr, at, ja > nein.length, ja, nein.length), r);
+    add(0, (at) => ev.election(r, at, ja > nein.length, ja, nein.length));
   };
   /** The president's hand and discard, then the chancellor's policy. */
   const legislate = (r: number, president: number, chancellor: number, hand: string, index: number, policy: Card) => {
-    add(200, (rr, at) => ev.draw(rr, at, president, hand), r);
-    add(5_400, (rr, at) => ev.discard(rr, at, president, index, hand[index] as Card), r);
+    add(200, (at) => ev.draw(r, at, president, hand));
+    add(5_400, (at) => ev.discard(r, at, president, index, hand[index] as Card));
     board = policy === "L" ? [board[0] + 1, board[1]] : [board[0], board[1] + 1];
     const [liberal, fascist] = board;
-    add(3_200, (rr, at) => ev.enact(rr, at, policy, "chancellor", chancellor, liberal, fascist), r);
+    add(3_200, (at) => ev.enact(r, at, policy, "chancellor", chancellor, liberal, fascist));
   };
   const endTerm = (r: number, wait: number, president: number, by: "president" | "countdown" = "president") =>
-    add(wait, (rr, at) => ev.endTerm(rr, at, president, by), r);
-  const failed = (r: number, value: number) => add(0, (rr, at) => ev.tracker(rr, at, value), r);
+    add(wait, (at) => ev.endTerm(r, at, president, by));
+  const failed = (r: number, value: number) => add(0, (at) => ev.tracker(r, at, value));
 
   // 1: every decision timed.
   elect(1, 41_000, MAYA, ROWAN, [THEO, SAM], [ROWAN, MAYA, BLAIR, PRIYA, THEO, ASH, SAM]);
@@ -153,19 +154,19 @@ export function showcaseGame(): GameRecord {
   // 3: Sam enacts the Fascist of one of each (blame on the chancellor); Theo investigates Maya.
   elect(3, 87_000, THEO, SAM, [PRIYA, BLAIR]);
   legislate(3, THEO, SAM, "LFF", 1, "F");
-  add(18_400, (r, at) => ev.investigate(r, at, THEO, MAYA, "LIBERAL"), 3);
+  add(18_400, (at) => ev.investigate(3, at, THEO, MAYA, "LIBERAL"));
   endTerm(3, 35_200, THEO);
   // 4: three Fascists drawn; Priya calls a special election for Blair.
   elect(4, 52_000, PRIYA, ASH, [SAM]);
   legislate(4, PRIYA, ASH, "FFF", 0, "F");
-  add(16_300, (r, at) => ev.specialElection(r, at, PRIYA, BLAIR), 4);
+  add(16_300, (at) => ev.specialElection(4, at, PRIYA, BLAIR));
   endTerm(4, 28_400, PRIYA);
   // 5: Blair's special term; the deck runs low; Blair pauses, and the countdown ends the term.
   elect(5, 71_000, BLAIR, ROWAN, [THEO, ASH]);
   legislate(5, BLAIR, ROWAN, "LFF", 2, "L");
-  add(0, (r, at) => ev.reshuffle(r, at, 12), 5);
-  add(2_500, (r, at) => ev.timerPause(r, at, BLAIR), 5);
-  add(31_000, (r, at) => ev.timerResume(r, at, BLAIR), 5);
+  add(0, (at) => ev.reshuffle(5, at, 12));
+  add(2_500, (at) => ev.timerPause(5, at, BLAIR));
+  add(31_000, (at) => ev.timerResume(5, at, BLAIR));
   endTerm(5, 7_500, BLAIR, "countdown");
   // 6: back to the seat after Priya.
   elect(6, 48_000, SAM, MAYA, [ROWAN, PRIYA, BLAIR]);
@@ -173,15 +174,15 @@ export function showcaseGame(): GameRecord {
   endTerm(6, 52_900, SAM);
   // 7: Rowan drops out during the vote and comes back.
   elect(7, 39_000, ASH, PRIYA, [THEO, SAM], alive, () => {
-    add(2_000, (r, at) => ev.disconnect(r, at, ROWAN), 7);
-    add(14_000, (r, at) => ev.reconnect(r, at, ROWAN), 7);
+    add(2_000, (at) => ev.disconnect(7, at, ROWAN));
+    add(14_000, (at) => ev.reconnect(7, at, ROWAN));
   });
   legislate(7, ASH, PRIYA, "LFF", 1, "L");
   endTerm(7, 41_400, ASH);
   // 8: Blair executes Ash.
   elect(8, 94_000, BLAIR, THEO, [MAYA, ROWAN, PRIYA]);
   legislate(8, BLAIR, THEO, "FFF", 0, "F");
-  add(24_800, (r, at) => ev.execute(r, at, BLAIR, ASH, "FASCIST"), 8);
+  add(24_800, (at) => ev.execute(8, at, BLAIR, ASH, "FASCIST"));
   alive = alive.filter((seat) => seat !== ASH);
   endTerm(8, 63_600, BLAIR);
   // 9 to 11: three failed elections, and chaos.
@@ -195,19 +196,19 @@ export function showcaseGame(): GameRecord {
   failed(11, 3);
   board = [board[0], board[1] + 1];
   const [chaosL, chaosF] = board;
-  add(0, (r, at) => ev.enact(r, at, "F", "chaos", undefined, chaosL, chaosF), 11);
-  add(0, (r, at) => ev.reshuffle(r, at, 8), 11);
+  add(0, (at) => ev.enact(11, at, "F", "chaos", undefined, chaosL, chaosF));
+  add(0, (at) => ev.reshuffle(11, at, 8));
   endTerm(11, 48_100, THEO);
   // 12: Theo asks to veto two Liberals, Priya refuses, and Theo enacts the fifth Liberal.
   elect(12, 69_000, PRIYA, THEO, [ROWAN, BLAIR]);
-  add(200, (r, at) => ev.draw(r, at, PRIYA, "LLF"), 12);
-  add(4_700, (r, at) => ev.discard(r, at, PRIYA, 2, "F"), 12);
-  add(6_300, (r, at) => ev.veto(r, at, THEO), 12);
-  add(5_200, (r, at) => ev.vetoAnswer(r, at, PRIYA, false), 12);
+  add(200, (at) => ev.draw(12, at, PRIYA, "LLF"));
+  add(4_700, (at) => ev.discard(12, at, PRIYA, 2, "F"));
+  add(6_300, (at) => ev.veto(12, at, THEO));
+  add(5_200, (at) => ev.vetoAnswer(12, at, PRIYA, false));
   board = [board[0] + 1, board[1]];
   const [finalL, finalF] = board;
-  add(3_800, (r, at) => ev.enact(r, at, "L", "chancellor", THEO, finalL, finalF), 12);
-  add(1_000, (r, at) => ev.end(r, at, "LIBERAL_POLICIES"), 12);
+  add(3_800, (at) => ev.enact(12, at, "L", "chancellor", THEO, finalL, finalF));
+  add(1_000, (at) => ev.end(12, at, "LIBERAL_POLICIES"));
 
   const seats = makeSeats(["LIBERAL", "LIBERAL", "FASCIST", "LIBERAL", "HITLER", "FASCIST", "LIBERAL"], [1, 2, 3, 4, 5, 6, 7]).map(
     (seat, i) => ({ ...seat, name: SHOWCASE_PLAYERS[i].name, alive: i !== ASH })
