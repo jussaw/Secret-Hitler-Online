@@ -131,10 +131,6 @@
     font-variant-numeric: tabular-nums;
 }
 
-.player-facts .player-fact-note:empty {
-    padding: 0;
-}
-
 /* People: the label keeps its line, and the name and its count wrap at the right. */
 .player-people .player-fact-label {
     width: auto;

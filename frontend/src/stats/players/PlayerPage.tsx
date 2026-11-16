@@ -60,7 +60,7 @@ interface Fact {
   note?: ReactNode;
 }
 
-/** A card's lines as a table: the label at the left, the value and its note at the right. */
+/** A card's lines as a table: the label at the left, the value and its note at the right (a value with no note takes both columns). */
 function Facts({ facts, className }: { facts: Fact[]; className?: string }): JSX.Element {
   return (
     <table className={className ? `player-facts ${className}` : "player-facts"}>
@@ -70,8 +70,16 @@ function Facts({ facts, className }: { facts: Fact[]; className?: string }): JSX
             <th scope="row" className="player-fact-label">
               {fact.label}
             </th>
-            <td className="player-fact-value">{fact.value}</td>
-            <td className="player-fact-note">{fact.note}</td>
+            {fact.note === undefined ? (
+              <td className="player-fact-value" colSpan={2}>
+                {fact.value}
+              </td>
+            ) : (
+              <>
+                <td className="player-fact-value">{fact.value}</td>
+                <td className="player-fact-note">{fact.note}</td>
+              </>
+            )}
           </tr>
         ))}
       </tbody>
