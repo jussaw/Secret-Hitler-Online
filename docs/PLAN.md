@@ -865,7 +865,7 @@ Issue #31: the stats engine every tab reads (the counting rules, the player filt
 - [x] `frontend/src/stats/elo.ts`: Elo replayed over counted games, with the handicap per player count, provisional players and the spec's worked case
 - [x] `frontend/src/stats/useStats.ts`: counted games, Elo and names, memoized per records and filter
 - [x] `StatCard`, `RankedTable` and `numbers.ts`: the card look, empty states, ranked tables with "—" below the minimum
-- [ ] `ScrollRegion` and `SplitTable`: tables that scroll inside their card, split by role or side, for Phases 18 to 20
+- [x] `ScrollRegion` and `SplitTable`: tables that scroll inside their card, split by role or side, for Phases 18 to 20
 - [ ] `frontend/src/stats/charts/LineChart.tsx`: lines dashed while provisional, details on hover or tap, a description for screen readers
 - [ ] `frontend/src/stats/charts/StackedBarChart.tsx`: stacked bars with their legend, ready for Phases 20 and 21A
 - [ ] `frontend/src/stats/FilterBar.tsx`: player chips and the CPU toggle, kept in the address; one line and a panel on phones; the toggle alone for the player page
