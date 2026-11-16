@@ -62,8 +62,8 @@ interface Tally {
   firstWins: number;
 }
 
-/** A value for each role. */
-const byRole = <T>(make: (role: Role) => T): Record<Role, T> => ({
+/** A value for each role, from `make`. */
+export const byRole = <T>(make: (role: Role) => T): Record<Role, T> => ({
   LIBERAL: make("LIBERAL"),
   FASCIST: make("FASCIST"),
   HITLER: make("HITLER"),

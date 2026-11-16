@@ -1,5 +1,6 @@
 import { humanSeats, MIN_CHANCES, rate, type Rate } from "./counting";
 import type { GameRecord, Role } from "./record";
+import { byRole } from "./roles";
 import { rounds } from "./rounds";
 
 /**
@@ -74,13 +75,6 @@ interface Tally {
   fascistChoices: number;
   forced: { president: number; chancellor: number };
 }
-
-/** A value for each role. */
-const byRole = <T>(make: (role: Role) => T): Record<Role, T> => ({
-  LIBERAL: make("LIBERAL"),
-  FASCIST: make("FASCIST"),
-  HITLER: make("HITLER"),
-});
 
 /** The Liberals among some cards. */
 const liberalsIn = (cards: readonly string[]) => cards.filter((card) => card === "L").length;
