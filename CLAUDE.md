@@ -341,9 +341,10 @@ keeps credit to upstream and to the board game's creators.
   president, RECORDS' one-line records), is a plain `span.player-name`. A link looks as the plain
   name does (`font` and `color` inherited, or its role's colour), underlined only as Hitler's and
   on hover, with a `--selectionHover` outline on keyboard focus; in the stacked query a name in a
-  table cell, the game page's seats or a GAMES row's seats is an `inline-flex` box at least 44px
-  both ways (`PlayerName.css`), which makes its row or line taller rather than reaching over a
-  neighbour, and a name in a sentence (a `p`) stays inline. No name is ever inside another link,
+  table cell, the game page's seats, a GAMES row's seats or ENDINGS' seats of a game is an
+  `inline-flex` box at least 44px both ways (`PlayerName.css`), which makes its row or line taller
+  rather than reaching over a neighbour, and a name in a sentence (a round's lines on a game page,
+  which Phase 16 leaves as links) stays inline. No name is ever inside another link,
   a button or a label; `nameLinks.test.tsx` checks that across every page, and that headlines
   stay plain), `routes.ts` (`TabId`, `TAB_IDS`, `StatsRoute`,
   `PageProps`, `parseRoute`, `routePath`, `navigate`, which pushes one history entry, none for the
@@ -662,14 +663,16 @@ keeps credit to upstream and to the board game's creators.
   grid's whole width, `NO_GAMES` with no counted game): a `table.trophy-holders`, a row per trophy
   in `TROPHIES`' order, its `TrophyBadge` over its rule, then its holders by name, comma-separated
   and linked, or "No one yet."; on phones a row's holders take the card's whole width under the
-  badge. It is `trophyHolders(computeTrophies(stats, now), names)` with the tab's `now`.
+  badge. It is `trophyHolders(computeTrophies(stats, now, timeZone), names)` with the tab's `now`
+  and zone.
   Tied players are listed by more counted games, then name; names in a record's line are
   `link={false}`, names in its tables are not, and those tables' rows are 44px tall in the stacked
   query. A record's parts wrap only between them (a no-break space before each " · ").
   Trophies (Phase 22A, the spec's "Trophies") are worked out on every load, never stored.
-  `allStats.ts`'s `allStats(stats, now)` runs each per-player module once on `stats.counted`
-  (`computeRoles`, `computeCards`, `computeVotes`, `computePowers`, `computeRivals(counted,
-  names)`, `computeRecords(counted, elo, now)` and `computeTiming`). `trophies.ts` holds `TROPHIES`
+  `allStats.ts`'s `allStats(stats, now, timeZone?)` runs each per-player module once on
+  `stats.counted` (`computeRoles`, `computeCards`, `computeVotes`, `computePowers`,
+  `computeRivals(counted, names)`, `computeRecords(counted, elo, now, timeZone)` and
+  `computeTiming`), and `playerSlice(all, n)` is one player's entry in each `byPlayer`. `trophies.ts` holds `TROPHIES`
   (the spec's fifteen, labels and rules word for word, in its order), `TROPHY_MIN_GAMES` (8),
   `trophyFacts(stats, all)` (each player with a counted game: games, rating and provisional,
   longest win streak, `opponents` from RIVALS' `byPlayer`, executions of Hitler, wins as Hitler
@@ -679,13 +682,15 @@ keeps credit to upstream and to the board game's creators.
   for none, in `TROPHIES`' order; 8 counted games for all but Hitler Hunter, Chancellor Hitler and
   Speed Demon; ratings compared rounded, shares in whole numbers), `speedDemonOf`, ACTIVITY's
   `fastestVoter`, so the fastest voter and the Speed Demon are one holder,
-  `computeTrophies(stats, now)` and `trophyHolders(trophies, names)` (every trophy with its
-  holders by name). `players/TrophyBadge.tsx` draws one as a pill of `#f08a5d` with its rule as
-  its `title`. `player.ts` (for Phase 22B's pages) has `computePlayer(stats, n, now)`, one
+  `trophiesOf(stats, all)`, `computeTrophies(stats, now, timeZone?)` and
+  `trophyHolders(trophies, names)` (every trophy with its holders by name). `players/TrophyBadge.tsx` draws one as a pill of `#f08a5d` with its rule as
+  its `title`. `player.ts` (for Phase 22B's pages; it imports `buildStats`, so no browser test can
+  import it) has `computePlayer(stats, n, now, timeZone?)`, one
   player's `PlayerStats` on `withoutPlayerFilter(stats)` (the player filter dropped, the CPU toggle
   kept; the same context when it has no player filter): counted games and their first start and
   last end, CPU games not counted, every record of theirs, trophies, Elo (rating, rank as
-  OVERVIEW's power ranking gives it, null while provisional, peak, and a history from 1500 that
+  OVERVIEW's power ranking gives it (a copy of `overview.ts`'s rule, which `player.test.ts` holds
+  to OVERVIEW's order), null while provisional, peak, and a history from 1500 that
   adds each counted game's `liberalChange` by side, dashed while provisional), win rates, roles,
   streaks, cards, votes, powers, people (named), average decision times and their 5 latest
   records of any kind; a player with no counted game gets zeros, nulls and empty lists. Its
@@ -1105,7 +1110,8 @@ keeps credit to upstream and to the board game's creators.
   in Paris and October's in Los Angeles. `stats-names.spec.ts` (Phase 22A) opens every tab, GAMES
   and a game page against `bigStatsData()` and checks each with `checkStatsPage` at every
   `statsSizesFor` size, and where the stacked query matches that no two name links in one column of
-  a table overlap (`overlappingNameLinks`); that a name in GAMES' last row opens its player's page
+  a table overlap (`overlappingNameLinks`) and that names in seat lists (GAMES' rows, a game's
+  header, ENDINGS' games) are 44px targets; that a name in GAMES' last row opens its player's page
   (not the row's game) at its top; and that a counted game's page shows its Elo line and an
   unfinished one's none. No `e2e/` file imports `src/constants` or anything that does
   (`api.ts`, `App`): it

@@ -1040,7 +1040,7 @@ Issue #31: the fifteen trophies and RECORDS' trophy holders, one player's number
 
 **Phase 22A acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
 - [ ] PR merged into `development`
 
 ---
