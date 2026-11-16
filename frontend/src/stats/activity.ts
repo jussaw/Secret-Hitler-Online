@@ -1,4 +1,4 @@
-import { humanSeats } from "./counting";
+import { humanSeats, localDaysBetween, sessions as sessionsOf } from "./counting";
 import { localDayKey, viewerTimeZone } from "./format";
 import type { GameRecord } from "./record";
 
@@ -40,14 +40,67 @@ export interface PlayerActivity {
   lastEndedAt: number;
 }
 
+/** The heatmap's first view: the 365 days ending on the latest game's start day. */
+export const LAST_12_MONTHS = "last-12-months";
+
+/** A day, week or month with its games. */
+export interface Counted extends Label {
+  games: number;
+}
+
+/** A session: its games, its earliest start and latest end, and the long label of its first day. */
+export interface SessionSummary {
+  games: number;
+  startedAt: number;
+  endedAt: number;
+  day: string;
+}
+
+/** The days between one session's end and the next one's start, and those two days' long labels. */
+export interface Gap {
+  days: number;
+  from: string;
+  to: string;
+}
+
+/** A day of a heatmap: its games and its shade, 0 for none, else quarters of the busiest day. */
+export interface HeatmapDay extends Label {
+  games: number;
+  shade: 0 | 1 | 2 | 3 | 4;
+}
+
+/** One view of the calendar: the last 12 months, or a year. */
+export interface Heatmap {
+  id: string;
+  label: string;
+  days: HeatmapDay[];
+  /** The most games on one day of the view, 0 when it has none. */
+  busiest: number;
+  /** The long label of that day (the later of a tie), or null. */
+  busiestDay: string | null;
+  games: number;
+  /** Days with a game. */
+  activeDays: number;
+}
+
 export interface ActivityStats {
   /** Every human player of a counted game, by number. `share` is games over all counted games. */
   byPlayer: Map<number, PlayerActivity>;
   periods: Record<Grain, Period[]>;
+  /** `LAST_12_MONTHS` first, then each year with a game, newest first. */
+  heatmaps: Heatmap[];
   /** Games started on each day of the week, Monday first. */
   byWeekday: number[];
   /** Games started in each hour of the day, 0 to 23. */
   byHour: number[];
+  /** The average is games per session; `most` is the session with the most games (the later of a tie). */
+  sessions: { count: number; average: number | null; most: SessionSummary | null };
+  /** The day, week and month with the most games started (the later of a tie). */
+  busiest: { day: Counted | null; week: Counted | null; month: Counted | null };
+  /** The most whole local days between a session's end and the next one's start (the later of a tie). */
+  longestGap: Gap | null;
+  /** Whole local days from the last counted game's end to `now`, never below 0. */
+  daysSinceLast: number | null;
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -235,10 +288,71 @@ function range(keys: string[]): [string, string] | null {
 }
 
 /**
+ * The counted games' sessions (`counting.ts`'s `sessions`), in play order: each one's games, its
+ * earliest start, its latest end, and the long label of its first start's day in `timeZone`.
+ */
+export function sessionSummaries(counted: GameRecord[], timeZone: string): SessionSummary[] {
+  return sessionsOf(counted).map((games) => {
+    const startedAt = games.reduce((least, g) => Math.min(least, g.startedAt), Infinity);
+    return {
+      games: games.length,
+      startedAt,
+      endedAt: games.reduce((most, g) => Math.max(most, g.endedAt), -Infinity),
+      day: dayLabel(localDayKey(startedAt, timeZone)).long,
+    };
+  });
+}
+
+/** The item with the highest `value`, the later of a tie, or null when there are none. */
+function latestHighest<T>(items: T[], value: (item: T) => number): T | null {
+  let best: T | null = null;
+  for (const item of items) if (best === null || value(item) >= value(best)) best = item;
+  return best;
+}
+
+/** A view of the calendar from `first` to `last`, its days shaded against its own busiest day. */
+function heatmap(id: string, label: string, first: string, last: string, perDay: Map<string, number>): Heatmap {
+  const counts: { key: string; games: number }[] = [];
+  for (let key = first; key <= last; key = addDays(key, 1)) counts.push({ key, games: perDay.get(key) ?? 0 });
+  const busiestDay = latestHighest(
+    counts.filter((day) => day.games > 0),
+    (day) => day.games
+  );
+  const busiest = busiestDay?.games ?? 0;
+  const days: HeatmapDay[] = counts.map(({ key, games }) => ({
+    ...dayLabel(key),
+    games,
+    shade: (games === 0 ? 0 : Math.min(4, Math.ceil((games * 4) / busiest))) as HeatmapDay["shade"],
+  }));
+  return {
+    id,
+    label,
+    days,
+    busiest,
+    busiestDay: busiestDay ? dayLabel(busiestDay.key).long : null,
+    games: counts.reduce((sum, day) => sum + day.games, 0),
+    activeDays: counts.filter((day) => day.games > 0).length,
+  };
+}
+
+/** The busiest of the games' keys under `keyOfDay`, labelled, or null when there are none. */
+function busiestOf(games: Dated[], keyOfDay: (day: string) => string, label: (key: string) => Label): Counted | null {
+  const counts = new Map<string, number>();
+  for (const game of games) {
+    const key = keyOfDay(game.day);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  const keys = Array.from(counts.keys()).sort();
+  const best = latestHighest(keys, (key) => counts.get(key)!);
+  return best === null ? null : { ...label(best), games: counts.get(best)! };
+}
+
+/**
  * ACTIVITY's numbers for the counted games, in `timeZone` (the viewer's by default): each player's
- * games and share, games per week (the last `WEEKS_SHOWN`) and per month (every month from the
- * first game's) up to the latest game's, and games by day of the week and hour of the day. Every
- * bucket is the game's start's.
+ * games and share; games per week (the last `WEEKS_SHOWN`) and per month (every month from the
+ * first game's) up to the latest game's; the calendar's views; games by day of the week and hour
+ * of the day; sessions; the busiest day, week and month; the longest gap between sessions; and the
+ * days since the last game ended, at `now`. Every bucket is the game's start's.
  */
 export function computeActivity(counted: GameRecord[], now: number, timeZone: string = viewerTimeZone()): ActivityStats {
   const games = dated(counted, timeZone);
@@ -275,5 +389,54 @@ export function computeActivity(counted: GameRecord[], now: number, timeZone: st
     periods.month = periodsBetween(games, monthKey(firstDay), monthKey(lastDay), monthKey, nextMonth, monthLabel);
   }
 
-  return { byPlayer: byNumber(players), periods, byWeekday, byHour };
+  const perDay = new Map<string, number>();
+  for (const game of games) perDay.set(game.day, (perDay.get(game.day) ?? 0) + 1);
+  const heatmaps: Heatmap[] = [];
+  if (days) {
+    const [firstDay, lastDay] = days;
+    heatmaps.push(heatmap(LAST_12_MONTHS, "Last 12 months", addDays(lastDay, -364), lastDay, perDay));
+    for (let year = Number(lastDay.slice(0, 4)); year >= Number(firstDay.slice(0, 4)); year--) {
+      const id = String(year);
+      if (games.some((game) => game.day.startsWith(`${id}-`))) {
+        heatmaps.push(heatmap(id, id, `${id}-01-01`, `${id}-12-31`, perDay));
+      }
+    }
+  }
+
+  const summaries = sessionSummaries(counted, timeZone);
+  let longestGap: Gap | null = null;
+  for (let i = 1; i < summaries.length; i++) {
+    const before = summaries[i - 1].endedAt;
+    const after = summaries[i].startedAt;
+    const gapDays = localDaysBetween(before, after, timeZone);
+    if (longestGap === null || gapDays >= longestGap.days) {
+      longestGap = {
+        days: gapDays,
+        from: dayLabel(localDayKey(before, timeZone)).long,
+        to: dayLabel(localDayKey(after, timeZone)).long,
+      };
+    }
+  }
+
+  const lastEnd = counted.length > 0 ? counted.reduce((most, record) => Math.max(most, record.endedAt), -Infinity) : null;
+
+  return {
+    byPlayer: byNumber(players),
+    periods,
+    heatmaps,
+    byWeekday,
+    byHour,
+    sessions: {
+      count: summaries.length,
+      average: summaries.length > 0 ? counted.length / summaries.length : null,
+      most: latestHighest(summaries, (session) => session.games),
+    },
+    busiest: {
+      day: busiestOf(games, (day) => day, dayLabel),
+      week: busiestOf(games, weekKey, weekLabel),
+      month: busiestOf(games, monthKey, monthLabel),
+    },
+    longestGap,
+    daysSinceLast: lastEnd === null ? null : Math.max(0, localDaysBetween(lastEnd, now, timeZone)),
+  };
 }

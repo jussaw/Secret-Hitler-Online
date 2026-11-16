@@ -2,20 +2,24 @@ import { describe, expect, it } from "vitest";
 import {
   addDays,
   computeActivity,
+  LAST_12_MONTHS,
   countLabel,
   dayLabel,
   hourLabel,
   localHour,
   monthKey,
   monthLabel,
+  sessionSummaries,
   WEEKS_SHOWN,
   weekdayLabel,
   weekdayOf,
   weekKey,
   weekLabel,
 } from "./activity";
+import { countedGames } from "./counting";
+import fixture from "./fixtures/recorded-games.json";
 import { localDayKey } from "./format";
-import type { GameRecord } from "./record";
+import { parseStatsData, type GameRecord } from "./record";
 import { makeRecord, makeSeats } from "./testRecords";
 
 /**
@@ -175,5 +179,147 @@ describe("computeActivity: games over time", () => {
   it("playersAreInNumberOrder", () => {
     const a = computeActivity([game("o", "2026-11-02T19:00:00Z", 40, [5, 3, 9, 1, 2])], NOW, "UTC");
     expect(Array.from(a.byPlayer.keys())).toEqual([1, 2, 3, 5, 9]);
+  });
+});
+
+describe("computeActivity: the heatmap, sessions, busiest times and gaps", () => {
+  it("sessionsBusiestTimesAndGaps", () => {
+    const a = computeActivity(NOVEMBER, NOW, "UTC");
+    expect(a.sessions).toEqual({
+      count: 3,
+      average: 2,
+      most: {
+        games: 3,
+        day: "Mon 2 Nov 2026",
+        startedAt: Date.parse("2026-11-02T19:00:00Z"),
+        endedAt: Date.parse("2026-11-02T23:00:00Z"),
+      },
+    });
+    expect(a.busiest.day).toEqual({ key: "2026-11-02", label: "2 Nov", long: "Mon 2 Nov 2026", games: 3 });
+    expect(a.busiest.week).toMatchObject({ key: "2026-11-02", long: "Week of 2 Nov 2026", games: 4 });
+    expect(a.busiest.month).toMatchObject({ key: "2026-11", long: "November 2026", games: 6 });
+    expect(a.longestGap).toEqual({ days: 7, from: "Sat 7 Nov 2026", to: "Sat 14 Nov 2026" });
+    expect(a.daysSinceLast).toBe(5);
+    expect(computeActivity(NOVEMBER, NOW, "America/New_York").daysSinceLast).toBe(6);
+  });
+
+  it("sessionSummariesInPlayOrder", () => {
+    expect(sessionSummaries(NOVEMBER, "UTC").map((s) => [s.games, s.day])).toEqual([
+      [3, "Mon 2 Nov 2026"],
+      [1, "Sat 7 Nov 2026"],
+      [2, "Sat 14 Nov 2026"],
+    ]);
+    expect(sessionSummaries(NOVEMBER, "Pacific/Auckland").map((s) => s.day)).toEqual([
+      "Tue 3 Nov 2026",
+      "Sun 8 Nov 2026",
+      "Sun 15 Nov 2026",
+    ]);
+    expect(sessionSummaries([], "UTC")).toEqual([]);
+  });
+
+  it("theLast12MonthsEndOnTheLatestStartDay", () => {
+    const [last, year] = computeActivity(NOVEMBER, NOW, "UTC").heatmaps;
+    expect(last).toMatchObject({
+      id: LAST_12_MONTHS,
+      label: "Last 12 months",
+      busiest: 3,
+      busiestDay: "Mon 2 Nov 2026",
+      games: 6,
+      activeDays: 3,
+    });
+    expect([last.days.length, last.days[0].key, last.days[364].key]).toEqual([365, "2025-11-15", "2026-11-14"]);
+    expect(last.days[364]).toMatchObject({ label: "14 Nov", long: "Sat 14 Nov 2026" });
+    const shade = (k: string) => last.days.find((d) => d.key === k)!.shade;
+    expect(["2026-11-02", "2026-11-14", "2026-11-07", "2026-11-08"].map(shade)).toEqual([4, 3, 2, 0]);
+    expect(year).toMatchObject({ id: "2026", label: "2026" });
+    expect([year.days.length, year.days[0].key, year.days[364].key]).toEqual([365, "2026-01-01", "2026-12-31"]);
+  });
+
+  it("aGameCountsOnTheDayItStarted", () => {
+    const [last] = computeActivity(NOVEMBER, NOW, "UTC").heatmaps;
+    expect(last.days.find((d) => d.key === "2026-11-14")!.games).toBe(2);
+    expect(last.days.find((d) => d.key === "2026-11-15")).toBeUndefined();
+  });
+
+  it("tiesGoToTheLaterOne", () => {
+    const at = (id: string, start: string) => game(id, start, 30, [1, 2, 3, 4, 5]);
+    const a = computeActivity(
+      [
+        at("a", "2026-11-02T19:00:00Z"),
+        at("b", "2026-11-02T20:00:00Z"),
+        at("c", "2026-11-04T19:00:00Z"),
+        at("d", "2026-11-04T20:00:00Z"),
+        at("e", "2026-11-06T19:00:00Z"),
+      ],
+      NOW,
+      "UTC"
+    );
+    expect(a.busiest.day!.key).toBe("2026-11-04");
+    expect(a.sessions.most!.day).toBe("Wed 4 Nov 2026");
+    expect(a.longestGap).toEqual({ days: 2, from: "Wed 4 Nov 2026", to: "Fri 6 Nov 2026" });
+    expect(a.heatmaps[0].busiestDay).toBe("Wed 4 Nov 2026");
+  });
+
+  it("aClockBehindTheLastGameGivesZeroDays", () => {
+    expect(computeActivity(NOVEMBER, Date.parse("2026-11-14T12:00:00Z"), "UTC").daysSinceLast).toBe(0);
+  });
+
+  it("shadesAreQuartersOfTheBusiestDay", () => {
+    const games: GameRecord[] = [];
+    [8, 1, 2, 4, 6].forEach((count, d) => {
+      for (let h = 0; h < count; h++) {
+        games.push(game(`s${d}-${h}`, `2026-06-0${d + 1}T${String(h).padStart(2, "0")}:00:00Z`, 10, [1, 2, 3, 4, 5]));
+      }
+    });
+    const year = computeActivity(games, NOW, "UTC").heatmaps.find((h) => h.id === "2026")!;
+    const june = ["01", "02", "03", "04", "05", "06"].map((d) => year.days.find((day) => day.key === `2026-06-${d}`)!.shade);
+    expect(june).toEqual([4, 1, 1, 2, 3, 0]);
+    expect(year).toMatchObject({ busiest: 8, busiestDay: "Mon 1 Jun 2026", games: 21, activeDays: 5 });
+  });
+
+  it("eachYearWithGamesHasItsOwnView", () => {
+    const heatmaps = computeActivity(onDays("2024-02-29", "2026-01-10"), NOW, "UTC").heatmaps;
+    expect(heatmaps.map((h) => h.id)).toEqual([LAST_12_MONTHS, "2026", "2024"]);
+    expect(heatmaps[2].days).toHaveLength(366);
+    expect(heatmaps[0].days[0].key).toBe("2025-01-11");
+    expect(heatmaps[0]).toMatchObject({ games: 1, activeDays: 1 });
+  });
+
+  it("theNewYearFollowsTheZone", () => {
+    const games = [game("n", "2026-01-01T04:30:00Z", 30, [1, 2, 3, 4, 5])];
+    expect(computeActivity(games, NOW, "UTC").heatmaps.map((h) => h.id)).toEqual([LAST_12_MONTHS, "2026"]);
+    expect(computeActivity(games, NOW, "America/New_York").heatmaps.map((h) => h.id)).toEqual([LAST_12_MONTHS, "2025"]);
+  });
+
+  it("oneSessionHasNoGap", () => {
+    const a = computeActivity(NOVEMBER.slice(0, 3), NOW, "UTC");
+    expect(a.sessions).toMatchObject({ count: 1, average: 3 });
+    expect(a.longestGap).toBeNull();
+  });
+
+  it("noGames", () => {
+    expect(computeActivity([], NOW, "UTC")).toEqual({
+      byPlayer: new Map(),
+      periods: { week: [], month: [] },
+      heatmaps: [],
+      byWeekday: [0, 0, 0, 0, 0, 0, 0],
+      byHour: Array(24).fill(0),
+      sessions: { count: 0, average: null, most: null },
+      busiest: { day: null, week: null, month: null },
+      longestGap: null,
+      daysSinceLast: null,
+    });
+  });
+
+  it("onTheContractFixture", () => {
+    const counted = countedGames(parseStatsData(JSON.parse(JSON.stringify(fixture))).games, { players: null, cpu: true });
+    expect(counted.length).toBeGreaterThan(0);
+    const a = computeActivity(counted, NOW, "UTC");
+    const sum = (xs: number[]) => xs.reduce((s, x) => s + x, 0);
+    const months = a.periods.month;
+    expect([sum(a.byWeekday), sum(a.byHour), sum(months.map((p) => p.games))]).toEqual(Array(3).fill(counted.length));
+    expect(months[months.length - 1].cumulative).toBe(counted.length);
+    expect(sum(a.heatmaps.slice(1).map((h) => h.games))).toBe(counted.length);
+    expect(a.sessions.average! * a.sessions.count).toBeCloseTo(counted.length);
   });
 });
