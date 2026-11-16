@@ -1,6 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { rate } from "./counting";
-import { awardTrophies, TROPHIES, trophyHolders, type TrophyFacts, type TrophyId } from "./trophies";
+import { allStats } from "./allStats";
+import { countedGames, DEFAULT_FILTER, rate } from "./counting";
+import fixture from "./fixtures/recorded-games.json";
+import { played, SAMPLE_NOW, sampleData, term } from "./players/testStats";
+import { parseStatsData, type GameRecord } from "./record";
+import { fastestVoter } from "./timing";
+import {
+  awardTrophies,
+  computeTrophies,
+  speedDemonOf,
+  TROPHIES,
+  TROPHY_MIN_GAMES,
+  trophyFacts,
+  trophyHolders,
+  type TrophyFacts,
+  type TrophyId,
+} from "./trophies";
+import { buildStats } from "./useStats";
 
 /** A player past no threshold but the 8-game minimum, with `overrides` on top. */
 function base(overrides: Partial<TrophyFacts> = {}): TrophyFacts {
@@ -208,5 +224,107 @@ describe("trophyHolders", () => {
     expect(holders.filter((h) => h.trophy.id !== "regular" && h.trophy.id !== "elite").every((h) => h.players.length === 0)).toBe(
       true
     );
+  });
+});
+
+const L = "LIBERAL" as const;
+const F = "FASCIST" as const;
+const H = "HITLER" as const;
+
+/** The sample's stats under the default filter. */
+const sampleCtx = () => buildStats(sampleData(), DEFAULT_FILTER);
+
+describe("trophyFacts", () => {
+  it("gathersAnnsFacts", () => {
+    const ctx = sampleCtx();
+    const ann = trophyFacts(ctx, allStats(ctx, SAMPLE_NOW)).get(1)!;
+    expect(ann.games).toBe(6);
+    expect(ann.rating).toBe(ctx.elo.ratings.get(1)!.rating);
+    expect(ann.provisional).toBe(false);
+    expect(ann.longestWinStreak).toBe(4);
+    expect(ann.opponents).toContainEqual({ games: 4, wins: 3, losses: 1 });
+    expect(ann.hitlerExecutions).toBe(1);
+    expect(ann.wonAsElectedHitler).toBe(1);
+    expect([ann.fascistGivenOneOfEach.hits, ann.fascistGivenOneOfEach.chances]).toEqual([1, 1]);
+    expect([ann.liberalAccuracy.hits, ann.liberalAccuracy.chances]).toEqual([1, 1]);
+    expect(ann.fffAsLiberalPresident).toBe(2);
+    expect([ann.liberalVoteAccuracy.hits, ann.liberalVoteAccuracy.chances]).toEqual([3, 3]);
+    expect([ann.survival.hits, ann.survival.chances]).toEqual([5, 6]);
+  });
+
+  it("keys every player with a counted game, and no one else", () => {
+    const ctx = sampleCtx();
+    const facts = trophyFacts(ctx, allStats(ctx, SAMPLE_NOW));
+    expect(Array.from(facts.keys()).sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(facts.get(6)!.games).toBe(1);
+  });
+
+  it("oneOfEachIsFascistOnly", () => {
+    const data = sampleData();
+    data.games.push(
+      played("hitler-chancellor", [2026, 11, 14], [[2, L], [1, H], [3, L], [4, F], [5, L]], "LIBERAL_POLICIES", {
+        events: term({ t: 10_000, r: 1, president: 0, chancellor: 1, hand: ["L", "F", "F"], discard: 2, enact: "L" }),
+      })
+    );
+    const ctx = buildStats(data, DEFAULT_FILTER);
+    const ann = trophyFacts(ctx, allStats(ctx, SAMPLE_NOW)).get(1)!;
+    expect(ann.games).toBe(7);
+    expect([ann.fascistGivenOneOfEach.hits, ann.fascistGivenOneOfEach.chances]).toEqual([1, 1]);
+  });
+
+  it("counts an elected-Hitler win only for the Hitler seat of a HITLER_ELECTED game", () => {
+    const ctx = sampleCtx();
+    const facts = trophyFacts(ctx, allStats(ctx, SAMPLE_NOW));
+    // g3: Ann was Hitler; Di (Fascist) won too, but not as Hitler. g1/g2/g4/g6: Ed was a Hitler who lost or won on policies.
+    expect(facts.get(4)!.wonAsElectedHitler).toBe(0);
+    expect(facts.get(5)!.wonAsElectedHitler).toBe(0);
+  });
+});
+
+describe("computeTrophies", () => {
+  it("onlyCountedGamesCount", () => {
+    const games: GameRecord[] = [];
+    for (let i = 1; i <= 8; i++) {
+      games.push(played(`h${i}`, [2026, 9, i], [[1, L], [2, L], [3, L], [4, F], [5, H]], "LIBERAL_POLICIES"));
+    }
+    for (let i = 1; i <= 12; i++) {
+      games.push(played(`c${i}`, [2026, 10, i], [[1, L], [null, L], [null, L], [null, F], [null, H]], "LIBERAL_POLICIES"));
+    }
+    const data = { players: sampleData().players, games };
+    const off = computeTrophies(buildStats(data, DEFAULT_FILTER), SAMPLE_NOW).get(1)!.map((t) => t.id);
+    const on = computeTrophies(buildStats(data, { players: null, cpu: true }), SAMPLE_NOW).get(1)!.map((t) => t.id);
+    expect(off).not.toContain("regular");
+    expect(on).toContain("regular");
+  });
+
+  it("annHoldsTheTwoWithNoMinimum", () => {
+    const ctx = sampleCtx();
+    const trophies = computeTrophies(ctx, SAMPLE_NOW);
+    expect(trophies.get(1)!.map((t) => t.id)).toEqual(["hitlerHunter", "chancellorHitler"]);
+    expect(speedDemonOf(allStats(ctx, SAMPLE_NOW), ctx.names)).toBeNull();
+    expect(Array.from(trophies.values()).flat().map((t) => t.id)).not.toContain("speedDemon");
+    expect(trophies.has(7)).toBe(false);
+  });
+
+  it("theFixtureKeepsTheRules", () => {
+    const data = parseStatsData(JSON.parse(JSON.stringify(fixture)));
+    const ctx = buildStats(data, DEFAULT_FILTER);
+    expect(ctx.counted).toEqual(countedGames(data.games, DEFAULT_FILTER));
+    const all = allStats(ctx, SAMPLE_NOW);
+    const facts = trophyFacts(ctx, all);
+    const trophies = computeTrophies(ctx, SAMPLE_NOW);
+    const minimumLifted = new Set<TrophyId>(["hitlerHunter", "chancellorHitler", "speedDemon"]);
+    for (const { trophy, players } of trophyHolders(trophies, ctx.names)) {
+      for (const player of players) {
+        const games = facts.get(player)!.games;
+        if (!minimumLifted.has(trophy.id)) expect(games, `${trophy.label}: player ${player}`).toBeGreaterThanOrEqual(TROPHY_MIN_GAMES);
+        if (trophy.id === "regular") expect(games).toBeGreaterThanOrEqual(20);
+      }
+      if (trophy.id === "speedDemon") {
+        const holder = speedDemonOf(all, ctx.names);
+        expect(holder).toBe(fastestVoter(all.timing, ctx.names));
+        expect(players).toEqual(holder === null ? [] : [holder]);
+      }
+    }
   });
 });

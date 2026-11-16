@@ -1,4 +1,8 @@
-import { compareNames, nameOf, type Rate } from "./counting";
+import { allStats, type AllStats } from "./allStats";
+import { compareNames, humanSeats, nameOf, rate, type Rate } from "./counting";
+import { ELO_START } from "./elo";
+import { fastestVoter } from "./timing";
+import type { StatsContext } from "./useStats";
 
 /**
  * The trophies (the spec's "Trophies"): fifteen titles worked out from the counted games on every
@@ -160,4 +164,65 @@ export function trophyHolders(
     });
     return { trophy, players: players.sort(byName) };
   });
+}
+
+/** No chances yet. */
+const NONE: Rate = rate(0, 0);
+
+/**
+ * Every player with a counted game's facts, from `all` (each module's `byPlayer`) and the counted
+ * games themselves, where no module counts the fact (a win as Hitler elected chancellor).
+ */
+export function trophyFacts(stats: StatsContext, all: AllStats): Map<number, TrophyFacts> {
+  const electedHitlerWins = new Map<number, number>();
+  const players: number[] = [];
+  const seen = new Set<number>();
+  for (const record of stats.counted) {
+    for (const { seat, player } of humanSeats(record)) {
+      if (!seen.has(player)) {
+        seen.add(player);
+        players.push(player);
+      }
+      if (record.outcome === "HITLER_ELECTED" && record.seats[seat].role === "HITLER") {
+        electedHitlerWins.set(player, (electedHitlerWins.get(player) ?? 0) + 1);
+      }
+    }
+  }
+
+  const out = new Map<number, TrophyFacts>();
+  for (const player of players) {
+    const roles = all.roles.byPlayer.get(player);
+    const cards = all.cards.byPlayer.get(player);
+    const votes = all.votes.byPlayer.get(player);
+    const powers = all.powers.byPlayer.get(player);
+    const rivals = all.rivals.byPlayer.get(player);
+    const records = all.records.byPlayer.get(player);
+    const rating = stats.elo.ratings.get(player);
+    out.set(player, {
+      games: roles?.games ?? 0,
+      rating: rating?.rating ?? ELO_START,
+      provisional: rating?.provisional ?? true,
+      longestWinStreak: records?.longestWin?.length ?? 0,
+      opponents: rivals ? Array.from(rivals.opponents.values()) : [],
+      hitlerExecutions: powers?.hitlerExecuted ?? 0,
+      wonAsElectedHitler: electedHitlerWins.get(player) ?? 0,
+      fascistGivenOneOfEach: cards?.oneOfEach.FASCIST ?? NONE,
+      liberalAccuracy: cards?.liberalAccuracy ?? NONE,
+      fffAsLiberalPresident: cards?.forced.president ?? 0,
+      liberalVoteAccuracy: votes?.liberalAccuracy ?? NONE,
+      survival: powers?.survival ?? NONE,
+    });
+  }
+  return out;
+}
+
+/** The Speed Demon: ACTIVITY's fastest voter (`fastestVoter`), the one holder of that rule, or null. */
+export function speedDemonOf(all: AllStats, names: Map<number, string>): number | null {
+  return fastestVoter(all.timing, names);
+}
+
+/** Every player with a counted game's trophies under `stats`' filter, seen at `now`. */
+export function computeTrophies(stats: StatsContext, now: number): Map<number, Trophy[]> {
+  const all = allStats(stats, now);
+  return awardTrophies(trophyFacts(stats, all), stats.counted.length, speedDemonOf(all, stats.names));
 }

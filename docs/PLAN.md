@@ -1030,7 +1030,7 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-22a-trophies-links.md`](sup
 Issue #31: the fifteen trophies and RECORDS' trophy holders, one player's numbers as a pure module for Phase 22B, the game page's Elo change, and every player's name in the stats a link to their page (which stays Phase 15A's placeholder until 22B). It reads Phases 18 to 21B's stat modules through their `byPlayer` maps and changes no stat they compute. Starts once 17B, 18, 19, 20 and 21B have merged.
 
 - [x] `frontend/src/stats/trophies.ts`: the fifteen trophies, each rule held at its threshold and not below it, with the 8-game minimum wherever the spec does not lift it
-- [ ] `trophies.ts` and `allStats.ts`: each player's trophies worked out from the counted games through the earlier stat modules, the Speed Demon from ACTIVITY's fastest voter
+- [x] `trophies.ts` and `allStats.ts`: each player's trophies worked out from the counted games through the earlier stat modules, the Speed Demon from ACTIVITY's fastest voter
 - [ ] `frontend/src/stats/player.ts`: one player's numbers from every stat module, with the CPU toggle and without the player filter, and the PLAYERS rows
 - [ ] `frontend/src/stats/PlayerName.tsx`: a player's name in the stats links to their page (plain inside a sentence or headline); CPU seats stay plain text; no link sits inside another link or control
 - [ ] `frontend/src/stats/tabs/RecordsTab.tsx`: the trophy holders card, with `players/TrophyBadge.tsx`
