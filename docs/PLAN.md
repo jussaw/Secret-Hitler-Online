@@ -1013,7 +1013,7 @@ Issue #31, after Phases 21A and 17B: the RECORDS tab shows streaks, the best wee
 - [x] `frontend/e2e/stats-records.spec.ts`: RECORDS fits every stats size, its game link opens the game, and the player of the month follows the browser's time zone
 - [x] `CLAUDE.md` and `README.md` (and `DEVELOPMENT.md` if needed) describe the tab
 - [x] Every finding of the whole-branch review is fixed
-- [ ] The pull request shows the tab before and after, on desktop and on a phone
+- [x] The pull request shows the tab before and after, on desktop and on a phone
 
 **Phase 21B acceptance**
 
