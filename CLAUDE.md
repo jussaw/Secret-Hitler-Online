@@ -550,8 +550,10 @@ starts is dropped, so deploy between games.
   merged into `development` by pull request on the fork once every box in the phase is ticked.
 - A single issue outside a phase gets its own branch and pull request through the `implement-issue`
   skill. Once CI is green it merges the pull request itself for an issue labelled `bug`, and any
-  other once the user says yes in chat. `development` asks for an approving review, so every merge
-  is `gh pr merge --merge --admin`.
+  other once the user says yes in chat.
+- Every pull request, a phase's or an issue's, is squashed into one commit on `development`: never
+  a merge commit or a rebase. `development` asks for an approving review, so every merge is
+  `gh pr merge --squash --admin`.
 - Name every worktree for the work it holds (`pin-picker-confirm`, not a generated name such as
   `game-state-sync-b7a6ea`), and give its branch the same name. Rename a generated or prefixed
   branch (`claude/…`, `worktree-…`) before the first commit.
