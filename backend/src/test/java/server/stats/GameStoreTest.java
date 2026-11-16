@@ -105,6 +105,23 @@ public class GameStoreTest {
         assertEquals(List.of(3, 1), seatPlayers(records.get(1)));
     }
 
+    /** A player seen again takes no number: the numbers run 1, 2, 3… with no gaps. */
+    @Test
+    public void numbersHaveNoGaps() throws Exception {
+        GameStore store = memory();
+        store.save(TestRecords.record("g1", 2_000_000L, GameRecord.LIBERAL_POLICIES,
+                List.of(human("acct-Ann", "Ann"), human("acct-Bob", "Bob"))));
+        store.save(TestRecords.record("g2", 3_000_000L, GameRecord.LIBERAL_POLICIES,
+                List.of(human("acct-Ann", "Ann"), human("acct-Bob", "Bob"), human("acct-Cy", "Cy"))));
+        store.save(TestRecords.record("g2", 4_000_000L, GameRecord.LIBERAL_POLICIES,
+                List.of(human("acct-Dot", "Dot")))); // a second write of g2: nothing, not even a number
+        store.save(TestRecords.record("g3", 5_000_000L, GameRecord.LIBERAL_POLICIES,
+                List.of(human("acct-Cy", "Cy"), human("acct-Eve", "Eve"))));
+
+        assertEquals(List.of(new GameStore.PlayerRow(1, "acct-Ann"), new GameStore.PlayerRow(2, "acct-Bob"),
+                new GameStore.PlayerRow(3, "acct-Cy"), new GameStore.PlayerRow(4, "acct-Eve")), store.players());
+    }
+
     @Test
     public void aSecondWriteOfAnIdChangesNothing() throws Exception {
         GameStore store = file();

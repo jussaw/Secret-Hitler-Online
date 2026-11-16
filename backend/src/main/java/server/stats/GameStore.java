@@ -132,15 +132,24 @@ public class GameStore implements AutoCloseable {
     private boolean write(GameRecord record) throws SQLException {
         Map<String, Integer> numbers = new LinkedHashMap<>();
         long now = System.currentTimeMillis();
-        try (PreparedStatement insert = connection.prepareStatement(
-                "INSERT OR IGNORE INTO players (account_id, created_at) VALUES (?, ?)");
-                PreparedStatement select = connection.prepareStatement(
-                        "SELECT number FROM players WHERE account_id = ?")) {
+        // A number is looked up before one is made: an ignored INSERT OR IGNORE would still use up
+        // an AUTOINCREMENT number, leaving gaps. The transaction holds the write lock from its
+        // start, so no other connection makes a number in between.
+        try (PreparedStatement select = connection.prepareStatement(
+                "SELECT number FROM players WHERE account_id = ?");
+                PreparedStatement insert = connection.prepareStatement(
+                        "INSERT INTO players (account_id, created_at) VALUES (?, ?)")) {
             for (String accountId : record.accountIds()) {
+                select.setString(1, accountId);
+                try (ResultSet rs = select.executeQuery()) {
+                    if (rs.next()) {
+                        numbers.put(accountId, rs.getInt(1));
+                        continue;
+                    }
+                }
                 insert.setString(1, accountId);
                 insert.setLong(2, now);
                 insert.executeUpdate();
-                select.setString(1, accountId);
                 try (ResultSet rs = select.executeQuery()) {
                     if (!rs.next()) {
                         throw new SQLException("No player number for a seat of game " + record.id() + ".");
