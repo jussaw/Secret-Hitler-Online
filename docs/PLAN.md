@@ -744,7 +744,7 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-14a-game-timeline.md`](supe
 Issue #31, the first half of the game recorder: every game a lobby runs keeps a timeline of everything that happens in it, survives a backup with it, and hands one record to a sink when it ends or its lobby times out. Nothing is stored or served yet (Phase 14B), and nothing changes on screen. It is built beside Phase 13 and needs no database.
 
 - [x] `backend/src/main/java/server/stats/GameSnapshot.java` and `TimelineDiff.java`: the events between two looks at a game, spelled out in order where one move makes several, with only the living seats' votes
-- [ ] Random games played by CPU players in every seat replay to their final board, deaths, tracker, piles and outcome, and between them make every event type and outcome
+- [x] Random games played by CPU players in every seat replay to their final board, deaths, tracker, piles and outcome, and between them make every event type and outcome
 - [ ] `Lobby`: a timeline per game, and one `GameRecord` handed to `GameRecordSink` when the game ends or its lobby times out, a finished game keeping its outcome
 - [ ] `Lobby`: pauses, resumes, terms the countdown ends, dropped connections and returns
 - [ ] Backups carry the timeline, taken under the lobby's lock; a restore adds `restored`; a game from before the recorder is `complete: false`
