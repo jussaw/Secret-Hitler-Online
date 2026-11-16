@@ -143,7 +143,9 @@ public class SecretHitlerServer {
 
     private static final Logger logger = LoggerFactory.getLogger(SecretHitlerServer.class);
 
-    transient private static boolean hasLobbyChanged;
+    // Whether a lobby changed since the last backup, which the 60 s timer then stores. Volatile, as
+    // lobbies mark it from their own threads (markLobbiesChanged); package-private for the tests.
+    static volatile boolean hasLobbyChanged;
 
     // </editor-fold>
 
@@ -312,6 +314,14 @@ public class SecretHitlerServer {
             printLobbyStatus();
             hasLobbyChanged = true;
         }
+    }
+
+    /**
+     * Marks the lobbies changed, so the next 60 s tick backs them up: a lobby whose game has just
+     * ended calls it, so the backup soon holds the lobby without the finished game.
+     */
+    public static void markLobbiesChanged() {
+        hasLobbyChanged = true;
     }
 
     /////// Renaming and game starts

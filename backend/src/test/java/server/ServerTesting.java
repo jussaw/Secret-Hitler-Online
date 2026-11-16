@@ -28,6 +28,15 @@ public final class ServerTesting {
         SecretHitlerServer.codeToLobby.remove(code);
     }
 
+    /** Whether a lobby has been marked changed since the last backup (or {@code clearLobbiesChanged}). */
+    public static boolean lobbiesChanged() {
+        return SecretHitlerServer.hasLobbyChanged;
+    }
+
+    public static void clearLobbiesChanged() {
+        SecretHitlerServer.hasLobbyChanged = false;
+    }
+
     /** Starts a game in the lobby as the start-game command does. */
     public static void startGame(Lobby lobby) {
         SecretHitlerServer.startGame(lobby);

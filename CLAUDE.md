@@ -16,7 +16,8 @@ keeps credit to upstream and to the board game's creators.
 - `backend/`: Java 17, Gradle (7.4.2 wrapper), Javalin 5. Game rules and CPU players in
   `src/main/java/game/`; HTTP endpoints (`/check-login`, `/new-lobby`, `/ping` and the account
   routes below), the `/game` WebSocket, lobbies and state serialization in `src/main/java/server/`,
-  and accounts in `src/main/java/server/accounts/`. JUnit 4 tests in `src/test/java/game/` and
+  accounts in `src/main/java/server/accounts/` and game records in `src/main/java/server/stats/`
+  (below). JUnit 4 tests in `src/test/java/game/` and
   `src/test/java/server/`. Lobbies are backed up to a SQLite file at `DATABASE_PATH`, which also
   holds the accounts and sessions (unset = no backup, and the accounts in an in-memory database that
   is gone at restart). The server also serves the built frontend from the
@@ -89,11 +90,11 @@ keeps credit to upstream and to the board game's creators.
   `accountToPreferredIcon` and `gameSeats` (the running game's human seats, account ID to seat name,
   which `seatAccounts()` turns round for game records, #31) are backed up. `updateAllUsers` clears
   `gameSeats` once it has sent a finished game's last packet, so `seatAccounts()` is empty from
-  then on: #31 must read the seats before that clear. `startNewGame` seats each live account under
-  its current name, which the seat keeps until the game ends, and `Lobby.rename`
-  (refused while seated) changes only the name packets show (`LobbyRenameTest`). Packets keep their
-  shape (`usernames` and `icon` by name, game packets by seat name), and every player's packet adds
-  `you`, their name or, in a game, their seat's; a spectator's gets none.
+  then on: the game's record (below) reads the seats just before that clear. `startNewGame` seats
+  each live account under its current name, which the seat keeps until the game ends, and
+  `Lobby.rename` (refused while seated) changes only the name packets show (`LobbyRenameTest`).
+  Packets keep their shape (`usernames` and `icon` by name, game packets by seat name), and every
+  player's packet adds `you`, their name or, in a game, their seat's; a spectator's gets none.
   Spectators connect with `/game?lobby=CODE&spectator=true`, with no `name` and no session (checked
   first with `/check-login?lobby=CODE&spectator=true`). In `Lobby` they are a set
   of connections with no seat, name or icon: never counted as users, never backed up, and they do
@@ -158,7 +159,8 @@ keeps credit to upstream and to the board game's creators.
   issue #63). A lobby times out after 10
   minutes with no message from a player (`LOBBY_TIMEOUT_DURATION_IN_MIN`). The sweep
   (`removeInactiveLobbies`), every 60 s and before each new lobby, holds no handler's lock: it
-  closes each lobby that has timed out under the lobby's own lock (`Lobby.closeIfTimedOut`),
+  closes each lobby that has timed out under the lobby's own lock (`Lobby.closeIfTimedOut`, which
+  hands over the record of a game running in it and drops the game, below),
   removes it from `codeToLobby` and closes its connections, which stay in `userToLobby` until
   their close handlers run, so a spectator's message on its way is still known as a spectator's.
   Every handler looks a lobby up once and treats a closed one as gone: a join or a message is
@@ -177,6 +179,59 @@ keeps credit to upstream and to the board game's creators.
   (a JUnit rule: a fresh in-memory `AccountStore` per test, and `session(name)` for the account
   `test-<name>` named so), and `TestSocket.connect(port, query, token)` sends the `session` cookie
   and the server's own `Origin`; the lobby tests name each player's account with `LobbyTesting`.
+  Game records (#31; Phase 14B adds the store, the writer and `GET /api/stats/games`) start in
+  `server.stats`, with no database yet: `GameSnapshot` (one look at a `SecretHitlerGame`: state,
+  round, seats, roles, deaths, offices, votes, tracker, board, piles, and the hand or peek of the
+  state that shows one; `of` reads `getState()` first, which notices a policy victory),
+  `TimelineDiff` (`between(before, after, t)`: the events one game method made between two looks,
+  in the game's order and the spec's format, keyed `type`, `t`, `r` and then the spec's fields, of
+  JDK types only. A third failed election, or an accepted veto at tracker 2, is `tracker` 3 then
+  the chaos `enact`, with no event for the reset; a `reshuffle` comes wherever the game shuffles
+  discards back in; only living seats' votes are events or counted; `r` is `before.round()`, so
+  an `endTerm` carries the term it ended. It throws for a change no single method makes, two looks
+  in one state that differ in more than new votes included), `GameRecord` (the immutable copy a
+  game hands over: header, seats in turn order with their accounts, null for a CPU's, and the
+  timeline; `winner()`, `hasCpu()`, `accountIds()`) and `GameRecordSink` (where
+  `Lobby.recordSink` hands each record, under the lobby's lock, so a sink never blocks;
+  `DROPPING`, the default until Phase 14B, drops it with a debug line). `Lobby` keeps the running
+  game's `gameId` (a random UUID; `gameId()` gives it, then the last game's until the next
+  starts), `gameStartedAt` (`recordClock`, epoch ms), `gameComplete` and `gameEvents`, all backed
+  up, and the transient `lastSnapshot`; `timeline()` gives a copy of the running game's events.
+  It takes a snapshot of the game (`observeGame`) first in
+  `updateAllUsers` and after every CPU move, so CPU votes come one by one in name order; the END
+  TERM countdown's look after `endPresidentialTerm` makes its `endTerm` `by` `countdown`. `t` is
+  ms since the start on `recordClock`, never going back. `Lobby` adds its own events: `timerPause`
+  and `timerResume` when the countdown changes, `disconnect` when a seated account's connection is
+  removed, and `reconnect` when one comes back after a `disconnect` (looking back no further than
+  the last `restored`; a takeover by rejoin key is neither), none after the game's `end`. A move it
+  cannot read is logged in one warning line and left out, and the record is `complete: false`:
+  nothing the recorder does stops a game. `handOverGame` makes every record. A game that has ended
+  keeps its outcome, with exactly one `end`, so a game a CPU won, which the next tick drops, keeps
+  it when the sweep or a restart comes first; any other is `UNFINISHED`, with an `end` at the
+  sweep. A record's `endedAt` is `startedAt` plus its `end`'s `t`, the sweep's time unless the
+  clock stepped back.
+  `updateAllUsers` hands a finished game over before it clears the seats, marks the lobbies changed
+  (`SecretHitlerServer.markLobbiesChanged`, so the next backup holds no finished game) and drops it
+  (`dropGame`); `closeIfTimedOut` hands over and drops a game in a swept lobby, so no CPU tick or
+  countdown plays on in it. A record or sink that throws is logged, and the game is dropped as
+  usual. `writeObject` writes a lobby under its own lock, so a backup's game and timeline match.
+  `readObject` adds `restored` unless the timeline ends with `end`, gives a game from a backup
+  before the recorder (`gameEvents` null; `backup-before-recorder.db`) a new ID, a start at the
+  restore, `restored` at `t` 0 and `complete: false`, and marks the lobbies changed, so the next
+  tick keeps what it changed. It reads the game no further than its round: the first snapshot after
+  a restore is taken in `observeGame`, in `game()`, which every command goes through before it
+  changes the game, or by the END TERM countdown just before it ends a term (the one change made
+  without `game()`). The tests: `TimelineDiffTest` (every event type and the
+  several-at-once moves, from hand-built looks, `Snapshots`), `RandomGamesReplayTest` (300 games of
+  CPU players in every seat, `CpuGames`, which Phase 14B's fixture uses too, each replayed by
+  `TimelineReplay`, which checks every event's place against the game's rules and its keys against
+  `RecordFormat`, the spec's format; and games until every event type and outcome has come up),
+  `LobbyRecordingTest`, and `DatabaseBackupTest`'s restores. Both of those take the records through
+  `RecordedGames` (a JUnit rule: the records, a clock the test sets, and CPU ticks, countdowns and
+  grace windows long enough that none ends by itself, all put back after). `GameDriver.stepCpus`
+  plays a lobby's CPU players one tick at a time, `GameDriver.playUntil(game, state, onStep)` calls
+  `onStep` after every move as `playOut` does, and `ServerTesting.lobbiesChanged()` and
+  `clearLobbiesChanged()` read and reset the server's mark for the next backup.
 - `frontend/`: React 18 and TypeScript 5, built with Vite and tested with Vitest. The entry is
   `src/main.tsx`, with `index.html` at the `frontend/` root, whose description is one plain line
   and which has no preview image, so an invite link previews as that line (`linkPreview.test.ts`).
