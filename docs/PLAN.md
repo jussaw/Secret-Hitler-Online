@@ -51,7 +51,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 16. The game page | `phase-16-game-page` | done |
 | 17A. Stats engine | `phase-17a-stats-engine` | done |
 | 17B. OVERVIEW | `phase-17b-overview` | planned |
-| 18. ROLES & CARDS | `phase-18-roles-cards` | planned |
+| 18. ROLES & CARDS | `phase-18-roles-cards` | in progress |
 | 19. VOTES & POWERS | `phase-19-votes-powers` | planned |
 | 20. RIVALS and ENDINGS | `phase-20-rivals-endings` | done |
 | 21A. ACTIVITY | `phase-21a-activity` | done |
@@ -908,7 +908,7 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-18-roles-cards.md`](superpo
 
 Issue #31: the ROLES & CARDS tab fills Phase 17A's placeholder with each player's role and card stats over the counted games, read from the records' seats and from `rounds(record)` (Phase 16). Built after Phases 16 and 17A, beside 17B, 19, 20 and 21A; it changes no shared source file, only its own modules, its tab, its browser spec and the docs.
 
-- [ ] `frontend/src/stats/roles.ts`: role split, role luck, times as Hitler and the longest run of one role
+- [x] `frontend/src/stats/roles.ts`: role split, role luck, times as Hitler and the longest run of one role
 - [ ] `roles.ts`: win rates as Liberal, as Fascist and as Hitler, by player count, and as first president
 - [ ] `frontend/src/stats/cards.ts`: hands drawn beside the group's, Liberal accuracy and deep cover as president
 - [ ] `cards.ts`: given one of each, policies enacted and vetoes as chancellor; Fascist choices and forced Fascists
