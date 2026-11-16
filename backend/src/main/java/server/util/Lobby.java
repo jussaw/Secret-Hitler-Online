@@ -870,6 +870,14 @@ public class Lobby implements Serializable {
      * name-keyed maps it has, whose fields Lobby no longer has), so they start empty, and
      * {@code backedUpBeforeAccounts} records it.
      *
+     * <p>A game restored mid-way goes on recording: its timeline gains a {@code restored}, unless
+     * it already ends with the game's {@code end} (a CPU's winning move, backed up before the tick
+     * that drops it). A backup from before the recorder has no timeline ({@code gameEvents} comes
+     * back null): its game gets an ID and a start now, a timeline that starts with
+     * {@code restored} at {@code t} 0, and an incomplete record. Nothing here reads the game
+     * beyond its round, so no game can lose the lobbies of a backup; the first look at it is
+     * taken when something first reaches it ({@code observeGame}, {@code game()}).
+     *
      * @param in the Object Input Stream that is reading in the object.
      * @throws IOException
      * @throws ClassNotFoundException
@@ -894,6 +902,27 @@ public class Lobby implements Serializable {
         pendingRemovals = new ConcurrentHashMap<>();
         userTimeoutTimer = new Timer();
         cpuTickTimer = new Timer();
+        if (game != null) {
+            if (gameEvents == null) { // backed up before the recorder
+                gameId = UUID.randomUUID().toString();
+                gameStartedAt = recordClock.getAsLong();
+                gameComplete = false;
+                gameEvents = new ArrayList<>();
+            }
+            if (!timelineEnded()) {
+                addEvent("restored");
+            }
+        }
+    }
+
+    /**
+     * Writes the lobby under its own lock, so a backup's game and timeline always match:
+     * {@code storeLobbies} holds no lock of its own.
+     */
+    private void writeObject(java.io.ObjectOutputStream out) throws IOException {
+        synchronized (this) {
+            out.defaultWriteObject();
+        }
     }
 
     /**
