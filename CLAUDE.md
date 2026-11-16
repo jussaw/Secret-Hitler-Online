@@ -620,8 +620,9 @@ keeps credit to upstream and to the board game's creators.
   most wins, the later of a tie), the longest win and losing streak across players (a tie to the
   run whose last game is later, and `streakHolders` names every player tied at that end, as
   teammates are), this local month's player of the month (`MonthHolder`, `[]` and 0 when nobody
-  won) and `monthHistory` (each completed month's, `playerOfTheMonth` at its latest counted start,
-  months with no holder left out, newest first), `topSessions` (`sessionSummaries`, the
+  won) and `monthHistory` (each completed month's, `playerOfTheMonth` of that month's own games at
+  its latest start, so the months cost one pass in all, months with no holder left out, newest
+  first), `topSessions` (`sessionSummaries`, the
   `TOP_SESSIONS`, 5, with the most games, a tie to the later), `highestPeak` (the highest rounded
   peak and every player at it) and `biggestUpset` (the lowest winners' chance, `E` for a Liberal
   win and `1 − E` for a Fascist one, among games a person won, so a win by CPU seats alone is
@@ -633,10 +634,10 @@ keeps credit to upstream and to the board game's creators.
   `div.records-cell` with `data-card`, in one grid of columns at least 300px wide under four
   `h2.records-heading`s (Streaks, Wins, Sessions, Ratings): the longest win and losing streaks (a
   line per first and last day naming every tied holder), current streaks (a `RankedTable`, "3
-  wins" or "2 losses"), the most wins in a week and in a month (a `table.records-table` of the
-  rank, the name over its period and the wins, so a long name keeps its width), the player of the
-  month (every tied player) and the players of the month (the month over its holders, one a line,
-  and the wins), the most games in one session (up to five lines of games, day and length), and
+  wins" or "2 losses"), the most wins in a week and in a month (a table in `RankedTable`'s classes,
+  as `PowerRanking` does, of the rank, the name over its period and the wins, so a long name keeps
+  its width), the player of the month (every tied player) and the players of the month (the month
+  over its holders, one a line, and the wins), the most games in one session (up to five lines of games, day and length), and
   the rating records (the highest peak, then the upset, its winners' gain and its losers' loss, a
   side with no person left out, and See the game, `a.records-game-link`, 44px at every size).
   Tied players are listed by more counted games, then name; names in a record's line are
@@ -1049,8 +1050,8 @@ keeps credit to upstream and to the board game's creators.
   and grid child of the tab with text can shrink. `stats-records.spec.ts` checks RECORDS with
   `checkStatsPage` at every `statsSizesFor` size against `bigStatsData()`, its game link 44px both
   ways, and (`desktop`) that See the game opens one of its games, and with `timezoneId` that a
-  game from 23:30 UTC on 31 October makes Ann November's player of the month in Paris and
-  October's in Los Angeles. No `e2e/` file imports `src/constants` or anything that does
+  game from 23:30 UTC on 31 October, won by Ann and Bo, makes them November's players of the month
+  in Paris and October's in Los Angeles. No `e2e/` file imports `src/constants` or anything that does
   (`api.ts`, `App`): it
   reads `window` when it loads, which throws in Playwright's Node process; specs build stats paths
   with `routePath`. Shared helpers are `e2e/lobby.ts`
