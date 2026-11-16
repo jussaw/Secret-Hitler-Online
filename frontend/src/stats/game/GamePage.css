@@ -30,12 +30,9 @@
     overflow-wrap: anywhere;
 }
 
-/* The seats in turn order: a list read as one line after its label, the names separated by dots,
-   in the header's text (as its other lines, which are p's). */
+/* The seats in turn order: a list read as one line after its label, the names separated by dots.
+   It takes the header card's font and size; the rest is what the card's p's get from StatsApp.css. */
 .game-seats-line {
-    font-family: var(--textFont);
-    font-weight: 500;
-    font-size: 15px;
     line-height: 1.4;
     color: var(--textColorOnDark);
     overflow-wrap: anywhere;

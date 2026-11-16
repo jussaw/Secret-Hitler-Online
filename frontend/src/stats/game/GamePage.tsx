@@ -9,8 +9,9 @@ import "./GamePage.css";
 
 /**
  * One game's page (`/stats/games/<id>`): its header (with the game's Elo change when it counts
- * under the default filter), a note when its first rounds were not recorded, a block per round, and a line at the end when its lobby closed before it finished.
- * An ID that is not exactly a record's gets a short not-found page.
+ * under the default filter), a note when its first rounds were not recorded, a block per round,
+ * and a line at the end when its lobby closed before it finished. An ID that is not exactly a
+ * record's gets a short not-found page.
  */
 export default function GamePage({ data, route }: PageProps): JSX.Element {
   const id = route.page === "game" ? route.id : null;

@@ -5,6 +5,8 @@ import type { StatsData } from "../record";
 /**
  * A game page's Elo change (Phase 22A): what the game moved its players by when it counts under
  * the default filter (every player, no CPU games), whatever filter the stats tabs have. Pure.
+ *
+ * This module imports nothing that reads the browser, so the browser tests can use it.
  */
 
 /** Each set of records' default Elo, replayed once. */
