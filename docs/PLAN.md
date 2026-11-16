@@ -48,7 +48,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 14B. Game records | `phase-14b-game-records` | done |
 | 15A. Stats shell | `phase-15a-stats-shell` | done |
 | 15B. Game history | `phase-15b-game-history` | planned |
-| 16. The game page | `phase-16-game-page` | in progress |
+| 16. The game page | `phase-16-game-page` | done |
 | 17A. Stats engine | `phase-17a-stats-engine` | planned |
 | 17B. OVERVIEW | `phase-17b-overview` | planned |
 | 18. ROLES & CARDS | `phase-18-roles-cards` | planned |
@@ -849,8 +849,8 @@ Issue #31: each game's record, round by round. `rounds(record)` turns a timeline
 
 **Phase 16 acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] PR merged into `development`
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] PR merged into `development`
 - [ ] The user opens a game they played, from GAMES and from its victory screen, on a desktop and on a phone, and reads its rounds
 
 ---
