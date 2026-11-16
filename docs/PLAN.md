@@ -959,7 +959,7 @@ Issue #31: the RIVALS tab (teammates, opponents, rivalries, each player's people
 - [x] `frontend/src/stats/rivals.ts`: pairs on the same and opposite sides, the best duo and best Fascist duo, the closest and most lopsided rivalries
 - [x] `rivals.ts`: each player's most played with, best teammate, nemesis, favourite opponent and record against each opponent, and who nominated whom
 - [x] `frontend/src/stats/endings.ts`: games by player count and outcome, the Liberal win rate with its smoothed rate, game length, the fastest win and the longest game
-- [ ] `endings.ts`: the closest and most lopsided final boards, and the most chaos policies, failed elections and vetoes in one game
+- [x] `endings.ts`: the closest and most lopsided final boards, and the most chaos policies, failed elections and vetoes in one game
 - [ ] `frontend/src/stats/tabs/PlayerMatrix.tsx`: player-by-player tables that scroll inside their card, the names held in view
 - [ ] `frontend/src/stats/tabs/RivalsTab.tsx`: the RIVALS tab
 - [ ] `frontend/src/stats/tabs/EndingsTab.tsx`: the ENDINGS tab

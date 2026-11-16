@@ -1,10 +1,13 @@
 import { compareByEnd, MIN_GAMES, rate, type Rate } from "./counting";
 import { ELO_PRIOR } from "./elo";
 import type { GameRecord, Outcome } from "./record";
+import { rounds, type Round } from "./rounds";
 
 /**
  * ENDINGS (the spec's "ENDINGS"): how counted games are won by the number of players, the Liberal
- * win rate beside the smoothed rate the Elo handicap uses, and how long games last. Length is
+ * win rate beside the smoothed rate the Elo handicap uses, how long games last, the closest and
+ * most lopsided final boards, and the most chaos policies, failed elections and vetoes in one game
+ * (counted from `rounds`, never from the raw events). Length is
  * `endedAt − startedAt` over complete games only: a record restored from a backup with no timeline
  * (`complete: false`) starts at the restore, so its length is wrong, though it counts everywhere
  * else. Pure: it reads only its argument, and gives the same result for the games in any order.
@@ -31,6 +34,15 @@ export const OUTCOME_COLORS: Record<FinishedOutcome, string> = {
   FASCIST_POLICIES: "#e8604a",
   HITLER_ELECTED: "#b4431a",
 };
+
+/** How many final boards the tab lists, the latest first, under the count of all. */
+export const FINISHES_SHOWN = 10;
+
+/** A game and how many of something it had. */
+export interface GameCount {
+  game: GameRecord;
+  count: number;
+}
 
 /** Games recorded from their start, and their average length and rounds (null with none). */
 export interface LengthStats {
@@ -61,6 +73,33 @@ export interface EndingStats {
   fastestWin: GameRecord | null;
   /** The longest game recorded from its start (ties: more rounds, then the earlier game). */
   longestGame: GameRecord | null;
+  /** Every game won with the losing side one policy from winning, newest first. */
+  closestFinishes: GameRecord[];
+  /** Every game won with the losing side's track still at 0, newest first. */
+  lopsidedFinishes: GameRecord[];
+  /**
+   * The most chaos policies (whether a third failed election or an accepted veto caused them),
+   * failed elections and vetoed agendas in one game: the highest count above 0, ties to the
+   * earlier game; null when no game had one.
+   */
+  mostChaos: GameCount | null;
+  mostFailedElections: GameCount | null;
+  mostVetoes: GameCount | null;
+}
+
+/**
+ * Whether the losing side was one policy from winning: the Fascists won with 4 Liberal policies
+ * down, or the Liberals with 5 Fascist ones.
+ */
+export function isClosestFinish(record: GameRecord): boolean {
+  return (
+    (record.winner === "FASCIST" && record.liberalPolicies === 4) || (record.winner === "LIBERAL" && record.fascistPolicies === 5)
+  );
+}
+
+/** Whether the losing side's track was still at 0 when the game was won. */
+export function isLopsidedFinish(record: GameRecord): boolean {
+  return (record.winner === "FASCIST" && record.liberalPolicies === 0) || (record.winner === "LIBERAL" && record.fascistPolicies === 0);
 }
 
 /**
@@ -139,5 +178,27 @@ export function computeEndings(counted: GameRecord[]): EndingStats {
   const fastestWin = first(complete, (x, y) => lengthMs(x) - lengthMs(y) || x.rounds - y.rounds || compareByEnd(x, y));
   const longestGame = first(complete, (x, y) => lengthMs(y) - lengthMs(x) || y.rounds - x.rounds || compareByEnd(x, y));
 
-  return { bySize, length: lengthOf(finished), fastestWin, longestGame };
+  const newestFirst = (x: GameRecord, y: GameRecord) => compareByEnd(y, x);
+  const closestFinishes = finished.filter(isClosestFinish).sort(newestFirst);
+  const lopsidedFinishes = finished.filter(isLopsidedFinish).sort(newestFirst);
+
+  const timelines = finished.map((game) => ({ game, rounds: rounds(game) }));
+  /** The game with the most rounds that `counts`, above 0; ties to the earlier game. */
+  const most = (counts: (round: Round) => boolean): GameCount | null =>
+    first(
+      timelines.map(({ game, rounds }) => ({ game, count: rounds.filter(counts).length })).filter((c) => c.count > 0),
+      (x, y) => y.count - x.count || compareByEnd(x.game, y.game)
+    );
+
+  return {
+    bySize,
+    length: lengthOf(finished),
+    fastestWin,
+    longestGame,
+    closestFinishes,
+    lopsidedFinishes,
+    mostChaos: most((round) => round.enacted?.by === "chaos"),
+    mostFailedElections: most((round) => round.election?.passed === false),
+    mostVetoes: most((round) => round.veto?.accepted === true),
+  };
 }

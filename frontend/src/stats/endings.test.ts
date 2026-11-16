@@ -4,6 +4,9 @@ import { replayElo } from "./elo";
 import {
   computeEndings,
   FINISHED_OUTCOMES,
+  FINISHES_SHOWN,
+  isClosestFinish,
+  isLopsidedFinish,
   OUTCOME_COLORS,
   OUTCOME_LABELS,
   outcomeBars,
@@ -11,7 +14,7 @@ import {
 } from "./endings";
 import fixture from "./fixtures/recorded-games.json";
 import { parseStatsData } from "./record";
-import { ended, MINUTE } from "./testEndings";
+import { chaosRun, ended, failed, MINUTE, vetoed } from "./testEndings";
 import { repeat } from "./testRivals";
 
 const counted = () => countedGames(parseStatsData(fixture).games, DEFAULT_FILTER);
@@ -125,6 +128,46 @@ describe("how long games last", () => {
   });
 });
 
+describe("final boards", () => {
+  it("lists closest and most lopsided finishes, newest first", () => {
+    const a = ended(6, "HITLER_ELECTED", { liberal: 4, fascist: 3 });
+    const b = ended(7, "HITLER_EXECUTED", { liberal: 3, fascist: 5 });
+    const c = ended(5, "LIBERAL_POLICIES", { liberal: 5, fascist: 4 });
+    const d = ended(5, "LIBERAL_POLICIES", { liberal: 5, fascist: 0 });
+    const f = ended(8, "FASCIST_POLICIES", { liberal: 0, fascist: 6 });
+    const g = ended(9, "FASCIST_POLICIES", { liberal: 4, fascist: 6 });
+    const e = computeEndings([a, b, c, d, f, g]);
+    expect(e.closestFinishes).toEqual([g, b, a]);
+    expect(e.lopsidedFinishes).toEqual([f, d]);
+    expect([a, b, c, d, f, g].map(isClosestFinish)).toEqual([true, true, false, false, false, true]);
+    expect([a, b, c, d, f, g].map(isLopsidedFinish)).toEqual([false, false, false, true, true, false]);
+    expect(FINISHES_SHOWN).toBe(10);
+  });
+});
+
+describe("the most in one game", () => {
+  it("finds the most chaos policies, failed elections and vetoes in one game", () => {
+    const a = ended(5, "LIBERAL_POLICIES", {
+      events: [...chaosRun(1), ...vetoed(4, true, 1), ...vetoed(5, true, 2), ...vetoed(6, false)],
+    });
+    const b = ended(5, "FASCIST_POLICIES", { events: [...chaosRun(1), ...failed(4, 1), ...failed(5, 2), ...vetoed(6, true, 3)] });
+    const c = ended(5, "HITLER_ELECTED", { events: [...chaosRun(1), ...chaosRun(4), ...failed(7, 1)] });
+    const e = computeEndings([c, a, b]);
+    expect(e.mostChaos).toEqual({ game: b, count: 2 }); // one by a veto; c ties it later
+    expect(e.mostFailedElections).toEqual({ game: c, count: 7 });
+    expect(e.mostVetoes).toEqual({ game: a, count: 2 }); // the refused one is not counted
+  });
+
+  it("has no record nobody set", () => {
+    const e = computeEndings([ended(5, "LIBERAL_POLICIES")]);
+    expect(e.closestFinishes).toEqual([]);
+    expect(e.lopsidedFinishes).toEqual([]);
+    expect(e.mostChaos).toBeNull();
+    expect(e.mostFailedElections).toBeNull();
+    expect(e.mostVetoes).toBeNull();
+  });
+});
+
 describe("the contract fixture", () => {
   it("adds up on the contract fixture", () => {
     const games = counted();
@@ -134,5 +177,16 @@ describe("the contract fixture", () => {
       expect(FINISHED_OUTCOMES.reduce((sum, o) => sum + size.outcomes[o], 0)).toBe(size.games);
     }
     expect(e.length.games).toBe(games.filter((g) => g.complete).length);
+  });
+
+  it("finds the most in one game as the recorder's events count them", () => {
+    const games = counted();
+    const e = computeEndings(games);
+    const most = (count: (g: (typeof games)[number]) => number) => Math.max(0, ...games.map(count));
+    const events = (g: (typeof games)[number], matches: (ev: (typeof g.events)[number]) => boolean) => g.events.filter(matches).length;
+    expect(e.mostChaos?.count ?? 0).toBe(most((g) => events(g, (ev) => ev.type === "enact" && ev.by === "chaos")));
+    expect(e.mostFailedElections?.count ?? 0).toBe(most((g) => events(g, (ev) => ev.type === "election" && !ev.passed)));
+    expect(e.mostVetoes?.count ?? 0).toBe(most((g) => events(g, (ev) => ev.type === "vetoAnswer" && ev.accepted)));
+    expect(e.mostFailedElections).not.toBeNull();
   });
 });
