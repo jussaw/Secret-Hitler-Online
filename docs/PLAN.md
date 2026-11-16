@@ -983,7 +983,7 @@ Issue #31, after Phases 16 and 17A, beside 17B, 18, 19 and 20: the ACTIVITY tab 
 
 - [x] `frontend/src/stats/activity.ts`: the viewer's local calendar, games over time, attendance, participation, day of the week and hour of the day
 - [x] `activity.ts`: the calendar heatmap, sessions, the busiest day, week and month, the longest gap and days since the last game
-- [ ] `frontend/src/stats/timing.ts`: decision times, the fastest voter (one rule with Speed Demon), the slowest president, the countdown's share, pauses and dropped connections, and `formatAverageTime`
+- [x] `frontend/src/stats/timing.ts`: decision times, the fastest voter (one rule with Speed Demon), the slowest president, the countdown's share, pauses and dropped connections, and `formatAverageTime`
 - [ ] `frontend/src/stats/charts/BarChart.tsx`: bars sized from their card, with a tooltip, arrow keys and a description
 - [ ] `frontend/src/stats/charts/CalendarHeatmap.tsx`: a cell per day in four shades, with a tooltip, arrow keys and a description
 - [ ] `frontend/src/stats/tabs/ActivityTab.tsx`: the ACTIVITY tab
