@@ -1,0 +1,89 @@
+/* The colours and fonts (variables.css) come with App.css, which the entry always loads. */
+
+/* The stats pages' header: the game header's orange bar and title size. App.css styles every
+   header as a centred column, so this sets its own layout. Desktop: the title at the left, the
+   links at the right, in one row. */
+.stats-header {
+    box-sizing: border-box;
+    min-height: 0;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    column-gap: 16px;
+    padding: 0 16px;
+    font-size: clamp(18px, 3.4vh, 40px);
+    line-height: 1.15;
+    text-align: left;
+}
+
+.stats-title {
+    min-width: 0;
+    white-space: nowrap;
+}
+
+.stats-nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    min-width: 0;
+}
+
+/* White Montserrat, each link at least a 44px target at every size. App.css colours every link. */
+.stats-nav-link {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 10px;
+    font-family: var(--textFont);
+    font-weight: 700;
+    font-size: clamp(14px, 1.7vh, 18px);
+    letter-spacing: 0.03em;
+    color: var(--headerTextColor);
+    text-decoration: none;
+    text-underline-offset: 0.35em;
+    text-decoration-thickness: 2px;
+}
+
+.stats-nav-link[aria-current="page"] {
+    text-decoration: underline;
+}
+
+.stats-nav-link:hover,
+.stats-nav-link:focus-visible {
+    color: var(--headerTextColor);
+    text-decoration: underline;
+}
+
+.stats-nav-link:focus-visible {
+    outline: 2px solid var(--headerTextColor);
+    outline-offset: -4px;
+}
+
+/* Phones (the game's phone-only query): the title centred, then the four links as a row of
+   equal columns under it. */
+@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
+    .stats-header {
+        flex-direction: column;
+        flex-wrap: nowrap;
+        align-items: stretch;
+        padding: 4px 8px 0;
+    }
+
+    .stats-title {
+        text-align: center;
+    }
+
+    .stats-nav {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .stats-nav-link {
+        padding: 0 4px;
+    }
+}

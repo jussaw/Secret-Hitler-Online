@@ -1,0 +1,40 @@
+/* The latest games, one link a line (TabsPage, until Phase 17A fills it). */
+.latest-games-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.latest-games-list > li {
+    min-width: 0;
+}
+
+.stats-screen a.latest-games-link {
+    box-sizing: border-box;
+    display: block;
+    padding: 4px 0;
+    font-family: var(--textFont);
+    font-weight: 500;
+    font-size: 15px;
+    line-height: 1.4;
+    color: var(--textColorOnDark);
+    text-decoration: none;
+    overflow-wrap: anywhere;
+}
+
+.stats-screen a.latest-games-link:hover,
+.stats-screen a.latest-games-link:focus-visible {
+    color: var(--headerTextColor);
+    text-decoration: underline;
+}
+
+/* At least a 44px target wherever the game's stacked query matches. */
+@media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
+    .stats-screen a.latest-games-link {
+        display: flex;
+        align-items: center;
+        min-height: 44px;
+    }
+}
