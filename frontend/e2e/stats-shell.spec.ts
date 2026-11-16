@@ -127,12 +127,16 @@ test("the page check catches what it should", async ({ page }) => {
   const controls = `
     <button id="short" style="height: 30px; width: 100px">Short</button>
     <p>Read the <a id="inline" href="/x">rules</a> first.</p>
-    <table><tr><td>Name <a id="cell" href="/y" style="display: inline-block; height: 20px">Ann</a></td></tr></table>
+    <table><tr>
+      <td>Name <a id="cell" href="/y" style="display: inline-block; height: 20px">Ann</a></td>
+      <td><p>Name <a id="cell-sentence" href="/z">Bo</a> won</p></td>
+    </tr></table>
     <input id="small" type="text" style="font-size: 14px; height: 50px; width: 200px">`;
   const phone = await at(360, 740, controls);
   expect(phone.smallTargets.join(" ")).toContain("button#short");
   expect(phone.smallTargets.join(" ")).not.toContain("a#inline");
-  expect(phone.smallTargets.join(" ")).toContain("a#cell");
+  expect(phone.smallTargets.join(" ")).toContain("a#cell ");
+  expect(phone.smallTargets.join(" "), "a link in a sentence in a table cell").toContain("a#cell-sentence");
   expect(phone.smallText.join(" ")).toContain("input#small");
   expect((await at(360, 740, "<p>No fields here.</p>")).smallText).toEqual([]);
 
