@@ -129,6 +129,11 @@ export function rate(hits: number, chances: number, min: number = MIN_CHANCES): 
   return { hits, chances, value: chances < min || chances === 0 ? null : hits / chances };
 }
 
+/** A player's name from `names`, or `Player <number>` for a number it does not have. */
+export function nameOf(names: Map<number, string>, player: number): string {
+  return names.get(player) ?? `Player ${player}`;
+}
+
 /** Two names in alphabetical order, ignoring case: negative when `a` comes first. */
 export function compareNames(a: string, b: string): number {
   return a.localeCompare(b, "en", { sensitivity: "base" });
@@ -154,7 +159,7 @@ export function rankRows<T>(
   names: Map<number, string>,
   min: number = MIN_GAMES
 ): Row<T>[] {
-  const name = (player: number) => names.get(player) ?? `Player ${player}`;
+  const name = (player: number) => nameOf(names, player);
   const byCountThenName = (a: { player: number; count: number }, b: { player: number; count: number }) =>
     b.count - a.count || compareNames(name(a.player), name(b.player)) || a.player - b.player;
 

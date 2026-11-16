@@ -1,4 +1,4 @@
-import { compareNames } from "./counting";
+import { compareNames, nameOf } from "./counting";
 import PlayerName from "./PlayerName";
 import { ScrollRegion } from "./ScrollRegion";
 import "./SplitTable.css";
@@ -37,7 +37,7 @@ const HEAD_CLASS: Record<string, string> = {
  * then its count when it has one (a 0 too); a cell the row does not have shows "—".
  */
 export function SplitTable({ title, columns, rows, names }: SplitTableProps): JSX.Element {
-  const name = (player: number) => names.get(player) ?? `Player ${player}`;
+  const name = (player: number) => nameOf(names, player);
   const sorted = [...rows].sort((a, b) => compareNames(name(a.player), name(b.player)) || a.player - b.player);
   return (
     <ScrollRegion label={`${title} table`}>

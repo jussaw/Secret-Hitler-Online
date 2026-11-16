@@ -1,4 +1,4 @@
-import type { Row } from "./counting";
+import { nameOf, type Row } from "./counting";
 import { plural } from "./format";
 import PlayerName from "./PlayerName";
 import "./RankedTable.css";
@@ -35,7 +35,7 @@ export function RankedTable<T>({
             <tr key={row.player} className={ranked ? undefined : "ranked-unranked"}>
               <td className="ranked-rank">{ranked ? `${row.rank}.` : ""}</td>
               <td className="ranked-name">
-                <PlayerName player={row.player} name={names.get(row.player) ?? `Player ${row.player}`} />
+                <PlayerName player={row.player} name={nameOf(names, row.player)} />
               </td>
               <td className="ranked-value">{ranked ? format(row.value) : "—"}</td>
               <td className="ranked-count">{!ranked || showCount ? countLabel(row.count) : ""}</td>

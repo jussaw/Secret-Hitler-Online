@@ -9,6 +9,7 @@ import {
   localDaysBetween,
   MIN_CHANCES,
   MIN_GAMES,
+  nameOf,
   parseFilter,
   rankRows,
   rate,
@@ -181,6 +182,14 @@ describe("rankRows", () => {
   it("takesItsOwnMinimum", () => {
     const rows = rankRows([{ player: 1, value: 1, count: 2 }], desc, names, 2);
     expect(rows).toEqual([{ player: 1, rank: 1, value: 1, count: 2 }]);
+  });
+});
+
+describe("nameOf", () => {
+  it("isThePlayersNameOrTheirNumber", () => {
+    const names = new Map([[1, "Ann"]]);
+    expect(nameOf(names, 1)).toBe("Ann");
+    expect(nameOf(names, 9)).toBe("Player 9");
   });
 });
 
