@@ -3,6 +3,8 @@ package server;
 import io.javalin.Javalin;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.Map;
+import server.stats.GameStore;
 import server.util.Lobby;
 
 /** The server's package-private parts that tests in other packages (server.accounts) need. */
@@ -35,6 +37,35 @@ public final class ServerTesting {
 
     public static void clearLobbiesChanged() {
         SecretHitlerServer.hasLobbyChanged = false;
+    }
+
+    /** Starts recording games into the store, as start-up does; {@code stopRecording} after. */
+    public static void startRecording(GameStore store) {
+        SecretHitlerServer.startRecording(store);
+    }
+
+    public static void stopRecording() {
+        SecretHitlerServer.stopRecording();
+    }
+
+    /** Drops each of the lobbies' games that has a record in the store, as start-up does. */
+    public static void dropRecordedGames(Map<String, Lobby> lobbies, GameStore store) {
+        SecretHitlerServer.dropRecordedGames(lobbies, store);
+    }
+
+    /** The server's start-up before it listens: recording, the backup, the drop, the sweep. */
+    public static void startUp(GameStore store) {
+        SecretHitlerServer.startUp(store);
+    }
+
+    /** The 60 s timer's work. */
+    public static void everyMinute() {
+        SecretHitlerServer.everyMinute();
+    }
+
+    /** The shutdown hook's work. */
+    public static void onShutdown() {
+        SecretHitlerServer.onShutdown();
     }
 
     /** Starts a game in the lobby as the start-game command does. */

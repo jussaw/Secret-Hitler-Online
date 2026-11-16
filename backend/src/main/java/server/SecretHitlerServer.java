@@ -21,6 +21,9 @@ import server.accounts.AccountStore;
 import server.accounts.AuthRoutes;
 import server.accounts.DiscordSignIn;
 import server.accounts.Usernames;
+import server.stats.GameRecordSink;
+import server.stats.GameRecorder;
+import server.stats.GameStore;
 import server.util.Lobby;
 
 import java.io.*;
@@ -133,6 +136,18 @@ public class SecretHitlerServer {
     static final Object ACCOUNTS_LOCK = new Object();
     // </editor-fold>
 
+    ////// Game records
+    // <editor-fold desc="Game records">
+
+    // The game records' store and the writer that saves into it (#31), which is every lobby's
+    // Lobby.recordSink while it runs: main opens the store from DATABASE_PATH (in memory when
+    // unset) and startRecording starts the writer; tests put their own here. Each database call
+    // runs on the writer's thread, the start-up or timer thread, or an HTTP thread: never under a
+    // lobby's lock.
+    static volatile GameStore games;
+    static volatile GameRecorder recorder;
+    // </editor-fold>
+
     ///// Private Fields
     // <editor-fold desc="Private Fields">
 
@@ -238,20 +253,14 @@ public class SecretHitlerServer {
         // The same file as the lobby backup, or memory without one.
         accounts = AccountStore.open(ApplicationConfig.DATABASE_PATH);
         warnAboutSignIn();
-        loadDatabaseBackup();
-        removeInactiveLobbies(); // immediately clean in case of redundant lobbies.
+        // Recording, the lobby backup, the drop of restored games that have a record, the sweep.
+        startUp(GameStore.open(ApplicationConfig.DATABASE_PATH));
 
         // Only initialize Javalin communication after the database has been queried.
         startServer(getHerokuAssignedPort());
 
-        // Add hook for termination that backs up the lobbies to the database.
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-            public void run() {
-                logger.info("Attempting to back up lobby data.");
-                storeDatabaseBackup();
-                printLobbyStatus();
-            }
-        });
+        // Add hook for termination that saves the waiting records and backs up the lobbies.
+        Runtime.getRuntime().addShutdownHook(new Thread(SecretHitlerServer::onShutdown));
 
         // Add timer for periodic updates.
         int delayMs = 0;
@@ -260,18 +269,63 @@ public class SecretHitlerServer {
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                removeInactiveLobbies();
-                sweepExpiredSessions();
-                if (!codeToLobby.isEmpty()) {
-                    printLobbyStatus();
-                }
-                // If there are active lobbies, store a backup of the game.
-                if (!codeToLobby.isEmpty() && hasLobbyChanged) {
-                    storeDatabaseBackup();
-                    hasLobbyChanged = false;
-                }
+                everyMinute();
             }
         }, delayMs, periodMs);
+    }
+
+    /**
+     * Starts the server's work before it listens, in this order: recording games
+     * ({@code startRecording}), loading the lobby backup, dropping each restored game that already
+     * has a record ({@code dropRecordedGames}), then the sweep, so the sweep never makes a second
+     * record of a game that ended. Package-private for RecordingServerTest.
+     */
+    static void startUp(GameStore store) {
+        startRecording(store);
+        loadDatabaseBackup();
+        dropRecordedGames(codeToLobby, store);
+        removeInactiveLobbies(); // immediately clean in case of redundant lobbies.
+    }
+
+    /**
+     * The 60 s timer's work: the sweep of lobbies and of expired sessions, another try for the
+     * records whose save failed, and a backup of the lobbies if they changed. Throws nothing, as an
+     * uncaught exception would end the timer. Package-private for RecordingServerTest.
+     */
+    static void everyMinute() {
+        removeInactiveLobbies();
+        sweepExpiredSessions();
+        GameRecorder writer = recorder;
+        if (writer != null) {
+            writer.retryWaiting();
+        }
+        if (!codeToLobby.isEmpty()) {
+            printLobbyStatus();
+        }
+        // If there are active lobbies, store a backup of the game.
+        if (!codeToLobby.isEmpty() && hasLobbyChanged) {
+            storeDatabaseBackup();
+            hasLobbyChanged = false;
+        }
+    }
+
+    /**
+     * The shutdown hook's work: the writer's thread stops, every record still queued or waiting
+     * is tried once more, and then the lobbies are backed up, so a game whose record is saved
+     * comes back without it. Package-private for RecordingServerTest.
+     */
+    static void onShutdown() {
+        GameRecorder writer = recorder;
+        if (writer != null) {
+            writer.stop();
+            writer.flush();
+            if (writer.waitingCount() > 0) {
+                logger.error("Lost " + writer.waitingCount() + " game records: the database failed until shutdown.");
+            }
+        }
+        logger.info("Attempting to back up lobby data.");
+        storeDatabaseBackup();
+        printLobbyStatus();
     }
 
     /** Warns at start when test sign-in is on, and when no one can sign in to play. */
@@ -341,6 +395,90 @@ public class SecretHitlerServer {
     public static void markLobbiesChanged() {
         hasLobbyChanged = true;
     }
+
+    /////// Recording games
+    // <editor-fold desc="Recording games">
+
+    /**
+     * Starts recording games into {@code store}: a writer ({@code GameRecorder}) with its thread
+     * running, which every lobby hands its records to from now on ({@code Lobby.recordSink}).
+     * Package-private for the tests, which call {@code stopRecording} after.
+     */
+    static void startRecording(GameStore store) {
+        GameRecorder writer = new GameRecorder(store, () -> {
+        });
+        writer.start();
+        games = store;
+        recorder = writer;
+        Lobby.recordSink = writer;
+    }
+
+    /**
+     * Stops recording: the writer's thread stops, and lobbies drop their records again
+     * ({@code GameRecordSink.DROPPING}). The store stays open. Package-private for the tests.
+     */
+    static void stopRecording() {
+        Lobby.recordSink = GameRecordSink.DROPPING;
+        GameRecorder writer = recorder;
+        if (writer != null) {
+            writer.stop();
+        }
+        recorder = null;
+        games = null;
+    }
+
+    /**
+     * Drops every restored game that already has a record, before the start-up sweep could record
+     * it again (spec, "A finished game never comes back"). For up to a minute after a game ends,
+     * the database can hold its record and a lobby backup in which it still runs; a crash in that
+     * minute, or a restore of a database backup taken in it, would bring the game back, its roles
+     * and hands already public. Each such lobby comes back idle, as if its backup had caught up.
+     *
+     * <p>Reads each game's ID under its lobby's lock, asks the store once under no lock, then
+     * drops each game that has a record under its lobby's lock again, if the lobby still runs that
+     * game, logging the lobby, and marks the lobbies changed. A read that fails keeps every game,
+     * with an error logged.
+     */
+    static void dropRecordedGames(Map<String, Lobby> lobbies, GameStore store) {
+        Map<String, String> gameIds = new HashMap<>();
+        for (Map.Entry<String, Lobby> entry : lobbies.entrySet()) {
+            Lobby lobby = entry.getValue();
+            synchronized (lobby) {
+                if (lobby.isInGame() && lobby.gameId() != null) {
+                    gameIds.put(entry.getKey(), lobby.gameId());
+                }
+            }
+        }
+        if (gameIds.isEmpty()) {
+            return;
+        }
+        Set<String> recorded;
+        try {
+            recorded = store.recordedIds(new HashSet<>(gameIds.values()));
+        } catch (RuntimeException e) {
+            logger.error("Could not read which restored games have a record: every restored game is kept.", e);
+            return;
+        }
+        boolean dropped = false;
+        for (Map.Entry<String, String> entry : gameIds.entrySet()) {
+            if (!recorded.contains(entry.getValue())) {
+                continue;
+            }
+            Lobby lobby = lobbies.get(entry.getKey());
+            synchronized (lobby) {
+                if (lobby.isInGame() && entry.getValue().equals(lobby.gameId())) {
+                    lobby.dropGame();
+                    dropped = true;
+                    logger.warn("Dropped the game in lobby " + entry.getKey() + ": it has a record already.");
+                }
+            }
+        }
+        if (dropped) {
+            markLobbiesChanged();
+        }
+    }
+
+    // </editor-fold>
 
     /////// Renaming and game starts
     // <editor-fold desc="Renaming and game starts">
