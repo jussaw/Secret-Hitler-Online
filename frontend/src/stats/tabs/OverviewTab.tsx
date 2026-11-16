@@ -1,9 +1,17 @@
 import { Fragment, useMemo, useState } from "react";
 import { LineChart, SERIES_COLORS, type LineSeries } from "../charts/LineChart";
-import { nameOf, type Rate } from "../counting";
+import { MIN_GAMES, nameOf, type Rate } from "../counting";
+import { PROVISIONAL_GAMES } from "../elo";
 import { formatLocalDateTime, outcomeLabel, plural, sideWord } from "../format";
 import { formatDays, formatPercent } from "../numbers";
-import { computeOverview, HOT_HAND_GAMES, ratingPointDetail, type Leaders } from "../overview";
+import {
+  computeOverview,
+  HOT_HAND_GAMES,
+  HOT_HAND_WINS,
+  RECENT_DAYS,
+  ratingPointDetail,
+  type Leaders,
+} from "../overview";
 import PlayerName, { roleClass } from "../PlayerName";
 import { RankedTable } from "../RankedTable";
 import type { GameRecord } from "../record";
@@ -47,6 +55,17 @@ function LeadersValue(props: { leaders: Leaders; names: Map<number, string>; not
 
 const showNumber = (value: number) => String(value);
 const showRate = (rate: Rate) => (rate.value === null ? "—" : formatPercent(rate.value));
+
+/** The cards' lines that name a rule's numbers, from the rules' own constants. */
+const WITHIN = `the last ${RECENT_DAYS} days`;
+const COPY = {
+  winStreak: `The longest current run of wins, among players seen in ${WITHIN}.`,
+  noWinStreak: `No current win streaks in ${WITHIN}.`,
+  hotHand: `Won at least ${HOT_HAND_WINS} of their last ${HOT_HAND_GAMES} games, and played in ${WITHIN}.`,
+  noHotHand: `No one has won ${HOT_HAND_WINS} of their last ${HOT_HAND_GAMES} in ${WITHIN}.`,
+  powerRanking: `Elo ratings. Players with fewer than ${PROVISIONAL_GAMES} games are provisional, in italics at the bottom.`,
+  winRate: `Share of their games each player won, from ${MIN_GAMES} games.`,
+};
 
 /**
  * OVERVIEW (`/stats`): the dashboard, the power ranking and the rating history, the headline
@@ -95,10 +114,7 @@ export function OverviewTab(props: { stats: StatsContext; now?: number; timeZone
         </StatCard>
         <StatCard title="Last game" definition="The most recent counted game." empty={lastGame === null}>
           {lastGame && (
-            <StatsLink
-              href={routePath({ page: "game", id: lastGame.id })}
-              className="overview-game-link overview-last-game"
-            >
+            <StatsLink href={routePath({ page: "game", id: lastGame.id })} className="overview-game-link overview-last-game">
               <span className="overview-game-result">
                 <GameResult record={lastGame} />
               </span>{" "}
@@ -106,18 +122,10 @@ export function OverviewTab(props: { stats: StatsContext; now?: number; timeZone
             </StatsLink>
           )}
         </StatCard>
-        <StatCard
-          title="Win streak"
-          definition="The longest current run of wins, among players seen in the last 7 days."
-          empty={none || (winStreak === null && "No current win streaks in the last 7 days.")}
-        >
+        <StatCard title="Win streak" definition={COPY.winStreak} empty={none || (winStreak === null && COPY.noWinStreak)}>
           {winStreak && <LeadersValue leaders={winStreak} names={names} note={plural(winStreak.value, "win")} />}
         </StatCard>
-        <StatCard
-          title="Hot hand"
-          definition="Won at least 3 of their last 5 games, and played in the last 7 days."
-          empty={none || (hotHand === null && "No one has won 3 of their last 5 in the last 7 days.")}
-        >
+        <StatCard title="Hot hand" definition={COPY.hotHand} empty={none || (hotHand === null && COPY.noHotHand)}>
           {hotHand && <LeadersValue leaders={hotHand} names={names} note={`${hotHand.value} of ${HOT_HAND_GAMES}`} />}
         </StatCard>
         <StatCard
@@ -125,9 +133,7 @@ export function OverviewTab(props: { stats: StatsContext; now?: number; timeZone
           definition="Most wins this month."
           empty={none || (playerOfMonth === null && "No wins yet this month.")}
         >
-          {playerOfMonth && (
-            <LeadersValue leaders={playerOfMonth} names={names} note={plural(playerOfMonth.value, "win")} />
-          )}
+          {playerOfMonth && <LeadersValue leaders={playerOfMonth} names={names} note={plural(playerOfMonth.value, "win")} />}
         </StatCard>
       </section>
 
@@ -135,7 +141,7 @@ export function OverviewTab(props: { stats: StatsContext; now?: number; timeZone
       <div className="overview-grid overview-ratings">
         <StatCard
           title="Power ranking"
-          definition="Elo ratings. Players with fewer than 5 games are provisional, in italics at the bottom."
+          definition={COPY.powerRanking}
           empty={overview.powerRanking.length === 0}
         >
           <PowerRanking rows={overview.powerRanking} names={names} />
@@ -159,7 +165,7 @@ export function OverviewTab(props: { stats: StatsContext; now?: number; timeZone
         </StatCard>
         <StatCard
           title="Win rate"
-          definition="Share of their games each player won, from 5 games."
+          definition={COPY.winRate}
           empty={headline.winRate.length === 0}
         >
           <RankedTable rows={headline.winRate} format={showRate} names={names} showCount />

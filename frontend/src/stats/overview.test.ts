@@ -9,6 +9,7 @@ import {
   HOT_HAND_WINS,
   LATEST_GAMES,
   playerOfTheMonth,
+  RECENT_DAYS,
   RECENT_MS,
   ratingPointDetail,
   winStreaks,
@@ -45,7 +46,7 @@ function badValues(value: unknown, path = "result"): string[] {
 
 describe("the constants", () => {
   it("are the plan's", () => {
-    expect([RECENT_MS, LATEST_GAMES, HOT_HAND_GAMES, HOT_HAND_WINS]).toEqual([7 * 24 * HOUR, 10, 5, 3]);
+    expect([RECENT_DAYS, RECENT_MS, LATEST_GAMES, HOT_HAND_GAMES, HOT_HAND_WINS]).toEqual([7, 7 * 24 * HOUR, 10, 5, 3]);
   });
 });
 

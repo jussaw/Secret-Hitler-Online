@@ -23,8 +23,10 @@ import type { StatsContext } from "./useStats";
  * share one rule. Pure: `now` and the time zone are passed in.
  */
 
-/** "Within 7 days": a player's last counted game started at most this long before `now`. */
-export const RECENT_MS = 7 * 24 * 60 * 60 * 1000;
+/** "Within 7 days": a player's last counted game started at most this many days… */
+export const RECENT_DAYS = 7;
+/** …this long, before `now`. */
+export const RECENT_MS = RECENT_DAYS * 24 * 60 * 60 * 1000;
 /** How many games the latest games list. */
 export const LATEST_GAMES = 10;
 /** The hot hand looks at a player's last this many counted games… */
