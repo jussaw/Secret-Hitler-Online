@@ -108,6 +108,9 @@ describe("computeRecords", () => {
     // Review Focus 3: two equally long streaks, the one that ended later holds the record.
     expect(computeRecords([...run(1, "WW", 1), ...run(3, "WW", 10)], NO_ELO, NOW, "UTC").longestWin!.player).toBe(3);
     expect(computeRecords([...run(1, "LL", 1), ...run(3, "LL", 10)], NO_ELO, NOW, "UTC").longestLoss!.player).toBe(3);
+    // The later end, not the higher number: the lower-numbered player's streak ending later wins too.
+    expect(computeRecords([...run(3, "WW", 1), ...run(1, "WW", 10)], NO_ELO, NOW, "UTC").longestWin!.player).toBe(1);
+    expect(computeRecords([...run(3, "LL", 1), ...run(1, "LL", 10)], NO_ELO, NOW, "UTC").longestLoss!.player).toBe(1);
   });
 
   it("streakHoldersAreEveryPlayerTiedAtTheSameEnd", () => {
