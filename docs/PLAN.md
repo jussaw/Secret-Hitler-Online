@@ -962,7 +962,7 @@ Issue #31: the RIVALS tab (teammates, opponents, rivalries, each player's people
 - [x] `endings.ts`: the closest and most lopsided final boards, and the most chaos policies, failed elections and vetoes in one game
 - [x] `frontend/src/stats/tabs/PlayerMatrix.tsx`: player-by-player tables that scroll inside their card, the names held in view
 - [x] `frontend/src/stats/tabs/RivalsTab.tsx`: the RIVALS tab
-- [ ] `frontend/src/stats/tabs/EndingsTab.tsx`: the ENDINGS tab
+- [x] `frontend/src/stats/tabs/EndingsTab.tsx`: the ENDINGS tab
 - [ ] `frontend/e2e/stats-rivals.spec.ts`: both tabs fit every stats size against the large stubbed data, the matrices scroll inside their cards, 44px targets on phones
 - [ ] `CLAUDE.md` (and `README.md`, `DEVELOPMENT.md` where they list the tabs) describe RIVALS and ENDINGS
 - [ ] Every review finding fixed on the branch

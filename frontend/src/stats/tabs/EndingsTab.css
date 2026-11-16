@@ -1,0 +1,88 @@
+/* ENDINGS: the cards in RIVALS' grid (columns at least 18em wide, one on phones), How games are
+   won and the two finish lists across the whole row. Every child has min-width: 0, so a long name
+   wraps inside its card, and the tables scroll inside theirs (PlayerMatrix.css). App.css styles
+   every p and a, so these set their own sizes and margins. */
+.endings-tab {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 18em), 1fr));
+    gap: 16px;
+    min-width: 0;
+}
+
+.endings-tab > * {
+    min-width: 0;
+}
+
+.endings-tab > .endings-wide {
+    grid-column: 1 / -1;
+}
+
+.stats-screen .endings-headline {
+    font-family: var(--textFont);
+    font-weight: 700;
+    font-size: 1.4em;
+    line-height: 1.25;
+    color: var(--headerTextColor);
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.stats-screen .endings-result,
+.stats-screen .endings-seats,
+.stats-screen .endings-count {
+    font-family: var(--textFont);
+    font-weight: 500;
+    font-size: 15px;
+    line-height: 1.4;
+    color: var(--textColorOnDark);
+    margin: 0;
+}
+
+.stats-screen .endings-count {
+    font-variant-numeric: tabular-nums;
+}
+
+.endings-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-family: var(--textFont);
+    font-weight: 500;
+    font-size: 15px;
+    line-height: 1.3;
+    color: var(--textColorOnDark);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Every game link is a 44px target at every size: one in a list on its own line. */
+.stats-screen a.endings-game-link {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    min-width: 44px;
+    font-family: var(--textFont);
+    font-weight: 700;
+    font-size: 15px;
+    line-height: 1.3;
+    color: var(--buttonHoverFill);
+    font-variant-numeric: tabular-nums;
+}
+
+.stats-screen a.endings-game-link:hover,
+.stats-screen a.endings-game-link:focus-visible {
+    color: var(--headerTextColor);
+}
+
+/* The All row of Game length, under the sizes. */
+.player-matrix .endings-all > * {
+    font-weight: 700;
+    color: var(--headerTextColor);
+}
+
+/* Phones (the game's phone-only query): less room between the cards. */
+@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
+    .endings-tab {
+        gap: 8px;
+    }
+}
