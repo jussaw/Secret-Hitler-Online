@@ -570,13 +570,16 @@ keeps credit to upstream and to the board game's creators.
   `sha256sum -c`), deletes `secret-hitler-*.db` and `.db.sha256` files there older than
   `RETENTION_DAYS`, and runs `AFTER_BACKUP` as `sh -c "$AFTER_BACKUP" sh <new backup>`; a failing
   hook keeps the backup and exits 1. A failure before the move leaves no backup behind, and a trap
-  removes the temporary files on both sides on every exit. `restore-db.sh <file>` refuses a file
+  removes the temporary files on both sides on every exit; a signal ends either script with
+  `Error: …` (the backup holds one back while it moves its two files into place), and the
+  restore's trap starts a container it stopped again, saying on which database. The retention's
+  `find -H` follows a `BACKUP_DIR` that is a symlink. `restore-db.sh <file>` refuses a file
   without SQLite's 16-byte header, or with no `<file>.sha256` or one it does not match, before
   anything stops; asks for the container's name; stops the container; swaps the file in from a
   one-off container of the container's image ID (`docker run --rm --network none --user root
-  --volumes-from`, the file mounted read-only: the copy is checked again and owned by uid 1000
-  before the `-wal`, `-shm` and `-journal` go and it moves into place, so a failed swap leaves the
-  database as it was and the container starts on it); starts it; and waits for this start's
+  --volumes-from`, the file mounted read-only: the copy is checked again, owned by uid 1000 and
+  synced to disk before the `-wal`, `-shm` and `-journal` go and it moves into place, so a failed
+  swap leaves the database as it was and the container starts on it); starts it; and waits for this start's
   startup line (`docker logs --since` its new `StartedAt`, since the logs keep earlier starts'),
   failing if the container stops or `STARTUP_TIMEOUT_SECONDS` pass. Settings (`CONTAINER_NAME`,
   `DB_PATH`, `BACKUP_DIR`, `RETENTION_DAYS`, `AFTER_BACKUP`, `STARTUP_TIMEOUT_SECONDS`) come from
@@ -588,7 +591,8 @@ keeps credit to upstream and to the board game's creators.
   names one) with `TEST_SIGN_IN=true` on a fresh volume, while test sign-ins keep it writing: the
   backup's checks and hook, refusals that leave the server running, and a restore that brings back
   every table's rows (`table_rows`, so tables later phases add are compared too). Every case reads
-  an empty `ENV_FILE`, never `devops/.env`. The image installs `sqlite3` for the backup.
+  an empty `ENV_FILE`, never `devops/.env`, and it runs from any directory. CI's `devops` job runs
+  `shellcheck` on the three scripts first. The image installs `sqlite3` for the backup.
 - `docs/`: `PLAN.md` (phased plan and progress), `superpowers/specs/` (design),
   `superpowers/plans/` (per-phase step-by-step breakdowns), `images/` (the README's screenshots,
   taken from a scripted seven-player game at 1600x900 and at 412x915 on a phone), `pr/` (each pull
