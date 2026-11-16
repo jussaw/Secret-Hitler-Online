@@ -448,7 +448,7 @@ curl -s localhost:4624/api/stats/games | node -e '
 - [ ] **Step 4: Loop CI to green**, fixing each failure on the branch (phone failures reproduced in
   the Linux image). The session ends here: report the PR's number, that CI is green, and whether
   Phase 13 has merged.
-- [ ] **Step 5 (the manager's, resumable):** once Phase 13 has merged and the user says yes in
+- [ ] **Step 5 (the manager's, resumable):** once Phase 13 has merged, under the user's standing OK, in
   chat: if `development` has moved, `git fetch origin && git rebase origin/development` (keep both
   sides of `SecretHitlerServer.main`, `docs/PLAN.md` and the docs), run `./gradlew test`, `npm test
   -- --run` and `npm run build`, push with `--force-with-lease` and wait for green CI; then the last

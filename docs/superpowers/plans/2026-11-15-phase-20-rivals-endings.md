@@ -864,7 +864,7 @@ it("draws a row and a column per player in its card's scroll region, the diagona
   `docs/PLAN.md` keep both sides; run Task 10's step 3 again; `git push
   --force-with-lease`; re-pin the PR body's image links to the screenshots' new commit (`git log -1
   --format=%H -- docs/pr/phase-20-rivals-endings`); loop on CI again.
-- [ ] **Step 6: Merge once the user says yes in chat:** tick "PR merged into `development`" and set
+- [ ] **Step 6: Merge under the user's standing OK:** tick "PR merged into `development`" and set
   the Progress table's Phase 20 row to `done` in a last commit (`chore(plan): tick phase 20's
   merge`), push, wait for green, then squash it with a Conventional subject: `gh pr merge <N>
   --squash --admin --subject "feat(frontend): the rivals and endings tabs (#<N>)" --repo

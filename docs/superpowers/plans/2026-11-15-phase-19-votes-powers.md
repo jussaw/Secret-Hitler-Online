@@ -769,7 +769,7 @@ test("with no counted game every card says so", async ({ page }) => {
   origin/development`. Conflicts can only be in the docs; keep both sides (their lines and ours).
   Re-run Step 1's frontend commands and `npx playwright test e2e/stats-` in all four projects, push
   with `--force-with-lease`, and re-pin the PR's image links to the new head.
-- [ ] **Step 5: Merge** once CI is green and the user says yes in chat: in a last commit, tick "PR
+- [ ] **Step 5: Merge** once CI is green, under the user's standing OK: in a last commit, tick "PR
   merged into `development`" and set Phase 19's Progress row to `done` (`docs(plan): mark phase 19
   merged`); push, wait for CI, then `gh pr merge <n> --repo jussaw/Secret-Hitler-Online --squash
   --admin --subject "feat(frontend): add the votes and powers tab (#<n>)" --match-head-commit

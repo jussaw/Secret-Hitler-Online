@@ -555,7 +555,7 @@ Where this plan and the spec differ, the spec wins.
   the records", and that `README.md` and `DEVELOPMENT.md` need no change yet.
 - [ ] **Step 4: Loop CI to green**, fixing each failure on the branch (phone failures reproduced in
   the Linux image). The session ends here: report the PR's number and that CI is green.
-- [ ] **Step 5 (the manager's, resumable):** when the user says yes in chat: if `development` has
+- [ ] **Step 5 (the manager's, resumable):** under the user's standing OK (once CI is green): if `development` has
   moved, `git fetch origin && git rebase origin/development` (keep both sides of each docs
   conflict), run `./gradlew test`, push with `--force-with-lease` and wait for green CI; then the
   last commit, `docs(plan): tick phase 14a's merge` (the acceptance boxes, and the Progress row

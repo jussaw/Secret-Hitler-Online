@@ -591,7 +591,7 @@ boxes, Progress row 18)
   `docs/PLAN.md`: keep both sides (both phases' sentences, rows and ticks). A conflict in any other
   file means the file ownership broke: stop and report. Then run Task 8's Step 3, `git push
   --force-with-lease`, and re-pin the PR body's image URLs to the rebased SHA.
-- [ ] **Step 6: Merge once the user says yes in chat.** Commit `docs(plan): mark phase 18 merged`
+- [ ] **Step 6: Merge under the user's standing OK.** Commit `docs(plan): mark phase 18 merged`
   (the "PR merged" box ticked and Progress row 18 "done"; the user's box stays unticked), push, wait
   for CI, then `gh pr merge <n> --squash --admin --repo jussaw/Secret-Hitler-Online --subject
   "feat(frontend): add the roles and cards tab (#<n>)"`. Check that `development`'s image publish

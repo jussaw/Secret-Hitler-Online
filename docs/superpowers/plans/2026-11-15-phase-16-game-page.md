@@ -560,7 +560,7 @@ it("executes exactly the dead", () =>
   --base development`, its body following `CLAUDE.md`'s Workflow: the before-and-after table near
   the top (raw URLs pinned to the screenshots' commit), what changed, the test counts, the Review
   section, and `Part of #31`. Loop on CI until green.
-- [ ] **Step 6: Merge once the user says yes:** in a last commit (`chore(plan): tick phase 16's
+- [ ] **Step 6: Merge under the user's standing OK:** in a last commit (`chore(plan): tick phase 16's
   merge`), tick Phase 16's acceptance boxes "Backend and frontend unit tests pass…" (from the final
   verify, Task 8's step 3 or its re-run after a rebase) and "PR merged into `development`", and set
   its Progress row to `done`; the user's box stays unticked. Push, wait for green, then `gh pr

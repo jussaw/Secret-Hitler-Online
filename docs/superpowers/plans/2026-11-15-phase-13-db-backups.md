@@ -695,7 +695,7 @@ real_restore_brings_back_the_rows() {
 - [ ] **Step 5: Tick "PR merged into `development`"** and set the Progress row to `done`, in
   `docs(plan): tick phase 13's merge into development`, the branch's last commit. Push and wait for
   green.
-- [ ] **Step 6: Merge once the user says yes in chat** (a phase is not a bug; the manager asks),
+- [ ] **Step 6: Merge under the user's standing OK** (the manager session merges once CI is green),
   squashed with a Conventional subject:
   `gh pr merge <PR> --repo jussaw/Secret-Hitler-Online --squash --admin --match-head-commit
   <headRefOid> --subject "feat(devops): back up and restore the database (#<PR>)"`. Then check that
