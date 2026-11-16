@@ -17,15 +17,20 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.GZIPInputStream;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import server.stats.GameRecord;
 import server.stats.GameStore;
 import server.stats.StatsRoutes;
+import server.stats.TestRecords;
 import server.stats.TestStore;
 import server.util.FakeSocket;
 import server.util.Lobby;
@@ -323,6 +328,35 @@ public class StatsRoutesTest {
         HttpResponse<byte[]> response = get();
         assertEquals(503, response.statusCode());
         assertEquals(StatsRoutes.UNAVAILABLE, text(response));
+    }
+
+    /**
+     * A game saved while the response is built, between its read of the players and of the games,
+     * never puts a seat's player number in the response without that player.
+     */
+    @Test
+    public void aSaveDuringABuildNeverServesAnUnknownPlayer() throws Exception {
+        try (TestStore racing = new TestStore()) {
+            AtomicInteger reads = new AtomicInteger();
+            racing.onCall = () -> {
+                if (reads.incrementAndGet() == 2) { // the build's second read: a save lands first
+                    racing.save(TestRecords.record("racer", 2_000_000L, GameRecord.LIBERAL_POLICIES,
+                            TestRecords.seats("test-P1")));
+                }
+            };
+            JsonNode body = JSON.readTree(new StatsRoutes(racing, id -> "P1").body());
+
+            Set<Integer> numbers = new HashSet<>();
+            body.get("players").forEach(player -> numbers.add(player.get("number").asInt()));
+            for (JsonNode game : body.get("games")) {
+                for (JsonNode seat : game.get("seats")) {
+                    if (!seat.get("player").isNull()) {
+                        assertTrue("player " + seat.get("player") + " is listed: " + body,
+                                numbers.contains(seat.get("player").asInt()));
+                    }
+                }
+            }
+        }
     }
 
     @Test

@@ -43,7 +43,7 @@ public final class StatsRoutes {
     private volatile Response cached;
 
     /** One serialized response, and the version of the data it was built from. */
-    private record Response(long version, String body, byte[] bytes, byte[] gzip, String etag) {
+    private record Response(long version, byte[] bytes, byte[] gzip, String etag) {
     }
 
     /**
@@ -67,7 +67,7 @@ public final class StatsRoutes {
      * @throws RuntimeException if the database fails.
      */
     public String body() {
-        return current().body();
+        return new String(current().bytes(), StandardCharsets.UTF_8);
     }
 
     /** Answers {@code GET /api/stats/games}. */
@@ -120,6 +120,9 @@ public final class StatsRoutes {
     }
 
     private Response build(long builtVersion) {
+        // The games first: a game's new player numbers are saved with it, so every number in the
+        // games read here is in the players read after, even if a save lands between the two.
+        List<String> records = store.recordsJson();
         List<Map<String, Object>> players = new ArrayList<>();
         for (GameStore.PlayerRow row : store.players()) {
             String name = currentName.apply(row.accountId());
@@ -128,7 +131,6 @@ public final class StatsRoutes {
             player.put("name", name == null ? "Player " + row.number() : name);
             players.add(player);
         }
-        List<String> records = store.recordsJson();
         String playersJson;
         try {
             playersJson = JSON.writeValueAsString(players);
@@ -137,7 +139,7 @@ public final class StatsRoutes {
         }
         String body = "{\"players\":" + playersJson + ",\"games\":[" + String.join(",", records) + "]}";
         byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
-        return new Response(builtVersion, body, bytes, gzip(bytes), "\"" + sha256(bytes) + "\"");
+        return new Response(builtVersion, bytes, gzip(bytes), "\"" + sha256(bytes) + "\"");
     }
 
     /** Whether an {@code If-None-Match} names the tag: any entry, weak or strong, or {@code *}. */
