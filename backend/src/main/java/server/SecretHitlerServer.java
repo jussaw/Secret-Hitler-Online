@@ -213,6 +213,21 @@ public class SecretHitlerServer {
                 });
     }
 
+    /**
+     * The line the server logs once it listens, which devops/restore-db.sh waits for. It is the
+     * server's own, not Javalin's, so a dependency update never changes it.
+     */
+    static String startupLine(int port) {
+        return "Secret Hitler Online is listening on port " + port + ".";
+    }
+
+    /** Starts the app on {@code port} (0 for any free one), then logs {@link #startupLine}. */
+    static Javalin startServer(int port) {
+        Javalin app = createApp().start(port);
+        logger.info(startupLine(app.port()));
+        return app;
+    }
+
     public static void main(String[] args) {
         // On load, check the connected database to see if there's a stored state from
         // the server.
@@ -227,7 +242,7 @@ public class SecretHitlerServer {
         removeInactiveLobbies(); // immediately clean in case of redundant lobbies.
 
         // Only initialize Javalin communication after the database has been queried.
-        createApp().start(getHerokuAssignedPort());
+        startServer(getHerokuAssignedPort());
 
         // Add hook for termination that backs up the lobbies to the database.
         Runtime.getRuntime().addShutdownHook(new Thread() {

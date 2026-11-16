@@ -721,7 +721,7 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-13-db-backups.md`](superpow
 Issue #31 (game stats), the first of its ten phases: the database is backed up before the first game is recorded. The server keeps its SQLite file in WAL mode and logs one line once it listens, the image gains `sqlite3`, and two host scripts take a consistent, checked snapshot while the server writes and put one back. Builds on Phase 12 and merges before Phase 14.
 
 - [x] `backend/src/main/java/server/SecretHitlerServer.java`: the database file in WAL mode at start, retried while busy for up to 5 s
-- [ ] `SecretHitlerServer`: one startup line once the server listens, which the restore waits for
+- [x] `SecretHitlerServer`: one startup line once the server listens, which the restore waits for
 - [ ] `Dockerfile`: `sqlite3` in the final stage; `devops/tests/backup-restore.test.sh` checks it, the startup line and WAL mode in the branch's image
 - [ ] `devops/backup-db.sh` and `devops/.env.example` (`devops/.env` git-ignored): a checked snapshot while the server writes, retention, and the `AFTER_BACKUP` hook
 - [ ] `devops/restore-db.sh`: a bad file refused before anything stops, the file swapped in one move, the startup line waited for
