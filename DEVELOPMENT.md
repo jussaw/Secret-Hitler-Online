@@ -15,7 +15,16 @@ Requirements: Java 17 for the backend, Node.js 22.12 or newer for the frontend (
 
 The server backs up all lobbies to a SQLite file every minute (when something changed) and on shutdown, and restores them on start. The same file holds the accounts and sessions, in two tables of their own (`accounts` and `sessions`), written as they change. Set `DATABASE_PATH` to the file to use, for example `DATABASE_PATH=/tmp/sh-backup.db ./gradlew runLocal`. With it unset, the server logs one error and runs without persistence: accounts live in memory and go when it stops.
 
-At start, before anything else opens it, the server puts the file in SQLite's WAL mode (`PRAGMA journal_mode = WAL`), so a backup's read never blocks the server's writes; while it runs, `backup.db-wal` and `backup.db-shm` sit beside the file. A file that another process keeps busy is tried again for up to 5 s, after which the server logs an error and runs on in the file's old journal mode. Once it listens, the server logs `Secret Hitler Online is listening on port <port>.`, the line `devops/restore-db.sh` waits for. Backing the file up and restoring it are in the README, under [Backups](README.md#backups).
+At start, before anything else opens it, the server puts the file in SQLite's WAL mode (`PRAGMA journal_mode = WAL`), so a backup's read never blocks the server's writes; while it runs, `backup.db-wal` and `backup.db-shm` sit beside the file. A file that another process keeps busy is tried again for up to 5 s, after which the server logs an error and runs on in the file's old journal mode. Once it listens, the server logs `Secret Hitler Online is listening on port <port>.`, the line `devops/restore-db.sh` waits for.
+
+## Backing up and restoring the database
+
+The README's [Backups](README.md#backups) has the whole of it: the settings, what each script checks, and what a restore brings back. In short, on the host that runs the container:
+
+- Copy `devops/.env.example` to `devops/.env` (git-ignored) and set `BACKUP_DIR` to an existing directory, as an absolute path. The container is `secret-hitler-online` unless `CONTAINER_NAME` names another.
+- Take a backup with `devops/backup-db.sh`, and schedule it with a cron line such as `0 4 * * * /path/to/Secret-Hitler-Online/devops/backup-db.sh >>/path/to/backup.log 2>&1` (leave out `2>&1` to have cron mail the errors).
+- A backup kept on the same host does not survive losing that host. `AFTER_BACKUP` is a command run after each backup with the new backup's path as `$1`, for copying it elsewhere, such as `AFTER_BACKUP=cp "$1" "$1.sha256" /path/to/another/disk/`.
+- Restore one, between games, with `devops/restore-db.sh /path/to/backups/secret-hitler-<UTC time>.db`, which needs the `.sha256` beside it and asks you to type the container's name.
 
 ## One port: the production layout
 
