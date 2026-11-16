@@ -380,7 +380,8 @@ Phase 14B. Where this plan and the spec differ, the spec wins.
 - Consumes: `openTable`, `play`, `isVictory` from `e2e/driveGame.ts`; Playwright's `request`.
 
 - [ ] **Step 1: Write the test** `a game played to its end is served by /api/stats/games`
-  (`test.skip` outside `desktop`, "one browser is enough"; 180 s): `openTable(baseURL, 5)`, then
+  (`test.skip` outside `desktop`, "one browser is enough"; 180 s): `openTable(baseURL, 7)` (as built: seven, not five, since `driveGame.ts` never nominates Hitler after
+  three fascist policies, and in a game of five the two executions can leave no one else), then
   `play(table)` to a victory; poll `request.get("/api/stats/games")` for up to 10 s for a game whose
   seats' names equal the victory state's `playerOrder` ⇒ its keys are exactly, in order, `id`,
   `format`, `startedAt`, `endedAt`, `outcome`, `winner`, `complete`, `hasCpu`, `liberalPolicies`,
