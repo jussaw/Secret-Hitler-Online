@@ -180,13 +180,13 @@ test.describe("every page fits every size", () => {
 
   test("PLAYERS", async ({ page }) => {
     test.slow();
-    await open(page, "/stats/players", "PLAYERS");
+    await open(page, "/stats/players", "Win rate");
     await checkEverySize(page);
   });
 
   test("a player's page", async ({ page }) => {
     test.slow();
-    await open(page, "/stats/players/1", "PLAYER");
+    await open(page, "/stats/players/1", "Latest games");
     await checkEverySize(page);
   });
 
@@ -287,7 +287,7 @@ test("the header moves between the pages in place", async ({ page }) => {
 
   for (const [label, path, ready] of [
     ["GAMES", "/stats/games", "400 games recorded · showing 1–20"],
-    ["PLAYERS", "/stats/players", "Coming in a later update."],
+    ["PLAYERS", "/stats/players", "Win rate"],
     ["STATS", "/stats", "OVERVIEW"],
   ]) {
     await nav.getByRole("link", { name: label, exact: true }).click();
@@ -330,5 +330,5 @@ test("back, forward, reload and a deep link", async ({ page }) => {
   await expect(page).toHaveTitle("Game · Secret Hitler Online");
 
   await page.goto("/stats/players/1");
-  await expect(inMain(page, "PLAYER")).toBeVisible();
+  await expect(inMain(page, "Latest games")).toBeVisible();
 });

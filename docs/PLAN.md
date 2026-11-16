@@ -1053,7 +1053,7 @@ Issue #31, its last phase: PLAYERS lists every player with counted games by Elo,
 
 - [x] `frontend/src/stats/players/PlayersPage.tsx`: PLAYERS (name, games, win rate, Elo, last played), by Elo, under the stats filter
 - [x] `frontend/src/stats/players/PlayerPage.tsx`: the player page in the spec's order, with the CPU toggle on its own, trophies, "+N with CPU players, not counted" and "All N games" into GAMES; an unknown player is not found
-- [ ] `frontend/e2e/stats-players.spec.ts`: PLAYERS and a player page fit every tested size, a name in GAMES opens its player page, "All N games" opens GAMES filtered to them, and the CPU switch counts CPU games
+- [x] `frontend/e2e/stats-players.spec.ts`: PLAYERS and a player page fit every tested size, a name in GAMES opens its player page, "All N games" opens GAMES filtered to them, and the CPU switch counts CPU games
 - [ ] `CLAUDE.md`, `README.md` (the stats section as a whole, with screenshots) and `DEVELOPMENT.md` describe the stats; the pull request shows PLAYERS and a player page before and after, on desktop and on a phone
 
 **Phase 22B acceptance**

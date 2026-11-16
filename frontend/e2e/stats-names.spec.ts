@@ -124,8 +124,8 @@ test("a name in GAMES opens its player page, at its top", async ({ page }) => {
   await name.click();
   await expect(page).toHaveURL(new RegExp(`${href}$`));
   expect(new URL(page.url()).pathname).not.toMatch(/^\/stats\/games/);
-  await expect(page.getByRole("heading", { name: "PLAYER" })).toBeVisible();
-  await expect(page.getByText("Coming in a later update.")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(data.players.find((p) => routePath({ page: "player", number: p.number }) === href)!.name);
+  await expect(page.getByRole("heading", { name: "Latest games" })).toBeVisible();
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
 });
 
