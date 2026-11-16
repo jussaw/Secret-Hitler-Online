@@ -1,0 +1,19 @@
+/* A stat's card: StatsApp.css's .stats-card (the look, the gap, min-width: 0 on every child), with
+   its definition and its empty line. App.css styles every p, so these set their own sizes. */
+.stats-screen .stat-card-definition {
+    font-family: var(--textFont);
+    font-weight: 500;
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--textColorOnDark);
+    margin: -4px 0 4px;
+}
+
+.stats-screen .stat-card-empty {
+    font-family: var(--textFont);
+    font-weight: 700;
+    font-size: 15px;
+    line-height: 1.4;
+    color: var(--headerTextColor);
+    margin: 4px 0;
+}
