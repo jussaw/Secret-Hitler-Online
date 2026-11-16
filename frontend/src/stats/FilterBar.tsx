@@ -2,6 +2,7 @@ import { ChevronDown } from "lucide-react";
 import { useId, useState } from "react";
 import { compareNames, togglePlayer, type StatsFilter } from "./counting";
 import type { Player } from "./record";
+import "./greyButtons.css";
 import "./FilterBar.css";
 
 export interface FilterBarProps {
@@ -40,7 +41,7 @@ export function FilterBar({ players, filter, onChange, showPlayers = true }: Fil
       type="button"
       role="switch"
       aria-checked={filter.cpu}
-      className="filter-switch"
+      className="filter-switch stats-grey"
       onClick={() => onChange({ players: filter.players, cpu: !filter.cpu })}
     >
       <span className="filter-switch-track" aria-hidden="true" />
@@ -55,7 +56,7 @@ export function FilterBar({ players, filter, onChange, showPlayers = true }: Fil
     <div className="filter-bar">
       <button
         type="button"
-        className="filter-summary"
+        className="filter-summary stats-grey"
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen(!open)}
@@ -74,7 +75,7 @@ export function FilterBar({ players, filter, onChange, showPlayers = true }: Fil
               <button
                 key={player.number}
                 type="button"
-                className="filter-chip"
+                className="filter-chip stats-grey"
                 aria-pressed={on}
                 onClick={() => onChange(togglePlayer(filter, player.number, all))}
               >

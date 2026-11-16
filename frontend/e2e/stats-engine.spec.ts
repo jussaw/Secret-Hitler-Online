@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { fileURLToPath } from "node:url";
 import { game, seatsOf } from "../src/stats/testGames";
 import { NARROW_PHONE } from "./layout";
@@ -245,4 +245,50 @@ test("every flex and grid child with text can shrink", async ({ page }) => {
     );
     expect(stuck, `at ${size.width}x${size.height}`).toEqual([]);
   }
+});
+
+test("the grey controls share one look", async ({ page }) => {
+  // The lobby's grey (App.css's button look): chips, the CPU switch, the phone's line and the tabs
+  // not shown, with one hover and focus look for all of them.
+  await open(page, SMALL, "/stats");
+  const face = (control: Locator) =>
+    control.evaluate((el) => getComputedStyle(el).getPropertyValue("--button-face").trim().toLowerCase());
+  // On phones the line first, before a tap leaves it hovered, as a phone does with any tapped button.
+  if (await phoneLayout(page)) expect(await face(summary(page)), "the line at rest").toBe("#6e655e");
+  await openPanel(page);
+  const controls = [chip(page, "Ann"), cpuSwitch(page), tabRow(page).getByRole("link", { name: "RIVALS", exact: true })];
+  const desktop = !test.info().project.name.startsWith("phone");
+  for (const control of controls) {
+    if (desktop) await page.mouse.move(0, 0);
+    expect(await face(control), `${await control.textContent()} at rest`).toBe("#6e655e");
+    if (!desktop) continue;
+    await control.hover();
+    expect(await face(control), `${await control.textContent()} under the pointer`).toBe("#857b73");
+  }
+  if (!desktop) return;
+
+  // A click leaves no hover face behind once the pointer has gone.
+  await cpuSwitch(page).click();
+  await page.mouse.move(0, 0);
+  expect(await face(cpuSwitch(page))).toBe("#6e655e");
+  // The keyboard's focus shows the hover face and an outline.
+  await page.keyboard.press("Shift+Tab");
+  const focused = chip(page, "Cy");
+  await expect(focused).toBeFocused();
+  expect(await face(focused)).toBe("#857b73");
+  expect(await focused.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe("solid");
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  const tab = tabRow(page).getByRole("link", { name: "ROLES & CARDS", exact: true });
+  await page.keyboard.press("Tab");
+  await expect(tab).toBeFocused();
+  expect(await face(tab)).toBe("#857b73");
+  expect(await tab.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe("solid");
+
+  // A chip turned off keeps its darker face, focused by the click or under the pointer.
+  await chip(page, "Bo").click();
+  await expect(chip(page, "Bo")).toHaveAttribute("aria-pressed", "false");
+  expect(await face(chip(page, "Bo")), "off, under the pointer").toBe("#564e48");
+  await page.mouse.move(0, 0);
+  expect(await face(chip(page, "Bo")), "off, focused by the click").toBe("#463f3a");
 });

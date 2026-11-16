@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { routePath, type TabId } from "./routes";
 import StatsLink from "./StatsLink";
 import { TABS } from "./tabs/tabs";
+import "./greyButtons.css";
 import "./TabRow.css";
 
 /**
@@ -40,7 +41,7 @@ export function TabRow({ current, search }: { current: TabId; search: string }):
           <StatsLink
             key={tab.id}
             href={routePath({ page: "tab", tab: tab.id }) + search}
-            className="button-link stats-tab"
+            className={isCurrent ? "button-link stats-tab" : "button-link stats-tab stats-grey"}
             aria-current={isCurrent ? "page" : undefined}
           >
             {tab.label}

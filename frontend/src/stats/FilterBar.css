@@ -38,13 +38,10 @@
     margin-right: 4px;
 }
 
-/* Chips, the switch and the phone's line: App.css's button look in the lobby's grey. */
+/* Chips, the switch and the phone's line: the lobby's grey buttons (greyButtons.css). */
 .stats-screen .filter-chip,
 .stats-screen .filter-switch,
 .stats-screen .filter-summary {
-    --button-face: #6e655e;
-    --button-shadow: #4b4440;
-    --button-depth: 3px;
     margin: 0;
     padding: 5px 12px;
     border-radius: 8px;
@@ -58,45 +55,16 @@
     overflow-wrap: anywhere;
 }
 
-.stats-screen .filter-chip:not(:disabled):hover,
-.stats-screen .filter-chip:focus-visible,
-.stats-screen .filter-switch:not(:disabled):hover,
-.stats-screen .filter-switch:focus-visible,
-.stats-screen .filter-summary:not(:disabled):hover,
-.stats-screen .filter-summary:focus-visible {
-    --button-face: #857b73;
-}
-
-.stats-screen .filter-chip:focus,
-.stats-screen .filter-switch:focus,
-.stats-screen .filter-summary:focus {
-    --button-face: #6e655e;
-}
-
-.stats-screen .filter-chip:focus-visible,
-.stats-screen .filter-switch:focus-visible,
-.stats-screen .filter-summary:focus-visible {
-    --button-face: #857b73;
-    outline: 2px solid var(--selectionHover);
-    outline-offset: 2px;
-}
-
-.stats-screen .filter-chip:not(:disabled):active,
-.stats-screen .filter-switch:not(:disabled):active,
-.stats-screen .filter-summary:not(:disabled):active {
-    --button-face: #6e655e;
-}
-
-/* A chip that is off: a darker face, its name dimmed and struck through. */
-.stats-screen .filter-chip[aria-pressed="false"] {
+/* A chip that is off: a darker face, its name dimmed and struck through, whatever its state. */
+.stats-screen .filter-chip.stats-grey[aria-pressed="false"] {
     --button-face: #463f3a;
     --button-shadow: #2f2a26;
     color: rgba(255, 255, 255, 0.5);
     text-decoration: line-through;
 }
 
-.stats-screen .filter-chip[aria-pressed="false"]:not(:disabled):hover,
-.stats-screen .filter-chip[aria-pressed="false"]:focus-visible {
+.stats-screen .filter-chip.stats-grey[aria-pressed="false"]:hover,
+.stats-screen .filter-chip.stats-grey[aria-pressed="false"]:focus-visible {
     --button-face: #564e48;
 }
 
