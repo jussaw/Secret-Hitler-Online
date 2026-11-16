@@ -1,0 +1,98 @@
+/* PLAYERS: the filter above the Players card, in a column. Every child has min-width: 0, so a
+   twelve-character name of wide letters wraps inside its column (PlayerName wraps anywhere)
+   instead of widening the page. */
+.players-page {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+}
+
+.players-page > * {
+    min-width: 0;
+}
+
+/* The table: RankedTable.css's look (its name and value columns, rows 44px tall where the stacked
+   query matches, and its unranked rows' grey), with a header row, the counts as numbers, and
+   provisional rows in italics, as OVERVIEW's power ranking. */
+.players-table th {
+    padding: 0 6px 4px;
+    font-weight: 600;
+    font-size: 12px;
+    line-height: 1.3;
+    text-align: right;
+    vertical-align: bottom;
+    color: var(--textColorOnDark);
+}
+
+.players-table th:first-child {
+    padding-left: 0;
+}
+
+.players-table th:last-child {
+    padding-right: 0;
+}
+
+.players-table th.ranked-name {
+    text-align: left;
+}
+
+/* A line under the header too. */
+.ranked-table.players-table tbody tr:first-child td {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.players-table .players-number,
+.players-table .players-last {
+    white-space: nowrap;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.players-table .is-provisional td {
+    font-style: italic;
+}
+
+/* When they last played, under the name: phones only, where it takes the place of its column. */
+.players-last-under {
+    display: none;
+}
+
+/* Phones (the game's phone-only query): tighter columns, and the last played line under the name
+   in place of its own column, so a twelve-character name keeps the table inside 320px. */
+@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
+    .players-page {
+        gap: 8px;
+    }
+
+    .ranked-table.players-table {
+        font-size: 14px;
+    }
+
+    .ranked-table.players-table th,
+    .ranked-table.players-table td {
+        padding-left: 3px;
+        padding-right: 3px;
+    }
+
+    .ranked-table.players-table :is(th, td):first-child {
+        padding-left: 0;
+    }
+
+    .ranked-table.players-table :is(th, td):last-child {
+        padding-right: 0;
+    }
+
+    .players-table .players-last {
+        display: none;
+    }
+
+    .players-table .players-last-under {
+        display: block;
+        padding-bottom: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        line-height: 1.3;
+        color: var(--textColorOnDark);
+    }
+}
