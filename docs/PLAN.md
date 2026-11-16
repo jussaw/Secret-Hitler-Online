@@ -845,7 +845,7 @@ Issue #31: each game's record, round by round. `rounds(record)` turns a timeline
 - [x] `frontend/e2e/stats-game.spec.ts`: the page never scrolls sideways at any tested size and has 44px targets on phones, and a real game's page shows every round
 - [x] `CLAUDE.md` and `README.md` describe `rounds` and the game page
 - [x] Every review finding is fixed or answered with a reason
-- [ ] The pull request shows the game page before and after, on desktop and on a phone
+- [x] The pull request shows the game page before and after, on desktop and on a phone
 
 **Phase 16 acceptance**
 
