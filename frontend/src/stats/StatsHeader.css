@@ -30,13 +30,14 @@
     min-width: 0;
 }
 
-/* White Montserrat, each link at least a 44px target at every size. App.css colours every link. */
+/* White Montserrat, each link at least a 44px target at every size: 44px tall, and wider than
+   that from its label and padding (on phones, its column). App.css colours every link. */
 .stats-nav-link {
     box-sizing: border-box;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 44px;
+    min-width: 0;
     min-height: 44px;
     padding: 0 10px;
     font-family: var(--textFont);

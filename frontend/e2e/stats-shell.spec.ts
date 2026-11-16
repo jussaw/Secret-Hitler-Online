@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { outcomeLabel } from "../src/stats/format";
 import { EVENT_FIELDS, parseStatsData, STATS_GAMES_PATH, type Outcome } from "../src/stats/record";
 import { routePath } from "../src/stats/routes";
-import { NARROW_PHONE } from "./layout";
+import { MIN_TARGET, NARROW_PHONE } from "./layout";
 import { settle } from "./lobby";
 import {
   bigStatsData,
@@ -207,6 +207,24 @@ test.describe("every page fits every size", () => {
     await settle(page);
     await checkEverySize(page);
   });
+});
+
+test("the header's links are 44px targets at every size", async ({ page }) => {
+  test.slow();
+  await open(page, "/stats", "LATEST GAMES");
+  const links = page.getByRole("navigation", { name: "Stats pages" }).getByRole("link");
+  for (const size of statsSizesFor(test.info().project.name, page.viewportSize()!)) {
+    await page.setViewportSize(size);
+    const boxes = await links.evaluateAll((all) =>
+      all.map((a) => {
+        const r = a.getBoundingClientRect();
+        return { text: a.textContent, width: r.width, height: r.height };
+      })
+    );
+    expect(boxes.length).toBe(4);
+    const small = boxes.filter((b) => b.width < MIN_TARGET - 0.01 || b.height < MIN_TARGET - 0.01);
+    expect(small, `small header links at ${size.width}x${size.height}`).toEqual([]);
+  }
 });
 
 test("a twelve-character name stays inside its line at 320px", async ({ page }) => {
