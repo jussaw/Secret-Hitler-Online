@@ -1,0 +1,57 @@
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { formatDuration, formatLocalDateTime, outcomeLabel, plural } from "../format";
+import { makeRecord } from "../testRecords";
+import GameHeader from "./GameHeader";
+import { fiveSeatGame } from "./sampleGames";
+
+describe("GameHeader", () => {
+  it("the result, its first word in the winners' colour", () => {
+    const liberal = makeRecord();
+    const { container, unmount } = render(<GameHeader record={liberal} />);
+    expect(container.querySelector("header.stats-card.game-header")).not.toBeNull();
+    const heading = screen.getByRole("heading", { level: 1 });
+    expect(heading).toHaveTextContent(outcomeLabel(liberal));
+    expect(heading.querySelector(".stats-liberal")).toHaveTextContent(/^Liberals$/);
+    expect(heading.querySelector(".stats-fascist")).toBeNull();
+    unmount();
+
+    render(<GameHeader record={makeRecord({ outcome: "HITLER_ELECTED", winner: "FASCIST" })} />);
+    const fascist = screen.getByRole("heading", { level: 1 });
+    expect(fascist).toHaveTextContent("Fascists win · Hitler elected");
+    expect(fascist.querySelector(".stats-fascist")).toHaveTextContent(/^Fascists$/);
+  });
+
+  it("an unfinished game's result is plain", () => {
+    const record = makeRecord({ outcome: "UNFINISHED", winner: null, rounds: 6 });
+    render(<GameHeader record={record} />);
+    const heading = screen.getByRole("heading", { level: 1 });
+    expect(heading).toHaveTextContent(outcomeLabel(record));
+    expect(heading.querySelector(".stats-liberal, .stats-fascist")).toBeNull();
+  });
+
+  it("the start, length, rounds and board", () => {
+    const record = makeRecord();
+    const { container, unmount } = render(<GameHeader record={record} />);
+    const facts = container.querySelector("p.game-facts")!;
+    expect(facts.textContent).toBe(
+      `${formatLocalDateTime(record.startedAt)} · ${formatDuration(38 * 60_000)} · ${plural(9, "round")} · board 5 L, 2 F`
+    );
+    expect(facts.textContent).toMatch(/ · 9 rounds · board 5 L, 2 F$/);
+    unmount();
+
+    const { container: one } = render(<GameHeader record={makeRecord({ rounds: 1 })} />);
+    expect(one.querySelector("p.game-facts")!.textContent).toContain(" · 1 round · ");
+  });
+
+  it("the seats in turn order with their roles", () => {
+    const { container } = render(<GameHeader record={fiveSeatGame([])} />);
+    const seats = container.querySelector("p.game-seats")!;
+    expect(seats.textContent).toBe("Seats in order: P1 · P2 · P3 · P4 (Hitler) · Bot 1");
+    const names = Array.from(seats.querySelectorAll(".player-name"));
+    expect(names.map((n) => n.textContent)).toEqual(["P1", "P2", "P3", "P4", "Bot 1"]);
+    expect(names[2]).toHaveClass("stats-fascist");
+    expect(names[3]).toHaveClass("stats-hitler");
+    expect(names[0]).toHaveClass("stats-liberal");
+  });
+});

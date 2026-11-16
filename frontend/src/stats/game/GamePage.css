@@ -1,0 +1,45 @@
+/* One game's page (GamePage): the header card, the notes, then a card per round (RoundBlock.css).
+   The page sets no width of its own (.stats-main sets the column), and every flex child here has
+   min-width: 0, so a long name wraps inside its card instead of widening the page. */
+.game-page {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+}
+
+.game-page > * {
+    min-width: 0;
+}
+
+/* App.css draws every header as the game's orange title bar, a centred column; this one is a card
+   whose lines start at the left. */
+.stats-screen header.game-header {
+    position: static;
+    min-height: 0;
+    align-items: stretch;
+    font-size: 15px;
+    font-family: var(--textFont);
+}
+
+.game-header > * {
+    min-width: 0;
+}
+
+.game-header p {
+    overflow-wrap: anywhere;
+}
+
+/* A line between the cards: the record's first rounds missing, or the lobby closing. */
+.stats-screen p.game-note {
+    padding: 0 4px;
+    font-style: italic;
+    overflow-wrap: anywhere;
+}
+
+/* Phones (the game's phone-only query): the cards a little closer together. */
+@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
+    .game-page {
+        gap: 8px;
+    }
+}
