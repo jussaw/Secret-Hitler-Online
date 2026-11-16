@@ -140,12 +140,10 @@ public class SecretHitlerServer {
     ////// Game records
     // <editor-fold desc="Game records">
 
-    // The game records' store and the writer that saves into it (#31), which is every lobby's
-    // Lobby.recordSink while it runs: main opens the store from DATABASE_PATH (in memory when
-    // unset) and startRecording starts the writer; tests put their own here. Each database call
-    // runs on the writer's thread, the start-up or timer thread, or an HTTP thread: never under a
-    // lobby's lock.
-    static volatile GameStore games;
+    // The writer that saves the game records (#31), which is every lobby's Lobby.recordSink while
+    // it runs: main opens the store from DATABASE_PATH (in memory when unset) and startRecording
+    // starts the writer over it; tests start their own. Each database call runs on the writer's
+    // thread, the start-up or timer thread, or an HTTP thread: never under a lobby's lock.
     static volatile GameRecorder recorder;
     // GET /api/stats/games over the store, with its kept response (null until recording starts).
     static volatile StatsRoutes stats;
@@ -316,20 +314,25 @@ public class SecretHitlerServer {
     /**
      * The shutdown hook's work: the writer's thread stops, every record still queued or waiting
      * is tried once more, and then the lobbies are backed up, so a game whose record is saved
-     * comes back without it. Package-private for RecordingServerTest.
+     * comes back without it. Lobbies play on meanwhile, so the records handed over since are tried
+     * once after the backup, which no longer holds their games (a game that ends after that comes
+     * back running, and is recorded when it ends again). Package-private for RecordingServerTest.
      */
     static void onShutdown() {
         GameRecorder writer = recorder;
         if (writer != null) {
             writer.stop();
             writer.flush();
-            if (writer.waitingCount() > 0) {
-                logger.error("Lost " + writer.waitingCount() + " game records: the database failed until shutdown.");
-            }
         }
         logger.info("Attempting to back up lobby data.");
         storeDatabaseBackup();
         printLobbyStatus();
+        if (writer != null) {
+            writer.flush();
+            if (writer.waitingCount() > 0) {
+                logger.error("Lost " + writer.waitingCount() + " game records: the database failed until shutdown.");
+            }
+        }
     }
 
     /** Warns at start when test sign-in is on, and when no one can sign in to play. */
@@ -412,7 +415,6 @@ public class SecretHitlerServer {
         StatsRoutes routes = new StatsRoutes(store, SecretHitlerServer::currentName);
         GameRecorder writer = new GameRecorder(store, routes::invalidate);
         writer.start();
-        games = store;
         stats = routes;
         recorder = writer;
         Lobby.recordSink = writer;
@@ -430,7 +432,6 @@ public class SecretHitlerServer {
         }
         recorder = null;
         stats = null;
-        games = null;
     }
 
     /**

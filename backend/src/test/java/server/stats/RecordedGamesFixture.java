@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -42,9 +41,8 @@ public final class RecordedGamesFixture {
     private static final int FINISHED_PER_SIZE = 10;
     private static final int CUT_OFF_ROUND = 5;
 
-    private enum Outcome {
-        LIBERAL_POLICIES, HITLER_EXECUTED, FASCIST_POLICIES, HITLER_ELECTED
-    }
+    private static final List<String> OUTCOMES = List.of(GameRecord.LIBERAL_POLICIES, GameRecord.HITLER_EXECUTED,
+            GameRecord.FASCIST_POLICIES, GameRecord.HITLER_ELECTED);
 
     private final Random random = new Random();
     private final AccountStore accounts = AccountStore.open(null);
@@ -86,12 +84,12 @@ public final class RecordedGamesFixture {
         }
         save(cutOff(5));
         save(cutOff(10));
-        Set<Outcome> missing = EnumSet.allOf(Outcome.class);
-        missing.removeIf(outcome -> outcomes.contains(outcome.name()));
+        Set<String> missing = new HashSet<>(OUTCOMES);
+        missing.removeAll(outcomes);
         for (int size = 5; !missing.isEmpty(); size = size == 10 ? 5 : size + 1) {
             int k = nextGame;
             GameRecord record = finished(size);
-            if (missing.remove(Outcome.valueOf(record.outcome()))) {
+            if (missing.remove(record.outcome())) {
                 save(record);
             } else {
                 nextGame = k; // played on to look for a missing outcome: not kept

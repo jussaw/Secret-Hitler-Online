@@ -484,21 +484,6 @@ public class DatabaseBackupTest {
 
     /////// A finished game never comes back
 
-    /** What the server logs while {@code run} runs. */
-    private static List<ILoggingEvent> serverLog(Runnable run) {
-        ListAppender<ILoggingEvent> appender = new ListAppender<>();
-        appender.start();
-        ch.qos.logback.classic.Logger log = (ch.qos.logback.classic.Logger) LoggerFactory
-                .getLogger(SecretHitlerServer.class);
-        log.addAppender(appender);
-        try {
-            run.run();
-        } finally {
-            log.detachAppender(appender);
-        }
-        return appender.list;
-    }
-
     /**
      * A game whose record is saved but whose lobby was backed up before the game ended (a crash in
      * the minute after its end, or a database backup taken in it) comes back idle: its record stands.
@@ -516,7 +501,7 @@ public class DatabaseBackupTest {
             games.save(TestRecords.record(recordedId, 2_000_000L, GameRecord.FASCIST_POLICIES, TestRecords.seats()));
             ServerTesting.clearLobbiesChanged();
 
-            List<ILoggingEvent> log = serverLog(() -> ServerTesting.dropRecordedGames(loaded, games));
+            List<ILoggingEvent> log = ServerLog.during(() -> ServerTesting.dropRecordedGames(loaded, games));
 
             assertFalse(loaded.get("ABCD").isInGame());
             assertEquals(recordedId, loaded.get("ABCD").gameId());
@@ -540,7 +525,7 @@ public class DatabaseBackupTest {
         try (TestStore games = new TestStore()) {
             games.failing = true;
 
-            List<ILoggingEvent> log = serverLog(() -> ServerTesting.dropRecordedGames(loaded, games));
+            List<ILoggingEvent> log = ServerLog.during(() -> ServerTesting.dropRecordedGames(loaded, games));
 
             assertTrue(loaded.get("ABCD").isInGame());
             assertTrue(loaded.get("EFGH").isInGame());

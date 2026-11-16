@@ -7,7 +7,6 @@ import static org.junit.Assert.assertTrue;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
@@ -26,7 +25,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.slf4j.LoggerFactory;
 import server.accounts.AccountStore;
 import server.stats.GameRecord;
 import server.stats.TestRecords;
@@ -128,21 +126,6 @@ public class RecordingServerTest {
         return found;
     }
 
-    /** Collects what the server logs while it runs. */
-    private static List<ILoggingEvent> logged(Runnable run) {
-        ListAppender<ILoggingEvent> appender = new ListAppender<>();
-        appender.start();
-        ch.qos.logback.classic.Logger log = (ch.qos.logback.classic.Logger) LoggerFactory
-                .getLogger(SecretHitlerServer.class);
-        log.addAppender(appender);
-        try {
-            run.run();
-        } finally {
-            log.detachAppender(appender);
-        }
-        return appender.list;
-    }
-
     @Test
     public void noDatabaseCallUnderALobbyLock() throws Exception {
         List<Lobby> lobbies = new CopyOnWriteArrayList<>();
@@ -242,7 +225,7 @@ public class RecordingServerTest {
         TestStore store = store(path());
         store.failing = true;
 
-        List<ILoggingEvent> log = logged(() -> SecretHitlerServer.startUp(store));
+        List<ILoggingEvent> log = ServerLog.during(() -> SecretHitlerServer.startUp(store));
 
         Lobby kept = SecretHitlerServer.codeToLobby.get("ABCD");
         assertNotNull(kept);
@@ -284,6 +267,41 @@ public class RecordingServerTest {
         assertEquals(List.of("g1"), store.written);
         assertFalse("saved before the last backup", backupAtSave.get());
         assertTrue("then backed up", hasBackupRow());
+    }
+
+    /**
+     * Lobbies play on while the shutdown hook runs: a game that ends once the flush has taken the
+     * queue, which the last backup then holds without its game, is still saved, after that backup.
+     */
+    @Test
+    public void onShutdownSavesARecordHandedOverDuringItsFlush() throws Exception {
+        ApplicationConfig.DATABASE_PATH = path();
+        TestStore store = store(path());
+        store.failing = true;
+        SecretHitlerServer.startRecording(store);
+        Lobby.recordSink.submit(TestRecords.record("g1", 2_000_000L, GameRecord.LIBERAL_POLICIES,
+                TestRecords.seats("acct-Ann")));
+        assertTrue(TestStore.await(() -> SecretHitlerServer.recorder.waitingCount() == 1, 5_000));
+        store.failing = false;
+        GameRecord late = TestRecords.record("g2", 3_000_000L, GameRecord.FASCIST_POLICIES,
+                TestRecords.seats("acct-Bob"));
+        AtomicBoolean handedOver = new AtomicBoolean();
+        AtomicBoolean backupAtLateSave = new AtomicBoolean();
+        store.onCall = () -> {
+            List<String> ids = store.saveIds;
+            String saving = ids.get(ids.size() - 1);
+            if (saving.equals("g1") && !handedOver.getAndSet(true)) {
+                Lobby.recordSink.submit(late); // a game ends while the flush runs
+            } else if (saving.equals("g2")) {
+                backupAtLateSave.set(hasBackupRow());
+            }
+        };
+
+        SecretHitlerServer.onShutdown();
+
+        assertEquals(List.of("g1", "g2"), store.written);
+        assertTrue("the late record is saved after the last backup", backupAtLateSave.get());
+        assertEquals(0, SecretHitlerServer.recorder.waitingCount());
     }
 
     /** Whether the file at {@code DATABASE_PATH} holds a lobby backup. */

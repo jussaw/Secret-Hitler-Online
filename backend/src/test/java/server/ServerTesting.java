@@ -39,15 +39,6 @@ public final class ServerTesting {
         SecretHitlerServer.hasLobbyChanged = false;
     }
 
-    /** Starts recording games into the store, as start-up does; {@code stopRecording} after. */
-    public static void startRecording(GameStore store) {
-        SecretHitlerServer.startRecording(store);
-    }
-
-    public static void stopRecording() {
-        SecretHitlerServer.stopRecording();
-    }
-
     /** Drops each of the lobbies' games that has a record in the store, as start-up does. */
     public static void dropRecordedGames(Map<String, Lobby> lobbies, GameStore store) {
         SecretHitlerServer.dropRecordedGames(lobbies, store);
