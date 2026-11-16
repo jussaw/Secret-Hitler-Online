@@ -98,6 +98,6 @@ test.describe("in America/Los_Angeles", () => {
     await expect(history).toHaveCount(1);
     await expect(history.locator(".records-sub")).toHaveText("October 2026");
     await expect(history.locator("li")).toHaveText(["Ann", "Bo"]);
-    await expect(history.locator(".records-wins")).toHaveText("1 win");
+    await expect(history.locator(".ranked-value")).toHaveText("1 win");
   });
 });

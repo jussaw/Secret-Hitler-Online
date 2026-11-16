@@ -5,6 +5,7 @@ import { formatDuration, sideWord, viewerTimeZone } from "../format";
 import { formatPercent, formatRating, formatSigned } from "../numbers";
 import PlayerName, { roleClass } from "../PlayerName";
 import { RankedTable } from "../RankedTable";
+import "../RankedTable.css";
 import {
   computeRecords,
   streakHolders,
@@ -99,21 +100,22 @@ function StreakLines(props: {
 }
 
 /**
- * Each player's best week or month, ranked by its wins: the rank, the name over the period, and
- * the wins, so a long name keeps the width the period would take beside it.
+ * Each player's best week or month, ranked by its wins, in RankedTable's look and classes: the
+ * rank, the name over the period, and the wins, so a long name keeps the width the period would
+ * take beside it.
  */
 function PeriodTable({ rows, names }: { rows: Row<BestPeriod>[]; names: Map<number, string> }): JSX.Element {
   return (
-    <table className="records-table">
+    <table className="ranked-table">
       <tbody>
         {rows.map((row) => (
           <tr key={row.player}>
-            <td className="records-rank">{`${row.rank}.`}</td>
-            <td className="records-who">
+            <td className="ranked-rank">{`${row.rank}.`}</td>
+            <td className="ranked-name">
               <PlayerName player={row.player} name={nameOf(names, row.player)} />
               <span className="records-sub">{row.value.long}</span>
             </td>
-            <td className="records-wins">{countLabel(row.value.wins, WIN_NOUNS)}</td>
+            <td className="ranked-value">{countLabel(row.value.wins, WIN_NOUNS)}</td>
           </tr>
         ))}
       </tbody>
@@ -222,11 +224,11 @@ export function RecordsTab(props: { stats: StatsContext; now?: number; timeZone?
           definition="Each completed month's player of the month."
           empty={empty || (records.monthHistory.length === 0 && "No completed months yet.")}
         >
-          <table className="records-table">
+          <table className="ranked-table">
             <tbody>
               {records.monthHistory.map((holder) => (
                 <tr key={holder.key}>
-                  <td className="records-who">
+                  <td className="ranked-name">
                     <span className="records-sub">{holder.long}</span>
                     <ul className="records-holders">
                       {inTitleOrder(holder.players).map((player) => (
@@ -236,7 +238,7 @@ export function RecordsTab(props: { stats: StatsContext; now?: number; timeZone?
                       ))}
                     </ul>
                   </td>
-                  <td className="records-wins">{countLabel(holder.wins, WIN_NOUNS)}</td>
+                  <td className="ranked-value">{countLabel(holder.wins, WIN_NOUNS)}</td>
                 </tr>
               ))}
             </tbody>

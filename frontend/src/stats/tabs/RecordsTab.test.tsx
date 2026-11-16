@@ -69,10 +69,10 @@ const tab = (games: GameRecord[], now = NOW) => render(<RecordsTab stats={stats(
 const card = (slug: string) => document.querySelector<HTMLElement>(`[data-card="${slug}"]`)!;
 /** A card's table rows: the rank ("" for none), the period or month, each name, and the wins, in reading order. */
 const rowsOf = (slug: string) =>
-  Array.from(card(slug).querySelectorAll("tbody tr")).map((row) => [
-    row.querySelector(".records-rank")?.textContent ?? "",
+  Array.from(card(slug).querySelectorAll("table.ranked-table tbody tr")).map((row) => [
+    row.querySelector(".ranked-rank")?.textContent ?? "",
     ...Array.from(row.querySelectorAll(".records-sub, .player-name")).map((e) => e.textContent ?? ""),
-    row.querySelector(".records-wins")?.textContent ?? "",
+    row.querySelector(".ranked-value")?.textContent ?? "",
   ]);
 /** Text as it reads, every run of whitespace (a no-break space too) one space. */
 const plain = (text: string | null) => (text ?? "").replace(/\s+/g, " ").trim();
