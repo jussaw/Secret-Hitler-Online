@@ -45,7 +45,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 12. Accounts with Discord sign-in | `phase-12-accounts` | done |
 | 13. Database backups | `phase-13-db-backups` | done |
 | 14A. Game timeline | `phase-14a-game-timeline` | done |
-| 14B. Game records | `phase-14b-game-records` | in progress |
+| 14B. Game records | `phase-14b-game-records` | done |
 | 15A. Stats shell | `phase-15a-stats-shell` | planned |
 | 15B. Game history | `phase-15b-game-history` | planned |
 | 16. The game page | `phase-16-game-page` | planned |
@@ -777,11 +777,11 @@ Issue #31, the second half of the game recorder: the server stores every record 
 
 **Phase 14B acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass (`desktop` on macOS and `firefox` in the Linux image before the PR, all four projects in CI)
-- [ ] Every game played to its end, with or without CPU players, and every game abandoned mid-way, has exactly one stored record
-- [ ] A real game played against the jar with a database file is served by `/api/stats/games` in the spec's key order (`curl`)
-- [ ] The pull request says it changes nothing on screen
-- [ ] PR merged into `development`, after Phase 13's
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass (`desktop` on macOS and `firefox` in the Linux image before the PR, all four projects in CI)
+- [x] Every game played to its end, with or without CPU players, and every game abandoned mid-way, has exactly one stored record
+- [x] A real game played against the jar with a database file is served by `/api/stats/games` in the spec's key order (`curl`)
+- [x] The pull request says it changes nothing on screen
+- [x] PR merged into `development`, after Phase 13's
 - [ ] The user plays a game on the deployed build and finds its record in `https://<subdomain>/api/stats/games`
 
 ---
