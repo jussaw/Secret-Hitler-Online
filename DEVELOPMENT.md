@@ -7,13 +7,21 @@ Requirements: Java 17 for the backend, Node.js 22.12 or newer for the frontend (
   - `docker compose up --build`
   - Open frontend: [http://localhost:3000](http://localhost:3000)
   - Backend health: [http://localhost:4040/ping](http://localhost:4040/ping)
-  - Lobbies are backed up to SQLite on the `sh-data` volume (`DATABASE_PATH=/data/backup.db`), which also keeps the accounts and sessions.
+  - Lobbies are backed up to SQLite on the `sh-data` volume (`DATABASE_PATH=/data/backup.db`), which also keeps the accounts, the sessions and the game records.
   - The backend runs `runLocal`, so the login page has TEST SIGN-IN (see [Signing in locally](#signing-in-locally)).
   - The containers run as root, so `frontend/node_modules`, `backend/build` and `backend/.gradle` in your checkout end up owned by root.
 
 ## Persistence
 
-The server backs up all lobbies to a SQLite file every minute (when something changed) and on shutdown, and restores them on start. The same file holds the accounts and sessions, in two tables of their own (`accounts` and `sessions`), written as they change. Set `DATABASE_PATH` to the file to use, for example `DATABASE_PATH=/tmp/sh-backup.db ./gradlew runLocal`. With it unset, the server logs one error and runs without persistence: accounts live in memory and go when it stops.
+The server backs up all lobbies to a SQLite file every minute (when something changed) and on shutdown, and restores them on start. The same file holds the accounts and sessions, in two tables of their own (`accounts` and `sessions`), written as they change, and a record of every game that ends or whose lobby times out, in three more (`players`, `games` and `game_seats`), each written once, on a thread of its own, just after its game. Set `DATABASE_PATH` to the file to use, for example `DATABASE_PATH=/tmp/sh-backup.db ./gradlew runLocal`. With it unset, the server logs one error and runs without persistence: accounts and records live in memory and go when it stops.
+
+To see a local run's records, as the stats pages will read them:
+
+```bash
+curl -s localhost:4040/api/stats/games
+```
+
+It needs no sign-in, and shows each player by number with their name now, never an account ID.
 
 At start, before anything else opens it, the server puts the file in SQLite's WAL mode (`PRAGMA journal_mode = WAL`), so a backup's read never blocks the server's writes; while it runs, `backup.db-wal` and `backup.db-shm` sit beside the file. A file that another process keeps busy is tried again for up to 5 s, after which the server logs an error and runs on in the file's old journal mode. Once it listens, the server logs `Secret Hitler Online is listening on port <port>.`, the line `devops/restore-db.sh` waits for.
 
@@ -99,6 +107,16 @@ npm test -- --run     # single run
 npm run build         # type-check the app and the browser tests, then build into dist/
 npm run preview       # serve dist/ on port 3000
 ```
+
+### The stats pages' fixture
+
+`frontend/src/stats/fixtures/recorded-games.json` is what `GET /api/stats/games` would serve for 62 games played by CPU players, recorded as if twelve accounts held the seats. The stats pages' tests read it, and `RecordedGamesFixtureTest` checks it against the record's format, so the Java and TypeScript sides agree. After a change to the format, remake it from `backend/` and commit it with the change:
+
+```bash
+./gradlew recordedGamesFixture
+```
+
+The games cannot be seeded, so every run writes a different file.
 
 ### Browser tests
 
