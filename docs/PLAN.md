@@ -45,7 +45,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 12. Accounts with Discord sign-in | `phase-12-accounts` | done |
 | 13. Database backups | `phase-13-db-backups` | done |
 | 14A. Game timeline | `phase-14a-game-timeline` | done |
-| 14B. Game records | `phase-14b-game-records` | planned |
+| 14B. Game records | `phase-14b-game-records` | in progress |
 | 15A. Stats shell | `phase-15a-stats-shell` | planned |
 | 15B. Game history | `phase-15b-game-history` | planned |
 | 16. The game page | `phase-16-game-page` | planned |
@@ -766,7 +766,7 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-14b-game-records.md`](super
 
 Issue #31, the second half of the game recorder: the server stores every record Phase 14A hands over in SQLite exactly once, with player numbers in place of accounts, and serves every record from `GET /api/stats/games`, with the contract fixture the stats pages test against. It changes nothing on screen. It starts once Phase 14A has merged and merges after Phase 13, so the backups land before any record is written.
 
-- [ ] `backend/src/main/java/server/stats/GameStore.java`: `players`, `games` and `game_seats`, player numbers, one write per game ID
+- [x] `backend/src/main/java/server/stats/GameStore.java`: `players`, `games` and `game_seats`, player numbers, one write per game ID
 - [ ] `GameRecorder`: the sink, writing on its own thread; a record that fails waits for the next try
 - [ ] `SecretHitlerServer`: start-up (recording, the backup, the drop of a restored game that has a record, the sweep), the minute's retry and the shutdown's flush, each a method the tests call
 - [ ] `GET /api/stats/games`: cached until a record is saved or an account renamed, `ETag` and 304, gzip, 503, no account IDs; the dev server proxies `/api`

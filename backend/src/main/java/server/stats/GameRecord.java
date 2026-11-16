@@ -1,9 +1,12 @@
 package server.stats;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import game.SecretHitlerGame;
 import game.datastructures.Player;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -24,6 +27,8 @@ public record GameRecord(String id, long startedAt, long endedAt, String outcome
     public static final String FASCIST_POLICIES = "FASCIST_POLICIES";
     public static final String HITLER_ELECTED = "HITLER_ELECTED";
     public static final String UNFINISHED = "UNFINISHED";
+
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     /**
      * One seat, in turn order.
@@ -76,6 +81,52 @@ public record GameRecord(String id, long startedAt, long endedAt, String outcome
     /** Whether any seat was a CPU player's. */
     public boolean hasCpu() {
         return seats.stream().anyMatch(Seat::cpu);
+    }
+
+    /**
+     * The record as it is stored and served (format 1): the spec's keys in order, and each seat's
+     * {@code player} its account's number, or null for a CPU player's seat. It holds no account ID.
+     *
+     * @param playerNumbers each account's player number ({@code GameStore}).
+     * @throws IllegalArgumentException if a human seat's account has no number.
+     */
+    public String toJson(Map<String, Integer> playerNumbers) {
+        List<Map<String, Object>> seatJson = new ArrayList<>();
+        for (Seat seat : seats) {
+            Integer player = null;
+            if (seat.accountId() != null) {
+                player = playerNumbers.get(seat.accountId());
+                if (player == null) {
+                    throw new IllegalArgumentException("A seat of game " + id + " has no player number.");
+                }
+            }
+            Map<String, Object> json = new LinkedHashMap<>();
+            json.put("player", player);
+            json.put("name", seat.name());
+            json.put("cpu", seat.cpu());
+            json.put("role", seat.role());
+            json.put("alive", seat.alive());
+            seatJson.add(json);
+        }
+        Map<String, Object> json = new LinkedHashMap<>();
+        json.put("id", id);
+        json.put("format", FORMAT);
+        json.put("startedAt", startedAt);
+        json.put("endedAt", endedAt);
+        json.put("outcome", outcome);
+        json.put("winner", winner());
+        json.put("complete", complete);
+        json.put("hasCpu", hasCpu());
+        json.put("liberalPolicies", liberalPolicies);
+        json.put("fascistPolicies", fascistPolicies);
+        json.put("rounds", rounds);
+        json.put("seats", seatJson);
+        json.put("events", events);
+        try {
+            return JSON.writeValueAsString(json);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Could not write the record of game " + id + ".", e);
+        }
     }
 
     /** The accounts that held seats, in turn order. */
