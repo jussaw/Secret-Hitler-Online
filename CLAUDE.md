@@ -456,8 +456,9 @@ keeps credit to upstream and to the board game's creators.
   busiest)` of its own view), `byWeekday`, `byHour`, `sessions` (from `sessionSummaries`, which
   Phase 21B reuses), the busiest day, week and month, and `longestGap` between sessions in whole
   local days; ties go to the later one. Labels are fixed English (`dayLabel` `14 Nov` and
-  `Sat 14 Nov 2026`, `weekLabel`, `monthLabel`, `weekdayLabel`, `hourLabel` `21:00 to 22:00`), and
-  `countLabel(n, [one, many])`. `timing.ts` (`computeTiming(counted)`) averages `rounds()`'s
+  `Sat 14 Nov 2026`, `weekLabel`, `monthLabel`, `weekdayLabel`, `hourLabel` `21:00 to 22:00`,
+  `MONTHS`), and it re-exports `countLabel.ts`'s `countLabel(n, [one, many])` ("1 loss", "2
+  losses") and `GAME_NOUNS`, which the charts import from there. `timing.ts` (`computeTiming(counted)`) averages `rounds()`'s
   decision times by the seat that decided, a seat with a player only: nominate, vote, discard,
   chancellor (both choices around a refused veto), power, and END TERM (only terms the president
   ended), with `asPresident` pooling a president's nominate, discard, power and END TERM, the terms
@@ -471,10 +472,11 @@ keeps credit to upstream and to the board game's creators.
   orange by default) and `charts/CalendarHeatmap.tsx` (a column per week, Monday on top, cells up
   to 16px in `HEAT_COLORS`' five shades, drawn from the left of an image as wide as its box, each
   month's name over the column of its first day unless within 28px of the last, Mon, Wed and Fri
-  where cells are 7px or more) draw in `ChartFrame`, inside a focusable box of their own
-  (`role="group"` named by the chart's label, the stats' focus outline) whose arrow keys move the
-  details (Home and End too; the heatmap's up and down a day, left and right a week), cleared when
-  it loses the focus. `tabs/ActivityTab.tsx` takes optional `now` (else the tab's first draw) and
+  where cells are 7px or more) draw in `ChartFrame`, inside `charts/ChartFocus.tsx`'s box (a
+  `role="group"` named by the chart's label that takes the focus, with the stats' focus outline,
+  and a hidden `role="status"` line a screen reader hears) whose arrow keys move the details (Home
+  and End too; the heatmap's up and down a day, left and right a week), cleared when it loses the
+  focus. `tabs/ActivityTab.tsx` takes optional `now` (else the tab's first draw) and
   `timeZone` for its tests, memoizes both modules per counted set, and has four sections (Games,
   When, Sessions and gaps, Timing), each a heading over a grid of cards (`div.activity-cell` with
   `data-card`, `.activity-wide` across the grid, the rest packed `dense` within their section, each
