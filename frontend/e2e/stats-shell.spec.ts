@@ -76,6 +76,23 @@ test("bigStatsData() is a valid response", () => {
     expect([board.liberal, board.fascist], `${game.id}'s board`).toEqual([game.liberalPolicies, game.fascistPolicies]);
     const minutes = (game.endedAt - game.startedAt) / 60_000;
     expect(minutes >= 15 && minutes <= 60, `${game.id} lasts ${minutes} minutes`).toBe(true);
+
+    // The election tracker moves up one at a time from 0 after every policy, and only a
+    // policy puts it back: a third failed election, or a veto accepted at 2, is 3 and a chaos
+    // policy. A record that starts at a restore may find it anywhere at first.
+    let tracker: number | null = game.complete ? 0 : null;
+    for (let i = 0; i < game.events.length; i++) {
+      const event = game.events[i];
+      if (event.type === "tracker") {
+        if (tracker !== null) expect(event.value, `${game.id}'s tracker at event ${i}`).toBe(tracker + 1);
+        tracker = event.value;
+        const next = game.events[i + 1];
+        if (event.value === 3) expect(next, `${game.id}'s chaos at event ${i + 1}`).toMatchObject({ type: "enact", by: "chaos" });
+      } else if (event.type === "enact") {
+        if (event.by === "chaos") expect(tracker, `${game.id}'s tracker before chaos at event ${i}`).toBe(3);
+        tracker = 0;
+      }
+    }
   }
 });
 

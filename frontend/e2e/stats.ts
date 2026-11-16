@@ -144,6 +144,7 @@ function playGame(
   };
   /** Enacts the top card after a third failed election or an accepted veto at 2. */
   const chaos = () => {
+    reshuffleIfLow(); // a veto may have taken the pile's last cards
     add({ type: "tracker", r, value: 3 }, [0, 0]);
     const policy = draw.shift()!;
     if (policy === "L") liberal++;
@@ -214,7 +215,6 @@ function playGame(
       if (fascist >= 3 && chancellor === hitler) return finish("HITLER_ELECTED");
       lastPresident = president;
       lastChancellor = chancellor;
-      tracker = 0;
 
       // The legislative session: the president's three, a discard, the chancellor's choice.
       const hand = draw.splice(0, 3);
@@ -246,6 +246,7 @@ function playGame(
         discards.push(two[two.indexOf(policy) === 0 ? 1 : 0]);
         if (policy === "L") liberal++;
         else fascist++;
+        tracker = 0; // only a policy puts the tracker back
         add({ type: "enact", r, policy, by: "chancellor", seat: chancellor, liberal, fascist }, [2_000, 25_000]);
         reshuffleIfLow();
         if (policy === "F") power = powerFor(size, fascist);
