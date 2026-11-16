@@ -233,17 +233,24 @@ test("each card shows its own error", () => {
   expect(within(region("YOUR NAME")).getByRole("status")).toHaveTextContent(/^$/);
 });
 
-test("the footer links to the rules, the project and its issues, each in a new tab", () => {
+test("the footer links to the rules, the stats, the project and its issues", () => {
   renderLogin();
   const footer = screen.getByRole("contentinfo");
-  const links = within(footer).getAllByRole("link");
-  const href = (name: string) => within(footer).getByRole("link", { name }).getAttribute("href");
-  expect(href("How to play")).toBe(RULES_URL);
-  expect(href("About this project")).toBe(ABOUT_URL);
-  expect(href("Report a bug")).toBe(ISSUES_URL);
-  for (const link of links) {
-    expect(link).toHaveAttribute("target", "_blank");
-    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  const firstLine = footer.querySelector("p")!;
+  expect(firstLine).toHaveTextContent(/^How to play · Stats · About this project · Report a bug$/);
+  const link = (name: string) => within(footer).getByRole("link", { name });
+  // The stats open in the same tab.
+  expect(link("Stats")).toHaveAttribute("href", "/stats");
+  expect(link("Stats")).not.toHaveAttribute("target");
+  expect(link("How to play")).toHaveAttribute("href", RULES_URL);
+  expect(link("About this project")).toHaveAttribute("href", ABOUT_URL);
+  expect(link("Report a bug")).toHaveAttribute("href", ISSUES_URL);
+  for (const name of ["How to play", "About this project", "Report a bug"]) {
+    expect(link(name)).toHaveAttribute("target", "_blank");
+    expect(link(name)).toHaveAttribute("rel", "noopener noreferrer");
+  }
+  for (const other of within(footer.querySelector(".login-credit") as HTMLElement).getAllByRole("link")) {
+    expect(other).toHaveAttribute("target", "_blank");
   }
 });
 

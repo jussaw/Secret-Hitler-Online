@@ -54,7 +54,9 @@ import {
   PARAM_SPECTATOR_COUNT,
   PARAM_YOU,
   MAX_PLAYERS,
+  statsGamePath,
 } from "./constants";
+import OutLink from "./util/OutLink";
 
 import PlayerDisplay, {
   DISABLE_EXECUTED_PLAYERS,
@@ -1942,6 +1944,8 @@ class App extends Component<{}, AppState> {
           });
 
           const victoryMessage = VICTORY_TEXT[newState.state];
+          // The game's record, in a new tab: a server from before recording sends no gameId.
+          const gameId = typeof newState.gameId === "string" ? newState.gameId : null;
           let messageClass: string, headerImage: string, headerAlt: string;
           let players: string[] = [];
           let state = newState.state;
@@ -1982,6 +1986,11 @@ class App extends Component<{}, AppState> {
                         >
                           {victoryMessage}
                         </p>
+                        {gameId !== null && (
+                          <p className="victory-game">
+                            <OutLink href={statsGamePath(gameId)}>See this game</OutLink>
+                          </p>
+                        )}
                       </>
                     );
                   }}

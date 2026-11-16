@@ -1,5 +1,5 @@
 import type { Me } from "../account/account";
-import { ABOUT_URL, ISSUES_URL, LOBBY_CODE_LENGTH, RULES_URL } from "../constants";
+import { ABOUT_URL, ISSUES_URL, LOBBY_CODE_LENGTH, RULES_URL, STATS_PATH } from "../constants";
 import { normalizeCode } from "../lobby/normalizeCode";
 import SoundControl from "../sound/SoundControl";
 import OutLink from "../util/OutLink";
@@ -108,6 +108,9 @@ export default function LoginScreen(props: LoginScreenProps) {
         <footer className="login-footer">
           <p>
             <OutLink href={RULES_URL}>How to play</OutLink>
+            {" · "}
+            {/* The stats in this tab: the login page has nothing to keep open. */}
+            <a href={STATS_PATH}>Stats</a>
             {" · "}
             <OutLink href={ABOUT_URL}>About this project</OutLink>
             {" · "}
