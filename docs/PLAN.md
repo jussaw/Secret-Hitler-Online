@@ -52,7 +52,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 17A. Stats engine | `phase-17a-stats-engine` | done |
 | 17B. OVERVIEW | `phase-17b-overview` | done |
 | 18. ROLES & CARDS | `phase-18-roles-cards` | done |
-| 19. VOTES & POWERS | `phase-19-votes-powers` | in progress |
+| 19. VOTES & POWERS | `phase-19-votes-powers` | done |
 | 20. RIVALS and ENDINGS | `phase-20-rivals-endings` | done |
 | 21A. ACTIVITY | `phase-21a-activity` | done |
 | 21B. RECORDS | `phase-21b-records` | planned |
@@ -945,7 +945,7 @@ Issue #31: the VOTES & POWERS tab at `/stats/votes`. It shows each player's elec
 **Phase 19 acceptance**
 
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] PR merged into `development`
+- [x] PR merged into `development`
 - [ ] The user opens VOTES & POWERS on the deployed build after real games, on a desktop and on a phone, and its numbers match the games played
 
 ---
