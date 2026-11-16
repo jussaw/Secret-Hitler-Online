@@ -43,6 +43,8 @@ describe("the geometry", () => {
     expect(a.x).toBeCloseTo(32 + 0.15 * 180, 9);
     const second = g.rects.find((r) => r.bar === 1)!;
     expect(second.x).toBeCloseTo(32 + 180 + 0.15 * 180, 9);
+    expect(g.slot).toBe(180);
+    expect([g.yScale(0), g.yScale(3), g.yScale(6)]).toEqual([176, 92, 8]);
   });
 
   it("nothingToStack", () => {

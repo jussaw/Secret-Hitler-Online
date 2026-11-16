@@ -14,6 +14,10 @@ export const BAR_PADDING = { top: 8, right: 8, bottom: 24, left: 32 };
 
 export interface StackedBarGeometry {
   yTicks: number[];
+  /** The y, in px from the top, that a stack of `value` reaches. */
+  yScale: (value: number) => number;
+  /** Each bar's share of the plot's width, in px. */
+  slot: number;
   /** Every part above zero, in px. */
   rects: { bar: number; key: string; x: number; y: number; width: number; height: number }[];
 }
@@ -32,6 +36,7 @@ export function stackedBarGeometry(bars: StackedBar[], width: number, height: nu
   const yTicks = tallest > 0 ? niceTicks(0, tallest) : [0];
   const scaleTop = yTicks[yTicks.length - 1] || 1;
   const slot = bars.length > 0 ? (right - left) / bars.length : 0;
+  const yScale = (value: number) => bottom - (value / scaleTop) * (bottom - top);
   const rects: StackedBarGeometry["rects"] = [];
   bars.forEach((bar, i) => {
     let base = bottom;
@@ -42,7 +47,7 @@ export function stackedBarGeometry(bars: StackedBar[], width: number, height: nu
       rects.push({ bar: i, key: part.key, x: left + i * slot + 0.15 * slot, y: base, width: 0.7 * slot, height: h });
     }
   });
-  return { yTicks, rects };
+  return { yTicks, yScale, slot, rects };
 }
 
 /** The words a screen reader reads: "<label>: <legend> <value>, <legend> <value>." per bar. */
@@ -80,10 +85,6 @@ export function StackedBarChart({
   const width = useChartWidth(box);
   const [active, setActive] = useState<{ bar: number; key: string } | null>(null);
   const geometry = stackedBarGeometry(bars, width, height);
-  const bottom = height - BAR_PADDING.bottom;
-  const scaleTop = geometry.yTicks[geometry.yTicks.length - 1] || 1;
-  const yOf = (value: number) => bottom - (value / scaleTop) * (bottom - BAR_PADDING.top);
-  const slot = bars.length > 0 ? (width - BAR_PADDING.left - BAR_PADDING.right) / bars.length : 0;
   const keys: string[] = [];
   for (const bar of bars) for (const part of bar.parts) if (!keys.includes(part.key)) keys.push(part.key);
   const name = (key: string) => legend[key] ?? key;
@@ -126,7 +127,7 @@ export function StackedBarChart({
       legend={keys.map((key) => ({ key, label: name(key), color: colors[key] }))}
       tooltip={tooltip}
     >
-      <YAxis ticks={geometry.yTicks} y={yOf} left={BAR_PADDING.left} right={width - BAR_PADDING.right} format={formatValue} />
+      <YAxis ticks={geometry.yTicks} y={geometry.yScale} left={BAR_PADDING.left} right={width - BAR_PADDING.right} format={formatValue} />
       {geometry.rects.map((r) => (
         <rect
           key={`${r.bar}-${r.key}`}
@@ -142,7 +143,7 @@ export function StackedBarChart({
         <text
           key={i}
           className="chart-axis-text"
-          x={px(BAR_PADDING.left + (i + 0.5) * slot)}
+          x={px(BAR_PADDING.left + (i + 0.5) * geometry.slot)}
           y={height - BAR_PADDING.bottom / 2 + 2}
           textAnchor="middle"
           dominantBaseline="middle"
