@@ -46,7 +46,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 13. Database backups | `phase-13-db-backups` | done |
 | 14A. Game timeline | `phase-14a-game-timeline` | done |
 | 14B. Game records | `phase-14b-game-records` | done |
-| 15A. Stats shell | `phase-15a-stats-shell` | in progress |
+| 15A. Stats shell | `phase-15a-stats-shell` | done |
 | 15B. Game history | `phase-15b-game-history` | planned |
 | 16. The game page | `phase-16-game-page` | planned |
 | 17A. Stats engine | `phase-17a-stats-engine` | planned |
@@ -804,8 +804,8 @@ Issue #31: the stats pages' shell at `/stats`, loaded as a chunk of its own so t
 
 **Phase 15A acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects (`desktop` on macOS and `firefox` in the Linux image before the PR, all four in CI)
-- [ ] PR merged into `development`, after Phase 14B's
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects (`desktop` on macOS and `firefox` in the Linux image before the PR, all four in CI)
+- [x] PR merged into `development`, after Phase 14B's
 - [ ] The user opens `/stats` on the deployed build, on a desktop and on a phone, opens a game from the latest games, and moves between the pages with the header and the back button
 
 ---
