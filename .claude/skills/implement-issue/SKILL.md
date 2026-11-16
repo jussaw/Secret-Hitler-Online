@@ -178,9 +178,10 @@ whole change>" --body-file <scratchpad file>`. The body has these sections, in o
     `gh run rerun <run> --repo … --failed`, and offer an issue for the flake in the report. If it
     fails again, stop and report both runs.
   - Never merge on a red check.
-- Every check passes (`image` skips on PRs) and the PR does not conflict: merge with
-  `gh pr merge <PR> --repo … --merge --admin --match-head-commit <headRefOid>`, the head whose
-  checks passed. `--admin` gets past the review the `development` ruleset asks for, and past its
+- Every check passes (`image` skips on PRs) and the PR does not conflict: squash it into one
+  commit on `development` with
+  `gh pr merge <PR> --repo … --squash --admin --match-head-commit <headRefOid>`, the head whose
+  checks passed. Never merge with a merge commit or a rebase. `--admin` gets past the review the `development` ruleset asks for, and past its
   required checks too, so the green checks are yours to confirm, and `--match-head-commit` refuses
   the merge if anything newer was pushed. Auto-merge is off on this repo.
   - The issue is labelled `bug`: merge it now.
@@ -202,9 +203,9 @@ whole change>" --body-file <scratchpad file>`. The body has these sections, in o
 
 ## 10. Report
 
-The PR link and its green checks. For a merged bug, the merge commit and the image tag. For any
-other issue, the question whether to merge it; after the user's yes and the merge, report the merge
-commit and the image tag the same way. Then what changed, the decisions you made, anything not run
+The PR link and its green checks. For a merged bug, its squashed commit on `development` and the
+image tag. For any other issue, the question whether to merge it; after the user's yes and the
+merge, report the squashed commit and the image tag the same way. Then what changed, the decisions you made, anything not run
 locally, and any issue you offer to write up with `/write-issue`. Boxes that need a person, such as
 playing on the deployed build, stay for the user.
 
