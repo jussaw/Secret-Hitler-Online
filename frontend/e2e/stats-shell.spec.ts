@@ -160,9 +160,9 @@ test.describe("every page fits every size", () => {
     await checkEverySize(page);
   });
 
-  test("GAMES' placeholder", async ({ page }) => {
+  test("GAMES", async ({ page }) => {
     test.slow();
-    await open(page, "/stats/games", "GAMES");
+    await open(page, "/stats/games", "400 games recorded · showing 1–20");
     await checkEverySize(page);
   });
 
@@ -286,7 +286,7 @@ test("the header moves between the pages in place", async ({ page }) => {
   const current = nav.locator('[aria-current="page"]');
 
   for (const [label, path, ready] of [
-    ["GAMES", "/stats/games", "Coming in a later update."],
+    ["GAMES", "/stats/games", "400 games recorded · showing 1–20"],
     ["PLAYERS", "/stats/players", "Coming in a later update."],
     ["STATS", "/stats", "OVERVIEW"],
   ]) {

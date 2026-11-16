@@ -87,7 +87,7 @@ describe("StatsApp", () => {
     moveTo("/stats/games/g25");
     expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
     fireEvent.click(nav().getByRole("link", { name: "GAMES" }));
-    expect(await screen.findByText("Coming in a later update.")).toBeInTheDocument();
+    expect(await screen.findByText("25 games recorded · showing 1–20")).toBeInTheDocument();
     fireEvent.click(nav().getByRole("link", { name: "PLAYERS" }));
     expect(location.pathname).toBe("/stats/players");
     fireEvent.click(nav().getByRole("link", { name: "STATS" }));

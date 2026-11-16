@@ -12,6 +12,7 @@ import {
   PARAM_USERNAMES,
 } from "./constants";
 import { makeGameState } from "./game/testGameState";
+import { LobbyState, type Role } from "./types";
 
 const SIGNED_OUT: Me = { signedIn: false, discord: true, testSignIn: false };
 const ROWAN: Me = {
@@ -763,4 +764,46 @@ test("a /me that fails after leaving keeps the account last known and says so", 
   );
   // The code is still there, so JOIN can be tried again once the server is back.
   expect(screen.getByRole("button", { name: "JOIN" })).toBeEnabled();
+});
+
+/** A Fascist victory by policies as a spectator sees it: every role known. */
+const victoryPacket = (extra: object = {}) => {
+  const names = ["Ann", "Ben", "Cat", "Dan", "Eve"];
+  const state = makeGameState(names, { state: LobbyState.FASCIST_VICTORY_POLICY, ...extra });
+  const roles = ["FASCIST", "HITLER", "LIBERAL", "LIBERAL", "LIBERAL"] as Role[];
+  names.forEach((name, i) => (state.players[name].id = roles[i]));
+  return { ...state, [PARAM_PACKET_TYPE]: PACKET_GAME_STATE };
+};
+
+/** Watches a game to its Fascist victory, packet `extra` added, until RETURN TO LOBBY shows. */
+async function watchToVictory(extra: object) {
+  vi.useFakeTimers();
+  const ref = createRef<App>();
+  render(<App ref={ref} />);
+  const app = ref.current!;
+  act(() => {
+    app.tryOpenWebSocket("", "KQMX", true);
+  });
+  await deliver(app, gamePacket());
+  await deliver(app, victoryPacket(extra));
+  for (let i = 0; i < 30 && !screen.queryByRole("button", { name: "RETURN TO LOBBY" }); i++) await pass(1000);
+  expect(alertBox().getByRole("button", { name: "RETURN TO LOBBY" })).toBeInTheDocument();
+}
+
+test("the victory screen links to its game in a new tab", async () => {
+  await watchToVictory({ gameId: "g-1" });
+  const link = alertBox().getByRole("link", { name: "See this game" });
+  expect(link).toHaveAttribute("href", "/stats/games/g-1");
+  expect(link).toHaveAttribute("target", "_blank");
+  expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  expect(link.closest("p.victory-game")).not.toBeNull();
+  expect(alertBox().getByText("Fascists successfully passed six policies!")).toBeInTheDocument();
+});
+
+test("the victory screen has no game link without a gameId", async () => {
+  await watchToVictory({});
+  expect(alertBox().queryByRole("link", { name: "See this game" })).toBeNull();
+  expect(document.querySelector(".victory-game")).toBeNull();
+  expect(alertBox().getByText("Fascists successfully passed six policies!")).toBeInTheDocument();
+  expect(alertBox().queryAllByRole("link")).toHaveLength(0);
 });

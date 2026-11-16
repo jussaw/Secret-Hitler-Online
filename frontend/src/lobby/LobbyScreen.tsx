@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { Copy, Eye, UserPlus } from "lucide-react";
-import { ABOUT_URL, ISSUES_URL, MAX_PLAYERS } from "../constants";
+import { ABOUT_URL, ISSUES_URL, MAX_PLAYERS, STATS_PATH } from "../constants";
 import SoundControl from "../sound/SoundControl";
 import SpectatorCount from "../spectator/SpectatorCount";
 import OutLink from "../util/OutLink";
@@ -186,6 +186,9 @@ export default function LobbyScreen(props: LobbyScreenProps) {
           </p>
 
           <footer className="lobby-footer">
+            {/* The stats in a new tab, so the lobby stays open. */}
+            <OutLink href={STATS_PATH}>Stats</OutLink>
+            {" · "}
             <OutLink href={ABOUT_URL}>About this project</OutLink>
             {" · "}
             <OutLink href={ISSUES_URL}>Report a bug</OutLink>

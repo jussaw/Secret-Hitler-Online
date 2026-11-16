@@ -280,3 +280,29 @@ textarea {
 #victory-header {
     width: 100%;
 }
+
+/* "See this game", under the victory message: the game's record in a new tab. Its link is a 44px
+   target at every size, whose negative margins take back all of it but its line's height (1lh;
+   -14px where the browser has no lh), as the login page's Sign out does, so the prompt is no
+   taller for it. */
+.victory-game {
+    margin: 0 0 0.6em;
+    text-align: center;
+}
+
+.victory-game a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    min-width: 44px;
+    min-height: 44px;
+    margin: -14px 0;
+    margin: calc((1lh - 44px) / 2) 0;
+    vertical-align: baseline;
+}
+
+.victory-game a:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
