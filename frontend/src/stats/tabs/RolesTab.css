@@ -1,0 +1,71 @@
+/* ROLES & CARDS: four sections, each a heading over a grid of cards. Every child of the tab, a
+   section and a grid has min-width: 0, so a long name wraps in its column; a wide table scrolls
+   inside its own card (SplitTable). Nothing here sets a table's rows: Phase 17A's tables keep
+   them 44px tall on phones. */
+.roles-tab {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0;
+}
+
+.roles-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+
+.roles-tab > *,
+.roles-section > *,
+.roles-grid > * {
+    min-width: 0;
+}
+
+/* App.css sizes every h2 by the window; a section's heading is the lobby roster heading's look,
+   colour included: LobbyScreen.css's own #b9ab9f, which no variable in variables.css holds. */
+.stats-screen .roles-section > h2 {
+    font-family: var(--headerFont);
+    font-weight: normal;
+    font-style: normal;
+    font-size: 20px;
+    line-height: 1.2;
+    letter-spacing: 0.06em;
+    color: #b9ab9f;
+    margin: 0;
+    padding: 0 4px;
+    overflow-wrap: anywhere;
+}
+
+.roles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 22em), 1fr));
+    align-items: start;
+    gap: 16px;
+}
+
+.roles-wide {
+    grid-column: 1 / -1;
+}
+
+/* Everyone's hands, above Hands drawn's table; it wraps on phones. */
+.stats-screen .roles-group {
+    font-size: 14px;
+    color: var(--textColorOnDark);
+    overflow-wrap: anywhere;
+}
+
+/* Phones (the game's phone-only query): less room between the parts. */
+@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
+    .roles-tab {
+        gap: 14px;
+    }
+
+    .roles-grid {
+        gap: 8px;
+    }
+
+    .stats-screen .roles-section > h2 {
+        font-size: 18px;
+    }
+}

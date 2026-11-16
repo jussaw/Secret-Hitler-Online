@@ -51,7 +51,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 16. The game page | `phase-16-game-page` | done |
 | 17A. Stats engine | `phase-17a-stats-engine` | done |
 | 17B. OVERVIEW | `phase-17b-overview` | planned |
-| 18. ROLES & CARDS | `phase-18-roles-cards` | planned |
+| 18. ROLES & CARDS | `phase-18-roles-cards` | done |
 | 19. VOTES & POWERS | `phase-19-votes-powers` | planned |
 | 20. RIVALS and ENDINGS | `phase-20-rivals-endings` | done |
 | 21A. ACTIVITY | `phase-21a-activity` | done |
@@ -908,20 +908,20 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-18-roles-cards.md`](superpo
 
 Issue #31: the ROLES & CARDS tab fills Phase 17A's placeholder with each player's role and card stats over the counted games, read from the records' seats and from `rounds(record)` (Phase 16). Built after Phases 16 and 17A, beside 17B, 19, 20 and 21A; it changes no shared source file, only its own modules, its tab, its browser spec and the docs.
 
-- [ ] `frontend/src/stats/roles.ts`: role split, role luck, times as Hitler and the longest run of one role
-- [ ] `roles.ts`: win rates as Liberal, as Fascist and as Hitler, by player count, and as first president
-- [ ] `frontend/src/stats/cards.ts`: hands drawn beside the group's, Liberal accuracy and deep cover as president
-- [ ] `cards.ts`: given one of each, policies enacted and vetoes as chancellor; Fascist choices and forced Fascists
-- [ ] `frontend/src/stats/tabs/RolesTab.tsx`: the tab's four sections and seventeen cards, split tables that scroll inside their card, and every card's empty state
-- [ ] `frontend/e2e/stats-roles.spec.ts`: the tab never scrolls sideways at any `statsSizes` size against `bigStatsData()`, with 44px targets on phones
-- [ ] `CLAUDE.md` and `README.md` describe ROLES & CARDS
-- [ ] Every finding of the whole-branch review fixed, Minor ones included
-- [ ] The pull request shows the tab before and after, on desktop and on a phone
+- [x] `frontend/src/stats/roles.ts`: role split, role luck, times as Hitler and the longest run of one role
+- [x] `roles.ts`: win rates as Liberal, as Fascist and as Hitler, by player count, and as first president
+- [x] `frontend/src/stats/cards.ts`: hands drawn beside the group's, Liberal accuracy and deep cover as president
+- [x] `cards.ts`: given one of each, policies enacted and vetoes as chancellor; Fascist choices and forced Fascists
+- [x] `frontend/src/stats/tabs/RolesTab.tsx`: the tab's four sections and seventeen cards, split tables that scroll inside their card, and every card's empty state
+- [x] `frontend/e2e/stats-roles.spec.ts`: the tab never scrolls sideways at any `statsSizes` size against `bigStatsData()`, with 44px targets on phones
+- [x] `CLAUDE.md` and `README.md` describe ROLES & CARDS
+- [x] Every finding of the whole-branch review fixed, Minor ones included
+- [x] The pull request shows the tab before and after, on desktop and on a phone
 
 **Phase 18 acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] PR merged into `development`
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] PR merged into `development`
 - [ ] The user opens ROLES & CARDS on the deployed build, on a desktop and on a phone, and finds their games' numbers
 
 ---
