@@ -67,6 +67,15 @@ function stats(games: GameRecord[]): StatsContext {
 }
 const tab = (games: GameRecord[], now = NOW) => render(<RecordsTab stats={stats(games)} now={now} timeZone="UTC" />);
 const card = (slug: string) => document.querySelector<HTMLElement>(`[data-card="${slug}"]`)!;
+/** A card's table rows: the rank ("" for none), the period or month, each name, and the wins, in reading order. */
+const rowsOf = (slug: string) =>
+  Array.from(card(slug).querySelectorAll("tbody tr")).map((row) => [
+    row.querySelector(".records-rank")?.textContent ?? "",
+    ...Array.from(row.querySelectorAll(".records-sub, .player-name")).map((e) => e.textContent ?? ""),
+    row.querySelector(".records-wins")?.textContent ?? "",
+  ]);
+/** Text as it reads, every run of whitespace (a no-break space too) one space. */
+const plain = (text: string | null) => (text ?? "").replace(/\s+/g, " ").trim();
 
 const SLUGS = [
   "longest-win-streak",
@@ -126,15 +135,26 @@ describe("RecordsTab", () => {
 
   it("theBestPeriodsAndTheHistory", () => {
     tab(MONTHS);
-    expect(card("most-wins-week")).toHaveTextContent("4 · Week of 2 Nov 2026");
-    expect(card("most-wins-month")).toHaveTextContent("4 · November 2026");
-    const rows = Array.from(card("players-of-the-month").querySelectorAll("tbody tr")).map((row) =>
-      Array.from(row.querySelectorAll("td")).map((cell) => cell.textContent)
-    );
-    expect(rows).toEqual([
-      ["October 2026", "Cy", "2 wins"],
-      ["August 2026", "Ann", "1 win"],
+    // Ann and Bo tie on 4 wins in a week and a month (and 5 games each): by name; Cy's best is October's.
+    expect(rowsOf("most-wins-week")).toEqual([
+      ["1.", "Ann", "Week of 2 Nov 2026", "4 wins"],
+      ["1.", "Bo", "Week of 2 Nov 2026", "4 wins"],
+      ["3.", "Cy", "Week of 12 Oct 2026", "2 wins"],
     ]);
+    expect(rowsOf("most-wins-month")).toEqual([
+      ["1.", "Ann", "November 2026", "4 wins"],
+      ["1.", "Bo", "November 2026", "4 wins"],
+      ["3.", "Cy", "October 2026", "2 wins"],
+    ]);
+    expect(rowsOf("players-of-the-month")).toEqual([
+      ["", "October 2026", "Cy", "2 wins"],
+      ["", "August 2026", "Ann", "1 win"],
+    ]);
+  });
+
+  it("aTiedMonthListsEachHolder", () => {
+    tab(MONTHS, Date.parse("2026-12-02T12:00:00Z"));
+    expect(rowsOf("players-of-the-month")[0]).toEqual(["", "November 2026", "Ann", "Bo", "4 wins"]);
   });
 
   it("aMonthWithNoWinsYetSaysSo", () => {
@@ -145,7 +165,7 @@ describe("RecordsTab", () => {
 
   it("theLongestSessions", () => {
     tab([...GAMES_A_TO_D, played("e", "2026-11-04T20:40:00Z", [4, 5], [1, 2, 3], "FASCIST")]);
-    const lines = Array.from(card("most-games-session").querySelectorAll("li")).map((li) => li.textContent);
+    const lines = Array.from(card("most-games-session").querySelectorAll("li")).map((li) => plain(li.textContent));
     expect(lines).toEqual([
       "2 games · Wed 4 Nov 2026 · 1 h 10 min",
       "1 game · Tue 3 Nov 2026 · 30 min",

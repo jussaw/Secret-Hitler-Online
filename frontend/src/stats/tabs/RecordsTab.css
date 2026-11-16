@@ -27,7 +27,8 @@
     overflow-wrap: anywhere;
 }
 
-/* A record's line: the holders, then " · 3 wins · Sun 4 Oct 2026 to Tue 6 Oct 2026". */
+/* A record's line: the holders, then " · 3 wins · Sun 4 Oct 2026 to Tue 6 Oct 2026". It wraps
+   only between its parts (and inside a name too long for the card). */
 .stats-screen p.records-line {
     font-family: var(--textFont);
     font-weight: 700;
@@ -38,15 +39,22 @@
     overflow-wrap: anywhere;
 }
 
+.records-whole {
+    white-space: nowrap;
+}
+
 .records-names {
     font-size: 17px;
     color: var(--headerTextColor);
 }
 
+.records-upset .records-names {
+    font-size: inherit;
+}
+
 .records-count,
 .records-change {
     color: var(--headerTextColor);
-    white-space: nowrap;
     font-variant-numeric: tabular-nums;
 }
 
@@ -56,9 +64,10 @@
     color: var(--buttonHoverFill);
 }
 
-/* Each completed month's player of the month: the month, the names (wrapping in their column)
-   and the wins, in RankedTable's look. */
-.records-history {
+/* The best weeks and months (the rank, the name over its period, the wins) and the players of
+   the month (the month over its holders, the wins), in RankedTable's look. The middle column
+   takes what is left, so a long name wraps there in whole lines. */
+.records-table {
     width: 100%;
     border-collapse: collapse;
     font-family: var(--textFont);
@@ -67,37 +76,56 @@
     color: var(--textColorOnDark);
 }
 
-.records-history td {
+.records-table td {
     padding: 4px 6px;
     vertical-align: middle;
     min-width: 0;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.records-history tr:first-child td {
+.records-table tr:first-child td {
     border-top: none;
 }
 
-.records-history td:first-child {
+.records-table td:first-child {
     padding-left: 0;
 }
 
-.records-history td:last-child {
+.records-table td:last-child {
     padding-right: 0;
 }
 
-.records-history-month {
-    font-weight: 600;
-    color: var(--buttonHoverFill);
+.records-rank {
+    width: 1%;
+    white-space: nowrap;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
 }
 
-.records-history-names {
+.records-who {
     width: 100%;
     font-weight: 500;
     color: var(--headerTextColor);
 }
 
-.records-history-wins {
+.records-sub {
+    display: block;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--buttonHoverFill);
+}
+
+.records-holders {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.records-holders > li {
+    min-width: 0;
+}
+
+.records-wins {
     white-space: nowrap;
     text-align: right;
     font-weight: 700;
@@ -145,10 +173,10 @@
     color: var(--headerTextColor);
 }
 
-/* Each history row at least 44px tall wherever the game's stacked query matches, so a name that
+/* Each table row at least 44px tall wherever the game's stacked query matches, so a name that
    becomes a link (Phase 22) is a 44px target, as in RankedTable. */
 @media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
-    .records-history td {
+    .records-table td {
         height: 44px;
         box-sizing: border-box;
     }
