@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import fixture from "./fixtures/recorded-games.json";
 import { ev, fiveSeatGame } from "./game/sampleGames";
-import type { Card, GameEvent } from "./record";
+import { parseStatsData, type Card, type GameEvent, type GameRecord } from "./record";
 import { formatDecisionTime, rounds } from "./rounds";
 import { makeRecord } from "./testRecords";
 
@@ -465,4 +466,138 @@ describe("blame and decision times", () => {
     expect(noDraw.blame, "no draw recorded").toBeNull();
   });
 });
+
+describe.each(parseStatsData(JSON.parse(JSON.stringify(fixture))).games.map((game) => [game.id, game] as const))(
+  "the recorded game %s",
+  (_id: string, game: GameRecord) => {
+    const rs = rounds(game);
+    const last = rs[rs.length - 1];
+    const cpu = (seat: number | null) => seat !== null && game.seats[seat].cpu;
+
+    it("has one round per number, 1 to rounds", () =>
+      expect(rs.map((x) => x.r)).toEqual(Array.from({ length: game.rounds }, (_, i) => i + 1)));
+
+    it("adds up to the final board", () => {
+      expect(rs.filter((x) => x.enacted?.policy === "L")).toHaveLength(game.liberalPolicies);
+      expect(rs.filter((x) => x.enacted?.policy === "F")).toHaveLength(game.fascistPolicies);
+    });
+
+    it("ends every term but the last", () => {
+      expect(rs.slice(0, -1).every((x) => x.endTerm !== null)).toBe(true);
+      if (game.outcome !== "UNFINISHED") expect(last.endTerm).toBeNull();
+    });
+
+    it("executes exactly the dead", () =>
+      expect(rs.flatMap((x) => (x.power?.kind === "execute" ? [x.power.target] : [])).sort())
+        .toEqual(game.seats.flatMap((s, i) => (s.alive ? [] : [i])).sort()));
+
+    it("ends as its outcome says", () => {
+      switch (game.outcome) {
+        case "LIBERAL_POLICIES":
+          expect(game.liberalPolicies).toBe(5);
+          expect(last.enacted?.policy).toBe("L");
+          break;
+        case "FASCIST_POLICIES":
+          expect(game.fascistPolicies).toBe(6);
+          expect(last.enacted?.policy).toBe("F");
+          break;
+        case "HITLER_ELECTED":
+          expect(last.election?.passed).toBe(true);
+          expect(last.chancellor).not.toBeNull();
+          expect(game.seats[last.chancellor!].role).toBe("HITLER");
+          expect(last.enacted).toBeNull();
+          expect(game.fascistPolicies).toBeGreaterThanOrEqual(3);
+          break;
+        case "HITLER_EXECUTED":
+          expect(last.power).toMatchObject({ kind: "execute", role: "HITLER" });
+          if (last.power?.kind === "execute") expect(game.seats[last.power.target].role).toBe("HITLER");
+          break;
+        case "UNFINISHED":
+          expect(game.winner).toBeNull();
+          break;
+      }
+    });
+
+    it("counts its votes", () => {
+      for (const round of rs) {
+        if (round.election === null) continue;
+        const { ja, nein, passed } = round.election;
+        expect(round.votes, `round ${round.r}'s votes`).toHaveLength(ja + nein);
+        expect(round.votes.filter((v) => v.ja), `round ${round.r}'s Ja votes`).toHaveLength(ja);
+        expect(passed, `round ${round.r}'s result`).toBe(ja > nein);
+      }
+    });
+
+    it("draws after every passed election that did not elect Hitler", () => {
+      for (const round of rs) {
+        if (!round.election?.passed) continue;
+        if (round === last && game.outcome === "HITLER_ELECTED") continue;
+        expect(round.hand, `round ${round.r}'s hand`).toHaveLength(3);
+        expect(round.discard, `round ${round.r}'s discard`).not.toBeNull();
+      }
+    });
+
+    it("a failed election moves the tracker", () => {
+      for (const round of rs) {
+        if (round.election?.passed !== false) continue;
+        expect([1, 2, 3], `round ${round.r}'s tracker`).toContain(round.trackerAfter);
+        if (round.trackerAfter === 3) expect(round.enacted?.by, `round ${round.r}'s chaos`).toBe("chaos");
+      }
+    });
+
+    it("a chancellor enacts a card they were handed", () => {
+      for (const round of rs) {
+        if (round.enacted?.by !== "chancellor") continue;
+        expect(round.chancellorHand, `round ${round.r}'s two cards`).not.toBeNull();
+        expect(round.chancellorHand, `round ${round.r}'s two cards`).toContain(round.enacted.policy);
+      }
+    });
+
+    it("blames only a Fascist enacted by a chancellor", () => {
+      for (const round of rs) {
+        if (round.blame === null) continue;
+        expect(round.enacted, `round ${round.r}'s policy`).toEqual({ policy: "F", by: "chancellor" });
+        expect([round.president, round.chancellor], `round ${round.r}'s blame`).toContain(round.blame);
+      }
+    });
+
+    it("has no time below zero, and none for a CPU decider", () => {
+      for (const round of rs) {
+        const times = [...Object.values(round.ms), ...round.votes.map((v) => v.ms)];
+        for (const ms of times) if (ms !== null) expect(ms, `a time in round ${round.r}`).toBeGreaterThanOrEqual(0);
+        if (cpu(round.president)) {
+          const { nominate, discard, vetoAnswer, power, endTerm } = round.ms;
+          expect([nominate, discard, vetoAnswer, power, endTerm], `round ${round.r}'s CPU president`).toEqual([
+            null, null, null, null, null,
+          ]);
+        }
+        if (cpu(round.chancellor)) {
+          expect([round.ms.chancellor, round.ms.chancellorAfterVeto], `round ${round.r}'s CPU chancellor`).toEqual([
+            null, null,
+          ]);
+        }
+        for (const vote of round.votes) if (cpu(vote.seat)) expect(vote.ms, `round ${round.r}'s CPU vote`).toBeNull();
+      }
+      if (!game.hasCpu) {
+        expect(rs.some((x) => x.ms.nominate !== null), "some timed nomination").toBe(true);
+        expect(rs.some((x) => x.votes.some((v) => v.ms !== null)), "some timed vote").toBe(true);
+      }
+    });
+
+    it("follows the rotation", () => {
+      for (let k = 2; k <= rs.length; k++) {
+        const before = game.events.filter((e) => e.r < k);
+        const t = before[before.length - 1].t;
+        const cut: GameRecord = {
+          ...game,
+          outcome: "UNFINISHED",
+          winner: null,
+          events: [...before, ev.end(k, t, "UNFINISHED")],
+        };
+        const cutRounds = rounds(cut);
+        expect(cutRounds[cutRounds.length - 1], `round ${k}`).toMatchObject({ r: k, president: rs[k - 1].president });
+      }
+    });
+  }
+);
 
