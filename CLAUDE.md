@@ -395,7 +395,8 @@ keeps credit to upstream and to the board game's creators.
   a positive whole number and keeps a number no player has, which matches no seat; `filterSearch`,
   `DEFAULT_FILTER`, frozen, and `togglePlayer`, back to every player when the last chip comes back
   on; `countedGames`, the finished games with no CPU seat unless `cpu` and every human seat a player
-  that is on, by `endedAt`, then `id`; `MIN_GAMES` and `MIN_CHANCES`, both 5, and `rate`, null
+  that is on, in `compareByEnd`'s order (`endedAt`, then `id`), which Elo replays in too; `nameOf`,
+  a name or `Player N`; `MIN_GAMES` and `MIN_CHANCES`, both 5, and `rate`, null
   below its minimum; `rankRows`, competition ranks (1, 2, 2, 4), ties by count, then
   `compareNames` (English, ignoring case), then number, and rows below the minimum unranked at the
   bottom by count; `humanSeats`, `seatWon`, `sessions`, a new one where a game starts 3 h or more
@@ -419,17 +420,19 @@ keeps credit to upstream and to the board game's creators.
   colours, a sticky name column with the full name as its title, each cell its text then its count,
   a 0 too, and "—" for a cell the row lacks, in a `ScrollRegion`; rows 44px in the stacked query),
   `charts/` (`LineChart`, lines dashed where a point says so, `SERIES_COLORS`, `lineChartGeometry`,
-  `describeLines`; `StackedBarChart`, parts bottom-up with its own legend, `stackedBarGeometry`,
-  `describeBars`; both hand-written SVG sized from their box by `useChartWidth`, an image described
-  in words, the nearest point's or part's details on a hover, a pen or a tap in `.chart-tooltip`,
-  which slides with the point's share of the plot so it never leaves the chart, and
-  `touch-action: pan-y`; `axis.ts`'s `niceTicks`; `charts.css`, which Phase 21's charts share),
+  `describeLines`; `StackedBarChart`, parts bottom-up with its own legend, the hovered part
+  outlined, `stackedBarGeometry`, `describeBars`; both hand-written SVG sized from their box by
+  `useChartWidth`, inside `chartParts.tsx`'s `ChartFrame`: an image described in words, the legend,
+  `touch-action: pan-y`, and the nearest point's or part's details on a hover, a pen or a tap in
+  `.chart-tooltip`, as wide as its text and sliding with the point's share of the plot, so it never
+  leaves the chart; `chartParts.tsx` also has `YAxis`, `nearest` and `px`; `axis.ts`'s `niceTicks`;
+  `charts.css`; Phase 21's charts share them all),
   `FilterBar` (a chip per player by name, `aria-pressed`, and the switch "Include games with CPU
-  players", in the lobby's grey; controlled, so the address is the filter's only copy; in the
+  players", in the lobby's grey, `greyButtons.css`'s `.stats-grey`, which the tabs share; controlled, so the address is the filter's only copy; in the
   phone-only query one line, "Players: 7 of 8 · CPU off", that opens the panel; `showPlayers={false}`
   shows the switch alone), `TabRow` (a `nav` "Stats sections" of seven `StatsLink`s in the button
-  look carrying the filter, the current one orange, `aria-current="page"` and scrolled into view;
-  it wraps on desktop and in tall windows and scrolls sideways in one row on phones, 44px targets in
+  look carrying the filter, the current one orange and `aria-current="page"`, which the row (never
+  the page) scrolls to show, again once the web fonts load; it wraps on desktop and in tall windows and scrolls sideways in one row on phones, 44px targets in
   the stacked query) and `tabs/` (`tabs/tabs.ts`'s `TABS`, the seven tabs in order with their
   labels, OVERVIEW to RECORDS, each a file of its own, `OverviewTab` to `RecordsTab`, a
   `ComingSoon` card "Coming in a later update." until its phase fills that file). `TabsPage` shows
@@ -774,8 +777,10 @@ keeps credit to upstream and to the board game's creators.
   accepted veto. `stats-engine.spec.ts` checks the filter and the tab row at every size (on phones
   the tab row one row that scrolls, and the open panel of ten twelve-character chips fitting at
   320x568), that the chips and the CPU switch change the address and follow back and a reload, that
-  the tabs keep the filter, and that phones fold the filter into one line. No `e2e/` file imports
-  `src/constants` or anything that does (`api.ts`, `App`): it
+  the tabs keep the filter and a link to a tab shows it in the row, that phones fold the filter into
+  one line, that every flex or grid child with text can shrink, that the grey controls share one
+  look, and, on `charts.css` alone, that a tooltip keeps its width at either edge and a hovered bar
+  is outlined. No `e2e/` file imports `src/constants` or anything that does (`api.ts`, `App`): it
   reads `window` when it loads, which throws in Playwright's Node process; specs build stats paths
   with `routePath`. Shared helpers are `e2e/lobby.ts`
   (`waitForPlayers`, `joinGuests`, with `pickLooks` false for guests who stay on the default
