@@ -1,0 +1,54 @@
+/* The power ranking: RankedTable.css's table (its rank, name and value columns, rows 44px tall in
+   the stacked query, and its unranked rows' grey), with a header row, the last change and games
+   as numbers, and provisional rows in italics. */
+.power-ranking th {
+    padding: 0 6px 4px;
+    font-weight: 600;
+    font-size: 12px;
+    text-align: right;
+    white-space: nowrap;
+    color: var(--textColorOnDark);
+}
+
+.power-ranking th:first-child {
+    padding-left: 0;
+}
+
+.power-ranking th:last-child {
+    padding-right: 0;
+}
+
+.power-ranking th.ranked-name {
+    text-align: left;
+    font-weight: 600;
+    color: var(--textColorOnDark);
+}
+
+/* A line under the header too. */
+.ranked-table.power-ranking tbody tr:first-child td {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.power-ranking .power-number {
+    white-space: nowrap;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.power-ranking .is-provisional td {
+    font-style: italic;
+}
+
+/* Phones (the game's phone-only query): tighter columns, so a twelve-character name keeps its
+   line at 412px with Linux's wider fonts. */
+@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
+    .ranked-table.power-ranking {
+        font-size: 14px;
+    }
+
+    .ranked-table.power-ranking th,
+    .ranked-table.power-ranking td {
+        padding-left: 3px;
+        padding-right: 3px;
+    }
+}

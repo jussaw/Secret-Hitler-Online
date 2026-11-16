@@ -466,7 +466,9 @@ keeps credit to upstream and to the board game's creators.
   glance" (Since last game, Last game, a link with its result and start, Win streak, Hot hand and
   Player of the month, whose names are `link={false}`; two columns in the phone-only query, a lone
   last card across both), then Ratings (`tabs/PowerRanking`, a `ScrollRegion` "Power ranking table"
-  of rank, name, Elo, the last change and games, provisional rows `.is-provisional` in italics; and
+  of rank, name, Elo, the last change and games in `RankedTable`'s look, its classes and
+  `RankedTable.css`, with `PowerRanking.css` adding the header row and provisional rows,
+  `.is-provisional`, in italics; and
   the rating history's `LineChart`, a colour per player by number so a filter never changes it),
   Headline (five `RankedTable`s and Liberal / Fascist wins) and Games (the latest games, each a
   link of its start and result, no names in it). Each card says `NO_GAMES` with no counted games,

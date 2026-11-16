@@ -1,4 +1,4 @@
-/* OVERVIEW (OverviewTab, PowerRanking): the dashboard, then the Ratings, Headline and Games
+/* OVERVIEW (OverviewTab; PowerRanking has its own file): the dashboard, then the Ratings, Headline and Games
    sections, each a grid of StatCards. App.css styles every h2, p and a, so these set their own
    sizes and margins. Every grid and flex child has min-width: 0, so a twelve-character name of
    wide letters wraps inside its column (PlayerName wraps anywhere) instead of widening the page. */
@@ -134,83 +134,9 @@
     min-width: 0;
 }
 
-/* The power ranking: rank, name, Elo, the last change and games. The name takes what is left. */
-.power-ranking {
-    width: 100%;
-    border-collapse: collapse;
-    font-family: var(--textFont);
-    font-size: 15px;
-    line-height: 1.3;
-    color: var(--textColorOnDark);
-}
-
-.power-ranking th {
-    font-weight: 600;
-    font-size: 12px;
-    text-align: right;
-    padding: 0 6px 4px;
-    white-space: nowrap;
-    color: var(--textColorOnDark);
-}
-
-.power-ranking td {
-    padding: 4px 6px;
-    vertical-align: middle;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.power-ranking th:first-child,
-.power-ranking td:first-child {
-    padding-left: 0;
-}
-
-.power-ranking th:last-child,
-.power-ranking td:last-child {
-    padding-right: 0;
-}
-
-.power-ranking .power-rank {
-    width: 1%;
-    white-space: nowrap;
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-}
-
-.power-ranking .power-name {
-    width: 100%;
-    text-align: left;
-    font-weight: 500;
-    color: var(--headerTextColor);
-}
-
-.power-ranking th.power-name {
-    color: var(--textColorOnDark);
-}
-
-.power-ranking .power-number {
-    white-space: nowrap;
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-}
-
-.power-ranking .power-rating {
-    font-weight: 700;
-    color: var(--headerTextColor);
-}
-
-.power-ranking .is-provisional td {
-    font-style: italic;
-    color: var(--textColorOnDark);
-}
-
-/* Touch sizes follow the game's stacked query: each power-ranking row and each game link is a
-   44px target, so a name that becomes a link (Phase 22) is one too. */
+/* Touch sizes follow the game's stacked query: each game link is a 44px target (the power
+   ranking's rows are RankedTable's, 44px there too). */
 @media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
-    .power-ranking td {
-        height: 44px;
-        box-sizing: border-box;
-    }
-
     .stats-screen a.overview-game-link {
         min-height: 44px;
         align-content: center;
@@ -248,16 +174,5 @@
 
     .stats-screen p.overview-value {
         font-size: 18px;
-    }
-
-    /* Tighter columns, so a twelve-character name keeps its line at 412px. */
-    .power-ranking {
-        font-size: 14px;
-    }
-
-    .power-ranking th,
-    .power-ranking td {
-        padding-left: 3px;
-        padding-right: 3px;
     }
 }
