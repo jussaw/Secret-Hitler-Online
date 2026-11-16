@@ -428,9 +428,9 @@ keeps credit to upstream and to the board game's creators.
   leaves the chart; `chartParts.tsx` also has `YAxis`, `nearest` and `px`; `axis.ts`'s `niceTicks`;
   `charts.css`; Phase 21's charts share them all),
   `FilterBar` (a chip per player by name, `aria-pressed`, and the switch "Include games with CPU
-  players", in the lobby's grey, `greyButtons.css`'s `.stats-grey`, which the tabs share; controlled, so the address is the filter's only copy; in the
-  phone-only query one line, "Players: 7 of 8 · CPU off", that opens the panel; `showPlayers={false}`
-  shows the switch alone), `TabRow` (a `nav` "Stats sections" of seven `StatsLink`s in the button
+  players", in the lobby's grey, `greyButtons.css`'s `.stats-grey`, which the tabs share;
+  controlled, so the address is the filter's only copy; in the phone-only query one line, "Players:
+  7 of 8 · CPU off", that opens the panel; `showPlayers={false}` shows the switch alone), `TabRow` (a `nav` "Stats sections" of seven `StatsLink`s in the button
   look carrying the filter, the current one orange and `aria-current="page"`, which the row (never
   the page) scrolls to show, again once the web fonts load; it wraps on desktop and in tall windows and scrolls sideways in one row on phones, 44px targets in
   the stacked query) and `tabs/` (`tabs/tabs.ts`'s `TABS`, the seven tabs in order with their
