@@ -267,16 +267,17 @@ export function RoundBlock({ round, seats }: { round: Round; seats: Seat[] }): J
     round.reshuffled && "Discards shuffled into the draw pile",
   ]);
 
+  // Each line's class, under round-block- (the game's own pages have a .round-tracker).
   const lines: [string, ReactNode | null][] = [
-    ["round-nomination", nomination],
-    ["round-votes", votes],
-    ["round-tracker", trackerAfterVeto ? null : tracker],
-    ["round-president", presidentCards],
-    ["round-chancellor", chancellorLine],
-    ["round-tracker", trackerAfterVeto ? tracker : null],
-    ["round-blame", blame],
-    ["round-power", powerLine],
-    ["round-end", end],
+    ["round-block-nomination", nomination],
+    ["round-block-votes", votes],
+    ["round-block-tracker", trackerAfterVeto ? null : tracker],
+    ["round-block-president", presidentCards],
+    ["round-block-chancellor", chancellorLine],
+    ["round-block-tracker", trackerAfterVeto ? tracker : null],
+    ["round-block-blame", blame],
+    ["round-block-power", powerLine],
+    ["round-block-end", end],
   ];
   return (
     <section className={`stats-card round-block ${edge}`} aria-labelledby={titleId}>

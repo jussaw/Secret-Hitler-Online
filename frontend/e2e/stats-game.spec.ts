@@ -95,6 +95,16 @@ test("a round's card: its edge and its lines' spacing", async ({ page }) => {
   ]) {
     expect((await style(`.round-block.round-${kind}`)).edge, kind).toBe(`6px ${color}`);
   }
+  // Each line is plain text in its card: no class of the game's own pages draws a box round one.
+  const boxed = await page.locator(".round-block p").evaluateAll((lines) =>
+    lines
+      .filter((line) => {
+        const s = getComputedStyle(line);
+        return s.paddingTop !== "0px" || s.paddingLeft !== "0px" || s.backgroundColor !== "rgba(0, 0, 0, 0)" || s.boxShadow !== "none";
+      })
+      .map((line) => `${line.className}: ${(line.textContent ?? "").slice(0, 30)}`)
+  );
+  expect(boxed).toEqual([]);
 });
 
 test("an unknown game says so", async ({ page }) => {
