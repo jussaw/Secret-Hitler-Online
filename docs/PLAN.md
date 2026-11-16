@@ -889,7 +889,7 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-17b-overview.md`](superpowe
 Issue #31: OVERVIEW at `/stats`, filling Phase 17A's placeholder: the dashboard (days since the last game, the last game, win streak, hot hand, player of the month), the power ranking, the rating history, the headline numbers and the latest games, under the filter and the toggle. `winStreaks` and `playerOfTheMonth` are shared with RECORDS (Phase 21B). Needs Phase 17A; runs beside Phases 18, 19, 20 and 21A, touching none of their files.
 
 - [x] `frontend/src/stats/overview.ts`: every OVERVIEW number, with `winStreaks` and `playerOfTheMonth` for RECORDS; 1,000 games well under a second
-- [ ] `frontend/src/stats/tabs/OverviewTab.tsx`: OVERVIEW, with the power ranking and the rating history
+- [x] `frontend/src/stats/tabs/OverviewTab.tsx`: OVERVIEW, with the power ranking and the rating history
 - [ ] `frontend/e2e/stats-overview.spec.ts`: OVERVIEW fits every stats size; the numbers follow the filter and the toggle; the rating history's details on hover or tap
 - [ ] `CLAUDE.md` and `README.md` describe OVERVIEW; the pull request shows `/stats` before and after
 
