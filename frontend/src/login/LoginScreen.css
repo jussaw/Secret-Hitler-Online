@@ -10,17 +10,19 @@
 /* --login-font is the column's text size, set in px and window units only, so --card-width,
    --control and --card-gap are the same lengths wherever they are used, whatever the font size
    there. --control is the height of the fields and of the buttons' faces, a touch target at the
-   least. Below 786px tall --control is that 44px, more of the window the shorter it is, so the
-   gaps between the cards close from 18px at 900px tall to 10px at 700px. Signed in, the widest
-   Discord username (32 m's) takes the account's line to three lines, and with every error line
-   showing the page fills about the whole window from 786px to 950px tall, where everything scales
-   with the window: half an em between a card's lines leaves it room at every tested size. */
+   least. Below 786px tall --control is that 44px, more of the window the shorter it is, and the
+   header (SiteHeader.css) is 44px tall at every desktop size, which is more of the window too, so
+   below 900px tall the gaps between the cards close from 18px to 8px at 700px, and the space above
+   the cards from 16px to 8px. Signed in, the widest Discord username (32 m's) takes the account's
+   line to three lines, and with every error line showing the page fills about the whole window
+   from 700px to 950px tall, where everything scales with the window: half an em between a card's
+   lines leaves it room at every tested size. */
 .login-body {
     --login-font: clamp(13px, 2vh, 19px);
     --card-width: calc(var(--login-font) * 30);
     --control: max(44px, calc(var(--login-font) * 2.8));
     --card-gap: calc(var(--login-font) * 0.5);
-    --page-gap: clamp(10px, 4vh - 18px, 18px);
+    --page-gap: clamp(8px, 5vh - 27px, 18px);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -28,7 +30,7 @@
     box-sizing: border-box;
     min-width: 0;
     min-height: 0;
-    padding: 16px;
+    padding: clamp(8px, 4vh - 20px, 16px) 16px 16px;
     font-family: var(--textFont);
     font-size: var(--login-font);
 }
@@ -242,20 +244,21 @@
 
 /* Phones only: the column from the top, as wide as the window less a gutter, with sizes that follow
    the window's width. The query is GameScreen.css's phone-only one. The page is as tall as its
-   column and scrolls if it must (at 320x568). The cards are 10px apart, as in the shortest
-   windows, and the footer's links take two lines (Stats among them). At 360x740, signed in with
-   the longest Discord username (three lines on Linux) and every error line showing, the 8px under
-   the footer leaves the page some 10px to spare. */
+   column and scrolls if it must (at 320x568). The header (SiteHeader.css) puts its links in a row
+   under the title, about 77px at 360x740, so the cards are 8px apart, as in the shortest windows,
+   with less padding inside them, and the footer's links take one line. At 360x740, signed in
+   with the longest Discord username (three lines on Linux) and every error line showing, the 8px
+   under the footer leaves the page some 15px to spare. */
 @media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
     .login-body {
         --login-font: clamp(13px, 4vw, 16px);
         --card-width: 100%;
-        --page-gap: 10px;
-        padding: 12px 12px 8px;
+        --page-gap: 8px;
+        padding: 8px 12px;
     }
 
     .login-card {
-        padding: 0.8em 0.8em 1em;
+        padding: 0.6em 0.8em 0.75em;
     }
 
     /* The code, JOIN and WATCH keep one row down to 360px wide, where Linux, which draws Germania

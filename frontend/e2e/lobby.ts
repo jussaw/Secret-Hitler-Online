@@ -1,6 +1,6 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 import { CONTACT_ERROR } from "../src/lobby/joinError";
-import type { Box } from "./layout";
+import { MIN_TARGET, type Box } from "./layout";
 import {
   LONGEST_DISCORD_NAME,
   playerSocket,
@@ -402,6 +402,23 @@ export async function longestLogin(page: Page, state: LoginState): Promise<void>
   await expect(error("join")).toHaveText(/error contacting the server/);
   await expect(error("account")).toHaveText(/error contacting the server/);
   if (signedIn) await expect(page.locator(".login-account-name")).toHaveText("WOLFGANG MAX");
+}
+
+/**
+ * The login page's header links (STATS, GAMES, PLAYERS and PLAY, the stats pages' header) that are
+ * smaller than a 44px target, as `PLAY 40x44`. `smallTargets` measures buttons, not links, so the
+ * login tests check these with it. Throws when the header has no links, so a pass has measured
+ * something.
+ */
+export function smallHeaderLinks(page: Page): Promise<string[]> {
+  return page.evaluate((min) => {
+    const links = Array.from(document.querySelectorAll(".login-screen > header nav a"));
+    if (links.length !== 4) throw new Error(`the login page's header has ${links.length} links`);
+    return links.flatMap((a) => {
+      const r = a.getBoundingClientRect();
+      return r.width >= min && r.height >= min ? [] : [`${a.textContent} ${Math.round(r.width)}x${Math.round(r.height)}`];
+    });
+  }, MIN_TARGET);
 }
 
 /**

@@ -1074,7 +1074,7 @@ Added after Phases 13 to 22B were planned. The stats pages' top bar (SECRET-HITL
 - [x] One shared header component, taken from 15A's `StatsHeader`, used by the stats pages and the login page; the lobby and the game page keep their own headers
 - [x] Login page: the shared header, with PLAY marked as the current page (`aria-current="page"`, the tab row's current look); the footer's "Stats" link removed; the header's sound control removed (sounds stay in the lobby and the game)
 - [x] Lobby: its own header unchanged (sound control and spectator count); only the footer's "Stats" link removed; the victory screen's "See this game" stays
-- [ ] The login page and the lobby still fit one screen at every tested size and keep 44px targets on phones (the cards' spacing re-fitted, checked with Linux fonts in the Playwright image)
+- [x] The login page and the lobby still fit one screen at every tested size and keep 44px targets on phones (the cards' spacing re-fitted, checked with Linux fonts in the Playwright image)
 - [ ] Browser and unit tests updated: the header on each page, PLAY current on the login page, no speaker on the login page, no footer "Stats" link
 - [ ] `CLAUDE.md`, `README.md` (screenshots in `docs/images/` if the login page or lobby look different) and `DEVELOPMENT.md` updated; the pull request shows the login page and the lobby before and after, on desktop and on a phone
 
