@@ -50,7 +50,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 15B. Game history | `phase-15b-game-history` | done |
 | 16. The game page | `phase-16-game-page` | done |
 | 17A. Stats engine | `phase-17a-stats-engine` | done |
-| 17B. OVERVIEW | `phase-17b-overview` | in progress |
+| 17B. OVERVIEW | `phase-17b-overview` | done |
 | 18. ROLES & CARDS | `phase-18-roles-cards` | done |
 | 19. VOTES & POWERS | `phase-19-votes-powers` | planned |
 | 20. RIVALS and ENDINGS | `phase-20-rivals-endings` | done |
@@ -895,9 +895,9 @@ Issue #31: OVERVIEW at `/stats`, filling Phase 17A's placeholder: the dashboard 
 
 **Phase 17B acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] OVERVIEW shows the numbers this design gives for a known set of records, under the filter and the toggle
-- [ ] PR merged into `development`
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] OVERVIEW shows the numbers this design gives for a known set of records, under the filter and the toggle
+- [x] PR merged into `development`
 - [ ] The user opens OVERVIEW on the deployed build, on a desktop and on a phone, once games are recorded, and changes the filter and the toggle
 
 ---
