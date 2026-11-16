@@ -5,6 +5,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static server.util.LobbyTesting.account;
+import static server.util.LobbyTesting.join;
 
 import org.junit.After;
 import org.junit.Before;
@@ -31,7 +33,7 @@ public class LobbyCloseTest {
     private static Lobby timedOutLobby(FakeSocket ann) {
         Lobby.LOBBY_TIMEOUT_DURATION_IN_MIN = 0; // the lobby starts out timed out, and stays so
         Lobby lobby = new Lobby();
-        lobby.addUser(ann.ctx, "Ann", "key");
+        join(lobby, ann.ctx, "Ann", "key");
         return lobby;
     }
 
@@ -64,14 +66,14 @@ public class LobbyCloseTest {
         FakeSocket ann = FakeSocket.open();
         Lobby lobby = timedOutLobby(ann);
         lobby.removeUser(ann.ctx); // inside the grace window: Ann would take back her own seat
-        assertNull("before it closes, Ann takes her seat back", lobby.joinRefusal("Ann", null));
+        assertNull("before it closes, Ann takes her seat back", lobby.joinRefusal(account("Ann"), null));
         lobby.closeIfTimedOut();
 
-        assertEquals(Lobby.JoinRefusal.CLOSED, lobby.joinRefusal("Ann", null));
-        assertEquals(Lobby.JoinRefusal.CLOSED, lobby.joinRefusal("Bob", "another key"));
-        expectRefused(() -> lobby.addUser(FakeSocket.open().ctx, "Bob", "another key"),
+        assertEquals(Lobby.JoinRefusal.CLOSED, lobby.joinRefusal(account("Ann"), null));
+        assertEquals(Lobby.JoinRefusal.CLOSED, lobby.joinRefusal(account("Bob"), "another key"));
+        expectRefused(() -> join(lobby, FakeSocket.open().ctx, "Bob", "another key"),
                 "a closed lobby took a player");
-        assertFalse(lobby.hasUserWithName("Bob"));
+        assertFalse(lobby.hasAccount(account("Bob")));
     }
 
     @Test
@@ -80,9 +82,9 @@ public class LobbyCloseTest {
         Lobby lobby = timedOutLobby(ann);
         lobby.closeIfTimedOut();
 
-        assertEquals(Lobby.JoinRefusal.CLOSED, lobby.joinRefusal("Ann", "key"));
+        assertEquals(Lobby.JoinRefusal.CLOSED, lobby.joinRefusal(account("Ann"), "key"));
         FakeSocket back = FakeSocket.open();
-        expectRefused(() -> lobby.addUser(back.ctx, "Ann", "key"), "a closed lobby took a connection in place of Ann's");
+        expectRefused(() -> join(lobby, back.ctx, "Ann", "key"), "a closed lobby took a connection in place of Ann's");
         assertTrue("Ann's connection is the one the sweep closes", lobby.hasUser(ann.ctx));
         assertFalse(lobby.hasUser(back.ctx));
     }

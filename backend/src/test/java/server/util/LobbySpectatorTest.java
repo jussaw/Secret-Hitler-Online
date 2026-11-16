@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static server.util.LobbyTesting.join;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -26,7 +27,7 @@ public class LobbySpectatorTest {
         List<FakeSocket> players = new ArrayList<>();
         for (int i = 1; i <= count; i++) {
             FakeSocket player = FakeSocket.open();
-            lobby.addUser(player.ctx, "P" + i);
+            join(lobby, player.ctx, "P" + i);
             lobby.trySetUserIcon("p" + i, player.ctx);
             players.add(player);
         }
@@ -102,7 +103,10 @@ public class LobbySpectatorTest {
         assertEquals("game", packet.getString("type"));
         assertEquals(1, packet.getInt("spectatorCount"));
         assertEquals(List.of(), Secrets.find(packet));
+        JSONObject icons = packet.getJSONObject("icon");
+        assertEquals("the portraits are keyed by seat name", Set.of("P1", "P2", "P3", "P4", "P5"), icons.keySet());
         for (int i = 0; i < players.size(); i++) {
+            assertEquals("p" + (i + 1), icons.getString("P" + (i + 1)));
             JSONObject own = players.get(i).last().getJSONObject("players").getJSONObject("P" + (i + 1));
             assertTrue("P" + (i + 1) + " sees their own role", own.has("id"));
         }
@@ -116,7 +120,7 @@ public class LobbySpectatorTest {
         lobby.updateAllUsers();
 
         Set<String> expected = new HashSet<>(GameToJSONConverter.convert(lobby.game(), "P1").keySet());
-        expected.addAll(Set.of("type", "icon", "spectatorCount"));
+        expected.addAll(Set.of("type", "icon", "spectatorCount", "you"));
         assertEquals(expected, players.get(0).last().keySet());
         assertEquals(0, players.get(0).last().getInt("spectatorCount"));
     }
@@ -133,7 +137,7 @@ public class LobbySpectatorTest {
         }
         FakeSocket player = FakeSocket.open();
         FakeSocket spectator = FakeSocket.open();
-        lobby.addUser(player.ctx, "P1");
+        join(lobby, player.ctx, "P1");
         lobby.addSpectator(spectator.ctx);
         lobby.removeUser(player.ctx);
 
@@ -141,7 +145,7 @@ public class LobbySpectatorTest {
         assertTrue("a spectator does not keep the lobby alive", lobby.hasTimedOut());
 
         FakeSocket next = FakeSocket.open();
-        lobby.addUser(next.ctx, "P2");
+        join(lobby, next.ctx, "P2");
         lobby.recordActivity(next.ctx);
         assertFalse("a player does", lobby.hasTimedOut());
     }

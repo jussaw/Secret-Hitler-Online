@@ -9,9 +9,6 @@ import io.javalin.Javalin;
 import io.javalin.websocket.WsContext;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +26,7 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
 import server.util.Lobby;
 
@@ -38,9 +36,11 @@ import server.util.Lobby;
  * handler's lock, so it can land between a handler's lookup of the lobby and its work there. Each
  * test runs the real sweep at one such point, on the handler's own thread: just before or just
  * after the handler looks the lobby up in {@code codeToLobby}, or just before a message's handler.
- * One more runs it on its own thread while a join holds the lobby's lock. No handler may throw, no
+ * Two more run it on another thread: while a join holds the lobby's lock, and while a join waits
+ * for {@code ACCOUNTS_LOCK} between its lookup and the lobby's lock. No handler may throw, no
  * connection may be left in a lobby the sweep has removed, and the close handlers forget every
- * connection the sweep closes. Over real sockets.
+ * connection the sweep closes. Players are the accounts of their session cookies. Over real
+ * sockets.
  */
 public class LobbyTimeoutServerTest {
     private static Javalin app;
@@ -50,6 +50,9 @@ public class LobbyTimeoutServerTest {
     // The messages whose handlers have finished, in order.
     private static final BlockingQueue<String> handled = new LinkedBlockingQueue<>();
     private static final AtomicBoolean sweepBeforeNextMessage = new AtomicBoolean();
+
+    @Rule
+    public final SignedInPlayers accounts = new SignedInPlayers();
 
     private final List<TestSocket> sockets = new ArrayList<>();
     private ConcurrentHashMap<String, Lobby> savedLobbies;
@@ -177,14 +180,14 @@ public class LobbyTimeoutServerTest {
         }
 
         @Override // not synchronized: the join's handler holds this lobby's lock around the add
-        public WsContext addUser(WsContext context, String name, String rejoinKey) {
+        public WsContext addUser(WsContext context, String accountId, String name, String rejoinKey) {
             if (armed) {
                 armed = false;
                 sweep = new Thread(SecretHitlerServer::removeInactiveLobbies, "sweep");
                 sweep.start();
                 sweepWaited = awaitBlockedOnThisLobby(sweep);
             }
-            return super.addUser(context, name, rejoinKey);
+            return super.addUser(context, accountId, name, rejoinKey);
         }
 
         private boolean awaitBlockedOnThisLobby(Thread thread) {
@@ -220,15 +223,23 @@ public class LobbyTimeoutServerTest {
         return register(code, new Lobby());
     }
 
+    /** Opens a spectator's socket: no session and no {@code Origin}. */
     private TestSocket connect(String query) throws Exception {
         TestSocket socket = TestSocket.connect(port, query);
         sockets.add(socket);
         return socket;
     }
 
+    /** Opens a socket of the player named {@code name}, signed in as their account. */
+    private TestSocket connectAs(String name, String query) throws Exception {
+        TestSocket socket = TestSocket.connect(port, query, accounts.session(name));
+        sockets.add(socket);
+        return socket;
+    }
+
     /** Connects a player with the portrait p1, and waits until the server has taken it. */
     private TestSocket player(String code, String name) throws Exception {
-        TestSocket player = connect("lobby=" + code + "&name=" + name + "&rejoinKey=key-of-" + name);
+        TestSocket player = connectAs(name, "lobby=" + code + "&rejoinKey=key-of-" + name);
         player.send(command(code, name, "select-icon").put("icon", "p1"));
         player.next("ok");
         return player;
@@ -243,12 +254,6 @@ public class LobbyTimeoutServerTest {
     /** A command as the page sends it: a spectator's name is "". */
     private static JSONObject command(String code, String name, String command) {
         return new JSONObject().put("lobby", code).put("name", name).put("command", command);
-    }
-
-    private static HttpResponse<String> checkLogin(String query) throws Exception {
-        HttpRequest request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/check-login?" + query))
-                .build();
-        return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
     }
 
     /** Waits for the server to close the socket, and fails with {@code failureIfOpen} if it never does. */
@@ -299,7 +304,7 @@ public class LobbyTimeoutServerTest {
             TestSocket bob = player(code, "Bob");
 
             lobbies.sweepAtNextLookup(code, timing);
-            TestSocket ann = connect("lobby=" + code + "&name=Ann&rejoinKey=key-of-Ann");
+            TestSocket ann = connectAs("Ann", "lobby=" + code + "&rejoinKey=key-of-Ann");
             TestSocket.CloseInfo refused = awaitClose(ann,
                     what + ": Ann was left connected to a lobby the sweep had removed");
 
@@ -343,7 +348,7 @@ public class LobbyTimeoutServerTest {
         TestSocket bob = player(code, "Bob");
 
         lobby.sweepDuringNextAdd();
-        TestSocket ann = connect("lobby=" + code + "&name=Ann&rejoinKey=key-of-Ann");
+        TestSocket ann = connectAs("Ann", "lobby=" + code + "&rejoinKey=key-of-Ann");
         assertTimedOut("Ann, who joined before the sweep closed the lobby", ann);
         lobby.sweep().join(5000);
 
@@ -352,6 +357,49 @@ public class LobbyTimeoutServerTest {
         assertTimedOut("Bob", bob);
         assertFalse(lobbies.containsKey(code));
         awaitNoConnectionsOf("a sweep waiting for a join", lobby);
+    }
+
+    /**
+     * The sweep comes after the join has looked the lobby up, while the join waits for
+     * {@code ACCOUNTS_LOCK} to read its account's name, before it takes the lobby's lock: the join
+     * finds the lobby closed under that lock, and is refused as if the lobby were gone.
+     */
+    @Test
+    public void aJoinWaitingForTheAccountsLockAsTheSweepComesIsRefused() throws Exception {
+        String code = code("TOA");
+        Lobby lobby = lobby(code);
+        TestSocket bob = player(code, "Bob");
+
+        TestSocket ann;
+        synchronized (SecretHitlerServer.ACCOUNTS_LOCK) {
+            ann = connectAs("Ann", "lobby=" + code + "&rejoinKey=key-of-Ann");
+            awaitAThreadBlockedOn(SecretHitlerServer.ACCOUNTS_LOCK); // Ann's join, past its lookup
+            SecretHitlerServer.removeInactiveLobbies();
+        }
+        TestSocket.CloseInfo refused = awaitClose(ann, "Ann was left connected to a lobby the sweep had removed");
+
+        assertNoHandlerThrew("a sweep while a join waits for ACCOUNTS_LOCK");
+        assertEquals(1002, refused.code);
+        assertEquals("The lobby '" + code + "' does not exist.", refused.reason);
+        assertTimedOut("Bob", bob);
+        assertFalse(lobbies.containsKey(code));
+        awaitNoConnectionsOf("a sweep while a join waits for ACCOUNTS_LOCK", lobby);
+    }
+
+    /** Waits up to 5 s for a thread to block on {@code lock}. */
+    private static void awaitAThreadBlockedOn(Object lock) throws InterruptedException {
+        int id = System.identityHashCode(lock);
+        long deadline = System.currentTimeMillis() + 5000;
+        while (System.currentTimeMillis() < deadline) {
+            for (ThreadInfo thread : ManagementFactory.getThreadMXBean().dumpAllThreads(false, false)) {
+                if (thread.getThreadState() == Thread.State.BLOCKED && thread.getLockInfo() != null
+                        && thread.getLockInfo().getIdentityHashCode() == id) {
+                    return;
+                }
+            }
+            Thread.sleep(5);
+        }
+        fail("no thread waited for the lock within 5 s");
     }
 
     @Test
@@ -398,13 +446,15 @@ public class LobbyTimeoutServerTest {
     @Test
     public void aLoginCheckAsTheLobbyTimesOutFindsNoLobby() throws Exception {
         for (Timing timing : Timing.values()) {
-            for (String who : List.of("name=Ann", "spectator=true")) {
-                String what = who + ", a sweep " + timing;
+            for (boolean spectator : List.of(false, true)) {
+                String what = (spectator ? "a spectator" : "Ann") + ", a sweep " + timing;
                 String code = code("TOL");
                 lobby(code);
 
                 lobbies.sweepAtNextLookup(code, timing);
-                HttpResponse<String> login = checkLogin("lobby=" + code + "&" + who);
+                HttpResponse<String> login = spectator
+                        ? SignedInPlayers.checkLogin(port, "lobby=" + code + "&spectator=true", null)
+                        : SignedInPlayers.checkLogin(port, "lobby=" + code, accounts.session("Ann"));
 
                 assertEquals(what + ": " + login.body(), 404, login.statusCode());
                 assertEquals(what, "No such lobby found.", login.body());

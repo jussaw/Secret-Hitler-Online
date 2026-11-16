@@ -1,11 +1,11 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { signInPage, uniqueName } from "./accounts";
 import {
   codeField,
   createLobby,
   joinGuests,
   joinLobby,
   lobbyCode,
-  nameField,
   waitForPlayers,
   watchLobby,
 } from "./lobby";
@@ -24,10 +24,11 @@ class Opened {
     return page;
   }
 
-  /** A second page that creates a lobby as "Host Player". */
-  async host(browser: Browser): Promise<{ host: Page; code: string }> {
+  /** A second page that creates a lobby as uniqueName("Host Player"), the returned `name`. */
+  async host(browser: Browser): Promise<{ host: Page; code: string; name: string }> {
     const host = await this.page(browser);
-    return { host, code: await createLobby(host, "Host Player") };
+    const name = uniqueName("Host Player");
+    return { host, code: await createLobby(host, name), name };
   }
 
   async guests(baseURL: string, lobby: string, count: number): Promise<void> {
@@ -54,7 +55,7 @@ test("a player watches instead, and the others see the seat go", async ({ page, 
   const opened = new Opened();
   try {
     const { host, code } = await opened.host(browser);
-    await joinLobby(page, code, "Ann");
+    await joinLobby(page, code, uniqueName("Ann"));
     await waitForPlayers(host, 2);
 
     await page.getByRole("button", { name: "WATCH INSTEAD" }).click();
@@ -68,25 +69,26 @@ test("a player watches instead, and the others see the seat go", async ({ page, 
   }
 });
 
-test("a spectator plays instead and picks a look", async ({ page, browser, context, baseURL }) => {
+test("a spectator plays instead and picks a look", async ({ page, browser }) => {
   const opened = new Opened();
   try {
     const { host, code } = await opened.host(browser);
-    await context.addCookies([{ name: "name", value: "Sam", url: baseURL! }]);
+    const sam = uniqueName("Sam");
+    await signInPage(page, sam);
     await watchLobby(page, code);
+    // Signed in with a name, PLAY INSTEAD takes the seat at once, under the account's name: no
+    // prompt asks for one, and the portrait picker opens.
     await page.getByRole("button", { name: "PLAY INSTEAD" }).click();
-    await expect(page.getByRole("textbox", { name: "Your name" })).toHaveValue("Sam");
-
-    await page.getByRole("button", { name: "CONTINUE" }).click();
     const portrait = page.locator("#icon.selectable:not(.disabled)").first();
     await expect(portrait).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Your name" })).toHaveCount(0);
     // An earlier bug swapped the picker for an empty box about a second later.
     await page.waitForTimeout(1500);
     await expect(portrait).toBeVisible();
     await portrait.click();
     await page.getByRole("button", { name: "CONFIRM" }).click();
 
-    await expect(page.locator('.lobby-players li.is-user[data-player="Sam"]')).toBeVisible();
+    await expect(page.locator(`.lobby-players li.is-user[data-player="${sam}"]`)).toBeVisible();
     expect(await spectatorCookie(page)).toBeUndefined();
     await expect(host.locator(".lobby-player-count")).toHaveText("2 / 10");
   } finally {
@@ -99,6 +101,7 @@ test("a full lobby turns PLAY INSTEAD off", async ({ page, browser, baseURL }) =
   try {
     const { code } = await opened.host(browser);
     await opened.guests(baseURL!, code, 9);
+    await signInPage(page, uniqueName("Sam"));
     await watchLobby(page, code);
     await waitForPlayers(page, 10);
     await expect(page.getByRole("button", { name: "PLAY INSTEAD" })).toBeDisabled();
@@ -113,18 +116,30 @@ test("a full lobby turns PLAY INSTEAD off", async ({ page, browser, baseURL }) =
 test("a taken name keeps the spectator watching", async ({ page, browser }) => {
   const opened = new Opened();
   try {
-    const { code } = await opened.host(browser);
+    const { host, code, name: hostName } = await opened.host(browser);
+    // A first sign-in from watching (as after SIGN IN TO PLAY): the spectator cookie takes the page
+    // back to watching, and the account has no name yet, so CHOOSE A NAME opens over the lobby.
     await watchLobby(page, code);
-    await page.getByRole("button", { name: "PLAY INSTEAD" }).click();
-    await page.getByRole("textbox", { name: "Your name" }).fill("Host Player");
-    await page.getByRole("button", { name: "CONTINUE" }).click();
-    await expect(page.locator(".prompt-error")).toHaveText(
-      "There is already a user with the name 'Host Player' in the lobby."
-    );
+    await signInPage(page, null);
+    await page.reload();
+    await expect(page.locator(".lobby-screen")).toBeVisible();
+    const field = page.getByRole("textbox", { name: "Your name" });
+    await expect(page.locator("#alert-box h2")).toHaveText("CHOOSE A NAME");
 
-    await page.getByRole("button", { name: "CANCEL" }).click();
+    await field.fill(hostName);
+    await page.getByRole("button", { name: "CONTINUE" }).click();
+    await expect(page.locator(".prompt-error")).toHaveText("Another player already has that name.");
+    expect(await spectatorCookie(page)).toBe("true");
+    await expect(host.locator(".lobby-player-count")).toHaveText("1 / 10");
+
+    // A free name is saved, and the page keeps watching, PLAY INSTEAD ready.
+    await field.fill(uniqueName("Sam"));
+    await page.getByRole("button", { name: "CONTINUE" }).click();
+    await expect(field).toHaveCount(0);
     await expect(page.getByRole("button", { name: "PLAY INSTEAD" })).toBeVisible();
     await expect(page.getByRole("button", { name: "PLAY INSTEAD" })).toBeEnabled();
+    expect(await spectatorCookie(page)).toBe("true");
+    await expect(host.locator(".lobby-player-count")).toHaveText("1 / 10");
   } finally {
     await opened.close();
   }
@@ -133,14 +148,15 @@ test("a taken name keeps the spectator watching", async ({ page, browser }) => {
 test("the host passes on when the host watches instead", async ({ page, browser }) => {
   const opened = new Opened();
   try {
-    const code = await createLobby(page, "Host Player");
+    const code = await createLobby(page, uniqueName("Host Player"));
     const ann = await opened.page(browser);
-    await joinLobby(ann, code, "Ann");
+    const annName = uniqueName("Ann");
+    await joinLobby(ann, code, annName);
     await waitForPlayers(page, 2);
 
     await page.getByRole("button", { name: "WATCH INSTEAD" }).click();
     await expect(ann.getByRole("button", { name: "START GAME" })).toBeVisible({ timeout: 10_000 });
-    await expect(ann.locator('.lobby-players li[data-player="Ann"] .roster-detail')).toHaveText("HOST");
+    await expect(ann.locator(`.lobby-players li[data-player="${annName}"] .roster-detail`)).toHaveText("HOST");
   } finally {
     await opened.close();
   }
@@ -157,9 +173,10 @@ async function expectNoPicker(page: Page): Promise<void> {
 test("a reload keeps each switch, and coming back as Sam keeps the look", async ({ page, browser }) => {
   const opened = new Opened();
   try {
-    const { host, code } = await opened.host(browser);
-    await joinLobby(page, code, "Sam");
-    const look = await faceOf(page, "Sam");
+    const { host, code, name: hostName } = await opened.host(browser);
+    const sam = uniqueName("Sam");
+    await joinLobby(page, code, sam);
+    const look = await faceOf(page, sam);
     await page.getByRole("button", { name: "WATCH INSTEAD" }).click();
     await expect(page.getByRole("button", { name: "PLAY INSTEAD" })).toBeVisible();
     await page.reload();
@@ -170,17 +187,16 @@ test("a reload keeps each switch, and coming back as Sam keeps the look", async 
     // still remembers the portrait: Sam gets it back and no picker opens.
     await expect(host.locator(".lobby-player-count")).toHaveText("1 / 10", { timeout: 10_000 });
     await page.getByRole("button", { name: "PLAY INSTEAD" }).click();
-    await expect(page.getByRole("textbox", { name: "Your name" })).toHaveValue("Sam");
-    await page.getByRole("button", { name: "CONTINUE" }).click();
-    await expect(page.locator('.lobby-players li.is-user[data-player="Sam"]')).toBeVisible();
-    expect(await faceOf(page, "Sam")).toBe(look);
+    await expect(page.locator(`.lobby-players li.is-user[data-player="${sam}"]`)).toBeVisible();
+    expect(await faceOf(page, sam)).toBe(look);
     await expectNoPicker(page);
-    await expect(page.locator('.lobby-players li[data-player="Host Player"] .roster-detail')).toHaveText(
+    await expect(page.locator(`.lobby-players li[data-player="${hostName}"] .roster-detail`)).toHaveText(
       "HOST"
     );
 
+    // A player's reload lands on the login page, signed in as Sam, with the lobby's code.
     await page.reload();
-    await expect(nameField(page)).toHaveValue("Sam");
+    await expect(page.locator(".login-account-name")).toHaveText(sam);
     await expect(codeField(page)).toHaveValue(code);
     expect(await lobbyCode(page)).toBe(code);
   } finally {
@@ -191,11 +207,13 @@ test("a reload keeps each switch, and coming back as Sam keeps the look", async 
 test("the host comes back inside the grace window and is still the host", async ({ page, browser }) => {
   const opened = new Opened();
   try {
-    const code = await createLobby(page, "Host Player");
+    const hostName = uniqueName("Host Player");
+    const code = await createLobby(page, hostName);
     const ann = await opened.page(browser);
-    await joinLobby(ann, code, "Ann");
+    const annName = uniqueName("Ann");
+    await joinLobby(ann, code, annName);
     await waitForPlayers(page, 2);
-    const look = await faceOf(ann, "Host Player");
+    const look = await faceOf(ann, hostName);
     // Ann's page records whether the host's seat ever went (the count dropping to 1 / 10).
     await ann.evaluate(() => {
       const w = window as unknown as { __seatWentAway: boolean };
@@ -207,18 +225,17 @@ test("the host comes back inside the grace window and is still the host", async 
 
     await page.getByRole("button", { name: "WATCH INSTEAD" }).click();
     await page.getByRole("button", { name: "PLAY INSTEAD" }).click();
-    await page.getByRole("button", { name: "CONTINUE" }).click();
 
     await expect(page.getByRole("button", { name: "START GAME" })).toBeVisible();
-    await expect(page.locator('.lobby-players li[data-player="Host Player"] .roster-detail')).toHaveText(
+    await expect(page.locator(`.lobby-players li[data-player="${hostName}"] .roster-detail`)).toHaveText(
       "HOST"
     );
     await expectNoPicker(page);
     const order = () => ann.locator(".lobby-players li.roster-row").evaluateAll((rows) =>
       rows.map((row) => row.getAttribute("data-player"))
     );
-    expect(await order()).toEqual(["Host Player", "Ann"]);
-    expect(await faceOf(ann, "Host Player")).toBe(look);
+    expect(await order()).toEqual([hostName, annName]);
+    expect(await faceOf(ann, hostName)).toBe(look);
     // Proof that the whole switch fell inside the window: the seat never went from Ann's view.
     expect(
       await ann.evaluate(() => (window as unknown as { __seatWentAway: boolean }).__seatWentAway),
@@ -237,10 +254,11 @@ test("a game started right after someone watches instead seats only the connecte
   const opened = new Opened();
   try {
     // The host is `page` here: it presses START GAME and shows the game.
-    const code = await createLobby(page, "Host Player");
+    const code = await createLobby(page, uniqueName("Host Player"));
     await opened.guests(baseURL!, code, 4);
     const ann = await opened.page(browser);
-    await joinLobby(ann, code, "Ann");
+    const annName = uniqueName("Ann");
+    await joinLobby(ann, code, annName);
     await waitForPlayers(page, 6);
 
     // The host's page records whether Ann's seat went (the count dropping to 5 / 10) before the
@@ -258,12 +276,12 @@ test("a game started right after someone watches instead seats only the connecte
     // Ann's spectator socket is open, so her player socket has closed. The server still holds her
     // seat for its grace window: the start below falls inside it.
     await expect(page.locator(".App-header .spectator-count")).toHaveText("1");
-    await expect(page.locator('.lobby-players li[data-player="Ann"]')).toBeVisible();
+    await expect(page.locator(`.lobby-players li[data-player="${annName}"]`)).toBeVisible();
     await page.getByRole("button", { name: "START GAME" }).click();
 
     await expect(page.locator(".game-screen")).toBeVisible();
     await expect(page.locator(".game-screen .roster-row")).toHaveCount(5);
-    await expect(page.locator('.game-screen .roster-row[data-player="Ann"]')).toHaveCount(0);
+    await expect(page.locator(`.game-screen .roster-row[data-player="${annName}"]`)).toHaveCount(0);
     // Proof that the start fell inside Ann's window: her seat never went from the host's view.
     expect(
       await page.evaluate(() => (window as unknown as { __seatWentAway: boolean }).__seatWentAway),

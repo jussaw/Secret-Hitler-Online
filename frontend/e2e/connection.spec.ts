@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { uniqueName } from "./accounts";
 import { createLobby } from "./lobby";
 
 /**
@@ -26,7 +27,7 @@ test("a quiet lobby keeps its socket past the server's idle timeout", async ({ p
     ws.on("close", () => closed.push(ws.url()));
   });
 
-  await createLobby(page, "Host Player");
+  await createLobby(page, uniqueName("Host Player"));
   await expect.poll(() => opened.length).toBe(1);
   // A lone player in a lobby: nothing else sends, so only the client's pings keep the socket.
   await page.waitForTimeout(35_000);

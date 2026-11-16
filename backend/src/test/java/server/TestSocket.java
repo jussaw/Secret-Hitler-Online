@@ -6,7 +6,9 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -38,11 +40,34 @@ public final class TestSocket implements WebSocket.Listener {
     private TestSocket() {
     }
 
-    /** Opens {@code ws://localhost:<port>/game?<query>}. */
+    /**
+     * Opens {@code ws://localhost:<port>/game?<query>} with no cookie and no {@code Origin}, as a
+     * spectator may.
+     */
     public static TestSocket connect(int port, String query) throws Exception {
+        return connect(port, query, Map.of());
+    }
+
+    /**
+     * Opens {@code ws://localhost:<port>/game?<query>} as a player's page does: with the session's
+     * cookie ({@code Cookie: session=<token>}), or none when {@code sessionToken} is null, and the
+     * server's own origin ({@code Origin: http://localhost:<port>}).
+     */
+    public static TestSocket connect(int port, String query, String sessionToken) throws Exception {
+        Map<String, String> headers = new LinkedHashMap<>();
+        if (sessionToken != null) {
+            headers.put("Cookie", "session=" + sessionToken);
+        }
+        headers.put("Origin", "http://localhost:" + port);
+        return connect(port, query, headers);
+    }
+
+    /** Opens {@code ws://localhost:<port>/game?<query>} with these handshake headers. */
+    public static TestSocket connect(int port, String query, Map<String, String> headers) throws Exception {
         TestSocket socket = new TestSocket();
-        socket.ws = HttpClient.newHttpClient().newWebSocketBuilder()
-                .buildAsync(URI.create("ws://localhost:" + port + "/game?" + query), socket)
+        WebSocket.Builder builder = HttpClient.newHttpClient().newWebSocketBuilder();
+        headers.forEach(builder::header);
+        socket.ws = builder.buildAsync(URI.create("ws://localhost:" + port + "/game?" + query), socket)
                 .get(WAIT_SECONDS, TimeUnit.SECONDS);
         return socket;
     }

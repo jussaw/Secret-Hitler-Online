@@ -28,13 +28,14 @@ For more information, read the [official rulebook here](https://www.secrethitler
 
 - **A game screen that fits one screen.** The players are listed at the left, each with their office, any role you know and their vote. A round tracker over the boards lights the current step (nomination, election, legislative session, executive action) above the status line.
 - **Phones.** A phone held upright gets one column: the players in two compact columns, the tracker, the decks and the boards. A ten-player game fits without scrolling at common sizes such as 360x740 and 412x915. Phones down to 320px wide keep the same layout, though the page may scroll on them.
-- **Spectators.** Enter a lobby code and press **WATCH** to follow a game without a seat. Spectators see the table and the status lines, but no roles, hands or peeks until the game is over. The server filters those out, so they never reach a spectator's browser. Everyone sees how many people are watching.
+- **Accounts, with Discord sign-in.** Playing needs an account: sign in with Discord, then choose a name of your own, which is what others see in lobbies and games. Nothing from Discord is shown to anyone else; only you see which Discord account you signed in with. Names are unique, ignoring case. Change yours from the login page or the lobby as often as you like, outside a game, and everyone in the lobby sees it at once. A sign-in lasts 30 days, renewed as you play, and survives a server restart, so a player goes back to their seat still signed in. Each game knows which account holds every seat. Watching needs no account.
+- **Spectators.** Enter a lobby code and press **WATCH** to follow a game without a seat, signed in or not. Spectators see the table and the status lines, but no roles, hands or peeks until the game is over. The server filters those out, so they never reach a spectator's browser. Everyone sees how many people are watching.
 - **A lobby that fits one screen.** It looks like the game screen: the players are listed at the left (ten fit), with the lobby code and invite link, a COPY button and the buttons for your role beside them. The status line says what START GAME is waiting for, such as which players still have to pick a look, and says when CPU players will fill the table.
-- **A plain login page that fits one screen.** One name field serves JOIN and CREATE LOBBY, and WATCH needs only the lobby code. It has the lobby's look, links to the official rules, this project and its issues, and one credit line. An invite link previews in chat as one plain line.
-- **Switching between playing and watching.** In the lobby, WATCH INSTEAD gives up your seat and follows the game as a spectator, and a spectator's PLAY INSTEAD asks for a name and a look and takes a seat (it is off while the lobby is full). No need to leave and rejoin.
+- **A plain login page that fits one screen.** Its first card signs you in, or shows your name with CHANGE NAME and Sign out. JOIN needs you signed in and a lobby code, CREATE LOBBY only the sign-in, and WATCH only the code. It has the lobby's look, links to the official rules, this project and its issues, and one credit line. An invite link previews in chat as one plain line.
+- **Switching between playing and watching.** In the lobby, WATCH INSTEAD gives up your seat and follows the game as a spectator, and a signed-in spectator's PLAY INSTEAD takes a seat under their name and asks for a look (it is off while the lobby is full). A spectator who is not signed in gets SIGN IN TO PLAY, which comes back to watching the same lobby. No need to leave and rejoin.
 - **END TERM ends itself.** Once a president has nothing left to do in their term, END TERM flashes and a 10-second countdown runs beside it. At zero the server ends the term, even if the president's tab is closed, so the table never sits waiting for a president who forgot. The president can pause the countdown to keep the term open as long as they need, and resume it. Everyone, spectators included, sees the countdown and whether it is paused.
 - **Sound effects** for joining, nominations, votes, policies, presidential powers and the end of the game. The speaker button in the header mutes them and sets the volume, and each browser remembers its own setting. Every clip is CC0, credited in [docs/SOUND-CREDITS.md](docs/SOUND-CREDITS.md).
-- **Lobbies survive a restart.** The server backs up its lobbies to a SQLite file and restores them when it starts.
+- **Lobbies and sign-ins survive a restart.** The server backs up its lobbies to a SQLite file, which also holds the accounts and sessions, and restores them when it starts.
 - **One image on one port.** The Java server also serves the web page. CI publishes a Docker image for `linux/amd64` and `linux/arm64`.
 - **A current toolchain:** Vite, React 18 and TypeScript 5, with Vitest unit tests and Playwright browser tests on desktop Chrome, Firefox and two emulated phones.
 - **Fixes** for bugs carried over from upstream:
@@ -61,9 +62,39 @@ docker run -d --name secret-hitler -p 8080:8080 -v sh-data:/data ghcr.io/jussaw/
 ```
 
 - The container serves plain HTTP on port 8080 (set `PORT` to change it). To play over the internet, put it behind a reverse proxy that terminates TLS and passes WebSocket upgrades through, since the game runs over a WebSocket at `/game`. On an `https:` page the client connects with `wss:`.
-- Lobby backups go to `/data/backup.db` (`DATABASE_PATH`), so mount a volume, or a directory owned by uid 1000, at `/data`.
+- Lobby backups, accounts and sign-ins go to `/data/backup.db` (`DATABASE_PATH`), so mount a volume, or a directory owned by uid 1000, at `/data`. Without one, every restart signs everyone out and forgets their names.
 - Each push to `development` publishes `:latest` and `:sha-<short>`. For a health check, use `GET /ping`.
 - To build the image yourself, run `docker build -t secret-hitler-online .` at the repo root.
+
+### Discord sign-in
+
+Playing needs an account, and accounts are made by signing in with Discord. Without it set up, the login page says "Sign-in is not set up on this server.": anyone can watch, but nobody can play, and the server logs a warning at start. To set it up:
+
+1. Create an application in the [Discord Developer Portal](https://discord.com/developers/applications).
+2. Under its OAuth2 settings, add the redirect `https://<host>/auth/discord/callback`, where `<host>` is the address players open the game at.
+3. Give the container the application's client ID and client secret, and that same redirect URL:
+
+   | Variable | Value |
+   |---|---|
+   | `DISCORD_CLIENT_ID` | The application's client ID |
+   | `DISCORD_CLIENT_SECRET` | Its client secret. Keep it out of the repo and out of your shell history, in an env file say (`docker run --env-file …`) |
+   | `DISCORD_REDIRECT_URI` | `https://<host>/auth/discord/callback`, exactly as registered |
+
+Sign-in is on once all three are set. The server asks Discord only for `identify` and keeps the Discord user ID, username and avatar. It uses Discord's token for that one read and never stores it, and it keeps only a hash of each session's token. Some things follow from `DISCORD_REDIRECT_URI`:
+
+- The server takes it as its own address. A player's WebSocket from any other origin is refused, so players must open the game at that `<host>`.
+- When it starts with `https:`, the session cookie is marked `Secure`, so the game must be served over HTTPS (at the proxy).
+
+`TEST_SIGN_IN=true` turns on a TEST SIGN-IN button that signs anyone in as a test account, with no Discord. It is for local runs and the browser tests only; never set it on a server other people can reach.
+
+### Known limits
+
+- A game that is running when a server first starts with accounts is dropped, since its seats belong to typed names that no account can take back. Lobbies that are not in a game are kept. Deploy between games.
+- Anyone with a Discord account can sign in. There is no allow-list.
+- Signing out leaves the sockets already open connected until they close.
+- There is no way to delete an account.
+- One browser holds one sign-in, shared by all its tabs, so two people cannot play from two tabs of one browser. A second tab that joins a lobby the first is in is refused.
+- Going back to an image from before accounts: that server ignores the accounts, but a lobby it restores from a newer backup refuses every join until it times out, after 10 minutes. New lobbies work at once. Deleting the backup file clears the old lobbies sooner, but the same file holds the accounts.
 
 ## Running locally
 
@@ -84,13 +115,13 @@ npm install
 npm run dev
 ```
 
-Open [localhost:3000](http://localhost:3000), create a lobby, choose a look and start the game.
+Open [localhost:3000](http://localhost:3000), press **TEST SIGN-IN** (`runLocal` turns on the test sign-in, so no Discord application is needed), choose a name, create a lobby, choose a look and start the game. Lobbies with fewer than 5 players are filled with CPU players. One browser holds one sign-in, so for more players use private windows or other browsers; [DEVELOPMENT.md](DEVELOPMENT.md) also covers trying Discord sign-in locally.
 
 Run the tests with `cd backend && ./gradlew test` and `cd frontend && npm test -- --run`. See [DEVELOPMENT.md](DEVELOPMENT.md) for more setups, including Docker Compose and the browser tests.
 
 ## How it's built
 
-- The Java 17 server uses [Javalin](https://javalin.io/) and is divided into the [game simulation](backend/src/main/java/game) (rules and CPU players) and the [server](backend/src/main/java/server) (HTTP endpoints, the `/game` WebSocket, lobbies and the SQLite backup).
+- The Java 17 server uses [Javalin](https://javalin.io/) and is divided into the [game simulation](backend/src/main/java/game) (rules and CPU players) and the [server](backend/src/main/java/server) (HTTP endpoints, the `/game` WebSocket, lobbies, accounts with Discord sign-in, and the SQLite file that backs them up).
 - The [webpage](frontend) is written in [React](https://react.dev/) and TypeScript and built with [Vite](https://vite.dev/). Its animations are CSS. Assets were either adapted from the original board game or created using [Inkscape](https://inkscape.org/). The header icons come from [Lucide](https://lucide.dev/).
 - The tests are JUnit 4 for the server, Vitest for the page, and Playwright for the whole app in real browsers.
 

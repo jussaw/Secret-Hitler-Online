@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import PlayInsteadPrompt from "./PlayInsteadPrompt";
+import NamePrompt from "./NamePrompt";
 import { CONTACT_ERROR } from "../lobby/joinError";
 
 beforeEach(() => {
@@ -14,24 +14,36 @@ afterEach(() => {
 
 const button = (name: string) => screen.getByRole("button", { name });
 const field = () => screen.getByLabelText("Your name") as HTMLInputElement;
-const setup = (initialName = "Sam", onContinue = vi.fn().mockResolvedValue("")) => {
+/** The prompt as CHOOSE A NAME (CONTINUE, SIGN OUT) unless `labels` says otherwise (CHANGE NAME). */
+const setup = (
+  initialName = "Sam",
+  onContinue = vi.fn().mockResolvedValue(""),
+  labels: { title?: string; confirmLabel?: string; secondaryLabel?: string } = {}
+) => {
   const onCancel = vi.fn();
   const utils = render(
-    <PlayInsteadPrompt initialName={initialName} onContinue={onContinue} onCancel={onCancel} />
+    <NamePrompt
+      title={labels.title ?? "CHOOSE A NAME"}
+      initialName={initialName}
+      confirmLabel={labels.confirmLabel ?? "CONTINUE"}
+      secondaryLabel={labels.secondaryLabel ?? "SIGN OUT"}
+      onConfirm={onContinue}
+      onSecondary={onCancel}
+    />
   );
   return { onContinue, onCancel, ...utils };
 };
 
-describe("PlayInsteadPrompt", () => {
-  test("fills in the last name", () => {
+describe("NamePrompt", () => {
+  test("starts from the name it is given", () => {
     setup("Sam");
     expect(field().value).toBe("Sam");
     expect(field().maxLength).toBe(12);
-    expect(screen.getByRole("heading", { name: "PLAY INSTEAD" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "CHOOSE A NAME" })).toBeInTheDocument();
     expect(
-      screen.getByText("Choose the name you will play under. You pick a look next.")
+      screen.getByText("Others see it in lobbies and games. Up to 12 characters.")
     ).toBeInTheDocument();
-    expect(button("CANCEL")).toBeEnabled();
+    expect(button("SIGN OUT")).toBeEnabled();
     expect(button("CONTINUE")).toBeEnabled();
   });
 
@@ -58,11 +70,19 @@ describe("PlayInsteadPrompt", () => {
     expect(console.error).not.toHaveBeenCalled();
   });
 
-  test("CONTINUE collapses runs of spaces, as the login form does", () => {
+  test("CONTINUE collapses runs of spaces, as the server's Usernames.normalize does", () => {
     const { onContinue } = setup("Sam");
     fireEvent.change(field(), { target: { value: " Sam   Lee " } });
     fireEvent.click(button("CONTINUE"));
     expect(onContinue).toHaveBeenCalledWith("Sam Lee");
+  });
+
+  test("typed names lose leading and doubled spaces and stop at twelve characters", () => {
+    setup("");
+    fireEvent.change(field(), { target: { value: "  Sam   Lee" } });
+    expect(field().value).toBe("Sam Lee");
+    fireEvent.change(field(), { target: { value: "Wolfgang Maxwell" } });
+    expect(field().value).toBe("Wolfgang Max");
   });
 
   test("Enter acts as CONTINUE", () => {
@@ -72,7 +92,7 @@ describe("PlayInsteadPrompt", () => {
   });
 
   test("an error shows in the prompt", async () => {
-    const message = "There is already a user with the name 'Sam' in the lobby.";
+    const message = "Another player already has that name.";
     // A slow check: the error line is on screen (empty) from the start, so wait for its text.
     setup("Sam", vi.fn(() => new Promise<string>((r) => setTimeout(() => r(message), 30))));
     fireEvent.click(button("CONTINUE"));
@@ -133,9 +153,63 @@ describe("PlayInsteadPrompt", () => {
     expect(onContinue).toHaveBeenCalledTimes(1);
   });
 
-  test("CANCEL calls onCancel", () => {
-    const { onCancel } = setup();
+  test("takes its title and button labels from its props", () => {
+    const { onCancel, onContinue } = setup("Sam", undefined, {
+      title: "CHOOSE A NAME",
+      confirmLabel: "CONTINUE",
+      secondaryLabel: "SIGN OUT",
+    });
+    expect(screen.getByRole("heading", { name: "CHOOSE A NAME" })).toBeInTheDocument();
+    fireEvent.click(button("SIGN OUT"));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    fireEvent.click(button("CONTINUE"));
+    expect(onContinue).toHaveBeenCalledWith("Sam");
+  });
+
+  test("the confirm button comes first, then the other, in one row", () => {
+    const { container } = setup("Sam", undefined, {
+      title: "CHOOSE A NAME",
+      confirmLabel: "CONTINUE",
+      secondaryLabel: "SIGN OUT",
+    });
+    const row = container.querySelector(".name-prompt-buttons")!;
+    expect([...row.querySelectorAll("button")].map((b) => b.textContent)).toEqual([
+      "CONTINUE",
+      "SIGN OUT",
+    ]);
+    expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
+      "CONTINUE",
+      "SIGN OUT",
+    ]);
+  });
+
+  test("SAVE and CANCEL labels", () => {
+    const { onCancel, onContinue } = setup("Sam", undefined, {
+      title: "CHANGE NAME",
+      confirmLabel: "SAVE",
+      secondaryLabel: "CANCEL",
+    });
+    expect(screen.getByRole("heading", { name: "CHANGE NAME" })).toBeInTheDocument();
+    fireEvent.click(button("SAVE"));
+    expect(onContinue).toHaveBeenCalledWith("Sam");
     fireEvent.click(button("CANCEL"));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  test("an error stays under the field with the prompt open", async () => {
+    setup("Sam", vi.fn().mockResolvedValue("Another player already has that name."));
+    fireEvent.click(button("CONTINUE"));
+    const alert = await screen.findByText("Another player already has that name.");
+    expect(alert).toBe(screen.getByRole("alert"));
+    expect(field()).toBeInTheDocument();
+    expect(button("CONTINUE")).toBeEnabled();
+  });
+
+  test("the other button works while a save is on its way", () => {
+    const { onCancel } = setup("Sam", vi.fn(() => new Promise<string>(() => {})));
+    fireEvent.click(button("CONTINUE"));
+    expect(button("CONTINUE")).toBeDisabled();
+    fireEvent.click(button("SIGN OUT"));
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 });

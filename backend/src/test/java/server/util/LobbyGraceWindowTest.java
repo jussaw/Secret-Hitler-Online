@@ -3,6 +3,7 @@ package server.util;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
+import static server.util.LobbyTesting.join;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,7 +39,7 @@ public class LobbyGraceWindowTest {
         List<FakeSocket> players = new ArrayList<>();
         for (int i = 1; i <= count; i++) {
             FakeSocket player = FakeSocket.open();
-            lobby.addUser(player.ctx, "P" + i);
+            join(lobby, player.ctx, "P" + i);
             lobby.trySetUserIcon("p" + i, player.ctx);
             players.add(player);
         }
@@ -48,7 +49,7 @@ public class LobbyGraceWindowTest {
     /** Opens a new connection under {@code name}, as a page coming back does. */
     private static FakeSocket rejoin(Lobby lobby, String name) {
         FakeSocket socket = FakeSocket.open();
-        lobby.addUser(socket.ctx, name);
+        join(lobby, socket.ctx, name);
         return socket;
     }
 

@@ -89,8 +89,9 @@ a {
  * shrink the box by a pixel, while the two widths swapped keep its height at any pixel ratio. The
  * bottom margin is --button-depth smaller, so the shadow takes the room it took when it was drawn
  * outside the box. Variants set --button-face and --button-shadow in place of a background and a
- * box-shadow. */
-button {
+ * box-shadow. A link drawn as a button (SIGN IN WITH DISCORD) takes .button-link and the same look. */
+button,
+.button-link {
     --button-face: var(--buttonFill);
     --button-shadow: var(--buttonShadowFill);
     --button-depth: 5px;
@@ -127,7 +128,8 @@ button {
 
 /* The face: the padding box and the border around it, so it moves with the border. Its shadow
    goes in the same step; only its colour eases. */
-button::before {
+button::before,
+.button-link::before {
     content: "";
     position: absolute;
     inset: calc(-1 * var(--button-border));
@@ -138,17 +140,20 @@ button::before {
     transition: background-color 0.15s ease-in-out;
 }
 
-button:hover, button:focus, button:focus-visible{
+button:hover, button:focus, button:focus-visible,
+.button-link:hover, .button-link:focus, .button-link:focus-visible {
     --button-face: var(--buttonHoverFill);
 }
 
-button:not(:disabled):active{
+button:not(:disabled):active,
+.button-link:active {
     --button-face: var(--buttonFill);
     border-top-width: calc(var(--button-border) + var(--button-depth));
     border-bottom-width: var(--button-border);
 }
 
-button:not(:disabled):active::before{
+button:not(:disabled):active::before,
+.button-link:active::before {
     box-shadow: 0 0 0 var(--button-shadow);
 }
 
@@ -172,7 +177,8 @@ input {
 
 /* Touch targets on phones are at least 44px tall: a button's face, with its shadow below. */
 @media (max-width: 768px) {
-    button {
+    button,
+    .button-link {
         min-height: calc(44px + var(--button-depth));
     }
 

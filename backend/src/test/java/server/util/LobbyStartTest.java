@@ -4,6 +4,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static server.util.LobbyTesting.account;
+import static server.util.LobbyTesting.join;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -33,7 +35,7 @@ public class LobbyStartTest {
         List<FakeSocket> players = new ArrayList<>();
         for (int i = 1; i <= count; i++) {
             FakeSocket player = FakeSocket.open();
-            lobby.addUser(player.ctx, "P" + i);
+            join(lobby, player.ctx, "P" + i);
             lobby.trySetUserIcon("p" + i, player.ctx);
             players.add(player);
         }
@@ -62,7 +64,7 @@ public class LobbyStartTest {
         Lobby lobby = new Lobby();
         addPlayers(lobby, 2);
         FakeSocket late = FakeSocket.open();
-        lobby.addUser(late.ctx, "P3"); // still on the default portrait
+        join(lobby, late.ctx, "P3"); // still on the default portrait
         lobby.removeUser(late.ctx);
         lobby.startNewGame(); // threw "Not all players have selected icons." before the fix
         assertFalse(lobby.getUserNames().contains("P3"));
@@ -91,7 +93,7 @@ public class LobbyStartTest {
         Lobby lobby = new Lobby();
         List<FakeSocket> players = addPlayers(lobby, 2);
         FakeSocket picking = FakeSocket.open();
-        lobby.addUser(picking.ctx, "P3"); // connected, still on the default portrait
+        join(lobby, picking.ctx, "P3"); // connected, still on the default portrait
         lobby.removeUser(players.get(1).ctx); // P2 is inside the grace window
         try {
             lobby.startNewGame();
@@ -101,7 +103,7 @@ public class LobbyStartTest {
         }
         assertFalse(lobby.isInGame());
         assertEquals(3, lobby.getUserCount());
-        assertTrue(lobby.canRejoin("P2"));
+        assertTrue(lobby.canRejoin(account("P2")));
     }
 
     @Test
@@ -111,6 +113,6 @@ public class LobbyStartTest {
         lobby.removeUser(players.get(1).ctx);
         lobby.startNewGame();
         assertTrue(lobby.isInGame());
-        assertFalse(lobby.canRejoin("P2"));
+        assertFalse(lobby.canRejoin(account("P2")));
     }
 }

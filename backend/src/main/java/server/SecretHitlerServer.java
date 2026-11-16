@@ -14,6 +14,11 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.accounts.Account;
+import server.accounts.AccountStore;
+import server.accounts.AuthRoutes;
+import server.accounts.DiscordSignIn;
+import server.accounts.Usernames;
 import server.util.Lobby;
 
 import java.io.*;
@@ -33,6 +38,8 @@ public class SecretHitlerServer {
 
     // Passed to server
     public static final String PARAM_LOBBY = "lobby";
+    // A player's name, which the page still sends in the /game query and in every message. The server
+    // never reads it: a player is the account of their session, with that account's name.
     public static final String PARAM_NAME = "name";
     public static final String PARAM_COMMAND = "command";
     public static final String PARAM_TARGET = "target";
@@ -42,11 +49,19 @@ public class SecretHitlerServer {
     public static final String PARAM_ICON = "icon";
     public static final String PARAM_SPECTATOR = "spectator"; // "true" in the /game and /check-login query
     // Optional, in a player's /game query: a random key the page keeps for its lifetime. A connection
-    // that brings the key its name's live connection was opened with takes that connection's place.
+    // that brings the key its account's live connection was opened with takes that connection's place.
     public static final String PARAM_REJOIN_KEY = "rejoinKey";
 
     // The close code of a connection whose place another connection took (Lobby.addUser).
     public static final int CLOSE_REPLACED = 4001;
+
+    // Why a player's socket is refused (closed with 1002), or /check-login answers 403.
+    /** No account to play as: no live session, or an account with no name yet. */
+    static final String SIGN_IN_TO_JOIN = "Sign in and choose a name to play.";
+    /** The account has a live connection in the lobby already: /check-login's 403 too. */
+    static final String ALREADY_IN_LOBBY = "You're already in this lobby in another tab or window.";
+    /** Outside debug mode: a player's socket that another site's page opened ({@code sameOrigin}). */
+    static final String ANOTHER_SITE = "Connections from another site are not allowed.";
 
     // Passed to client
     // The type of the packet tells the client how to parse the contents.
@@ -59,6 +74,7 @@ public class SecretHitlerServer {
 
     public static final String PARAM_INVESTIGATION = "investigation";
     public static final String PARAM_SPECTATOR_COUNT = "spectatorCount"; // in every lobby and game packet
+    public static final String PARAM_YOU = "you"; // in every player's packet: their name, or their seat's in a game
     public static final String FASCIST = "FASCIST";
     public static final String LIBERAL = "LIBERAL";
 
@@ -87,10 +103,32 @@ public class SecretHitlerServer {
     // In game packets while there is an END TERM countdown: {"remainingMs": ms left, "paused": boolean}.
     public static final String PARAM_TERM_TIMER = "termTimer";
 
-    private static final String CODE_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTWXYZ"; // u,v characters can look ambiguous
-    private static final int CODE_LENGTH = 4;
+    public static final String CODE_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTWXYZ"; // u,v characters can look ambiguous
+    public static final int CODE_LENGTH = 4;
 
     private static final float UPDATE_FREQUENCY_SECONDS = 60;
+
+    /** What {@link #renameAccount} did. */
+    public enum RenameResult {
+        SAVED, // the account has the name, in the store and in every lobby it is in
+        TAKEN, // another account has the name, ignoring case: nothing changed
+        SEATED // the account holds a seat in a running game: nothing changed
+    }
+    // </editor-fold>
+
+    ////// Accounts
+    // <editor-fold desc="Accounts">
+
+    // Accounts and their sessions. main opens it from DATABASE_PATH (in memory when unset); tests
+    // put their own here.
+    public static AccountStore accounts;
+
+    // Taken by every rename (renameAccount), every player's join (onWebsocketConnect) and every
+    // game start (startGame), and by nothing else: always before any lobby's lock, and never by a
+    // thread that holds a lobby's lock without it. So a game start never falls between a rename's
+    // check for seats and its change to the lobbies, and a join never records a name a rename has
+    // just replaced. A database call may run under it, but never under a lobby's lock.
+    static final Object ACCOUNTS_LOCK = new Object();
     // </editor-fold>
 
     ///// Private Fields
@@ -158,6 +196,12 @@ public class SecretHitlerServer {
                 .get("/check-login", SecretHitlerServer::checkLogin) // Checks if a login is valid.
                 .get("/new-lobby", SecretHitlerServer::createNewLobby) // Creates and returns the code for a new lobby
                 .get("/ping", SecretHitlerServer::ping)
+                .get("/me", AuthRoutes::getMe)
+                .post("/me/username", AuthRoutes::postUsername)
+                .post("/auth/sign-out", AuthRoutes::postSignOut)
+                .post("/auth/test-sign-in", AuthRoutes::postTestSignIn) // 404 unless TEST_SIGN_IN
+                .get("/auth/discord", DiscordSignIn::start)
+                .get("/auth/discord/callback", DiscordSignIn::callback)
                 .ws("/game", wsHandler -> {
                     wsHandler.onConnect(SecretHitlerServer::onWebsocketConnect);
                     wsHandler.onMessage(SecretHitlerServer::onWebSocketMessage);
@@ -171,6 +215,9 @@ public class SecretHitlerServer {
         if (ApplicationConfig.DATABASE_PATH == null || ApplicationConfig.DATABASE_PATH.isBlank()) {
             logger.error("Persistence disabled: no DATABASE_PATH environment variable provided.");
         }
+        // The same file as the lobby backup, or memory without one.
+        accounts = AccountStore.open(ApplicationConfig.DATABASE_PATH);
+        warnAboutSignIn();
         loadDatabaseBackup();
         removeInactiveLobbies(); // immediately clean in case of redundant lobbies.
 
@@ -194,6 +241,7 @@ public class SecretHitlerServer {
             @Override
             public void run() {
                 removeInactiveLobbies();
+                sweepExpiredSessions();
                 if (!codeToLobby.isEmpty()) {
                     printLobbyStatus();
                 }
@@ -204,6 +252,33 @@ public class SecretHitlerServer {
                 }
             }
         }, delayMs, periodMs);
+    }
+
+    /** Warns at start when test sign-in is on, and when no one can sign in to play. */
+    private static void warnAboutSignIn() {
+        if (ApplicationConfig.TEST_SIGN_IN) {
+            logger.warn("Test sign-in is on (TEST_SIGN_IN=true): anyone can sign in as a test account. "
+                    + "It is meant for local runs and tests only.");
+        }
+        if (!ApplicationConfig.discordConfigured() && !ApplicationConfig.TEST_SIGN_IN) {
+            logger.warn("Nobody can sign in to play: Discord sign-in is not configured (DISCORD_CLIENT_ID, "
+                    + "DISCORD_CLIENT_SECRET and DISCORD_REDIRECT_URI) and test sign-in is off.");
+        }
+    }
+
+    /**
+     * Deletes the expired sessions, on the update timer. A failure is logged, and the timer runs
+     * on: an uncaught exception would end it. Package-private for SessionSweepTest.
+     */
+    static void sweepExpiredSessions() {
+        try {
+            int swept = accounts.sweepExpiredSessions();
+            if (swept > 0) {
+                logger.info("Removed " + swept + " expired sessions.");
+            }
+        } catch (RuntimeException e) {
+            logger.error("Could not remove the expired sessions.", e);
+        }
     }
 
     /**
@@ -239,12 +314,92 @@ public class SecretHitlerServer {
         }
     }
 
+    /////// Renaming and game starts
+    // <editor-fold desc="Renaming and game starts">
+
+    /**
+     * Gives an account a new name everywhere: in the account store and in every lobby it is in.
+     * Runs under {@code ACCOUNTS_LOCK}, which every game start takes first too ({@link #startGame}),
+     * so no game starts between the check for seats and the change to the lobbies: either a game
+     * seats the new name, or the rename finds the account seated and is refused. Each lobby is
+     * read and changed under its own lock, and the store is written under none.
+     *
+     * @param accountId      the account to rename.
+     * @param normalizedName the new name, as {@code Usernames.normalize} gives it and passing
+     *                       {@code Usernames.problem}.
+     * @return {@code SEATED} if the account holds a seat in a running game in any lobby, and
+     *         {@code TAKEN} if another account has the name ignoring case; either way nothing
+     *         changes. Otherwise {@code SAVED}: the store has the name, and every lobby the account
+     *         is in (live, or inside the grace window after a disconnect) shows it, with the state
+     *         sent to its players and spectators. A lobby the sweep has closed is passed over.
+     * @throws IllegalArgumentException if the name is not normalized or breaks a name rule.
+     *                                  Nothing changes.
+     */
+    public static RenameResult renameAccount(String accountId, String normalizedName) {
+        if (normalizedName == null || !normalizedName.equals(Usernames.normalize(normalizedName))
+                || Usernames.problem(normalizedName) != null) {
+            throw new IllegalArgumentException("Not a name an account can have: '" + normalizedName + "'.");
+        }
+        synchronized (ACCOUNTS_LOCK) {
+            for (Lobby lobby : codeToLobby.values()) {
+                synchronized (lobby) {
+                    if (!lobby.isClosed() && lobby.isSeated(accountId)) {
+                        return RenameResult.SEATED;
+                    }
+                }
+            }
+            // No seat can appear from here on: a game start waits for ACCOUNTS_LOCK.
+            if (accounts.setUsername(accountId, normalizedName) == AccountStore.NameResult.TAKEN) {
+                return RenameResult.TAKEN;
+            }
+            boolean changed = false;
+            for (Lobby lobby : codeToLobby.values()) {
+                synchronized (lobby) {
+                    if (!lobby.isClosed() && lobby.rename(accountId, normalizedName)) {
+                        lobby.sendStateToAll();
+                        changed = true;
+                    }
+                }
+            }
+            if (changed) {
+                hasLobbyChanged = true;
+                logger.info("Account " + accountId + " is now '" + normalizedName + "' in its lobbies.");
+            }
+            return RenameResult.SAVED;
+        }
+    }
+
+    /**
+     * Starts a game in the lobby: the only way a game starts. Takes {@code ACCOUNTS_LOCK} and then
+     * the lobby's lock, as a rename does ({@link #renameAccount}), so each account is seated under
+     * the name it has at the start. The start-game command calls it holding both already.
+     *
+     * @throws IllegalStateException if the caller holds the lobby's lock but not
+     *                               {@code ACCOUNTS_LOCK}: taking it then could deadlock with a
+     *                               rename. Nothing changes.
+     * @throws RuntimeException      as {@code Lobby.startNewGame} does, changing nothing.
+     */
+    static void startGame(Lobby lobby) {
+        if (Thread.holdsLock(lobby) && !Thread.holdsLock(ACCOUNTS_LOCK)) {
+            throw new IllegalStateException("ACCOUNTS_LOCK must be taken before the lobby's lock.");
+        }
+        synchronized (ACCOUNTS_LOCK) {
+            synchronized (lobby) {
+                lobby.startNewGame();
+            }
+        }
+    }
+
+    // </editor-fold>
+
     /////// Database Handling
     // <editor-fold desc="Database Handling">
 
     /**
      * Opens the SQLite backup database at {@code path}, creating the file and the
-     * backup table if needed.
+     * backup table if needed. The account store keeps a connection of its own to the same
+     * file, so this one waits up to 5 s for the store's writes, as the store waits for its,
+     * instead of failing at once with SQLITE_BUSY.
      *
      * @return null if {@code path} is null or blank, or the database cannot be
      *         opened; otherwise an open connection.
@@ -255,7 +410,16 @@ public class SecretHitlerServer {
         }
         try {
             Connection c = DriverManager.getConnection("jdbc:sqlite:" + path);
-            initializeDatabase(c);
+            try {
+                initializeDatabase(c);
+            } catch (SQLException | RuntimeException e) {
+                try {
+                    c.close();
+                } catch (SQLException closeFailure) {
+                    e.addSuppressed(closeFailure);
+                }
+                throw e;
+            }
             return c;
         } catch (SQLException e) {
             logger.error("Could not open the backup database at " + path + ".", e);
@@ -304,7 +468,18 @@ public class SecretHitlerServer {
             stmt.executeUpdate("UPDATE backup SET attempts = attempts + 1 WHERE id = 0;");
         }
         try (ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(lobbyBytes))) {
-            return (ConcurrentHashMap<String, Lobby>) in.readObject();
+            ConcurrentHashMap<String, Lobby> lobbies = (ConcurrentHashMap<String, Lobby>) in.readObject();
+            // A game backed up before accounts has seats that belong to typed names, which no
+            // account can take back; an idle lobby from then is kept.
+            lobbies.entrySet().removeIf(entry -> {
+                Lobby lobby = entry.getValue();
+                if (lobby.wasBackedUpBeforeAccounts() && lobby.isInGame()) {
+                    logger.warn("Dropped lobby " + entry.getKey() + ": its game was backed up before accounts.");
+                    return true;
+                }
+                return false;
+            });
+            return lobbies;
         }
     }
 
@@ -339,10 +514,11 @@ public class SecretHitlerServer {
     }
 
     /**
-     * Creates the backup table if it does not exist yet.
+     * Sets the connection's busy timeout and creates the backup table if it does not exist yet.
      */
     private static void initializeDatabase(Connection c) throws SQLException {
         try (Statement stmt = c.createStatement()) {
+            stmt.execute("PRAGMA busy_timeout = 5000");
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS backup "
                     + "(id INT UNIQUE, timestamp TEXT, attempts INT, lobby_bytes BLOB);");
         }
@@ -365,34 +541,35 @@ public class SecretHitlerServer {
     }
 
     /**
-     * Determines whether a login is valid.
-     * 
-     * @param ctx the context of the login request.
-     * @requires the context must have the following parameters:
-     *           {@code lobby}: the code of the lobby.
-     *           {@code name}: the username of the user.
-     *           {@code command}: the command
-     * @effects Result status is one of the following:
+     * Determines whether the signed-in account may join a lobby as a player: the request's
+     * {@code session} cookie ({@code AuthRoutes.signedIn}, which extends a session near its end and
+     * sets the cookie again whenever it finds one). A {@code name} parameter is ignored: a player's
+     * name is their account's.
+     *
+     * @param ctx the context of the login request: {@code lobby}, the code of the lobby, and for a
+     *            spectator {@code spectator=true} ({@code checkSpectatorLogin}, which needs no
+     *            session).
+     * @effects Result status is the first of these that applies:
      *          <p>
-     *          - 400: if the {@code lobby} or {@code name} parameters are
-     *          missing (or blank).
+     *          - 400: the {@code lobby} parameter is missing (or blank).
      *          <p>
-     *          - 404: if there is no lobby with the given code, or the sweep has
-     *          closed it ({@code Lobby.isClosed}).
+     *          - 401 "Sign in to play.": no session (no cookie, or one that matches no live
+     *          session), or an account with no name yet.
      *          <p>
-     *          - 403: the username is invalid (there is already another user
-     *          with that name in the lobby.)
+     *          - 404: there is no lobby with the given code, or the sweep has closed it
+     *          ({@code Lobby.isClosed}).
      *          <p>
-     *          - 488: the lobby is currently in a game, and the user is not one of
-     *          its players with no live connection.
+     *          - 403: the account already has a live connection in the lobby (another tab or
+     *          window), even if the lobby is full or in a game.
      *          <p>
-     *          - 489: the lobby is full, and the user is not taking back their
-     *          own seat ({@code Lobby.canRejoin}).
+     *          - 200: the account is taking back its own seat ({@code Lobby.canRejoin}): in the
+     *          running game, or inside the grace window after a disconnect.
      *          <p>
-     *          - 200: Success. There is a lobby with the given name and the
-     *          user can open a websocket connection with these login
-     *          credentials. This includes a player rejoining the running game
-     *          or, inside the grace window after a disconnect, the lobby.
+     *          - 489: the lobby is full.
+     *          <p>
+     *          - 488: the lobby is in a game the account has no seat in.
+     *          <p>
+     *          - 200: the account may join.
      */
     public static void checkLogin(Context ctx) {
         String lobbyCode = ctx.queryParam(PARAM_LOBBY);
@@ -400,19 +577,28 @@ public class SecretHitlerServer {
             checkSpectatorLogin(ctx, lobbyCode);
             return;
         }
-        String name = ctx.queryParam(PARAM_NAME);
-        if (lobbyCode == null || name == null || name.isBlank()) {
+        if (lobbyCode == null || lobbyCode.isBlank()) {
             ctx.status(400);
-            ctx.result("Lobby and name must be specified.");
+            ctx.result("Lobby must be specified.");
+            return;
+        }
+        Account account = AuthRoutes.signedIn(ctx); // a database read, under no lock
+        if (account == null || account.username() == null) {
+            ctx.status(401);
+            ctx.result(AuthRoutes.SIGN_IN_TO_PLAY);
             return;
         }
 
+        String accountId = account.id();
         // One lookup: the sweep may remove the lobby at any moment. Once closed, a lobby stays closed.
         Lobby lobby = codeToLobby.get(lobbyCode);
         if (lobby == null || lobby.isClosed()) { // lobby does not exist, or the sweep has taken it
             ctx.status(404);
             ctx.result("No such lobby found.");
-        } else if (lobby.canRejoin(name)) { // takes back their own seat, even in a full lobby
+        } else if (lobby.hasAccount(accountId)) { // a second tab: before a full lobby or a game (ruling R6)
+            ctx.status(403);
+            ctx.result(ALREADY_IN_LOBBY);
+        } else if (lobby.canRejoin(accountId)) { // takes back their own seat, even in a full lobby
             ctx.status(200);
             ctx.result(lobby.isInGame() ? "Login request valid (re-joining an existing game)."
                     : "Login request valid.");
@@ -422,10 +608,7 @@ public class SecretHitlerServer {
         } else if (lobby.isInGame()) {
             ctx.status(488);
             ctx.result("The lobby is currently in a game.");
-        } else if (lobby.hasUserWithName(name)) { // repeat username.
-            ctx.status(403);
-            ctx.result("There is already a user with the name '" + name + "' in the lobby.");
-        } else { // unique username found. Return OK.
+        } else {
             ctx.status(200);
             ctx.result("Login request valid.");
         }
@@ -454,10 +637,19 @@ public class SecretHitlerServer {
 
     /**
      * Generates a new lobby and returns the access code.
-     * 
+     *
      * @param ctx the HTTP get request context.
+     * @effects 401 "Sign in to play." unless the request is signed in as an account with a
+     *          name ({@code AuthRoutes.signedIn}), before the sweep runs or a lobby is made.
+     *          Otherwise 200 with the new lobby's code.
      */
     public static void createNewLobby(Context ctx) {
+        Account account = AuthRoutes.signedIn(ctx);
+        if (account == null || account.username() == null) {
+            ctx.status(401);
+            ctx.result(AuthRoutes.SIGN_IN_TO_PLAY);
+            return;
+        }
         removeInactiveLobbies();
         hasLobbyChanged = true;
 
@@ -497,49 +689,67 @@ public class SecretHitlerServer {
     // <editor-fold desc="Websocket Handling">
 
     /**
-     * Called when a websocket connects to the server.
-     * 
-     * @param ctx the WsConnectContext of the websocket.
-     * @requires the context must have the following parameters:
-     *           {@code lobby}: a String representing the lobby code.
-     *           {@code name}: a String username. Cannot already exist in the given
-     *           lobby, unless the connection brings the {@code rejoinKey} that
-     *           name's live connection was opened with.
+     * Called when a websocket connects to the server. A spectator's ({@code spectator=true}) is
+     * {@code connectSpectator}'s. A player's socket is the account of its {@code session} cookie,
+     * which browsers send on a same-origin handshake; the {@code name} parameter is ignored, and the
+     * player's name is their account's.
+     *
+     * @param ctx the WsConnectContext of the websocket, with the parameters {@code lobby}, the
+     *            lobby's code, and optionally {@code rejoinKey}, the key the page keeps for its
+     *            lifetime.
      * @effects Closes the websocket session with 1002 ({@code StatusCode.PROTOCOL})
-     *          and a reason if:
+     *          and a reason if, in this order:
      *          <p>
-     *          - the {@code lobby} or {@code name} parameters are missing.
+     *          - the cookie matches no live session of an account with a name (no cookie, a junk
+     *          or signed-out one, an expired session, or an account with no name yet), before any
+     *          lobby is touched;
      *          <p>
-     *          - there is no lobby with the given code.
+     *          - outside debug mode, the {@code Origin} header is missing or not the server's own
+     *          ({@code sameOrigin}): another site's page cannot open a player's socket;
      *          <p>
-     *          - the lobby refuses the connection ({@code Lobby.joinRefusal}): the
-     *          sweep has closed it, even if only after this lookup; the name is
-     *          blank; there is already another user with that name in the lobby,
-     *          and this connection does not bring its {@code rejoinKey}; the lobby
-     *          is full, and the user is not taking back their own seat; or the lobby
-     *          is in a game, and the user is not a rejoining player.
+     *          - the {@code lobby} parameter is missing;
      *          <p>
-     *          Otherwise, connects the user to the lobby. A connection that takes
-     *          its name's place closes the old one with {@code CLOSE_REPLACED}.
-     *          Connections that arrive at once are checked and added one at a time,
-     *          under the lobby's lock.
+     *          - there is no lobby with the given code;
+     *          <p>
+     *          - the lobby refuses the connection ({@code Lobby.joinRefusal}): the sweep has
+     *          closed it, even if only after this lookup; the account has a live connection in
+     *          the lobby already (another tab), and this one does not bring its
+     *          {@code rejoinKey}; the lobby is full, and the account is not taking back its own
+     *          seat; or the lobby is in a game the account has no seat in.
+     *          <p>
+     *          Otherwise, connects the account to the lobby under the name it has now. A
+     *          connection that takes its account's place closes the old one with
+     *          {@code CLOSE_REPLACED}. The name is read, and the connection checked and added, in
+     *          one step under {@code ACCOUNTS_LOCK} and then the lobby's lock: connections that
+     *          arrive at once are checked and added one at a time, and a rename never makes the
+     *          join record a name the account no longer has.
      */
     static void onWebsocketConnect(WsConnectContext ctx) {
         if ("true".equals(ctx.queryParam(PARAM_SPECTATOR))) {
             connectSpectator(ctx);
             return;
         }
-        if (ctx.queryParam(PARAM_LOBBY) == null || ctx.queryParam(PARAM_NAME) == null) {
-            logger.debug("A websocket request was missing a parameter and was disconnected.");
-            ctx.session.close(StatusCode.PROTOCOL,
-                    "Must have the '" + PARAM_LOBBY + "' and '" + PARAM_NAME + "' parameters.");
+        // Who the socket is, read before any lock: a database read never runs under a lobby's lock.
+        Account signedIn = signedInPlayer(ctx);
+        if (signedIn == null) {
+            logger.debug("A player's websocket had no signed-in account with a name and was disconnected.");
+            ctx.session.close(StatusCode.PROTOCOL, SIGN_IN_TO_JOIN);
+            return;
+        }
+        if (!ApplicationConfig.DEBUG && !sameOrigin(ctx)) {
+            logger.warn("Refused a player's websocket from another origin: " + ctx.header("Origin"));
+            ctx.session.close(StatusCode.PROTOCOL, ANOTHER_SITE);
+            return;
+        }
+        String code = ctx.queryParam(PARAM_LOBBY);
+        if (code == null) {
+            logger.debug("A player's websocket request had no lobby and was disconnected.");
+            ctx.session.close(StatusCode.PROTOCOL, "Must have the '" + PARAM_LOBBY + "' parameter.");
             return;
         }
 
-        String code = ctx.queryParam(PARAM_LOBBY);
-        String name = ctx.queryParam(PARAM_NAME);
-
-        logger.debug("Attempting to connect user '" + name + "' to lobby '" + code + "': ");
+        String accountId = signedIn.id();
+        logger.debug("Attempting to connect account " + accountId + " to lobby '" + code + "': ");
         // One lookup: the sweep may remove the lobby at any moment (#64). If it does after this, the
         // lobby is closed by the time this connection holds its lock, and refuses it (CLOSED).
         Lobby lobby = codeToLobby.get(code);
@@ -553,42 +763,214 @@ public class SecretHitlerServer {
         if (rejoinKey != null && rejoinKey.isBlank()) {
             rejoinKey = null; // an empty key is no key
         }
-        // The check and the add are one step under the lobby's lock. Of two connections arriving at
-        // once for one name or for the last seat, the second is then refused as it would be had it
-        // come later, where between the check and the add it would fail the add's own check (#43).
+        // ACCOUNTS_LOCK and then the lobby's lock, as a rename takes them (renameAccount). The name
+        // is read again under the first, so either a rename comes first and this records its name,
+        // or it comes after and finds the account in the lobby. The check and the add are one step
+        // under both: of two connections arriving at once for one account or for the last seat, the
+        // second is then refused as it would be had it come later, where between the check and the
+        // add it would fail the add's own check (#43).
         Lobby.JoinRefusal refusal;
         WsContext replaced = null;
-        synchronized (lobby) {
-            refusal = lobby.joinRefusal(name, rejoinKey);
-            if (refusal == null) {
-                replaced = lobby.addUser(ctx, name, rejoinKey);
-                userToLobby.put(ctx, lobby); // keep track of which lobby this connection is in.
-                if (replaced != null) {
-                    // Forget the old connection first, so its close (whenever it comes) changes nothing.
-                    userToLobby.remove(replaced);
+        String name;
+        synchronized (ACCOUNTS_LOCK) {
+            name = currentName(accountId); // a database read, under no lobby's lock
+            synchronized (lobby) {
+                // An account with no name has none to show, which addUser refuses. It cannot lose
+                // the one the lookup saw, but its name is read again here.
+                refusal = name == null ? Lobby.JoinRefusal.NO_ACCOUNT : lobby.joinRefusal(accountId, rejoinKey);
+                if (refusal == null) {
+                    replaced = lobby.addUser(ctx, accountId, name, rejoinKey);
+                    userToLobby.put(ctx, lobby); // keep track of which lobby this connection is in.
+                    if (replaced != null) {
+                        // Forget the old connection first, so its close (whenever it comes) changes nothing.
+                        userToLobby.remove(replaced);
+                    }
                 }
             }
         }
         if (refusal != null) {
             logger.debug("FAILED (" + refusal + ")");
-            ctx.session.close(StatusCode.PROTOCOL, refusalReason(refusal, code, name));
+            ctx.session.close(StatusCode.PROTOCOL, refusalReason(refusal, code));
             return;
         }
         logger.debug("SUCCESS");
         if (replaced != null) {
-            replaced.session.close(CLOSE_REPLACED, "Replaced by a newer connection under the same name.");
-            logger.info("User '" + name + "' in lobby '" + code + "' reconnected in place of their old connection.");
+            replaced.session.close(CLOSE_REPLACED, "Replaced by a newer connection under the same account.");
+            logger.info("Account " + accountId + " ('" + name + "') in lobby '" + code
+                    + "' reconnected in place of their old connection.");
         }
         lobby.updateAllUsers();
         hasLobbyChanged = true;
     }
 
+    /**
+     * The account a player's socket plays as: the one its {@code session} cookie is signed in as,
+     * if it has a name. The lookup extends a session near its end, as every read of a session does,
+     * but the cookie cannot be set again here: Javalin has sent the upgrade's response before this
+     * handler runs, and HTTP before-handlers never run for an upgrade (an access manager, which
+     * wraps every HTTP route too, is the only hook before it). The page's next HTTP read of its
+     * session ({@code AuthRoutes.signedIn}: {@code /me}, {@code /check-login} and the rest) sets
+     * the cookie again, with the time the extended session has left.
+     *
+     * @return the account, or null for no cookie, one that matches no live session, or an account
+     *         with no name yet.
+     */
+    private static Account signedInPlayer(WsContext ctx) {
+        String token = ctx.cookie(AuthRoutes.SESSION_COOKIE);
+        if (token == null || token.isBlank()) {
+            return null;
+        }
+        AccountStore.SessionLookup session = accounts.lookup(token);
+        if (session == null || session.account().username() == null) {
+            return null;
+        }
+        return session.account();
+    }
+
+    /** The account's name in the store now, or null if it has none. The caller holds ACCOUNTS_LOCK. */
+    private static String currentName(String accountId) {
+        Account account = accounts.find(accountId);
+        return account == null ? null : account.username();
+    }
+
+    /** Whether a player's socket comes from the server's own pages: {@link #sameOrigin(String, String)}. */
+    static boolean sameOrigin(WsContext ctx) {
+        return sameOrigin(ctx.header("Origin"), ctx.header("Host"));
+    }
+
+    /**
+     * Whether an {@code Origin} header names the server's own origin. That is the scheme, host and
+     * port of {@code DISCORD_REDIRECT_URI} when it is set (TLS may end at a proxy in front of the
+     * server, so only that URI knows them); otherwise the host and port of the request's
+     * {@code Host} header. Hosts compare ignoring case, a port left out is its scheme's default
+     * (80, or 443 for https), and an IPv6 host keeps its brackets. Each is split by hand, not read
+     * with {@code java.net.URI}, which takes a host that is not a DNS name (one with an
+     * underscore, say) for none. Package-private for the tests.
+     *
+     * @param origin the {@code Origin} header: {@code http} or {@code https}, {@code ://}, a host
+     *               and an optional port, and nothing after them.
+     * @param host   the {@code Host} header: a host and an optional port.
+     * @return false when {@code origin} is missing or is no such origin ({@code null}, a sandboxed
+     *         page's, is none), or the origin it is compared with cannot be read.
+     */
+    static boolean sameOrigin(String origin, String host) {
+        WebOrigin from = webOrigin(origin, false);
+        if (from == null) {
+            return false;
+        }
+        String ownUri = ApplicationConfig.DISCORD_REDIRECT_URI;
+        if (ownUri != null && !ownUri.isBlank()) {
+            WebOrigin own = webOrigin(ownUri, true);
+            return own != null && from.scheme().equals(own.scheme()) && from.sameHostAndPort(own);
+        }
+        WebOrigin served = authority(from.scheme(), host);
+        return served != null && from.sameHostAndPort(served);
+    }
+
+    /** An http or https origin: its scheme in lower case, its host, and its port (-1 when left out). */
+    private record WebOrigin(String scheme, String host, int port) {
+        private int portOrDefault() {
+            return port != -1 ? port : scheme.equals("https") ? 443 : 80;
+        }
+
+        private boolean sameHostAndPort(WebOrigin other) {
+            return host.equalsIgnoreCase(other.host) && portOrDefault() == other.portOrDefault();
+        }
+    }
+
+    /**
+     * Reads the origin of an http or https URL: the scheme, {@code ://}, then the host and port up
+     * to the first {@code /}, {@code ?} or {@code #}.
+     *
+     * @param urlAllowed whether a path, query or fragment may follow (a URL, such as the redirect
+     *                   URI) or not (an {@code Origin} header).
+     * @return the origin, or null if the text has none.
+     */
+    private static WebOrigin webOrigin(String text, boolean urlAllowed) {
+        if (text == null) {
+            return null;
+        }
+        String url = text.trim();
+        int separator = url.indexOf("://");
+        if (separator < 0) {
+            return null;
+        }
+        String scheme = url.substring(0, separator).toLowerCase(Locale.ROOT);
+        if (!scheme.equals("http") && !scheme.equals("https")) {
+            return null;
+        }
+        String rest = url.substring(separator + 3);
+        for (int i = 0; i < rest.length(); i++) {
+            if ("/?#".indexOf(rest.charAt(i)) >= 0) {
+                if (!urlAllowed) {
+                    return null;
+                }
+                rest = rest.substring(0, i);
+                break;
+            }
+        }
+        return authority(scheme, rest);
+    }
+
+    /**
+     * Reads {@code host[:port]}, an IPv6 host in brackets (which it keeps), as an origin of the
+     * scheme.
+     *
+     * @return the origin, or null for none: no host, a character no host has (whitespace, a
+     *         control, {@code @}, a slash, {@code ?}, {@code #}, a bracket outside an IPv6 host, or
+     *         anything beyond ASCII), or a port that is not a number from 0 to 65535.
+     */
+    private static WebOrigin authority(String scheme, String authority) {
+        if (authority == null) {
+            return null;
+        }
+        String host;
+        String port = null;
+        if (authority.startsWith("[")) {
+            int close = authority.indexOf(']');
+            if (close < 2 || !hostCharacters(authority.substring(1, close))) {
+                return null;
+            }
+            host = authority.substring(0, close + 1);
+            String after = authority.substring(close + 1);
+            if (!after.isEmpty()) {
+                if (after.charAt(0) != ':') {
+                    return null;
+                }
+                port = after.substring(1);
+            }
+        } else {
+            int colon = authority.indexOf(':');
+            host = colon < 0 ? authority : authority.substring(0, colon);
+            port = colon < 0 ? null : authority.substring(colon + 1);
+            if (host.isEmpty() || !hostCharacters(host)) {
+                return null;
+            }
+        }
+        int number = -1;
+        if (port != null) {
+            if (port.isEmpty() || port.length() > 5 || !port.chars().allMatch(c -> c >= '0' && c <= '9')) {
+                return null;
+            }
+            number = Integer.parseInt(port);
+            if (number > 65535) {
+                return null;
+            }
+        }
+        return new WebOrigin(scheme, host, number);
+    }
+
+    /** Whether every character of the host is printable ASCII other than {@code @ / \ ? # [ ]}. */
+    private static boolean hostCharacters(String host) {
+        return host.chars().allMatch(c -> c > ' ' && c < 127 && "@/\\?#[]".indexOf(c) < 0);
+    }
+
     /** The reason a refused player's socket is closed with, for the lobby {@code code}. */
-    private static String refusalReason(Lobby.JoinRefusal refusal, String code, String name) {
+    private static String refusalReason(Lobby.JoinRefusal refusal, String code) {
         return switch (refusal) {
             case CLOSED -> noSuchLobby(code); // timed out, and on its way out of the server
-            case BLANK_NAME -> "Lobby and name must be specified.";
-            case NAME_TAKEN -> "A user with the name " + name + " is already in the lobby.";
+            case NO_ACCOUNT -> SIGN_IN_TO_JOIN;
+            case ALREADY_IN -> ALREADY_IN_LOBBY;
             case FULL -> "The lobby " + code + " is currently full.";
             case IN_GAME -> "The lobby " + code + " is currently in a game..";
         };
@@ -666,20 +1048,20 @@ public class SecretHitlerServer {
     }
 
     /**
-     * Parses a websocket message sent from the user.
-     * 
+     * Parses a websocket message sent from the user. The player is the connection's account, and
+     * in a game its seat ({@code Lobby.seatName}): a {@code name} in the message is never read, and
+     * a message need not have one.
+     *
      * @param ctx the WsMessageContext of the websocket.
-     * @requires the context must have the following parameters:
+     * @requires the message must have the following parameters:
      *           {@code lobby}: a String representing the lobby code.
-     *           {@code name}: a String username. Cannot already exist in the given
-     *           lobby.
      *           {@code command}: a String command.
      * @modifies this
      * @effects Closes the websocket with 1002 ({@code StatusCode.PROTOCOL}) if the
-     *          specified lobby does not exist or the sweep has closed it, the user is not allowed
-     *          to make this action (usually because they are not a
-     *          president/chancellor), if a required parameter is
-     *          missing, or the command cannot be executed in this state.
+     *          specified lobby does not exist or the sweep has closed it, the connection is not a
+     *          player's in that lobby, the player is not allowed to make this action (usually
+     *          because their seat is not the president's or chancellor's), if a required
+     *          parameter is missing, or the command cannot be executed in this state.
      *          <p>
      *          Updates the game state according to the specified command and
      *          updates every other connected user
@@ -696,19 +1078,15 @@ public class SecretHitlerServer {
         // Parse message to JSON object.
         JSONObject message = new JSONObject(ctx.message());
 
-        if (message.getString(PARAM_LOBBY) == null
-                || message.getString(PARAM_NAME) == null
-                || message.getString(PARAM_COMMAND) == null) {
+        if (message.getString(PARAM_LOBBY) == null || message.getString(PARAM_COMMAND) == null) {
             logger.warn("Message request failed: missing a parameter.");
             ctx.session.close(StatusCode.PROTOCOL, "A required parameter is missing.");
             return;
         }
 
-        String name = message.getString(PARAM_NAME);
         String lobbyCode = message.getString(PARAM_LOBBY);
 
-        String logMessage = "Received a message from user '" + name + "' in lobby '" + lobbyCode + "' ("
-                + ctx.message() + "): ";
+        String logMessage = "Received a message in lobby '" + lobbyCode + "' (" + ctx.message() + "): ";
 
         Lobby lobby = codeToLobby.get(lobbyCode); // one lookup: the sweep may remove the lobby at any moment
         if (lobby == null) {
@@ -717,17 +1095,39 @@ public class SecretHitlerServer {
             return;
         }
 
+        if (COMMAND_START_GAME.equals(message.getString(PARAM_COMMAND))) {
+            // A game start takes ACCOUNTS_LOCK before the lobby's lock, as a rename does
+            // (startGame), so the command's checks and the start all run under both.
+            synchronized (ACCOUNTS_LOCK) {
+                runPlayerCommand(ctx, message, lobby, lobbyCode, logMessage);
+            }
+        } else {
+            runPlayerCommand(ctx, message, lobby, lobbyCode, logMessage);
+        }
+    }
+
+    /**
+     * Runs a player's command in their lobby, under the lobby's lock ({@code onWebSocketMessage}).
+     * The start-game command's caller holds {@code ACCOUNTS_LOCK} already.
+     */
+    private static void runPlayerCommand(WsMessageContext ctx, JSONObject message, Lobby lobby,
+            String lobbyCode, String logMessage) {
         synchronized (lobby) {
             if (lobby.isClosed()) { // the sweep took it after the lookup (#64)
                 logger.debug(logMessage + " FAILED (Lobby requested has timed out)");
                 ctx.session.close(StatusCode.PROTOCOL, noSuchLobby(lobbyCode));
                 return;
             }
-            if (!lobby.hasUser(ctx, name)) {
+            // The player is the connection's account, whatever name the message carries.
+            String accountId = lobby.accountOf(ctx);
+            if (accountId == null) {
                 logger.debug(logMessage + " FAILED (Lobby does not have the user)");
                 ctx.session.close(StatusCode.PROTOCOL, "The user is not in the lobby " + lobbyCode + ".");
                 return;
             }
+            logMessage = "Account " + accountId + ": " + logMessage;
+            // The name the game knows the player by: their seat's, or null outside a game.
+            String name = lobby.seatName(ctx);
 
             lobby.recordActivity(ctx);
 
@@ -743,12 +1143,12 @@ public class SecretHitlerServer {
                         ctx.send(msg.toString());
                         break;
 
-                    case COMMAND_START_GAME: // Starts the game.
-                        lobby.startNewGame();
+                    case COMMAND_START_GAME: // Starts the game, holding ACCOUNTS_LOCK and then the lobby's lock.
+                        startGame(lobby);
                         break;
 
                     case COMMAND_GET_STATE: // Requests the updated state of the game.
-                        lobby.updateUser(ctx, name);
+                        lobby.updateUser(ctx);
                         break;
 
                     case COMMAND_NOMINATE_CHANCELLOR: // params: PARAM_TARGET (String)
@@ -872,10 +1272,10 @@ public class SecretHitlerServer {
 
     /**
      * Verifies that the user is the president.
-     * 
-     * @param name  String name of the user.
+     *
+     * @param name  the seat name of the user's connection ({@code Lobby.seatName}), or null.
      * @param lobby the Lobby that the game is in.
-     * @throws RuntimeException if the user is not the president.
+     * @throws RuntimeException if the user is not the president, or there is no game.
      */
     private static void verifyIsPresident(String name, Lobby lobby) {
         if (!lobby.game().getCurrentPresident().equals(name)) {
@@ -885,10 +1285,10 @@ public class SecretHitlerServer {
 
     /**
      * Verifies that the user is the chancellor.
-     * 
-     * @param name  String name of the user.
+     *
+     * @param name  the seat name of the user's connection ({@code Lobby.seatName}), or null.
      * @param lobby the Lobby that the game is in.
-     * @throws RuntimeException if the user is not the chancellor.
+     * @throws RuntimeException if the user is not the chancellor, or there is no game.
      */
     private static void verifyIsChancellor(String name, Lobby lobby) {
         if (!lobby.game().getCurrentChancellor().equals(name)) {

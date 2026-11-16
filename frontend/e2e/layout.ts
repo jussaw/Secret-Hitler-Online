@@ -149,14 +149,15 @@ export function overflowX(page: Page): Promise<{ scrollWidth: number; offscreen:
 }
 
 /**
- * Visible buttons, text fields and selectable tiles or cards inside `scope` that are smaller
- * than MIN_TARGET in either direction, as `tag#id "text" WxH`.
+ * Visible buttons, links in a button's look (`.button-link`: SIGN IN WITH DISCORD, SIGN IN TO
+ * PLAY), text fields and selectable tiles or cards inside `scope` that are smaller than MIN_TARGET
+ * in either direction, as `tag#id "text" WxH`.
  */
 export function smallTargets(page: Page, scope: string): Promise<string[]> {
   return page.evaluate(
     ({ scope, min }) =>
       Array.from(document.querySelectorAll(scope), (root) =>
-        Array.from(root.querySelectorAll("button, input, .selectable"))
+        Array.from(root.querySelectorAll("button, .button-link, input, .selectable"))
       )
         .flat()
         .flatMap((el) => {
@@ -193,16 +194,16 @@ export function smallFieldText(page: Page, scope: string): Promise<string[]> {
 }
 
 /**
- * Button labels inside `scope` that wrap onto more than one line, as `"text" n lines`. Each text
- * node is measured by itself, one rect per line, so a button's icon is never counted as a line.
- * Throws when `scope` shows no button label, so a check that finds none wrapped has measured
- * something.
+ * Button labels inside `scope` (links in a button's look, `.button-link`, among them) that wrap
+ * onto more than one line, as `"text" n lines`. Each text node is measured by itself, one rect per
+ * line, so a button's icon is never counted as a line. Throws when `scope` shows no button label,
+ * so a check that finds none wrapped has measured something.
  */
 export function wrappedLabels(page: Page, scope: string): Promise<string[]> {
   return page.evaluate((scope) => {
     const wrapped: string[] = [];
     let labels = 0;
-    for (const button of Array.from(document.querySelectorAll(`${scope} button`))) {
+    for (const button of Array.from(document.querySelectorAll(`${scope} button, ${scope} .button-link`))) {
       const r = button.getBoundingClientRect();
       if (r.width === 0 || r.height === 0 || getComputedStyle(button).visibility !== "visible") continue;
       const walker = document.createTreeWalker(button, NodeFilter.SHOW_TEXT);

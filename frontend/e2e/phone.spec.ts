@@ -13,13 +13,16 @@ import {
   wrappedLabels,
   type Box,
 } from "./layout";
+import { LONGEST_DISCORD_NAME, signInPage, signedInMe, stubMe, uniqueName } from "./accounts";
 import {
+  LOGIN_STATES,
+  accountTargets,
+  actionLabels,
   createLobby,
   joinGuests,
   lobbyStatusCard,
-  longestLineLobby,
+  longestLineViewers,
   longestLogin,
-  nameField,
   settle,
   startGame,
   waitForPlayers,
@@ -38,26 +41,43 @@ async function narrowPhone(page: Page): Promise<void> {
 for (const narrow of [false, true]) {
   const phone = narrow ? "a 320px phone" : "the phone";
 
-  test(`the login page fits ${phone}`, async ({ page }) => {
-    if (narrow) await narrowPhone(page);
-    const { width, height } = page.viewportSize()!;
-    await longestLogin(page);
-    await settle(page);
-    // The 320px phone may scroll down, never sideways.
-    if (!narrow) expect(await pageHeight(page), "scrollHeight").toBeLessThanOrEqual(height);
-    expect(await wrappedLabels(page, ".login-screen"), "wrapped button labels").toEqual([]);
-    expect(await smallFieldText(page, ".login-screen"), "small text in text fields").toEqual([]);
-    const overflow = await overflowX(page);
-    expect(overflow.scrollWidth, "scrollWidth").toBeLessThanOrEqual(width);
-    expect(overflow.offscreen, "past the edge").toEqual([]);
-    expect(await smallTargets(page, "body"), "small touch targets").toEqual([]);
-  });
+  for (const state of LOGIN_STATES) {
+    test(`the login page fits ${phone}, ${state}`, async ({ page }) => {
+      if (narrow) await narrowPhone(page);
+      const { width, height } = page.viewportSize()!;
+      await longestLogin(page, state);
+      await settle(page);
+      // The 320px phone may scroll down, never sideways.
+      if (!narrow) expect(await pageHeight(page), "scrollHeight").toBeLessThanOrEqual(height);
+      expect(await wrappedLabels(page, ".login-screen"), "wrapped button labels").toEqual([]);
+      expect(await smallFieldText(page, ".login-screen"), "small text in text fields").toEqual([]);
+      const overflow = await overflowX(page);
+      expect(overflow.scrollWidth, "scrollWidth").toBeLessThanOrEqual(width);
+      expect(overflow.offscreen, "past the edge").toEqual([]);
+      // SIGN IN WITH DISCORD (a link signed out with Discord), TEST SIGN-IN, CHANGE NAME and Sign
+      // out among them.
+      expect(await smallTargets(page, "body"), "small touch targets").toEqual([]);
+      const account = page.locator(".login-account");
+      const signedIn = state.startsWith("signed in");
+      const targets = signedIn
+        ? [account.getByRole("button", { name: "CHANGE NAME" }), account.getByRole("button", { name: "Sign out" })]
+        : [
+            account.getByRole(state === "signed out" ? "link" : "button", { name: "SIGN IN WITH DISCORD" }),
+            account.getByRole("button", { name: "TEST SIGN-IN" }),
+          ];
+      for (const target of targets) await expect(target).toBeVisible();
+      if (signedIn) {
+        const { signOut, changeName } = await accountTargets(page);
+        expect(overlaps(signOut, changeName), "Sign out's target over CHANGE NAME").toBe(false);
+      }
+    });
+  }
 
   test(`the lobby and its portrait picker fit ${phone}`, async ({ page, baseURL }) => {
     if (narrow) await narrowPhone(page);
     const { width, height } = page.viewportSize()!;
+    await signInPage(page, uniqueName("Host Player"));
     await page.goto("/");
-    await nameField(page).fill("Host Player");
     await page.getByRole("button", { name: "CREATE LOBBY" }).click();
     const portraits = page.locator("#icon.selectable:not(.disabled)");
     await portraits.first().waitFor();
@@ -91,22 +111,27 @@ for (const narrow of [false, true]) {
     }
   });
 
-  test(`the host's, a guest's and a spectator's lobby fit ${phone}`, async ({ page, browser, baseURL }) => {
+  test(`the host's, a guest's and spectators' lobbies fit ${phone}`, async ({ page, browser, baseURL }) => {
+    test.setTimeout(120_000);
     if (narrow) await narrowPhone(page);
     // Each viewer has a page (and cookies) of its own, with the project's phone settings.
-    const host = await browser.newPage();
-    const spectator = await browser.newPage();
+    const others = await Promise.all(Array.from({ length: 5 }, () => browser.newPage()));
+    const [host, signedIn, signedOut, noDiscord, failed] = others;
     try {
       const { width, height } = page.viewportSize()!;
-      await host.setViewportSize({ width, height });
-      await spectator.setViewportSize({ width, height });
-      const sockets = await longestLineLobby(baseURL!, { host, guest: page, spectator });
+      for (const other of others) await other.setViewportSize({ width, height });
+      const { sockets, viewers } = await longestLineViewers(baseURL!, {
+        host,
+        guest: page,
+        signedIn,
+        signedOut,
+        noDiscord,
+        failed,
+      });
       try {
-        for (const [viewer, viewerPage] of [
-          ["host", host],
-          ["guest", page],
-          ["spectator", spectator],
-        ] as const) {
+        for (const { viewer, page: viewerPage, buttons, note } of viewers) {
+          expect(await actionLabels(viewerPage), `the ${viewer}'s buttons`).toEqual(buttons);
+          if (note !== undefined) await expect(viewerPage.locator("#lobby-note")).toHaveText(note);
           await settle(viewerPage);
           // The 320px phone may scroll down, never sideways, and its status line may take a third
           // line.
@@ -134,44 +159,108 @@ for (const narrow of [false, true]) {
         sockets.forEach((ws) => ws.close());
       }
     } finally {
-      await host.close();
-      await spectator.close();
+      await Promise.all(others.map((other) => other.close()));
     }
   });
 
-  test(`the PLAY INSTEAD prompt fits ${phone}`, async ({ page, browser }) => {
+  test(`CHOOSE A NAME fits ${phone} on the login page and over the lobby, and PLAY INSTEAD then takes a seat at once`, async ({
+    page,
+    browser,
+    baseURL,
+  }) => {
     if (narrow) await narrowPhone(page);
-    const { width } = page.viewportSize()!;
     // The host plays in a page of its own (with the project's phone settings); this phone watches.
     const host = await browser.newPage();
     try {
-      await watchLobby(page, await createLobby(host, "Host Player"));
-      await page.getByRole("button", { name: "PLAY INSTEAD" }).click();
-      const field = page.getByRole("textbox", { name: "Your name" });
-      await expect(field).toBeVisible();
-      // Measure the prompt as it rests, after its entrance animation and with the web fonts.
-      await page.waitForFunction(() =>
-        document.getElementById("alert-box")!.getAnimations().every((a) => a.playState === "finished")
-      );
-      await page.evaluate(() => document.fonts.ready.then(() => undefined));
-      expect(await smallTargets(page, "#alert-box"), "small targets in the prompt").toEqual([]);
-      expect(await smallFieldText(page, "#alert-box"), "small text in the name field").toEqual([]);
-      const overflow = await overflowX(page);
-      expect(overflow.scrollWidth, "scrollWidth").toBeLessThanOrEqual(width);
-      expect(overflow.offscreen, "past the edge").toEqual([]);
+      const code = await createLobby(host, uniqueName("Host Player"));
+      // A first sign-in: the account has no name yet, so CHOOSE A NAME opens by itself.
+      await signInPage(page, null);
+      await page.goto(`/?lobby=${code}`);
+      await checkNamePrompt(page, "CHOOSE A NAME", ["CONTINUE", "SIGN OUT"], "on the login page");
 
-      // The field takes twelve characters at most; jsdom does not apply maxLength to typing.
-      await field.fill("");
-      await field.pressSequentially("ABCDEFGHIJKLM");
-      await expect(field).toHaveValue("ABCDEFGHIJKL");
+      // Back from SIGN IN TO PLAY, the spectator cookie takes the page back to watching: there it
+      // opens over the lobby.
+      await page.context().addCookies([
+        { name: "lobby", value: code, url: baseURL! },
+        { name: "spectator", value: "true", url: baseURL! },
+      ]);
+      await page.reload();
+      await expect(page.locator(".lobby-screen")).toBeVisible();
+      await checkNamePrompt(page, "CHOOSE A NAME", ["CONTINUE", "SIGN OUT"], "over the lobby");
+
+      // With a name saved, still watching, PLAY INSTEAD takes the seat under it at once, with no
+      // prompt.
+      const field = page.getByRole("textbox", { name: "Your name" });
+      const name = uniqueName("Sam");
+      await field.fill(name);
+      await page.getByRole("button", { name: "CONTINUE" }).click();
+      await expect(field).toHaveCount(0);
+      await page.getByRole("button", { name: "PLAY INSTEAD" }).click();
+      await expect(page.locator(`.lobby-players li.is-user[data-player="${name}"]`)).toBeVisible();
+      await expect(field).toHaveCount(0);
     } finally {
       await host.close();
     }
   });
+
+  test(`CHANGE NAME fits ${phone} on the login page`, async ({ page }) => {
+    if (narrow) await narrowPhone(page);
+    // A twelve-character name in wide capitals, as the field holds it when the prompt opens.
+    await stubMe(page, signedInMe("WOLFGANG MAX", LONGEST_DISCORD_NAME));
+    await page.goto("/");
+    await page.locator(".login-account").getByRole("button", { name: "CHANGE NAME" }).click();
+    await expect(page.getByRole("textbox", { name: "Your name" })).toHaveValue("WOLFGANG MAX");
+    await checkNamePrompt(page, "CHANGE NAME", ["SAVE", "CANCEL"], "on the login page");
+  });
+
+  test(`CHANGE NAME fits ${phone} in the lobby`, async ({ page }) => {
+    if (narrow) await narrowPhone(page);
+    const name = uniqueName("Host Player");
+    await createLobby(page, name);
+    await page.locator(".lobby-actions").getByRole("button", { name: "CHANGE NAME" }).click();
+    await expect(page.getByRole("textbox", { name: "Your name" })).toHaveValue(name);
+    await checkNamePrompt(page, "CHANGE NAME", ["SAVE", "CANCEL"], "in the lobby");
+  });
+}
+
+/**
+ * The open name prompt `title`, measured as it rests (after its entrance animation, with the web
+ * fonts): 44px targets, 16px field text, its two buttons `labels` (in order) unwrapped and on one
+ * row, nothing past the window's sides, and a field that takes twelve characters at most. Leaves
+ * the field empty.
+ */
+async function checkNamePrompt(page: Page, title: string, labels: [string, string], where: string) {
+  const { width } = page.viewportSize()!;
+  const at = `${title} ${where}`;
+  await expect(page.locator("#alert-box h2"), at).toHaveText(title);
+  await page.waitForFunction(() =>
+    document.getElementById("alert-box")!.getAnimations().every((a) => a.playState === "finished")
+  );
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  expect(await smallTargets(page, "#alert-box"), `small targets in ${at}`).toEqual([]);
+  expect(await smallFieldText(page, "#alert-box"), `small text in the name field of ${at}`).toEqual([]);
+  expect(await wrappedLabels(page, "#alert-box"), `wrapped button labels in ${at}`).toEqual([]);
+  const buttons = await page
+    .locator("#alert-box .name-prompt-buttons button")
+    .evaluateAll((els) => els.map((el) => ({ label: (el.textContent ?? "").trim(), top: el.getBoundingClientRect().top })));
+  expect(buttons.map((button) => button.label), `the buttons of ${at}`).toEqual(labels);
+  expect(Math.abs(buttons[0].top - buttons[1].top), `${labels.join(" and ")} on one row in ${at}`).toBeLessThanOrEqual(
+    0.5
+  );
+  const overflow = await overflowX(page);
+  expect(overflow.scrollWidth, `scrollWidth with ${at}`).toBeLessThanOrEqual(width);
+  expect(overflow.offscreen, `past the edge with ${at}`).toEqual([]);
+
+  // The field takes twelve characters at most; jsdom does not apply maxLength to typing.
+  const field = page.getByRole("textbox", { name: "Your name" });
+  await field.fill("");
+  await field.pressSequentially("ABCDEFGHIJKLM");
+  await expect(field, `the field of ${at}`).toHaveValue("ABCDEFGHIJKL");
+  await field.fill("");
 }
 
 test("phones put the roster first", async ({ page, baseURL }) => {
-  const code = await createLobby(page, "Host Player");
+  const code = await createLobby(page, uniqueName("Host Player"));
   const guests = await joinGuests(baseURL!, code, 9);
   try {
     await waitForPlayers(page, 10);
@@ -190,7 +279,7 @@ test("phones put the roster first", async ({ page, baseURL }) => {
 
 test("the busy bubble shows at 320px", async ({ page, baseURL }) => {
   await narrowPhone(page);
-  const code = await createLobby(page, "Host Player");
+  const code = await createLobby(page, uniqueName("Host Player"));
   const guests = await joinGuests(baseURL!, code, 9, { pickLooks: false });
   try {
     await waitForPlayers(page, 10);
@@ -411,13 +500,14 @@ test("a spectator's lobby and game fit the phone", async ({ page, browser, baseU
   const { width } = page.viewportSize()!;
   // The host plays in a page of its own (with the project's phone settings); this phone watches.
   const host = await browser.newPage();
-  const code = await createLobby(host, "Host Player");
+  const hostName = uniqueName("Host Player");
+  const code = await createLobby(host, hostName);
   const guests = await joinGuests(baseURL!, code, 9);
   try {
     await watchLobby(page, code);
     await expect(page.locator("#lobby-status-text")).toBeVisible();
     await expect(page.locator("#lobby-status-text")).toHaveText(
-      "You are watching. Waiting for Host Player to start the game."
+      `You are watching. Waiting for ${hostName} to start the game.`
     );
     await waitForPlayers(page, 10);
     await settle(page);
@@ -440,7 +530,7 @@ test("a spectator's game keeps the phone layout at 320px", async ({ page, browse
   test.skip(test.info().project.name !== "phone-360", "one phone project is enough");
   // The host plays in a page of its own (with the project's phone settings); this phone watches.
   const host = await browser.newPage();
-  const code = await createLobby(host, "Host Player");
+  const code = await createLobby(host, uniqueName("Host Player"));
   const guests = await joinGuests(baseURL!, code, 9);
   try {
     await watchLobby(page, code);

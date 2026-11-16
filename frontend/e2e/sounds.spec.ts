@@ -2,7 +2,8 @@ import { expect, test, type Page, type WebSocketRoute } from "@playwright/test";
 import { LobbyState, type PolicyType, type Role } from "../src/types";
 import { LOBBY_GONE, TEN, answerPings, gamePacket, openFakeGame } from "./fakeGame";
 import { DESKTOP_SIZES, NARROW_WINDOWS, overflowX, overlaps, smallTargets } from "./layout";
-import { nameField, settle, waitForPlayers } from "./lobby";
+import { signedInMe, stubMe } from "./accounts";
+import { settle, waitForPlayers } from "./lobby";
 import { heard, recordSounds, soundLog } from "./soundLog";
 
 const audioContexts = (page: Page): Promise<number> =>
@@ -17,8 +18,6 @@ const ROLES = Object.fromEntries(
 
 test("no sound plays and no AudioContext exists before the first gesture", async ({
   page,
-  context,
-  baseURL,
   browserName,
 }) => {
   test.skip(browserName !== "chromium", "Chromium alone runs the audio tests");
@@ -27,8 +26,8 @@ test("no sound plays and no AudioContext exists before the first gesture", async
     if (message.type() === "warning" || message.type() === "error") warnings.push(message.text());
   });
   await recordSounds(page);
-  // The login form fills Create Lobby's name from this cookie, so no typing is needed.
-  await context.addCookies([{ name: "name", value: encodeURIComponent(USER), url: baseURL! }]);
+  // Signed in with a name, so CREATE LOBBY needs no typing.
+  await stubMe(page, signedInMe(USER));
   await page.route("**/new-lobby", (route) => route.fulfill({ body: "FAKE" }));
   let connect!: (ws: WebSocketRoute) => void;
   const connected = new Promise<WebSocketRoute>((resolve) => (connect = resolve));
@@ -38,6 +37,8 @@ test("no sound plays and no AudioContext exists before the first gesture", async
   });
 
   await page.goto("/");
+  // CREATE LOBBY is on once /me has answered.
+  await expect(page.getByRole("button", { name: "CREATE LOBBY" })).toBeEnabled();
   // A click from a script is not a gesture: the page has had no trusted input yet.
   await page.evaluate(() =>
     Array.from(document.querySelectorAll("button"))
@@ -45,8 +46,8 @@ test("no sound plays and no AudioContext exists before the first gesture", async
       .click()
   );
   const ws = await connected;
-  ws.send(JSON.stringify({ type: "lobby", usernames: TEN.slice(0, 9), icon }));
-  ws.send(JSON.stringify({ type: "lobby", usernames: TEN, icon }));
+  ws.send(JSON.stringify({ type: "lobby", usernames: TEN.slice(0, 9), icon, you: USER }));
+  ws.send(JSON.stringify({ type: "lobby", usernames: TEN, icon, you: USER }));
   // The lobby rebuilds the portrait dialog after it renders, so let it render before the game.
   await waitForPlayers(page, TEN.length);
   ws.send(JSON.stringify(gamePacket()));
@@ -80,8 +81,8 @@ test("each sound waits for its animation", async ({ page, browserName, isMobile 
   const L = "LIBERAL" as PolicyType;
 
   // 1. Another player joins the lobby.
-  game.send({ type: "lobby", usernames: TEN.slice(0, 9), icon });
-  game.send({ type: "lobby", usernames: TEN, icon });
+  game.send({ type: "lobby", usernames: TEN.slice(0, 9), icon, you: USER });
+  game.send({ type: "lobby", usernames: TEN, icon, you: USER });
   await heard(page, 1);
   // 2. The game starts with the user as president.
   game.send(gamePacket());
@@ -283,8 +284,8 @@ test("mute and volume survive a reload", async ({ page, browserName, isMobile })
   await expect(button).toHaveAttribute("aria-pressed", "true");
   await expect(slider).toHaveValue("60");
   const game = await openFakeGame(page); // its click unlocks audio
-  game.send({ type: "lobby", usernames: TEN.slice(0, 9), icon });
-  game.send({ type: "lobby", usernames: TEN, icon });
+  game.send({ type: "lobby", usernames: TEN.slice(0, 9), icon, you: USER });
+  game.send({ type: "lobby", usernames: TEN, icon, you: USER });
   const [joined] = await heard(page, 1);
   expect(joined).toMatchObject({ name: "playerJoined", played: false, reason: "muted" });
 });
@@ -370,12 +371,12 @@ test("a disconnect during the vote reveal cancels its sound", async ({ page, bro
     answerPings(ws);
     connect(ws);
   });
+  await stubMe(page, signedInMe(USER));
   await page.goto("/");
-  await nameField(page).fill(USER);
   await page.getByRole("button", { name: "CREATE LOBBY" }).click();
   const ws = await connected;
   const send = (packet: object) => ws.send(JSON.stringify(packet));
-  send({ type: "lobby", usernames: TEN, icon });
+  send({ type: "lobby", usernames: TEN, icon, you: USER });
   await waitForPlayers(page, TEN.length);
   send(gamePacket({ president: TEN[1] }));
   await page.locator("#alert-box.appear-custom-alert").getByRole("button", { name: "OKAY" }).click();

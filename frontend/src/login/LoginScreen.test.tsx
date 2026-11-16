@@ -1,78 +1,216 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
+import type { Me } from "../account/account";
 import { ABOUT_URL, ISSUES_URL, RULES_URL } from "../constants";
+import { CONTACT_ERROR } from "../lobby/joinError";
 import LoginScreen, { type LoginScreenProps } from "./LoginScreen";
+
+const SIGNED_OUT: Me = { signedIn: false, discord: true, testSignIn: false };
+const ROWAN: Me = {
+  signedIn: true,
+  id: "123456789",
+  username: "Rowan",
+  discordUsername: "rowan.d",
+  test: false,
+  discord: true,
+  testSignIn: false,
+};
+const NO_NAME: Me = { ...ROWAN, username: null };
+const TEST_ACCOUNT: Me = {
+  ...ROWAN,
+  id: "test-3",
+  username: "Guest 3",
+  discordUsername: "test-3",
+  test: true,
+  testSignIn: true,
+};
 
 function renderLogin(overrides: Partial<LoginScreenProps> = {}) {
   const props: LoginScreenProps = {
-    name: "",
+    account: SIGNED_OUT,
+    accountError: "",
+    discordHref: "/auth/discord",
     lobby: "",
     joinError: "",
     createLobbyError: "",
-    onNameChange: vi.fn(),
     onLobbyChange: vi.fn(),
     onJoin: vi.fn(),
     onWatch: vi.fn(),
     onCreateLobby: vi.fn(),
+    onTestSignIn: vi.fn(),
+    onChangeName: vi.fn(),
+    onSignOut: vi.fn(),
     ...overrides,
   };
   render(<LoginScreen {...props} />);
   return props;
 }
 
-const nameField = () => screen.getByRole("textbox", { name: "YOUR NAME" });
 const codeField = () => screen.getByRole("textbox", { name: "Lobby code" });
 const button = (name: string) => screen.getByRole("button", { name });
+const region = (name: string) => screen.getByRole("region", { name });
+const discordLink = () => screen.queryByRole("link", { name: "SIGN IN WITH DISCORD" });
+const joinHint = () => document.getElementById("login-join-hint");
 
-test("the page is three cards: the name, joining a game and starting one", () => {
+test("the page is three cards: the account, joining a game and starting one", () => {
   renderLogin();
+  expect(screen.getAllByRole("heading").map((h) => h.textContent)).toEqual([
+    "YOUR ACCOUNT",
+    "JOIN A GAME",
+    "OR START ONE",
+  ]);
+  // The lobby code is the only field: the name is the account's.
+  expect(screen.getAllByRole("textbox")).toEqual([codeField()]);
+});
+
+test("before /me answers, the card is blank and JOIN and CREATE LOBBY are off", () => {
+  renderLogin({ account: undefined, lobby: "KQMX" });
+  expect(discordLink()).toBeNull();
+  expect(screen.queryByRole("button", { name: /SIGN IN|CHANGE NAME|Sign out/ })).toBeNull();
+  expect(screen.queryByText(/YOUR (ACCOUNT|NAME)/)).toBeNull();
+  expect(screen.getAllByRole("heading").map((h) => h.textContent)).toEqual([
+    "JOIN A GAME",
+    "OR START ONE",
+  ]);
+  expect(button("JOIN")).toBeDisabled();
+  expect(button("CREATE LOBBY")).toBeDisabled();
+  expect(button("WATCH")).toBeEnabled();
+  expect(joinHint()).toHaveTextContent("JOIN needs you signed in · WATCH needs only the code");
+  expect(document.querySelector(".login-account")).toHaveTextContent(/^\s*$/);
+});
+
+test("when /me fails, the card says the server could not be reached", () => {
+  renderLogin({ account: undefined, accountError: CONTACT_ERROR, lobby: "KQMX" });
+  const card = document.querySelector(".login-account") as HTMLElement;
+  expect(within(card).getByRole("status")).toHaveTextContent(CONTACT_ERROR);
+  expect(discordLink()).toBeNull();
+  expect(button("JOIN")).toBeDisabled();
+  expect(button("CREATE LOBBY")).toBeDisabled();
+  expect(button("WATCH")).toBeEnabled();
+  expect(joinHint()).toHaveTextContent("JOIN needs you signed in · WATCH needs only the code");
+});
+
+test("signed out: SIGN IN WITH DISCORD links to the sign-in with the code, and only WATCH works", () => {
+  renderLogin({ discordHref: "/auth/discord?lobby=KQMX", lobby: "KQMX" });
+  const card = region("YOUR ACCOUNT");
+  const link = within(card).getByRole("link", { name: "SIGN IN WITH DISCORD" });
+  expect(link).toHaveAttribute("href", "/auth/discord?lobby=KQMX");
+  // The sign-in leaves this page for Discord's, in the same tab.
+  expect(link).not.toHaveAttribute("target");
+  expect(card).toHaveTextContent("Sign in to play. Anyone can watch.");
+  expect(within(card).queryByRole("button", { name: "TEST SIGN-IN" })).toBeNull();
+  expect(button("JOIN")).toBeDisabled();
+  expect(button("CREATE LOBBY")).toBeDisabled();
+  expect(button("WATCH")).toBeEnabled();
+  expect(joinHint()).toHaveTextContent("JOIN needs you signed in · WATCH needs only the code");
+  expect(codeField()).toHaveAccessibleDescription(
+    "JOIN needs you signed in · WATCH needs only the code"
+  );
+});
+
+test("with Discord not set up, the sign-in button is off and says so", () => {
+  renderLogin({ account: { signedIn: false, discord: false, testSignIn: false } });
+  const card = region("YOUR ACCOUNT");
+  expect(discordLink()).toBeNull();
+  const signIn = within(card).getByRole("button", { name: "SIGN IN WITH DISCORD" });
+  expect(signIn).toBeDisabled();
+  // The reason is the button's description, so a screen reader hears why it is off.
+  expect(signIn).toHaveAccessibleDescription("Sign-in is not set up on this server.");
+  expect(card).toHaveTextContent("Sign-in is not set up on this server.");
+  expect(card).not.toHaveTextContent("Sign in to play. Anyone can watch.");
+});
+
+test("with test sign-in on, TEST SIGN-IN stands beside the Discord button", () => {
+  const props = renderLogin({ account: { signedIn: false, discord: true, testSignIn: true } });
+  const card = region("YOUR ACCOUNT");
+  expect(within(card).getByRole("link", { name: "SIGN IN WITH DISCORD" })).toBeInTheDocument();
+  fireEvent.click(within(card).getByRole("button", { name: "TEST SIGN-IN" }));
+  expect(props.onTestSignIn).toHaveBeenCalledTimes(1);
+});
+
+test("TEST SIGN-IN works where Discord is not set up", () => {
+  const props = renderLogin({ account: { signedIn: false, discord: false, testSignIn: true } });
+  fireEvent.click(button("TEST SIGN-IN"));
+  expect(props.onTestSignIn).toHaveBeenCalledTimes(1);
+});
+
+test("the account card's error shows under the button", () => {
+  renderLogin({ accountError: "Signing in with Discord failed. Please try again." });
+  const card = region("YOUR ACCOUNT");
+  const error = within(card).getByRole("status");
+  expect(error).toHaveTextContent("Signing in with Discord failed. Please try again.");
+  const link = within(card).getByRole("link", { name: "SIGN IN WITH DISCORD" });
+  expect(link.compareDocumentPosition(error) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+test("signed in: the name, CHANGE NAME and the Discord username with Sign out", () => {
+  const props = renderLogin({ account: ROWAN, lobby: "KQMX" });
   expect(screen.getAllByRole("heading").map((h) => h.textContent)).toEqual([
     "YOUR NAME",
     "JOIN A GAME",
     "OR START ONE",
   ]);
-  expect(screen.getAllByRole("textbox")).toHaveLength(2);
+  const card = region("YOUR NAME");
+  expect(within(card).getByText("Rowan")).toBeInTheDocument();
+  expect(card).toHaveTextContent("Signed in with Discord as rowan.d · Sign out");
+  expect(discordLink()).toBeNull();
+  fireEvent.click(within(card).getByRole("button", { name: "CHANGE NAME" }));
+  expect(props.onChangeName).toHaveBeenCalledTimes(1);
+  // Sign out is a button that looks like a link.
+  fireEvent.click(within(card).getByRole("button", { name: "Sign out" }));
+  expect(props.onSignOut).toHaveBeenCalledTimes(1);
+  expect(button("JOIN")).toBeEnabled();
+  expect(button("CREATE LOBBY")).toBeEnabled();
+  expect(joinHint()).toHaveTextContent(/^WATCH needs only the code$/);
 });
 
-test("the one name field says how long a name may be, and counts nothing", () => {
-  renderLogin({ name: "Sam" });
-  expect(nameField()).toHaveValue("Sam");
-  expect(nameField()).toHaveAccessibleDescription("Up to 12 characters");
-  expect(nameField()).toHaveAttribute("maxlength", "12");
-  // The old field showed the characters left as a bare number beside its label.
-  expect(screen.queryByText(/^\d+$/)).toBeNull();
+test("a test account names its ID in place of a Discord username", () => {
+  renderLogin({ account: TEST_ACCOUNT });
+  const card = region("YOUR NAME");
+  expect(card).toHaveTextContent("Signed in with a test account (test-3) · Sign out");
+  expect(card).not.toHaveTextContent("Discord");
+  expect(within(card).getByRole("button", { name: "Sign out" })).toBeInTheDocument();
+});
+
+test("signed in with no name yet: the card waits for the name, and JOIN and CREATE LOBBY are off", () => {
+  renderLogin({ account: NO_NAME, lobby: "KQMX" });
+  expect(region("YOUR NAME")).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "CHANGE NAME" })).toBeNull();
+  expect(button("JOIN")).toBeDisabled();
+  expect(button("CREATE LOBBY")).toBeDisabled();
+  expect(button("WATCH")).toBeEnabled();
+});
+
+test("a signed-in card shows its error too", () => {
+  renderLogin({ account: ROWAN, accountError: CONTACT_ERROR });
+  expect(within(region("YOUR NAME")).getByRole("status")).toHaveTextContent(CONTACT_ERROR);
 });
 
 test.each([
-  { name: "", lobby: "", join: false, watch: false, create: false },
-  { name: "Sam", lobby: "", join: false, watch: false, create: true },
-  { name: "Sam", lobby: "ABC", join: false, watch: false, create: true },
-  { name: "", lobby: "ABCD", join: false, watch: true, create: false },
-  { name: "   ", lobby: "ABCD", join: false, watch: true, create: false },
-  { name: "Sam", lobby: "ABCD", join: true, watch: true, create: true },
-])("name $name and code $lobby: JOIN $join, WATCH $watch, CREATE LOBBY $create", (c) => {
-  renderLogin({ name: c.name, lobby: c.lobby });
-  expect(button("JOIN").hasAttribute("disabled")).toBe(!c.join);
-  expect(button("WATCH").hasAttribute("disabled")).toBe(!c.watch);
-  expect(button("CREATE LOBBY").hasAttribute("disabled")).toBe(!c.create);
-});
+  { account: SIGNED_OUT, lobby: "ABCD", join: false, watch: true, create: false },
+  { account: NO_NAME, lobby: "ABCD", join: false, watch: true, create: false },
+  { account: ROWAN, lobby: "", join: false, watch: false, create: true },
+  { account: ROWAN, lobby: "ABC", join: false, watch: false, create: true },
+  { account: ROWAN, lobby: "ABCD", join: true, watch: true, create: true },
+  { account: TEST_ACCOUNT, lobby: "ABCD", join: true, watch: true, create: true },
+])(
+  "signed in $account.signedIn as $account.username, code $lobby: JOIN $join, WATCH $watch, CREATE LOBBY $create",
+  (c) => {
+    renderLogin({ account: c.account, lobby: c.lobby });
+    expect(button("JOIN").hasAttribute("disabled")).toBe(!c.join);
+    expect(button("WATCH").hasAttribute("disabled")).toBe(!c.watch);
+    expect(button("CREATE LOBBY").hasAttribute("disabled")).toBe(!c.create);
+  }
+);
 
 test("the buttons call their handlers", () => {
-  const props = renderLogin({ name: "Sam", lobby: "ABCD" });
+  const props = renderLogin({ account: ROWAN, lobby: "ABCD" });
   fireEvent.click(button("JOIN"));
   fireEvent.click(button("WATCH"));
   fireEvent.click(button("CREATE LOBBY"));
   expect(props.onJoin).toHaveBeenCalledTimes(1);
   expect(props.onWatch).toHaveBeenCalledTimes(1);
   expect(props.onCreateLobby).toHaveBeenCalledTimes(1);
-});
-
-test("typed names lose leading and doubled spaces and stop at twelve characters", () => {
-  const props = renderLogin();
-  fireEvent.change(nameField(), { target: { value: "  Sam   Lee" } });
-  fireEvent.change(nameField(), { target: { value: "Wolfgang Maxwell" } });
-  expect(props.onNameChange).toHaveBeenNthCalledWith(1, "Sam Lee");
-  expect(props.onNameChange).toHaveBeenNthCalledWith(2, "Wolfgang Max");
 });
 
 test("a typed code is upper-cased and stops at four letters", () => {
@@ -82,18 +220,17 @@ test("a typed code is upper-cased and stops at four letters", () => {
   expect(codeField()).toHaveAttribute("maxlength", "4");
 });
 
-test("WATCH is explained beside the code", () => {
-  renderLogin();
-  const join = screen.getByRole("region", { name: "JOIN A GAME" });
-  expect(within(join).getByText("WATCH needs only the code")).toBeInTheDocument();
-});
-
 test("each card shows its own error", () => {
-  renderLogin({ joinError: "The lobby could not be found.", createLobbyError: "Connecting..." });
-  const join = screen.getByRole("region", { name: "JOIN A GAME" });
-  const start = screen.getByRole("region", { name: "OR START ONE" });
+  renderLogin({
+    account: ROWAN,
+    joinError: "The lobby could not be found.",
+    createLobbyError: "Connecting...",
+  });
+  const join = region("JOIN A GAME");
+  const start = region("OR START ONE");
   expect(within(join).getByRole("status")).toHaveTextContent("The lobby could not be found.");
   expect(within(start).getByRole("status")).toHaveTextContent("Connecting...");
+  expect(within(region("YOUR NAME")).getByRole("status")).toHaveTextContent(/^$/);
 });
 
 test("the footer links to the rules, the project and its issues, each in a new tab", () => {

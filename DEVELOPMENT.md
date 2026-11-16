@@ -7,12 +7,13 @@ Requirements: Java 17 for the backend, Node.js 22.12 or newer for the frontend (
   - `docker compose up --build`
   - Open frontend: [http://localhost:3000](http://localhost:3000)
   - Backend health: [http://localhost:4040/ping](http://localhost:4040/ping)
-  - Lobbies are backed up to SQLite on the `sh-data` volume (`DATABASE_PATH=/data/backup.db`).
+  - Lobbies are backed up to SQLite on the `sh-data` volume (`DATABASE_PATH=/data/backup.db`), which also keeps the accounts and sessions.
+  - The backend runs `runLocal`, so the login page has TEST SIGN-IN (see [Signing in locally](#signing-in-locally)).
   - The containers run as root, so `frontend/node_modules`, `backend/build` and `backend/.gradle` in your checkout end up owned by root.
 
 ## Persistence
 
-The server backs up all lobbies to a SQLite file every minute (when something changed) and on shutdown, and restores them on start. Set `DATABASE_PATH` to the file to use, for example `DATABASE_PATH=/tmp/sh-backup.db ./gradlew runLocal`. With it unset, the server logs one error and runs without persistence.
+The server backs up all lobbies to a SQLite file every minute (when something changed) and on shutdown, and restores them on start. The same file holds the accounts and sessions, in two tables of their own (`accounts` and `sessions`), written as they change. Set `DATABASE_PATH` to the file to use, for example `DATABASE_PATH=/tmp/sh-backup.db ./gradlew runLocal`. With it unset, the server logs one error and runs without persistence: accounts live in memory and go when it stops.
 
 ## One port: the production layout
 
@@ -24,7 +25,9 @@ cd ../backend && ./gradlew jar                  # bundles frontend/dist into the
 PORT=4040 java -jar build/libs/secret-hitler-online.jar
 ```
 
-The Docker image does the same in three stages: `docker build -t secret-hitler-online .` at the repo root, then `docker run -p 8080:8080 -v sh-data:/data secret-hitler-online`. CI publishes it as `ghcr.io/jussaw/secret-hitler-online` on every push to `development`.
+Nobody can play on that server until someone can sign in: add `TEST_SIGN_IN=true` (test accounts, for local runs only) or the three Discord variables (below) in front of `java`. Without either, the server logs a warning at start and the login page only lets people watch.
+
+The Docker image does the same in three stages: `docker build -t secret-hitler-online .` at the repo root, then `docker run -p 8080:8080 -v sh-data:/data secret-hitler-online`. CI publishes it as `ghcr.io/jussaw/secret-hitler-online` on every push to `development`. Players on the image need the Discord variables ([README](README.md#discord-sign-in)); the image never turns on the test sign-in.
 
 ## Running the backend and the frontend
 
@@ -41,7 +44,7 @@ cd Secret-Hitler-Online/backend
 ./gradlew runLocal
 ```
 
-This will start the backend server at [`http://localhost:4040`](http://localhost:4040) by default. This also puts the server in debug mode, which allows cross-origin requests (only needed if a frontend on another origin calls it directly, such as with `VITE_SERVER_ADDRESS`).
+This will start the backend server at [`http://localhost:4040`](http://localhost:4040) by default. This also puts the server in debug mode, which allows cross-origin requests (only needed if a frontend on another origin calls it directly, such as with `VITE_SERVER_ADDRESS`) and lets a player's WebSocket in from any origin, and it turns on the test sign-in (below).
 
 **Every time you make changes to Java files, you'll need to stop and restart the development server.**
 
@@ -60,7 +63,20 @@ npm run dev
 
 Change dependencies with npm 11 (`npx npm@11 install …`): npm 10 drops the `libc` fields from `package-lock.json`.
 
-The dev server proxies `/check-login`, `/new-lobby`, `/ping` and the `/game` WebSocket to the backend, so the page talks to its own origin, as it does in production. The proxy target is `BACKEND_URL` (default `http://localhost:4040`; compose sets `http://backend:4040`). `.env.development` only turns on debug logging.
+The dev server proxies `/check-login`, `/new-lobby`, `/ping`, `/auth`, `/me` and the `/game` WebSocket to the backend, so the page talks to its own origin, as it does in production. The proxy target is `BACKEND_URL` (default `http://localhost:4040`; compose sets `http://backend:4040`). `.env.development` only turns on debug logging.
+
+### Signing in locally
+
+Playing needs an account. `runLocal` turns on the test sign-in (`TEST_SIGN_IN`, which the server warns about at start), so the login page shows **TEST SIGN-IN** beside SIGN IN WITH DISCORD. Each press signs the browser in as a new test account, which then chooses a name. One browser holds one session, a cookie every tab shares, so for several players open each in a private window or another browser, or let CPU players fill a lobby of fewer than 5. Sign out and press TEST SIGN-IN again for another account. Test accounts stay until the server stops, or in the `DATABASE_PATH` file.
+
+To try Discord sign-in itself, create a Discord application in the [Discord Developer Portal](https://discord.com/developers/applications), add `http://localhost:3000/auth/discord/callback` to its OAuth2 redirects, and start the backend with its client ID and secret and that URL:
+
+```bash
+DISCORD_CLIENT_ID=<client id> DISCORD_CLIENT_SECRET=<client secret> \
+  DISCORD_REDIRECT_URI=http://localhost:3000/auth/discord/callback ./gradlew runLocal
+```
+
+Discord then sends the browser back to the dev server on port 3000, which hands `/auth/discord/callback` to the backend. Keep the secret out of the repo and out of any file you commit.
 
 ### Frontend tests and build
 
@@ -75,7 +91,7 @@ npm run preview       # serve dist/ on port 3000
 
 ### Browser tests
 
-The Playwright tests build the frontend and the jar, serve them on port 4545 and drive the whole app in desktop Chrome, Firefox and two emulated phones. They need Java 17 active for the Gradle wrapper, and network access, because the web fonts come from Google Fonts and a test fails when they do not load. From `frontend/`:
+The Playwright tests build the frontend and the jar, serve them on port 4545 and drive the whole app in desktop Chrome, Firefox and two emulated phones. They turn on the test sign-in themselves (`TEST_SIGN_IN=true` in `playwright.config.ts`'s `webServer.env`) and sign every player in through it. They need Java 17 active for the Gradle wrapper, and network access, because the web fonts come from Google Fonts and a test fails when they do not load. From `frontend/`:
 
 ```bash
 npx playwright install chromium firefox   # once
@@ -83,17 +99,19 @@ npm run e2e                               # every project
 npm run e2e -- --project=phone-360        # one project
 ```
 
+Names are unique across accounts, so every name a test gives the server comes from `uniqueName` (`e2e/accounts.ts`) and carries the run's three digits, `E2E_RUN`, which `playwright.config.ts` sets when the run starts. A second run against the same server (as below) then takes none of the first run's names. Set `E2E_RUN` to three digits yourself to make a run's names again.
+
 To run two at once, in two worktrees, give each its own port with `E2E_PORT` (`E2E_PORT=4601 npm run e2e`). A run builds for a minute or two before its server starts, and it waits for any server on its port to answer `/ping`, so a second run on the same port can end up testing the first run's code without an error. A run that stops at once with `http://localhost:4545/ping is already used` has found another server on its port.
 
 ### Browser tests on Linux
 
 CI runs the browser tests on Linux, where Germania One is drawn wider than on macOS at phone sizes, so a line with little room to spare can pass on a Mac and wrap on CI. Firefox may also fail to launch on macOS. Playwright's Linux image covers both: it runs the tests against the jar serving on the host, with `playwright.linux.config.ts` (the repo's config, without its own server).
 
-Build the app and serve it on the host, from the repo root with Java 17 active:
+Build the app and serve it on the host with the test sign-in, which the tests sign in with, from the repo root with Java 17 active (a local command only: never set `TEST_SIGN_IN` in the image):
 
 ```bash
 (cd frontend && npm run build) && (cd backend && ./gradlew jar)
-PORT=${E2E_PORT:-4545} java -jar backend/build/libs/secret-hitler-online.jar
+TEST_SIGN_IN=true PORT=${E2E_PORT:-4545} java -jar backend/build/libs/secret-hitler-online.jar
 ```
 
 Then, in a second terminal from the repo root, run the projects you need. The image's version is the one `frontend/package.json` pins for `@playwright/test`, `-e E2E_PORT` passes the port on when it is set, and the unnamed volume keeps the image's `node_modules` apart from the host's (`--rm` deletes it afterwards):

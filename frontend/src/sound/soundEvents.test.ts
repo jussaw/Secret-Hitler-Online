@@ -367,9 +367,18 @@ describe("lobbySounds", () => {
     ["two players join in one packet", ["Ann"], ["Ann", "Bob", "Cat"], ["playerJoined"]],
     ["nobody joins", ["Ann", "Bob"], ["Ann", "Bob"], []],
     ["a player leaves", ["Ann", "Bob"], ["Ann"], []],
-    ["one leaves as another joins", ["Ann", "Bob"], ["Ann", "Cat"], ["playerJoined"]],
+    ["one leaves as another joins", ["Ann", "Bob", "Cat"], ["Ann", "Cat", "Dan"], ["playerJoined"]],
   ])("%s", (_title, prev, next, expected) => {
     expect(lobbySounds(prev, next)).toEqual(expected);
+  });
+
+  test("a rename is not a join", () => {
+    expect(lobbySounds(["Ann", "Bo", "Cy"], ["Ann", "Bob", "Cy"])).toEqual([]);
+  });
+
+  test("a join still sounds, even with a leave", () => {
+    expect(lobbySounds(["Ann", "Bo"], ["Ann", "Bo", "Cy"])).toEqual(["playerJoined"]);
+    expect(lobbySounds(["Ann", "Bo", "Cy"], ["Ann", "Cy", "Di"])).toEqual(["playerJoined"]);
   });
 });
 

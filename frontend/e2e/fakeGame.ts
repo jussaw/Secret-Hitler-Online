@@ -1,15 +1,18 @@
 import type { Page, WebSocketRoute } from "@playwright/test";
 import { makeGameState } from "../src/game/testGameState";
-import { codeField, nameField, waitForPlayers } from "./lobby";
+import { signedInMe, stubMe } from "./accounts";
+import { codeField, waitForPlayers } from "./lobby";
 import { LobbyState, type GameState, type PolicyType, type Role } from "../src/types";
 
 /**
  * A scripted game server for opening prompts from known game states. It stands in for the
  * /game socket (and answers /new-lobby), so no real game, no randomness and no server timing
- * are involved. Packets have the shape Lobby.updateUser sends: the game state plus `type`.
+ * are involved. A player's packets have the shape Lobby.updatePlayer sends: the lobby, or the
+ * game state, plus `type` and `you` (the player's name, or their seat's in a game). A spectator's
+ * are Lobby.updateSpectator's: the same with no `you`, and with `spectatorCount`.
  */
 
-/** The user, then nine players with twelve-character names, the longest the login form allows. */
+/** The user, then nine players with twelve-character names, the longest a name can be. */
 export const TEN = ["Host Player", ...Array.from({ length: 9 }, (_, i) => `Long Guest ${i + 1}`)];
 const [USER, G1, G2, G3] = TEN;
 const G5 = TEN[5];
@@ -49,18 +52,25 @@ export function answerPings(ws: WebSocketRoute, record?: Record<string, unknown>
 /** The close code and reason the server refuses a socket for a lobby it no longer has. */
 export const LOBBY_GONE = { code: 1002, reason: "The lobby 'FAKE' does not exist." };
 
-/** The lobby packet of the scripted lobby: `names` with portraits chosen. */
-export function lobbyPacket(names: string[] = TEN): object {
+/** The scripted lobby, `names` with portraits chosen, as anyone sees it. */
+function lobbyState(names: string[]) {
   const icon = Object.fromEntries(names.map((name, i) => [name, `p${i + 1}`]));
   return { type: "lobby", usernames: names, icon };
 }
 
+/** The lobby packet of the scripted lobby, `names` with portraits chosen, as names[0] gets it. */
+export function lobbyPacket(names: string[] = TEN): object {
+  return { ...lobbyState(names), you: names[0] };
+}
+
 /**
- * Creates a lobby of `names` (TEN by default) as names[0] through the login form, with every
- * portrait already chosen, and returns the scripted socket. The client's own messages are
- * recorded and get no answer, but for its pings, which are answered.
+ * Creates a lobby of `names` (TEN by default) as names[0] through the login page, signed in (a
+ * stubbed /me) as an account of that name, with every portrait already chosen, and returns the
+ * scripted socket. The client's own messages are recorded and get no answer, but for its pings,
+ * which are answered.
  */
 export async function openFakeGame(page: Page, names: string[] = TEN): Promise<FakeGame> {
+  await stubMe(page, signedInMe(names[0]));
   await page.route("**/new-lobby", (route) => route.fulfill({ body: "FAKE" }));
   const urls: string[] = [];
   const received: Record<string, unknown>[] = [];
@@ -75,7 +85,6 @@ export async function openFakeGame(page: Page, names: string[] = TEN): Promise<F
   });
 
   await page.goto("/");
-  await nameField(page).fill(names[0]);
   await page.getByRole("button", { name: "CREATE LOBBY" }).click();
   await connected;
   latest!.send(JSON.stringify(lobbyPacket(names)));
@@ -83,9 +92,18 @@ export async function openFakeGame(page: Page, names: string[] = TEN): Promise<F
   return { send: (packet) => latest!.send(JSON.stringify(packet)), urls, received };
 }
 
+/** A game-state packet for TEN without `you`: gamePacket's, as any viewer's packet holds it. */
+function gameState(overrides: Partial<GameState>, roles: Record<string, Role>, dead: string[]) {
+  const state = makeGameState(TEN, overrides);
+  for (const [name, id] of Object.entries(roles)) state.players[name].id = id;
+  for (const name of dead) state.players[name].alive = false;
+  return { type: "game", ...state };
+}
+
 /**
- * A game-state packet for TEN, as makeGameState builds it (the user is president, nobody has a
- * role, policy counts and the tracker are 0), with `overrides` applied.
+ * A game-state packet for TEN, as the user (TEN[0], `you`) gets it: as makeGameState builds it
+ * (the user is president, nobody has a role, policy counts and the tracker are 0), with
+ * `overrides` applied.
  * @param roles the roles the user can see; by default only their own, liberal.
  * @param dead players who have been executed.
  */
@@ -94,10 +112,7 @@ export function gamePacket(
   roles: Record<string, Role> = { [USER]: LIBERAL },
   dead: string[] = []
 ): object {
-  const state = makeGameState(TEN, overrides);
-  for (const [name, id] of Object.entries(roles)) state.players[name].id = id;
-  for (const name of dead) state.players[name].alive = false;
-  return { type: "game", ...state };
+  return { ...gameState(overrides, roles, dead), you: USER };
 }
 
 /**
@@ -286,8 +301,8 @@ export const PROMPTS: { name: string; packets: object[]; button: string }[] = [
   },
 ];
 
-/** The lobby packet a spectator of the scripted lobby gets: TEN with portraits, one spectator. */
-export const WATCHED_LOBBY = { ...lobbyPacket(), spectatorCount: 1 };
+/** The lobby packet a spectator of the scripted lobby gets: TEN with portraits, one spectator, no `you`. */
+export const WATCHED_LOBBY = { ...lobbyState(TEN), spectatorCount: 1 };
 
 export type FakeWatch = FakeGame & {
   /**
@@ -297,12 +312,16 @@ export type FakeWatch = FakeGame & {
   down(on: boolean): void;
 };
 
+/** The account a scripted spectator is signed in as (a stubbed /me), so the lobby offers PLAY INSTEAD. */
+export const WATCHER = "Watcher";
+
 /**
- * Watches the scripted lobby "FAKE" through the login form's WATCH button. The socket's first
- * packet is `first`: by default WATCHED_LOBBY; a game packet joins a game already running.
- * `send` goes to the newest socket.
+ * Watches the scripted lobby "FAKE" through the login page's WATCH button, signed in (a stubbed
+ * /me) as WATCHER. The socket's first packet is `first`: by default WATCHED_LOBBY; a game packet
+ * joins a game already running. `send` goes to the newest socket.
  */
 export async function openFakeWatch(page: Page, first: object = WATCHED_LOBBY): Promise<FakeWatch> {
+  await stubMe(page, signedInMe(WATCHER));
   await page.route(/\/check-login\?/, (route) => route.fulfill({ body: "Spectator login valid." }));
   const urls: string[] = [];
   const received: Record<string, unknown>[] = [];
@@ -339,9 +358,16 @@ export async function openFakeWatch(page: Page, first: object = WATCHED_LOBBY): 
   };
 }
 
-/** A game-state packet as a spectator receives it: no roles, one spectator watching. */
-export function spectatorPacket(overrides: Partial<GameState> = {}, dead: string[] = []): object {
-  return { ...gamePacket(overrides, {}, dead), spectatorCount: 1 };
+/**
+ * A game-state packet as a spectator receives it: no `you`, one spectator watching.
+ * @param roles the roles shown: none until the game is over (then EVERY_ROLE).
+ */
+export function spectatorPacket(
+  overrides: Partial<GameState> = {},
+  dead: string[] = [],
+  roles: Record<string, Role> = {}
+): object {
+  return { ...gameState(overrides, roles, dead), spectatorCount: 1 };
 }
 
 /** Every role, as everyone sees them at the end of a game. */

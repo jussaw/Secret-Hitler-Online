@@ -7,6 +7,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static server.util.LobbyTesting.join;
 
 import game.GameState;
 import game.SecretHitlerGame;
@@ -46,7 +47,7 @@ public class LobbyTermTimerTest {
         Lobby lobby = new Lobby();
         for (int i = 1; i <= count; i++) {
             FakeSocket player = FakeSocket.open();
-            lobby.addUser(player.ctx, "P" + i);
+            join(lobby, player.ctx, "P" + i);
             lobby.trySetUserIcon("p" + i, player.ctx);
             players.add(player);
         }
@@ -202,6 +203,7 @@ public class LobbyTermTimerTest {
             lobby.sendStateToAll(); // the state, without letting the CPU president act
         }
         assertEquals("POST_LEGISLATIVE", spectator.last().getString("state"));
+        assertEquals("a CPU seat has no portrait", 0, spectator.last().getJSONObject("icon").length());
         assertNull(lastTimer(lobby, spectator));
         assertNoCountdown(lobby::pauseTermTimer);
     }
@@ -228,8 +230,8 @@ public class LobbyTermTimerTest {
         }
 
         FakeSocket rejoined = FakeSocket.open();
-        restored.addUser(rejoined.ctx, president);
-        restored.updateUser(rejoined.ctx, president);
+        join(restored, rejoined.ctx, president);
+        restored.updateUser(rejoined.ctx);
         JSONObject timer = lastTimer(restored, rejoined);
         assertNotNull(timer);
         assertFalse(timer.getBoolean("paused"));

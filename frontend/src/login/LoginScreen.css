@@ -4,18 +4,23 @@
    the lobby and the game for the page and its header), then the cards and the footer, in one
    column centred both ways. On phones the column starts at the top and takes the window's width.
    LobbyScreen.css lists this page's selectors beside the lobby's for the cards' look, the fields'
-   focus, the centring and the footer; this file holds what only the login page has. */
+   focus, the centring, the grey buttons and the footer; this file holds what only the login page
+   has. */
 
 /* --login-font is the column's text size, set in px and window units only, so --card-width,
    --control and --card-gap are the same lengths wherever they are used, whatever the font size
    there. --control is the height of the fields and of the buttons' faces, a touch target at the
-   least. */
+   least. Below 786px tall --control is that 44px, more of the window the shorter it is, so the
+   gaps between the cards close from 18px at 900px tall to 10px at 700px. Signed in, the widest
+   Discord username (32 m's) takes the account's line to three lines, and with every error line
+   showing the page fills about the whole window from 786px to 950px tall, where everything scales
+   with the window: half an em between a card's lines leaves it room at every tested size. */
 .login-body {
     --login-font: clamp(13px, 2vh, 19px);
     --card-width: calc(var(--login-font) * 30);
     --control: max(44px, calc(var(--login-font) * 2.8));
-    --card-gap: calc(var(--login-font) * 0.6);
-    --page-gap: clamp(10px, 2vh, 18px);
+    --card-gap: calc(var(--login-font) * 0.5);
+    --page-gap: clamp(10px, 4vh - 18px, 18px);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -43,7 +48,7 @@
     padding: 1em 1.6em 1.2em;
 }
 
-/* App.css's h2, sized for the card. In YOUR NAME the heading is the field's label. */
+/* App.css's h2, sized for the card. */
 .login-card h2 {
     margin: 0;
     font-size: 1.6em;
@@ -63,10 +68,6 @@
     font-size: max(16px, calc(var(--login-font) * 1.1));
     font-weight: 500;
     border-radius: 0.4em;
-}
-
-#login-name-field {
-    width: min(100%, calc(var(--login-font) * 17));
 }
 
 /* Wide enough for its placeholder, in its own text size. */
@@ -91,8 +92,9 @@
 }
 
 /* App.css's button, its face as tall as the fields. Its shadow is part of its box (App.css), and
-   here takes its room in the card. */
-.login-card button {
+   here takes its room in the card. SIGN IN WITH DISCORD is a link in the same look. */
+.login-card button,
+.login-card .button-link {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -105,6 +107,98 @@
 
 .login-start button {
     padding: 0 1.1em;
+}
+
+/* The account card. Signed out, SIGN IN WITH DISCORD (and TEST SIGN-IN, on servers that have it)
+   share a row, which wraps in a narrow window. */
+.login-account-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--card-gap) calc(var(--login-font) * 0.6);
+    max-width: 100%;
+}
+
+/* Signed in: the name, CHANGE NAME (a grey button, smaller than the page's others) and who the
+   account is, with Sign out. */
+.login-account-name {
+    margin: 0;
+    max-width: 100%;
+    font-size: 1.3em;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #ffffff;
+    overflow-wrap: anywhere;
+}
+
+.login-card .login-change-name {
+    font-size: 1.2em;
+}
+
+/* A Discord username has up to 32 characters, and a test account's ID 37, with no space to break
+   at. */
+.login-account-line {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+.login-discord-name {
+    font-weight: 700;
+    color: #ffffff;
+}
+
+/* Sign out: a button in the look of the page's links (App.css's a), inside its line, and a 44px
+   target like every control on the page. Its negative margins take back all of the target but its
+   line's height (1lh; -14px where the browser has no lh), so the line is no taller for it. */
+.login-card .login-sign-out {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    height: auto;
+    min-height: 44px;
+    margin: -14px 0;
+    margin: calc((1lh - 44px) / 2) 0;
+    padding: 0;
+    border: 0;
+    font: inherit;
+    color: var(--buttonHoverFill);
+    text-decoration: underline;
+    vertical-align: baseline;
+}
+
+.login-card .login-sign-out:active {
+    border-width: 0;
+}
+
+.login-card .login-sign-out::before {
+    content: none;
+}
+
+.login-card .login-sign-out:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+/* Until /me answers, and while a first sign-in chooses its name, the card keeps the signed-in
+   card's height: blank lines and a stand-in as tall as CHANGE NAME (App.css's --button-depth is
+   5px). An error is drawn over them, centred. */
+.login-account-blank {
+    position: relative;
+}
+
+.login-account-button {
+    display: block;
+    height: calc(var(--control) + 5px);
+}
+
+.login-account-message {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 1.6em;
 }
 
 .login-hint {
@@ -148,12 +242,14 @@
 
 /* Phones only: the column from the top, as wide as the window less a gutter, with sizes that follow
    the window's width. The query is GameScreen.css's phone-only one. The page is as tall as its
-   column and scrolls if it must (at 320x568). */
+   column and scrolls if it must (at 320x568). The cards are 10px apart, as in the shortest
+   windows: at 360x740, signed in with the longest Discord username (three lines on Linux) and
+   every error line showing, that leaves the page some 6px to spare. */
 @media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
     .login-body {
         --login-font: clamp(13px, 4vw, 16px);
         --card-width: 100%;
-        --page-gap: 12px;
+        --page-gap: 10px;
         padding: 12px 12px 16px;
     }
 
@@ -164,12 +260,17 @@
     /* The code, JOIN and WATCH keep one row down to 360px wide, where Linux, which draws Germania
        One wider than macOS, still leaves the row some room. At 320px JOIN and WATCH may take the
        next line. */
-    .login-card button {
+    .login-card button,
+    .login-card .button-link {
         padding: 0 0.6em;
         font-size: 1.35em;
     }
 
     .login-start button {
         padding: 0 1em;
+    }
+
+    .login-card .login-change-name {
+        font-size: 1.15em;
     }
 }

@@ -29,37 +29,51 @@ import java.util.stream.Collectors;
  * player.
  * It maintains the game that the connections are associated with.
  *
- * A user is defined as an active websocket connection.
+ * A user is defined as an active websocket connection. Each one is a player's account, and the
+ * lobby keys everything on the account ID: names are kept only to show them, in packets, which
+ * stay keyed by name (in a game, by seat name).
  */
 public class Lobby implements Serializable {
     // The value Java computed for this class before spectators, so backups written by earlier
-    // releases still load (DatabaseBackupTest.aBackupFromBeforeSpectatorsStillLoads).
+    // releases still load (DatabaseBackupTest.aBackupFromBeforeAccountsKeepsIdleLobbies).
     private static final long serialVersionUID = 7519753883184174211L;
 
     private SecretHitlerGame game;
 
-    // These two marked transient because they track currently active/connected
-    // users.
-    transient private ConcurrentHashMap<WsContext, String> userToUsername;
-    transient private Queue<String> activeUsernames;
+    // These are transient because they track the connected players.
+    // Each player connection's account.
+    transient private ConcurrentHashMap<WsContext, String> userToAccount;
+    // The accounts in the lobby, in join order (the first is the host), an account inside the
+    // grace window after a disconnect included.
+    transient private Queue<String> activeAccounts;
+    // The current name of each account in activeAccounts, which the lobby packet shows. A restored
+    // lobby has no one in it, so names come back as players do.
+    transient private ConcurrentHashMap<String, String> accountToName;
     // Connections watching the lobby without a seat. They have no name, icon or vote, are never
     // counted as users, and are not backed up.
     transient private Set<WsContext> spectators;
-    // The rejoin key each name's latest connection was opened with (hasLiveConnectionWithKey). Never
-    // sent to any client. Not backed up: after a restart no connection is live to be replaced.
-    transient private ConcurrentHashMap<String, String> usernameToRejoinKey;
-    // The removal each name's last disconnect scheduled, while it is pending. A name has at most
-    // one, and a new connection under the name calls it off, so every disconnect gets a whole grace
-    // window (PLAYER_TIMEOUT_IN_SEC) of its own. Not backed up: no connection outlives a restart.
+    // The rejoin key each account's latest connection was opened with (hasLiveConnectionWithKey).
+    // Never sent to any client. Not backed up: after a restart no connection is live to be replaced.
+    transient private ConcurrentHashMap<String, String> accountToRejoinKey;
+    // The removal each account's last disconnect scheduled, while it is pending. An account has at
+    // most one, and a new connection for the account calls it off, so every disconnect gets a whole
+    // grace window (PLAYER_TIMEOUT_IN_SEC) of its own. Not backed up: no connection outlives a
+    // restart.
     transient private ConcurrentHashMap<String, RemoveUserTask> pendingRemovals;
 
-    final private Set<String> usersInGame;
-    final private ConcurrentHashMap<String, String> usernameToIcon;
+    // The account maps, which are backed up. They are not final, as readObject makes any that a
+    // backup lacks: one written before accounts has none of them, and Java drops the name-keyed
+    // maps it has, whose fields Lobby no longer has.
+    // The running game's human seats: account ID -> seat name. CPU seats have no account.
+    private ConcurrentHashMap<String, String> gameSeats;
+    // Each account's portrait.
+    private ConcurrentHashMap<String, String> accountToIcon;
+    /* Used to reassign accounts to previously chosen images if they disconnect */
+    private ConcurrentHashMap<String, String> accountToPreferredIcon;
+    // Whether readObject found a backup from before accounts: one with none of the account maps.
+    transient private boolean backedUpBeforeAccounts;
 
     private Set<CpuPlayer> cpuPlayers;
-
-    /* Used to reassign users to previously chosen images if they disconnect */
-    final private ConcurrentHashMap<String, String> usernameToPreferredIcon;
 
     public static long LOBBY_TIMEOUT_DURATION_IN_MIN = 10;
     public static float PLAYER_TIMEOUT_IN_SEC = 3;
@@ -102,14 +116,15 @@ public class Lobby implements Serializable {
      * Constructs a new Lobby.
      */
     public Lobby() {
-        userToUsername = new ConcurrentHashMap<WsContext, String>();
-        activeUsernames = new ConcurrentLinkedQueue<>();
+        userToAccount = new ConcurrentHashMap<>();
+        activeAccounts = new ConcurrentLinkedQueue<>();
+        accountToName = new ConcurrentHashMap<>();
         spectators = ConcurrentHashMap.newKeySet();
-        usernameToRejoinKey = new ConcurrentHashMap<>();
+        accountToRejoinKey = new ConcurrentHashMap<>();
         pendingRemovals = new ConcurrentHashMap<>();
-        usersInGame = new ConcurrentSkipListSet<>();
-        usernameToIcon = new ConcurrentHashMap<>();
-        usernameToPreferredIcon = new ConcurrentHashMap<>();
+        gameSeats = new ConcurrentHashMap<>();
+        accountToIcon = new ConcurrentHashMap<>();
+        accountToPreferredIcon = new ConcurrentHashMap<>();
         cpuPlayers = new ConcurrentSkipListSet<>();
         resetTimeout();
     }
@@ -175,20 +190,21 @@ public class Lobby implements Serializable {
      * @return a new set of WsContexts: every player's and every spectator's connection.
      */
     synchronized public Set<WsContext> getConnections() {
-        Set<WsContext> connections = new HashSet<>(userToUsername.keySet());
+        Set<WsContext> connections = new HashSet<>(userToAccount.keySet());
         connections.addAll(spectators);
         return connections;
     }
 
     /**
-     * Returns the list of usernames currently in the lobby or game. Includes
-     * bot names if the game is running and has bots.
+     * Returns the list of usernames currently in the lobby or game: the game's seat names,
+     * bots included, while a game is running, and otherwise the names of the accounts with a
+     * live connection.
      */
     synchronized public List<String> getUserNames() {
         if (game != null) {
             return game.getPlayerList().stream().map(player -> player.getUsername()).collect(Collectors.toList());
         } else {
-            return new ArrayList<String>(userToUsername.values());
+            return userToAccount.values().stream().map(accountToName::get).collect(Collectors.toList());
         }
     }
 
@@ -202,113 +218,186 @@ public class Lobby implements Serializable {
      * @return true iff the {@code context} is in this lobby.
      */
     synchronized public boolean hasUser(WsContext context) {
-        return userToUsername.containsKey(context);
+        return userToAccount.containsKey(context);
     }
 
     /**
-     * Returns whether a user with the given name exists in this lobby.
-     * 
-     * @param context the Websocket context of the user.
-     * @param name    the name of the user.
-     * @return true iff {@code context} is a user in the lobby with the name
-     *         {@code name}.
-     */
-    synchronized public boolean hasUser(WsContext context, String name) {
-        return userToUsername.containsKey(context) && userToUsername.get(context).equals(name);
-    }
-
-    /**
-     * Returns true if the lobby has a user with a given username.
-     * 
-     * @param name the username to check the Lobby for.
-     * @return true iff the username {@code name} is in this lobby.
-     */
-    synchronized public boolean hasUserWithName(String name) {
-        return userToUsername.values().contains(name);
-    }
-
-    /**
-     * Returns whether the name's live connection was opened with this rejoin key: the same page
-     * is reconnecting, so that connection is dead even if the server has not seen it close (a
-     * network that dropped without a word reaches the server only at its idle timeout).
+     * Returns the account of a player's connection.
      *
-     * @param name      the name of the user.
-     * @param rejoinKey the key the new connection brings, or null for none (never empty).
-     * @return true iff {@code rejoinKey} is not null, {@code name} has a live connection, and
-     *         that connection brought the same key.
+     * @param context the Websocket context of a user.
+     * @return the account of the player {@code context} is, or null if it is not a player's
+     *         connection in this lobby (a spectator's, say).
      */
-    synchronized public boolean hasLiveConnectionWithKey(String name, String rejoinKey) {
-        return rejoinKey != null && hasUserWithName(name) && rejoinKey.equals(usernameToRejoinKey.get(name));
+    synchronized public String accountOf(WsContext context) {
+        return userToAccount.get(context);
+    }
+
+    /**
+     * Returns whether the account has a live connection in this lobby.
+     *
+     * @param accountId the account to check the Lobby for, or null.
+     * @return true iff a connection of {@code accountId} is in this lobby. An account inside
+     *         the grace window after a disconnect has none.
+     */
+    synchronized public boolean hasAccount(String accountId) {
+        return accountId != null && userToAccount.containsValue(accountId);
+    }
+
+    /**
+     * Returns whether the account holds a seat in the running game.
+     *
+     * @param accountId the account to check, or null.
+     * @return true iff a game is running and {@code accountId} has a seat in it.
+     */
+    synchronized public boolean isSeated(String accountId) {
+        return game != null && accountId != null && gameSeats.containsKey(accountId);
+    }
+
+    /**
+     * Returns the seat of a player's connection in the running game.
+     *
+     * @param context the Websocket context of a user.
+     * @return the seat name of the connection's account while a game runs, or null if there is
+     *         no game or the connection has no seat (a spectator's, say).
+     */
+    synchronized public String seatName(WsContext context) {
+        String accountId = userToAccount.get(context);
+        return isSeated(accountId) ? gameSeats.get(accountId) : null;
+    }
+
+    /**
+     * Returns the running game's human seats.
+     *
+     * @return a new map from seat name to account ID, with no CPU seat; empty outside a game.
+     */
+    synchronized public Map<String, String> seatAccounts() {
+        Map<String, String> seats = new HashMap<>();
+        if (game != null) {
+            for (Entry<String, String> entry : gameSeats.entrySet()) {
+                seats.put(entry.getValue(), entry.getKey());
+            }
+        }
+        return seats;
+    }
+
+    /**
+     * Gives an account in this lobby a new name. Sends nothing: the caller sends the state.
+     *
+     * @param accountId the account to rename.
+     * @param name      the new name, already checked against the name rules.
+     * @return true iff the account is in the lobby (live, or inside the grace window after a
+     *         disconnect) and its name changed; false if it is not here or the name is the same.
+     * @throws IllegalArgumentException if {@code name} is null or blank. Nothing changes.
+     * @throws IllegalStateException if the account has a seat in the running game. Nothing
+     *                               changes.
+     */
+    synchronized public boolean rename(String accountId, String name) {
+        if (name == null || name.trim().isEmpty()) {
+            throw new IllegalArgumentException("A name cannot be blank.");
+        }
+        if (isSeated(accountId)) {
+            throw new IllegalStateException("A seated account cannot be renamed during a game.");
+        }
+        if (accountId == null || !activeAccounts.contains(accountId) || name.equals(accountToName.get(accountId))) {
+            return false;
+        }
+        accountToName.put(accountId, name);
+        return true;
+    }
+
+    /** The account's live connection, or null if it has none. */
+    private WsContext connectionOf(String accountId) {
+        for (Entry<WsContext, String> entry : userToAccount.entrySet()) {
+            if (entry.getValue().equals(accountId)) {
+                return entry.getKey();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Returns whether the account's live connection was opened with this rejoin key: the same
+     * page is reconnecting, so that connection is dead even if the server has not seen it close
+     * (a network that dropped without a word reaches the server only at its idle timeout).
+     *
+     * @param accountId the account of the user.
+     * @param rejoinKey the key the new connection brings, or null for none (never empty).
+     * @return true iff {@code rejoinKey} is not null, {@code accountId} has a live connection,
+     *         and that connection brought the same key.
+     */
+    synchronized public boolean hasLiveConnectionWithKey(String accountId, String rejoinKey) {
+        return rejoinKey != null && hasAccount(accountId) && rejoinKey.equals(accountToRejoinKey.get(accountId));
     }
 
     /**
      * Checks if a user can be added back to the lobby while a game is running.
      *
-     * @param name the name of the user to add.
-     * @return true if the user can be added: they were in the current game and have no live
-     *         connection. That includes a player still inside the grace window after a
-     *         disconnect ({@code PLAYER_TIMEOUT_IN_SEC}), who is still in {@code activeUsernames}.
+     * @param accountId the account of the user to add.
+     * @return true if the user can be added: the account holds a seat in the current game and
+     *         has no live connection. That includes a player still inside the grace window after
+     *         a disconnect ({@code PLAYER_TIMEOUT_IN_SEC}), who is still in {@code activeAccounts}.
      */
-    synchronized public boolean canAddUserDuringGame(String name) {
-        return usersInGame.contains(name) && !hasUserWithName(name);
+    synchronized public boolean canAddUserDuringGame(String accountId) {
+        return accountId != null && gameSeats.containsKey(accountId) && !hasAccount(accountId);
     }
 
     /**
      * Checks if a user would be taking back their own seat: a player of the running game
      * ({@code canAddUserDuringGame}), or outside a game a player who disconnected less than
-     * {@code PLAYER_TIMEOUT_IN_SEC} ago. Either way the name has no live connection. Such a user
-     * is not refused because the lobby is full or in a game.
+     * {@code PLAYER_TIMEOUT_IN_SEC} ago. Either way the account has no live connection. Such a
+     * user is not refused because the lobby is full or in a game.
      *
-     * @param name the name of the user to add.
-     * @return true iff the user can rejoin under this name.
+     * @param accountId the account of the user to add.
+     * @return true iff the account can take back its own seat.
      */
-    synchronized public boolean canRejoin(String name) {
+    synchronized public boolean canRejoin(String accountId) {
         if (isInGame()) {
-            return canAddUserDuringGame(name);
+            return canAddUserDuringGame(accountId);
         }
-        return activeUsernames.contains(name) && !hasUserWithName(name);
+        return activeAccounts.contains(accountId) && !hasAccount(accountId);
     }
 
-    /** Why the lobby refuses a player's connection under a name ({@code joinRefusal}). */
+    /** Why the lobby refuses a player's connection for an account ({@code joinRefusal}). */
     public enum JoinRefusal {
         /** The lobby has timed out and been closed ({@code closeIfTimedOut}): it takes no one. */
         CLOSED,
-        /** The name is empty or only whitespace, which the page never sends (#63). */
-        BLANK_NAME,
-        /** Another live connection holds the name, and this one does not bring its rejoin key. */
-        NAME_TAKEN,
-        /** Every seat is taken, and the name is not taking back its own. */
+        /** The account ID is null, empty or only whitespace: a connection with no account takes no seat (#63). */
+        NO_ACCOUNT,
+        /** The account has a live connection here already, and this one does not bring its rejoin key. */
+        ALREADY_IN,
+        /** Every seat is taken, and the account is not taking back its own. */
         FULL,
-        /** A game is running, and the name is not one of its players taking back their seat. */
+        /** A game is running, and the account is not one of its players taking back their seat. */
         IN_GAME
     }
 
     /**
-     * Returns why the lobby refuses a player's connection under {@code name} that brings
+     * Returns why the lobby refuses a player's connection for {@code accountId} that brings
      * {@code rejoinKey}, or null if {@code addUser} takes it. A connection that brings the key of
-     * the name's live connection takes that connection's place ({@code hasLiveConnectionWithKey}),
+     * the account's live connection takes that connection's place ({@code hasLiveConnectionWithKey}),
      * and a player taking back their own seat ({@code canRejoin}) is refused neither for a full
      * lobby nor for a game. A closed lobby takes no one. The answer holds until the lobby changes,
      * so a caller that acts on it holds the lobby's lock until the add (#43).
      *
-     * @param name      the name of the user.
+     * @param accountId the account of the user, or null for none.
      * @param rejoinKey the key the connection brings, or null for none (never empty).
-     * @return the first refusal that applies, in the order {@code CLOSED}, {@code BLANK_NAME},
-     *         {@code NAME_TAKEN}, {@code FULL}, {@code IN_GAME}, or null.
+     * @return the first refusal that applies, in the order {@code CLOSED}, {@code NO_ACCOUNT},
+     *         {@code ALREADY_IN}, {@code FULL}, {@code IN_GAME}, or null.
      */
-    synchronized public JoinRefusal joinRefusal(String name, String rejoinKey) {
+    synchronized public JoinRefusal joinRefusal(String accountId, String rejoinKey) {
         if (closed) {
             return JoinRefusal.CLOSED;
         }
-        if (name.isBlank()) {
-            return JoinRefusal.BLANK_NAME;
+        if (accountId == null || accountId.isBlank()) {
+            return JoinRefusal.NO_ACCOUNT;
         }
-        // The page whose connection holds this name, reconnecting: its old connection is dead, though
-        // the server may not see that for up to the idle timeout (a phone that changed networks).
-        boolean reclaiming = hasLiveConnectionWithKey(name, rejoinKey);
-        boolean rejoining = reclaiming || canRejoin(name);
-        if (hasUserWithName(name) && !reclaiming) {
-            return JoinRefusal.NAME_TAKEN;
+        // The page whose connection holds this account, reconnecting: its old connection is dead,
+        // though the server may not see that for up to the idle timeout (a phone that changed
+        // networks).
+        boolean reclaiming = hasLiveConnectionWithKey(accountId, rejoinKey);
+        boolean rejoining = reclaiming || canRejoin(accountId);
+        if (hasAccount(accountId) && !reclaiming) {
+            return JoinRefusal.ALREADY_IN;
         } else if (isFull() && !rejoining) {
             return JoinRefusal.FULL;
         } else if (isInGame() && !rejoining) {
@@ -324,97 +413,98 @@ public class Lobby implements Serializable {
      *         {@code SecretHitlerGame.MAX_PLAYERS}.
      */
     synchronized public boolean isFull() {
-        return activeUsernames.size() >= SecretHitlerGame.MAX_PLAYERS;
+        return activeAccounts.size() >= SecretHitlerGame.MAX_PLAYERS;
     }
 
     /**
      * Adds a user that brought no rejoin key, as an older client does, so nothing can later take
-     * its connection's place: {@code addUser(context, name, null)}.
+     * its connection's place: {@code addUser(context, accountId, name, null)}.
      */
-    synchronized public void addUser(WsContext context, String name) {
-        addUser(context, name, null);
+    synchronized public void addUser(WsContext context, String accountId, String name) {
+        addUser(context, accountId, name, null);
     }
 
     /**
-     * Adds a user (websocket connection) to the lobby, and remembers the rejoin key it brought.
-     * A connection that brings the key its name's live connection was opened with
-     * ({@code hasLiveConnectionWithKey}) takes that connection's place instead: the name keeps
-     * its seat, portrait and place in the lobby, and only the connection changes.
+     * Adds a user (websocket connection) to the lobby, records the account's current name, and
+     * remembers the rejoin key the connection brought. A connection that brings the key its
+     * account's live connection was opened with ({@code hasLiveConnectionWithKey}) takes that
+     * connection's place instead: the account keeps its seat, portrait and place in the lobby,
+     * and only the connection changes.
      *
      * @param context   the websocket connection context.
-     * @param name      the name of the player to be added.
+     * @param accountId the account of the player to be added.
+     * @param name      the account's current name, which the lobby shows.
      * @param rejoinKey the key the connection brought, or null for none (never empty).
      * @return the connection whose place was taken, which the caller closes, or null.
-     * @throws IllegalArgumentException if a duplicate websocket is added, or if the
-     *                                  lobby refuses the connection
-     *                                  ({@code joinRefusal} is not null).
+     * @throws IllegalArgumentException if a duplicate websocket is added, if the lobby refuses
+     *                                  the connection ({@code joinRefusal} is not null), or if
+     *                                  {@code name} is null or blank. The lobby is unchanged.
      * @modifies this
      * @effects adds the given user to the lobby.
-     *          If the game has already started, the player can only join if a
-     *          player with the name {@name} was
-     *          previously in the same game but was removed.
+     *          If the game has already started, the player can only join if their
+     *          account holds a seat in it.
      */
-    synchronized public WsContext addUser(WsContext context, String name, String rejoinKey) {
-        if (userToUsername.containsKey(context)) {
+    synchronized public WsContext addUser(WsContext context, String accountId, String name, String rejoinKey) {
+        if (userToAccount.containsKey(context)) {
             throw new IllegalArgumentException("Duplicate websockets cannot be added to a lobby.");
         }
-        JoinRefusal refusal = joinRefusal(name, rejoinKey);
+        JoinRefusal refusal = joinRefusal(accountId, rejoinKey);
         if (refusal != null) {
-            throw new IllegalArgumentException("Cannot add '" + name + "' to the lobby: " + refusal + ".");
+            throw new IllegalArgumentException("Cannot add the account '" + accountId + "' to the lobby: " + refusal + ".");
         }
-        if (hasLiveConnectionWithKey(name, rejoinKey)) {
-            WsContext replaced = null;
-            for (Entry<WsContext, String> entry : userToUsername.entrySet()) {
-                if (entry.getValue().equals(name)) {
-                    replaced = entry.getKey();
-                }
-            }
-            userToUsername.remove(replaced);
-            userToUsername.put(context, name);
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Cannot add the account '" + accountId + "' without a name.");
+        }
+        if (hasLiveConnectionWithKey(accountId, rejoinKey)) {
+            WsContext replaced = connectionOf(accountId);
+            userToAccount.remove(replaced);
+            userToAccount.put(context, accountId);
+            accountToName.put(accountId, name);
             return replaced;
         }
-        addNewConnection(context, name);
-        cancelPendingRemoval(name); // back inside the window: the name keeps its place
+        addNewConnection(context, accountId, name);
+        cancelPendingRemoval(accountId); // back inside the window: the account keeps its place
         if (rejoinKey == null) {
-            usernameToRejoinKey.remove(name); // an older client: nothing can take its place
+            accountToRejoinKey.remove(accountId); // an older client: nothing can take its place
         } else {
-            usernameToRejoinKey.put(name, rejoinKey);
+            accountToRejoinKey.put(accountId, rejoinKey);
         }
         return null;
     }
 
     /**
-     * Adds a new connection for the name, which has none live: rejoining the running game,
-     * taking back a seat inside the grace window, or taking a free seat in the lobby. A name
+     * Adds a new connection for the account, which has none live: rejoining the running game,
+     * taking back a seat inside the grace window, or taking a free seat in the lobby. An account
      * still inside the grace window keeps its place in the lobby; any other takes the last place.
      * That includes a player back in the running game after the window, or after a restore from
      * a backup (which keeps no one in the lobby), so they are counted at once, and listed and
      * seated when the game ends (#41). The caller has checked that the lobby takes the
      * connection ({@code joinRefusal}).
      */
-    private void addNewConnection(WsContext context, String name) {
-        userToUsername.put(context, name);
-        if (!activeUsernames.contains(name)) {
-            activeUsernames.add(name);
+    private void addNewConnection(WsContext context, String accountId, String name) {
+        userToAccount.put(context, accountId);
+        if (!activeAccounts.contains(accountId)) {
+            activeAccounts.add(accountId);
         }
+        accountToName.put(accountId, name);
         // Start on the default icon, then try the player's previous choice, if they made one.
-        usernameToIcon.put(name, DEFAULT_ICON);
-        if (usernameToPreferredIcon.containsKey(name)) {
-            trySetUserIcon(usernameToPreferredIcon.get(name), context);
+        accountToIcon.put(accountId, DEFAULT_ICON);
+        if (accountToPreferredIcon.containsKey(accountId)) {
+            trySetUserIcon(accountToPreferredIcon.get(accountId), context);
         }
     }
 
     /**
      * Removes a user from the Lobby.
-     * 
+     *
      * @param context the websocket connection context of the player to remove.
      * @throws IllegalArgumentException if {@code context} is not a user in the
      *                                  Lobby.
      * @modifies this
      * @effects removes the user context (websocket connection) of the player from
-     *          the lobby. The name keeps its place for {@code PLAYER_TIMEOUT_IN_SEC},
+     *          the lobby. The account keeps its place for {@code PLAYER_TIMEOUT_IN_SEC},
      *          counted from this disconnect, and loses it then unless a connection
-     *          under the name has called the removal off.
+     *          for the account has called the removal off.
      */
     synchronized public void removeUser(WsContext context) {
         if (!hasUser(context)) {
@@ -422,9 +512,9 @@ public class Lobby implements Serializable {
         } else {
             // Delay removing players from the list by adding it to a timer.
             int delay_in_ms = (int) (PLAYER_TIMEOUT_IN_SEC * 1000);
-            final String username = userToUsername.get(context);
-            RemoveUserTask removal = new RemoveUserTask(username);
-            pendingRemovals.put(username, removal);
+            final String accountId = userToAccount.get(context);
+            RemoveUserTask removal = new RemoveUserTask(accountId);
+            pendingRemovals.put(accountId, removal);
 
             int timerSchedulingAttempts = 0;
             while (timerSchedulingAttempts < MAX_TIMER_SCHEDULING_ATTEMPTS) {
@@ -439,52 +529,50 @@ public class Lobby implements Serializable {
                 }
             }
             if (timerSchedulingAttempts == MAX_TIMER_SCHEDULING_ATTEMPTS) {
-                pendingRemovals.remove(username, removal);
-                System.out.println("Failed to schedule removal of the user '" + username + "'.");
+                pendingRemovals.remove(accountId, removal);
+                System.out.println("Failed to schedule removal of the account '" + accountId + "'.");
             }
 
-            userToUsername.remove(context);
+            userToAccount.remove(context);
         }
     }
 
-    /** Calls off the removal the name's last disconnect scheduled, if it is still pending. */
-    private void cancelPendingRemoval(String username) {
-        RemoveUserTask removal = pendingRemovals.remove(username);
+    /** Calls off the removal the account's last disconnect scheduled, if it is still pending. */
+    private void cancelPendingRemoval(String accountId) {
+        RemoveUserTask removal = pendingRemovals.remove(accountId);
         if (removal != null) {
             removal.cancel();
         }
     }
 
     /**
-     * Removes a name from the lobby when the grace window after its disconnect ends, unless the
-     * removal has been called off since.
+     * Removes an account from the lobby when the grace window after its disconnect ends, unless
+     * the removal has been called off since.
      */
     class RemoveUserTask extends TimerTask {
-        private final String username;
+        private final String accountId;
 
-        RemoveUserTask(String username) {
-            this.username = username;
+        RemoveUserTask(String accountId) {
+            this.accountId = accountId;
         }
 
         public void run() {
             // Under the lobby's lock, so a rejoin under way as the window ends either finishes
             // first, and the player is kept, or starts after the removal and adds them back.
             synchronized (Lobby.this) {
-                // A removal that fell due as the name rejoined was called off too late to stop it,
-                // so it checks that it is still the name's pending one. If not, the name came back
-                // since, and any later disconnect has a window of its own (#42).
-                if (!pendingRemovals.remove(username, this)) {
+                // A removal that fell due as the account rejoined was called off too late to stop
+                // it, so it checks that it is still the account's pending one. If not, the account
+                // came back since, and any later disconnect has a window of its own (#42).
+                if (!pendingRemovals.remove(accountId, this)) {
                     return;
                 }
                 // If the user is still disconnected when the task runs, mark them as inactive
                 // and remove them from the lobby.
-                if (!userToUsername.values().contains(username) && activeUsernames.contains(username)) {
-                    activeUsernames.remove(username);
-                    usernameToRejoinKey.remove(username);
-
-                    if (usernameToIcon.containsKey(username)) {
-                        usernameToIcon.remove(username); // possible for users to disconnect before choosing icon
-                    }
+                if (!userToAccount.containsValue(accountId) && activeAccounts.contains(accountId)) {
+                    activeAccounts.remove(accountId);
+                    accountToName.remove(accountId);
+                    accountToRejoinKey.remove(accountId);
+                    accountToIcon.remove(accountId); // possible for users to disconnect before choosing icon
                     updateAllUsers();
                 }
             }
@@ -537,7 +625,7 @@ public class Lobby implements Serializable {
      * @return the number of active websocket connections currently in the lobby.
      */
     synchronized public int getUserCount() {
-        return activeUsernames.size();
+        return activeAccounts.size();
     }
 
     /**
@@ -556,6 +644,7 @@ public class Lobby implements Serializable {
         // Check if the game ended.
         if (game != null && game.hasGameFinished()) {
             game = null;
+            gameSeats.clear();
             cpuPlayers.clear();
         }
 
@@ -619,8 +708,8 @@ public class Lobby implements Serializable {
      * Sends the current state to every player and spectator, without letting CPU players act.
      */
     synchronized public void sendStateToAll() {
-        for (Entry<WsContext, String> entry : userToUsername.entrySet()) {
-            updateUser(entry.getKey(), entry.getValue());
+        for (Entry<WsContext, String> entry : userToAccount.entrySet()) {
+            updatePlayer(entry.getKey(), entry.getValue());
         }
         for (WsContext spectator : spectators) {
             updateSpectator(spectator);
@@ -645,18 +734,34 @@ public class Lobby implements Serializable {
         send(ctx, message);
     }
 
-    /** The packet sent outside a game: the players' names. */
+    /** The packet sent outside a game: the names of the accounts in the lobby, in join order. */
     private JSONObject lobbyPacket() {
         JSONObject message = new JSONObject();
         message.put(SecretHitlerServer.PARAM_PACKET_TYPE, SecretHitlerServer.PACKET_LOBBY);
-        message.put("usernames", activeUsernames.toArray());
+        message.put("usernames", activeAccounts.stream().map(accountToName::get).toArray());
         return message;
+    }
+
+    /**
+     * The players' portraits, keyed by the names packets show: in a game by seat name, and
+     * otherwise by each account's current name. A CPU seat has no account, and so no portrait.
+     */
+    private Map<String, String> iconsByName() {
+        Map<String, String> names = isInGame() ? gameSeats : accountToName;
+        Map<String, String> icons = new HashMap<>();
+        for (Entry<String, String> entry : names.entrySet()) {
+            String icon = accountToIcon.get(entry.getKey());
+            if (icon != null) {
+                icons.put(entry.getValue(), icon);
+            }
+        }
+        return icons;
     }
 
     /** Adds the icons and the spectator count, which every packet has, and sends the packet. */
     private void send(WsContext ctx, JSONObject message) {
         // Add user icons to the update message
-        JSONObject icons = new JSONObject(usernameToIcon);
+        JSONObject icons = new JSONObject(iconsByName());
         message.put("icon", icons);
         message.put(SecretHitlerServer.PARAM_SPECTATOR_COUNT, spectators.size());
 
@@ -671,40 +776,65 @@ public class Lobby implements Serializable {
 
     /**
      * Sends a message to the specified user with the current game state.
-     * 
-     * @param ctx the WsContext websocket context.
+     *
+     * @param ctx the WsContext websocket context of a player.
+     * @throws IllegalArgumentException if {@code ctx} is not a player's connection in this lobby.
      * @effects a message containing a JSONObject representing the state of the
      *          SecretHitlerGame is sent
      *          to the specified WsContext. ({@code GameToJSONConverter.convert()})
      */
-    synchronized public void updateUser(WsContext ctx, String userName) {
+    synchronized public void updateUser(WsContext ctx) {
+        String accountId = userToAccount.get(ctx);
+        if (accountId == null) {
+            throw new IllegalArgumentException("User is not in this lobby.");
+        }
+        updatePlayer(ctx, accountId);
+    }
+
+    /** Sends the player's connection the state: the lobby packet, or in a game the game as their seat sees it. */
+    private void updatePlayer(WsContext ctx, String accountId) {
         JSONObject message;
         if (isInGame()) {
-            message = GameToJSONConverter.convert(game, userName); // sends the game state
+            message = GameToJSONConverter.convert(game, gameSeats.get(accountId)); // sends the game state
             message.put(SecretHitlerServer.PARAM_PACKET_TYPE, SecretHitlerServer.PACKET_GAME_STATE);
             putTermTimer(message);
         } else {
             message = lobbyPacket();
         }
+        String you = isInGame() ? gameSeats.get(accountId) : accountToName.get(accountId);
+        message.put(SecretHitlerServer.PARAM_YOU, you);
         send(ctx, message);
     }
 
     /**
      * Called when an object is deserialized (see Serializable in Java docs).
-     * Initializes the userToUsername and activeUsernames, as they are transient
-     * objects and not saved during
-     * serialization of Lobby.
-     * 
+     * Initializes the transient fields, which are not saved during serialization of Lobby, and
+     * any backed-up map the stream lacks. A backup written before accounts has none of
+     * {@code gameSeats}, {@code accountToIcon} and {@code accountToPreferredIcon} (Java drops the
+     * name-keyed maps it has, whose fields Lobby no longer has), so they start empty, and
+     * {@code backedUpBeforeAccounts} records it.
+     *
      * @param in the Object Input Stream that is reading in the object.
      * @throws IOException
      * @throws ClassNotFoundException
      */
     private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
         in.defaultReadObject();
-        userToUsername = new ConcurrentHashMap<>();
-        activeUsernames = new ConcurrentLinkedQueue<>();
+        backedUpBeforeAccounts = gameSeats == null || accountToIcon == null || accountToPreferredIcon == null;
+        if (gameSeats == null) {
+            gameSeats = new ConcurrentHashMap<>();
+        }
+        if (accountToIcon == null) {
+            accountToIcon = new ConcurrentHashMap<>();
+        }
+        if (accountToPreferredIcon == null) {
+            accountToPreferredIcon = new ConcurrentHashMap<>();
+        }
+        userToAccount = new ConcurrentHashMap<>();
+        activeAccounts = new ConcurrentLinkedQueue<>();
+        accountToName = new ConcurrentHashMap<>();
         spectators = ConcurrentHashMap.newKeySet();
-        usernameToRejoinKey = new ConcurrentHashMap<>();
+        accountToRejoinKey = new ConcurrentHashMap<>();
         pendingRemovals = new ConcurrentHashMap<>();
         userTimeoutTimer = new Timer();
         cpuTickTimer = new Timer();
@@ -727,18 +857,18 @@ public class Lobby implements Serializable {
             throw new IllegalArgumentException("User is not in this lobby.");
         }
 
-        String username = userToUsername.get(user);
+        String accountId = userToAccount.get(user);
         // Verify that no user has the same icon
         if (!iconID.equals(DEFAULT_ICON)) { // all icons other than the default cannot be shared.
-            for (String name : userToUsername.values()) {
-                if (usernameToIcon.containsKey(name) && usernameToIcon.get(name).equals(iconID)) {
+            for (String other : userToAccount.values()) {
+                if (iconID.equals(accountToIcon.get(other))) {
                     return;
                 }
             }
         }
 
-        usernameToIcon.put(username, iconID);
-        usernameToPreferredIcon.put(username, iconID);
+        accountToIcon.put(accountId, iconID);
+        accountToPreferredIcon.put(accountId, iconID);
     }
 
     // </editor-fold>
@@ -756,6 +886,14 @@ public class Lobby implements Serializable {
     }
 
     /**
+     * @return whether this lobby was restored from a backup written before accounts, which has no
+     *         account maps: its game's seats belong to typed names that no account can take back.
+     */
+    synchronized public boolean wasBackedUpBeforeAccounts() {
+        return backedUpBeforeAccounts;
+    }
+
+    /**
      * Starts a new SecretHitlerGame with the connected users as players.
      * 
      * @throws RuntimeException if there are an insufficient number of players to
@@ -766,12 +904,12 @@ public class Lobby implements Serializable {
      *                          not all players have selected an icon.
      * @modifies this
      * @effects creates and stores a new SecretHitlerGame.
-     *          The usernames of all connected users are added to the game in a
-     *          randomized order. A user inside the grace window after a disconnect
-     *          ({@code PLAYER_TIMEOUT_IN_SEC}) is not seated: the lobby drops them
-     *          at once, as {@code RemoveUserTask} would have, keeping their preferred
-     *          icon. They find the lobby in a game when they return and can watch it.
-     *          A start that throws changes nothing.
+     *          Each connected account is seated under its current name, in a
+     *          randomized order, and {@code gameSeats} records the seats. A user inside the
+     *          grace window after a disconnect ({@code PLAYER_TIMEOUT_IN_SEC}) is not seated:
+     *          the lobby drops them at once, as {@code RemoveUserTask} would have, keeping
+     *          their preferred icon. They find the lobby in a game when they return and can
+     *          watch it. A start that throws changes nothing.
      */
     synchronized public void startNewGame() {
         if (isInGame()) {
@@ -779,11 +917,11 @@ public class Lobby implements Serializable {
         }
 
         // Seat only players with a live connection, in join order.
-        Set<String> connected = new HashSet<>(userToUsername.values());
+        Set<String> connected = new HashSet<>(userToAccount.values());
         List<String> seated = new ArrayList<>();
-        for (String username : activeUsernames) {
-            if (connected.contains(username)) {
-                seated.add(username);
+        for (String accountId : activeAccounts) {
+            if (connected.contains(accountId)) {
+                seated.add(accountId);
             }
         }
 
@@ -792,32 +930,39 @@ public class Lobby implements Serializable {
         }
 
         // Check that all seated players have (non-default) icons set.
-        for (String username : seated) {
-            if (usernameToIcon.get(username).equals(DEFAULT_ICON)) {
+        for (String accountId : seated) {
+            if (accountToIcon.get(accountId).equals(DEFAULT_ICON)) {
                 throw new RuntimeException("Not all players have selected icons.");
             }
         }
 
         // Every check passed: drop the players left out, as RemoveUserTask would have.
-        for (String username : new ArrayList<>(activeUsernames)) {
-            if (!connected.contains(username)) {
-                activeUsernames.remove(username);
-                usernameToIcon.remove(username);
+        for (String accountId : new ArrayList<>(activeAccounts)) {
+            if (!connected.contains(accountId)) {
+                activeAccounts.remove(accountId);
+                accountToName.remove(accountId);
+                accountToIcon.remove(accountId);
             }
         }
 
-        usersInGame.clear();
-        usersInGame.addAll(userToUsername.values());
+        // Each seat keeps the name its account has now until the game ends.
+        gameSeats.clear();
+        List<String> playerNames = new ArrayList<>();
+        for (String accountId : seated) {
+            String seatName = accountToName.get(accountId);
+            gameSeats.put(accountId, seatName);
+            playerNames.add(seatName);
+        }
 
         // Generate CpuPlayers if the lobby size has not been met
         List<String> cpuNames = new ArrayList<>();
         cpuPlayers.clear();
-        if (usersInGame.size() < SecretHitlerGame.MIN_PLAYERS) {
-            int numCpuPlayersToGenerate = SecretHitlerGame.MIN_PLAYERS - usersInGame.size();
+        if (gameSeats.size() < SecretHitlerGame.MIN_PLAYERS) {
+            int numCpuPlayersToGenerate = SecretHitlerGame.MIN_PLAYERS - gameSeats.size();
             int i = 1;
             while (numCpuPlayersToGenerate > 0) {
                 String botName = "Bot " + i;
-                if (!userToUsername.containsValue(botName)) {
+                if (!gameSeats.containsValue(botName)) {
                     cpuNames.add(botName);
                     cpuPlayers.add(new CpuPlayer(botName));
                     numCpuPlayersToGenerate--;
@@ -827,7 +972,6 @@ public class Lobby implements Serializable {
         }
 
         // Initialize the new game
-        List<String> playerNames = new ArrayList<>(activeUsernames);
         playerNames.addAll(cpuNames);
         Collections.shuffle(playerNames);
 
@@ -883,7 +1027,7 @@ public class Lobby implements Serializable {
             expiredTermTimer = null; // its game is over: no command can be late for it now
         }
         boolean waiting = game != null && game.getState() == GameState.POST_LEGISLATIVE
-                && usersInGame.contains(game.getCurrentPresident());
+                && gameSeats.containsValue(game.getCurrentPresident());
         if (termTimer != null && !(waiting && termTimer.isFor(game, game.getRound()))) {
             stopTermTimer();
         }
