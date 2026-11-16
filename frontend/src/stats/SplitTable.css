@@ -1,5 +1,6 @@
 /* A table split by role or side, inside a ScrollRegion: the names' column stays at the left while
-   the rest scroll. Cells never wrap, so the region scrolls instead of the page. */
+   the rest scroll. The numbers' cells never wrap, so the region scrolls instead of the page; a name
+   wraps inside its column. */
 .split-table {
     border-collapse: separate;
     border-spacing: 0;
@@ -34,7 +35,6 @@
     background-color: var(--backgroundDark);
     max-width: 9em;
     overflow: hidden;
-    text-overflow: ellipsis;
     text-align: left;
     padding-left: 0;
 }
@@ -43,9 +43,12 @@
     font-weight: 500;
 }
 
-/* A sticky name keeps to one line here and ends in an ellipsis, with the full name in its title. */
+/* A sticky name wraps inside its capped column, so the numbers stay in view and the whole name
+   is read (twelve characters that differ only in the last); its title holds it too. */
+.split-table tbody th,
 .split-table tbody th .player-name {
-    overflow-wrap: normal;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 .split-table thead th.split-liberal {

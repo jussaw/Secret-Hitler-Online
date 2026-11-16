@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { game, seatsOf } from "../src/stats/testGames";
 import { NARROW_PHONE } from "./layout";
 import { settle } from "./lobby";
 import { bigStatsData, checkStatsPage, statsSizesFor, stubStats } from "./stats";
@@ -58,6 +59,40 @@ test("a wide table scrolls inside its card on a 320px phone", async ({ page }) =
   const table = page.getByRole("region", { name: "Win rate by player count table", exact: true });
   const { scrollWidth, clientWidth } = await table.evaluate((box) => ({ scrollWidth: box.scrollWidth, clientWidth: box.clientWidth }));
   expect(scrollWidth, "the table scrolls rather than squeezing").toBeGreaterThan(clientWidth);
+});
+
+test("a split table's names wrap whole inside their column at 320px", async ({ page }) => {
+  // Two twelve-character names that differ only in their last letter, and three short ones.
+  const names = ["WWWWWWWWWWW1", "WWWWWWWWWWW2", "Cy", "Di", "Ed"];
+  const T0 = Date.UTC(2026, 10, 1, 20, 0);
+  await stubStats(page, {
+    players: names.map((name, i) => ({ number: i + 1, name })),
+    games: [1, 2, 3].map((i) => game(`w${i}`, T0 + i * 3_600_000, seatsOf([1, 2, 3, 4, 5]), "LIBERAL")),
+  });
+  await page.setViewportSize(NARROW_PHONE);
+  await page.goto("/stats/roles");
+  await expect(page.locator(".roles-tab")).toBeVisible();
+  await settle(page);
+  const table = page.getByRole("region", { name: "Role split table", exact: true });
+  for (const name of names.slice(0, 2)) {
+    const cell = table.getByRole("rowheader", { name, exact: true });
+    // Where the name's text is drawn, line by line, against the cell's box: none of it outside.
+    const drawn = await cell.evaluate((th) => {
+      const box = th.getBoundingClientRect();
+      const range = document.createRange();
+      range.selectNodeContents(th.querySelector(".player-name")!);
+      const lines = Array.from(range.getClientRects());
+      return {
+        left: Math.min(...lines.map((r) => r.left)) - box.left,
+        right: box.right - Math.max(...lines.map((r) => r.right)),
+        clip: getComputedStyle(th).textOverflow,
+      };
+    });
+    expect(drawn.left, `${name} starts inside its cell`).toBeGreaterThanOrEqual(-0.5);
+    expect(drawn.right, `${name} ends inside its cell`).toBeGreaterThanOrEqual(-0.5);
+    expect(drawn.clip, `${name} is never cut short`).not.toBe("ellipsis");
+    await expect(cell).toHaveAttribute("title", name);
+  }
 });
 
 test("the tab row opens ROLES & CARDS and keeps the filter", async ({ page }) => {
