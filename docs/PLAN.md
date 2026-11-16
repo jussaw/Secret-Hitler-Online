@@ -43,7 +43,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 10. Baseline bugs | `fix/issue-N`, one per issue | done |
 | 11. Lobby redesign | `phase-11-lobby` | done |
 | 12. Accounts with Discord sign-in | `phase-12-accounts` | done |
-| 13. Database backups | `phase-13-db-backups` | planned |
+| 13. Database backups | `phase-13-db-backups` | done |
 | 14A. Game timeline | `phase-14a-game-timeline` | done |
 | 14B. Game records | `phase-14b-game-records` | planned |
 | 15A. Stats shell | `phase-15a-stats-shell` | planned |
@@ -720,18 +720,18 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-13-db-backups.md`](superpow
 
 Issue #31 (game stats), the first of its ten phases: the database is backed up before the first game is recorded. The server keeps its SQLite file in WAL mode and logs one line once it listens, the image gains `sqlite3`, and two host scripts take a consistent, checked snapshot while the server writes and put one back. Builds on Phase 12 and merges before Phase 14.
 
-- [ ] `backend/src/main/java/server/SecretHitlerServer.java`: the database file in WAL mode at start, retried while busy for up to 5 s
-- [ ] `SecretHitlerServer`: one startup line once the server listens, which the restore waits for
-- [ ] `Dockerfile`: `sqlite3` in the final stage; `devops/tests/backup-restore.test.sh` checks it, the startup line and WAL mode in the branch's image
-- [ ] `devops/backup-db.sh` and `devops/.env.example` (`devops/.env` git-ignored): a checked snapshot while the server writes, retention, and the `AFTER_BACKUP` hook
-- [ ] `devops/restore-db.sh`: a bad file refused before anything stops, the file swapped in one move, the startup line waited for
-- [ ] `.github/workflows/ci.yml`: a `devops` job runs the backup and restore test against the branch's image on pull requests
-- [ ] `CLAUDE.md`, `README.md` and `DEVELOPMENT.md` describe backups and restores; the pull request says it changes nothing on screen
+- [x] `backend/src/main/java/server/SecretHitlerServer.java`: the database file in WAL mode at start, retried while busy for up to 5 s
+- [x] `SecretHitlerServer`: one startup line once the server listens, which the restore waits for
+- [x] `Dockerfile`: `sqlite3` in the final stage; `devops/tests/backup-restore.test.sh` checks it, the startup line and WAL mode in the branch's image
+- [x] `devops/backup-db.sh` and `devops/.env.example` (`devops/.env` git-ignored): a checked snapshot while the server writes, retention, and the `AFTER_BACKUP` hook
+- [x] `devops/restore-db.sh`: a bad file refused before anything stops, the file swapped in one move, the startup line waited for
+- [x] `.github/workflows/ci.yml`: a `devops` job runs the backup and restore test against the branch's image on pull requests
+- [x] `CLAUDE.md`, `README.md` and `DEVELOPMENT.md` describe backups and restores; the pull request says it changes nothing on screen
 
 **Phase 13 acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, the backup and restore test passes, and the browser tests pass in all four Playwright projects
-- [ ] PR merged into `development`
+- [x] Backend and frontend unit tests pass, the frontend builds, the backup and restore test passes, and the browser tests pass in all four Playwright projects
+- [x] PR merged into `development`
 - [ ] The user schedules the nightly backup on the home server, with `AFTER_BACKUP` copying each backup off the host if wanted
 - [ ] The user takes one restore drill on the home server: restores a recent backup and signs in to find their account and name
 

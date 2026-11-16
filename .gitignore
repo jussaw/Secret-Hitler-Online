@@ -17,3 +17,6 @@ bin
 
 # Node
 **/node_modules/
+
+# The backup scripts' own settings (devops/.env.example lists them)
+devops/.env

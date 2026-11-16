@@ -36,6 +36,7 @@ For more information, read the [official rulebook here](https://www.secrethitler
 - **END TERM ends itself.** Once a president has nothing left to do in their term, END TERM flashes and a 10-second countdown runs beside it. At zero the server ends the term, even if the president's tab is closed, so the table never sits waiting for a president who forgot. The president can pause the countdown to keep the term open as long as they need, and resume it. Everyone, spectators included, sees the countdown and whether it is paused.
 - **Sound effects** for joining, nominations, votes, policies, presidential powers and the end of the game. The speaker button in the header mutes them and sets the volume, and each browser remembers its own setting. Every clip is CC0, credited in [docs/SOUND-CREDITS.md](docs/SOUND-CREDITS.md).
 - **Lobbies and sign-ins survive a restart.** The server backs up its lobbies to a SQLite file, which also holds the accounts and sessions, and restores them when it starts.
+- **Database backups.** A script takes a checked snapshot of that file while the server runs, keeps a month of them and can copy each one off the host; another puts one back. See [Backups](#backups).
 - **One image on one port.** The Java server also serves the web page. CI publishes a Docker image for `linux/amd64` and `linux/arm64`.
 - **A current toolchain:** Vite, React 18 and TypeScript 5, with Vitest unit tests and Playwright browser tests on desktop Chrome, Firefox and two emulated phones.
 - **Fixes** for bugs carried over from upstream:
@@ -58,11 +59,12 @@ The plan behind these changes, phase by phase, is in [docs/PLAN.md](docs/PLAN.md
 Run the published image and open [localhost:8080](http://localhost:8080):
 
 ```bash
-docker run -d --name secret-hitler -p 8080:8080 -v sh-data:/data ghcr.io/jussaw/secret-hitler-online:latest
+docker run -d --name secret-hitler-online -p 8080:8080 -v sh-data:/data ghcr.io/jussaw/secret-hitler-online:latest
 ```
 
 - The container serves plain HTTP on port 8080 (set `PORT` to change it). To play over the internet, put it behind a reverse proxy that terminates TLS and passes WebSocket upgrades through, since the game runs over a WebSocket at `/game`. On an `https:` page the client connects with `wss:`.
 - Lobby backups, accounts and sign-ins go to `/data/backup.db` (`DATABASE_PATH`), so mount a volume, or a directory owned by uid 1000, at `/data`. Without one, every restart signs everyone out and forgets their names.
+- The server keeps that file in SQLite's WAL mode, with `backup.db-wal` and `backup.db-shm` beside it, so `/data` must be on a local disk, not a network share. Never copy the file by hand while the server runs: back it up with the script below.
 - Each push to `development` publishes `:latest` and `:sha-<short>`. For a health check, use `GET /ping`.
 - To build the image yourself, run `docker build -t secret-hitler-online .` at the repo root.
 
@@ -87,6 +89,35 @@ Sign-in is on once all three are set. The server asks Discord only for `identify
 
 `TEST_SIGN_IN=true` turns on a TEST SIGN-IN button that signs anyone in as a test account, with no Discord. It is for local runs and the browser tests only; never set it on a server other people can reach.
 
+### Backups
+
+Two scripts in `devops/` back up the database from the running container and put a backup back. They run on the host, need only `docker` and `sha256sum` (or `shasum`), and work on the container by its name, `secret-hitler-online` unless you set another.
+
+1. Copy `devops/.env.example` to `devops/.env` (which git ignores) and set `BACKUP_DIR` to an existing directory, as an absolute path.
+2. Run `devops/backup-db.sh`. It takes one consistent snapshot inside the container while the server keeps writing (`VACUUM INTO`), checks it (`PRAGMA integrity_check` must say `ok`), copies it out, checks that its SHA-256 still matches, and moves it into `BACKUP_DIR` as `secret-hitler-<UTC time>.db`, with `secret-hitler-<UTC time>.db.sha256` beside it (`sha256sum -c` checks it there). If anything fails before that, it exits 1 and leaves no backup behind. Then it deletes the backups older than `RETENTION_DAYS`, and nothing else in the directory.
+3. Schedule it, for example nightly at 04:00 from the crontab of a user who can run `docker`:
+
+   ```
+   0 4 * * * /path/to/Secret-Hitler-Online/devops/backup-db.sh >>/path/to/backup.log 2>&1
+   ```
+
+   Each failure ends with an `Error: …` line and a non-zero exit. With the output going to a log, cron sends no mail; to have cron mail failures where its mail is set up, leave out `2>&1`, so the errors reach cron. Cron's `PATH` is short, so check that it finds `docker`.
+
+The settings, in `devops/.env` or the environment (which wins); an empty value means the default:
+
+| Setting | Default | Used by |
+|---|---|---|
+| `CONTAINER_NAME` | `secret-hitler-online` | both |
+| `DB_PATH` | `/data/backup.db` (the image's `DATABASE_PATH`) | both |
+| `BACKUP_DIR` | none; required | backup |
+| `RETENTION_DAYS` | `30` | backup |
+| `AFTER_BACKUP` | empty (no hook) | backup |
+| `STARTUP_TIMEOUT_SECONDS` | `120` | restore |
+
+A backup kept on the same host does not survive losing that host. `AFTER_BACKUP` is a command run after each backup, with the new backup's path as `$1`, for copying it elsewhere: `AFTER_BACKUP=cp "$1" "$1.sha256" /path/to/another/disk/`, or an `scp` or `rsync` to another machine. If it fails, the backup is kept and the script exits non-zero.
+
+To restore, best between games, run `devops/restore-db.sh <file>` with a backup and its `.sha256` beside it. Before it stops anything, it refuses a file that is not SQLite, or one whose `.sha256` is missing or does not match. Then it asks you to type the container's name, stops the container, swaps the file in from a one-off container of the same image, starts it again and waits until the server says it is listening (up to `STARTUP_TIMEOUT_SECONDS`). If the swap fails, the old database is left as it was and the container starts on it. The restored file brings back everything as it was at the backup: the accounts, names and sign-ins (so a sign-in or a name change made since is gone, and that player signs in or chooses again), and the lobbies, of which those idle for more than 10 minutes are swept at start.
+
 ### Known limits
 
 - A game that is running when a server first starts with accounts is dropped, since its seats belong to typed names that no account can take back. Lobbies that are not in a game are kept. Deploy between games.
@@ -94,6 +125,7 @@ Sign-in is on once all three are set. The server asks Discord only for `identify
 - Signing out leaves the sockets already open connected until they close.
 - There is no way to delete an account.
 - One browser holds one sign-in, shared by all its tabs, so two people cannot play from two tabs of one browser. A second tab that joins a lobby the first is in is refused.
+- Backups stay on the host unless `AFTER_BACKUP` copies them elsewhere.
 - Going back to an image from before accounts: that server ignores the accounts, but a lobby it restores from a newer backup refuses every join until it times out, after 10 minutes. New lobbies work at once. Deleting the backup file clears the old lobbies sooner, but the same file holds the accounts.
 
 ## Running locally
