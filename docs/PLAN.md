@@ -911,7 +911,7 @@ Issue #31: the ROLES & CARDS tab fills Phase 17A's placeholder with each player'
 - [x] `frontend/src/stats/roles.ts`: role split, role luck, times as Hitler and the longest run of one role
 - [x] `roles.ts`: win rates as Liberal, as Fascist and as Hitler, by player count, and as first president
 - [x] `frontend/src/stats/cards.ts`: hands drawn beside the group's, Liberal accuracy and deep cover as president
-- [ ] `cards.ts`: given one of each, policies enacted and vetoes as chancellor; Fascist choices and forced Fascists
+- [x] `cards.ts`: given one of each, policies enacted and vetoes as chancellor; Fascist choices and forced Fascists
 - [ ] `frontend/src/stats/tabs/RolesTab.tsx`: the tab's four sections and seventeen cards, split tables that scroll inside their card, and every card's empty state
 - [ ] `frontend/e2e/stats-roles.spec.ts`: the tab never scrolls sideways at any `statsSizes` size against `bigStatsData()`, with 44px targets on phones
 - [ ] `CLAUDE.md` and `README.md` describe ROLES & CARDS
