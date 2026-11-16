@@ -1,0 +1,100 @@
+/* RECORDS' own lines, tables and link; the grid of cards and its headings are sectionGrid.css's,
+   shared with ACTIVITY. App.css styles every p and a, so these set their own sizes and
+   margins. */
+
+/* A record's line: the holders, then " · 3 wins · Sun 4 Oct 2026 to Tue 6 Oct 2026". It wraps
+   only between its parts (and inside a name too long for the card). */
+.stats-screen p.records-line {
+    font-family: var(--textFont);
+    font-weight: 700;
+    font-size: 15px;
+    line-height: 1.4;
+    color: var(--textColorOnDark);
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.records-whole {
+    white-space: nowrap;
+}
+
+.records-names {
+    font-size: 17px;
+    color: var(--headerTextColor);
+}
+
+.records-upset .records-names {
+    font-size: inherit;
+}
+
+.records-count,
+.records-change {
+    color: var(--headerTextColor);
+    font-variant-numeric: tabular-nums;
+}
+
+.records-when {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--buttonHoverFill);
+}
+
+/* The best weeks and months (the rank, the name over its period, the wins) and the players of
+   the month (the month over its holders, the wins) are tables in RankedTable's look and classes
+   (RankedTable.css, its 44px rows in the stacked query too); these are their extra lines. */
+.records-sub {
+    display: block;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--buttonHoverFill);
+}
+
+.records-holders {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.records-holders > li {
+    min-width: 0;
+}
+
+/* The longest sessions, most games first. */
+.records-sessions {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0;
+    padding: 0 0 0 1.6em;
+    font-family: var(--textFont);
+    font-weight: 700;
+    font-size: 15px;
+    line-height: 1.4;
+    color: var(--headerTextColor);
+    font-variant-numeric: tabular-nums;
+}
+
+.records-sessions > li {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+/* The upset's game: a 44px target at every size, as wide as its words. */
+.stats-screen a.records-game-link {
+    box-sizing: border-box;
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    min-width: 44px;
+    font-family: var(--textFont);
+    font-weight: 700;
+    font-size: 15px;
+    line-height: 1.3;
+    color: var(--buttonHoverFill);
+}
+
+.stats-screen a.records-game-link:hover,
+.stats-screen a.records-game-link:focus-visible {
+    color: var(--headerTextColor);
+}

@@ -13,6 +13,7 @@ import { SplitTable, type SplitCell } from "../SplitTable";
 import { StatCard } from "../StatCard";
 import { computeTiming, DECISIONS, fastestVoter, formatAverageTime, type Decision } from "../timing";
 import type { StatsContext } from "../useStats";
+import "./sectionGrid.css";
 import "./ActivityTab.css";
 
 const GRAINS: { id: Grain; label: string }[] = [

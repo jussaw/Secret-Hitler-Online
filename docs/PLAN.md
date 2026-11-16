@@ -55,7 +55,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 19. VOTES & POWERS | `phase-19-votes-powers` | done |
 | 20. RIVALS and ENDINGS | `phase-20-rivals-endings` | done |
 | 21A. ACTIVITY | `phase-21a-activity` | done |
-| 21B. RECORDS | `phase-21b-records` | planned |
+| 21B. RECORDS | `phase-21b-records` | done |
 | 22A. Trophies and name links | `phase-22a-trophies-links` | planned |
 | 22B. Player pages | `phase-22b-player-pages` | planned |
 | 23. One header for the site | `phase-23-site-header` | planned |
@@ -1007,18 +1007,18 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-21b-records.md`](superpower
 
 Issue #31, after Phases 21A and 17B: the RECORDS tab shows streaks, the best weeks and months, player of the month and its history, the longest game nights, the highest peak rating and the biggest upset, counted in the viewer's time zone and built on OVERVIEW's streaks and player of the month, so the two tabs agree.
 
-- [ ] `frontend/src/stats/records.ts`: streaks (on OVERVIEW's `winStreaks`), the most wins in a week and in a month, player of the month (OVERVIEW's `playerOfTheMonth`) and its history, the most games in one session
-- [ ] `records.ts`: rating records (the highest peak, and the biggest upset with its winners' gain and losers' loss)
-- [ ] `frontend/src/stats/tabs/RecordsTab.tsx`: the RECORDS tab
-- [ ] `frontend/e2e/stats-records.spec.ts`: RECORDS fits every stats size, its game link opens the game, and the player of the month follows the browser's time zone
-- [ ] `CLAUDE.md` and `README.md` (and `DEVELOPMENT.md` if needed) describe the tab
-- [ ] Every finding of the whole-branch review is fixed
-- [ ] The pull request shows the tab before and after, on desktop and on a phone
+- [x] `frontend/src/stats/records.ts`: streaks (on OVERVIEW's `winStreaks`), the most wins in a week and in a month, player of the month (OVERVIEW's `playerOfTheMonth`) and its history, the most games in one session
+- [x] `records.ts`: rating records (the highest peak, and the biggest upset with its winners' gain and losers' loss)
+- [x] `frontend/src/stats/tabs/RecordsTab.tsx`: the RECORDS tab
+- [x] `frontend/e2e/stats-records.spec.ts`: RECORDS fits every stats size, its game link opens the game, and the player of the month follows the browser's time zone
+- [x] `CLAUDE.md` and `README.md` (and `DEVELOPMENT.md` if needed) describe the tab
+- [x] Every finding of the whole-branch review is fixed
+- [x] The pull request shows the tab before and after, on desktop and on a phone
 
 **Phase 21B acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] PR merged into `development`
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] PR merged into `development`
 - [ ] The user opens RECORDS on the deployed build after a game night, on a desktop and on a phone, and finds the night's session and the player of the month
 
 ---

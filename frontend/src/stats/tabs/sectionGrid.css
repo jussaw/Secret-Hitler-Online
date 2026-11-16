@@ -1,0 +1,39 @@
+/* ACTIVITY's sections and RECORDS: cards in a grid of columns at least 300px wide (the whole width
+   on a phone), each as tall as its own content, under Germania One headings that take a whole
+   row. Every grid child has min-width: 0, so a long name wraps inside its card instead of
+   widening the page. App.css styles every h2, so the headings set their own size and margins.
+   (RIVALS and ENDINGS lay out their cards in cardGrid.css's wider columns.) */
+.activity-section,
+.records-tab {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+    align-items: start;
+    gap: 16px;
+    min-width: 0;
+}
+
+.activity-section > *,
+.records-tab > * {
+    min-width: 0;
+}
+
+.stats-screen h2.activity-heading,
+.stats-screen h2.records-heading {
+    grid-column: 1 / -1;
+    font-family: var(--headerFont);
+    font-weight: normal;
+    font-style: normal;
+    font-size: 26px;
+    line-height: 1.2;
+    color: var(--headerTextColor);
+    margin: 4px 0 0;
+    overflow-wrap: anywhere;
+}
+
+/* Phones (the game's phone-only query): less room between the cards. */
+@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
+    .activity-section,
+    .records-tab {
+        gap: 8px;
+    }
+}
