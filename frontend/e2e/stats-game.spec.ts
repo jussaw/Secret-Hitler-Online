@@ -28,6 +28,30 @@ async function openGame(page: Page, id: string): Promise<void> {
   await settle(page);
 }
 
+/**
+ * Each line and name in the page's cards that reaches past its card's content box (inside its
+ * padding), as `text [left, right] in [left, right]`: a long line must wrap inside its card.
+ */
+function pastTheirCards(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const out: string[] = [];
+    for (const card of Array.from(document.querySelectorAll(".game-page .stats-card"))) {
+      const r = card.getBoundingClientRect();
+      const style = getComputedStyle(card);
+      const left = r.left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft);
+      const right = r.right - parseFloat(style.borderRightWidth) - parseFloat(style.paddingRight);
+      for (const el of Array.from(card.querySelectorAll("p, .player-name"))) {
+        for (const box of Array.from(el.getClientRects())) {
+          if (box.width === 0 || (box.left >= left - 1 && box.right <= right + 1)) continue;
+          const text = (el.textContent ?? "").trim().slice(0, 24);
+          out.push(`${text} [${Math.round(box.left)}, ${Math.round(box.right)}] in [${Math.round(left)}, ${Math.round(right)}]`);
+        }
+      }
+    }
+    return out;
+  });
+}
+
 test("the game page fits every size", async ({ page }) => {
   test.slow();
   await stubStats(page, data);
@@ -39,6 +63,7 @@ test("the game page fits every size", async ({ page }) => {
     if (game === unfinished) await expect(page.getByText("Unfinished: the lobby closed")).toBeVisible();
     for (const size of statsSizesFor(test.info().project.name, page.viewportSize()!)) {
       await checkStatsPage(page, size);
+      expect(await pastTheirCards(page), `lines past their cards at ${size.width}x${size.height}`).toEqual([]);
       if (!isPhone(size)) continue;
       const widths = await page.locator(".round-block").evaluateAll((blocks) => blocks.map((b) => b.getBoundingClientRect().width));
       for (const width of widths) {
