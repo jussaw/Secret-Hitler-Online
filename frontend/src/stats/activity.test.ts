@@ -94,9 +94,7 @@ describe("the local calendar", () => {
     expect(addDays("2026-11-14", -364)).toBe("2025-11-15");
     expect(addDays("2026-03-07", 2)).toBe("2026-03-09");
     expect(addDays("2024-02-28", 1)).toBe("2024-02-29");
-    expect(countLabel(1, ["loss", "losses"])).toBe("1 loss");
-    expect(countLabel(0, ["game", "games"])).toBe("0 games");
-    expect(countLabel(2, ["game", "games"])).toBe("2 games");
+    expect(countLabel(1, ["loss", "losses"])).toBe("1 loss"); // countLabel.ts's, for Phase 21B too
   });
 });
 

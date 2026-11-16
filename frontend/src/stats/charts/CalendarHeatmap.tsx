@@ -1,5 +1,5 @@
 import { useRef, useState, type KeyboardEvent } from "react";
-import { countLabel, weekdayOf, type Heatmap } from "../activity";
+import { countLabel, GAME_NOUNS, MONTHS, weekdayOf, type Heatmap } from "../activity";
 import { ChartFocus } from "./ChartFocus";
 import { ChartFrame, px, type TooltipPlace } from "./chartParts";
 import { useChartWidth } from "./useChartWidth";
@@ -8,7 +8,6 @@ import "./CalendarHeatmap.css";
 /** A day's fill by its shade, 0 (no games) to 4 (the busiest quarter): dark card to office orange. */
 export const HEAT_COLORS = ["#4d4945", "#6e4a39", "#94573d", "#c26b45", "#f08a5d"];
 
-const GAMES: [string, string] = ["game", "games"];
 /** The weekday labels' gutter at the left and the month labels' room at the top, in px. */
 const GUTTER = 28;
 const HEAD = 16;
@@ -20,7 +19,6 @@ const WEEKDAY_PITCH = 7;
  * 25px): a name closer than this to the last one is skipped.
  */
 const MONTH_ROOM = 28;
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const WEEKDAY_ROWS: [number, string][] = [
   [0, "Mon"],
   [2, "Wed"],
@@ -31,8 +29,8 @@ const WEEKDAY_ROWS: [number, string][] = [
 function describe(heatmap: Heatmap): string {
   if (heatmap.games === 0) return "No games.";
   return (
-    `${countLabel(heatmap.games, GAMES)} on ${countLabel(heatmap.activeDays, ["day", "days"])}; ` +
-    `busiest ${heatmap.busiestDay} with ${countLabel(heatmap.busiest, GAMES)}.`
+    `${countLabel(heatmap.games, GAME_NOUNS)} on ${countLabel(heatmap.activeDays, ["day", "days"])}; ` +
+    `busiest ${heatmap.busiestDay} with ${countLabel(heatmap.busiest, GAME_NOUNS)}.`
   );
 }
 
@@ -90,7 +88,7 @@ export function CalendarHeatmap({ heatmap, label }: { heatmap: Heatmap; label: s
       share: ((x + side / 2) / width) * 100,
       top: y,
       below: y < height / 3,
-      lines: [`${day.long}: ${day.games ? countLabel(day.games, GAMES) : "no games"}`],
+      lines: [`${day.long}: ${day.games ? countLabel(day.games, GAME_NOUNS) : "no games"}`],
     };
   }
 

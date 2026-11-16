@@ -1,5 +1,5 @@
 import { useRef, useState, type KeyboardEvent } from "react";
-import { countLabel } from "../activity";
+import { countLabel } from "../countLabel";
 import { ChartFocus } from "./ChartFocus";
 import { ChartFrame, px, YAxis, type TooltipPlace } from "./chartParts";
 import { LABEL_CHAR_PX, labelStep } from "./labelStep";
@@ -56,13 +56,13 @@ export function BarChart({ bars, label, unit, color = OFFICE }: BarChartProps): 
   const width = useChartWidth(box, 320);
   const height = Math.round(Math.min(220, Math.max(120, 0.4 * width)));
   const [picked, setPicked] = useState<number | null>(null);
-  const g = geometry(bars, width, height);
+  const layout = geometry(bars, width, height);
   const n = bars.length;
   const active = picked !== null && picked < n ? picked : null;
 
   const show = (at: { x: number }) => {
     if (n === 0) return;
-    setPicked(Math.min(n - 1, Math.max(0, Math.floor((at.x - LEFT) / g.slot))));
+    setPicked(Math.min(n - 1, Math.max(0, Math.floor((at.x - LEFT) / layout.slot))));
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -91,7 +91,7 @@ export function BarChart({ bars, label, unit, color = OFFICE }: BarChartProps): 
   let tooltip: TooltipPlace | null = null;
   if (active !== null) {
     const bar = bars[active];
-    const rect = g.rects[active];
+    const rect = layout.rects[active];
     tooltip = {
       share: ((rect.x + rect.width / 2) / width) * 100,
       top: rect.y,
@@ -100,7 +100,7 @@ export function BarChart({ bars, label, unit, color = OFFICE }: BarChartProps): 
     };
   }
 
-  const ticks = g.most > 0 ? [0, g.most] : [0];
+  const ticks = layout.most > 0 ? [0, layout.most] : [0];
   return (
     <ChartFocus
       className="bar-chart"
@@ -121,8 +121,8 @@ export function BarChart({ bars, label, unit, color = OFFICE }: BarChartProps): 
         legend={[]}
         tooltip={tooltip}
       >
-        <YAxis ticks={ticks} y={(value) => g.base - g.scale(value)} left={LEFT} right={width} format={String} />
-        {g.rects.map((r, i) => (
+        <YAxis ticks={ticks} y={(value) => layout.base - layout.scale(value)} left={LEFT} right={width} format={String} />
+        {layout.rects.map((r, i) => (
           <rect
             key={i}
             className={i === active ? "chart-bar bar is-active" : "chart-bar bar"}
@@ -134,12 +134,12 @@ export function BarChart({ bars, label, unit, color = OFFICE }: BarChartProps): 
           />
         ))}
         {bars.map((bar, i) =>
-          i % g.step === 0 ? (
+          i % layout.step === 0 ? (
             <text
               key={i}
               className="chart-axis-text x-label"
               // Centred under its bar, but never past either edge of the chart.
-              x={px(Math.min(width - g.half, Math.max(g.half, LEFT + (i + 0.5) * g.slot)))}
+              x={px(Math.min(width - layout.half, Math.max(layout.half, LEFT + (i + 0.5) * layout.slot)))}
               y={height - BOTTOM / 2}
               textAnchor="middle"
               dominantBaseline="middle"

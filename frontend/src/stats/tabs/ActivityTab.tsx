@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState, type ReactNode } from "react";
-import { computeActivity, countLabel, hourLabel, LAST_12_MONTHS, weekdayLabel, type Grain } from "../activity";
+import { computeActivity, countLabel, GAME_NOUNS, hourLabel, LAST_12_MONTHS, weekdayLabel, type Grain } from "../activity";
 import { BarChart } from "../charts/BarChart";
 import { CalendarHeatmap } from "../charts/CalendarHeatmap";
 import { SERIES_COLORS } from "../charts/LineChart";
@@ -15,7 +15,6 @@ import { computeTiming, DECISIONS, fastestVoter, formatAverageTime, type Decisio
 import type { StatsContext } from "../useStats";
 import "./ActivityTab.css";
 
-const GAMES: [string, string] = ["game", "games"];
 const GRAINS: { id: Grain; label: string }[] = [
   { id: "week", label: "PER WEEK" },
   { id: "month", label: "PER MONTH" },
@@ -94,10 +93,10 @@ function listOf(names: ReactNode[]): ReactNode {
  */
 export function ActivityTab({ stats, now, timeZone }: { stats: StatsContext; now?: number; timeZone?: string }): JSX.Element {
   const [mountedAt] = useState(Date.now);
-  const at = now ?? mountedAt;
-  const zone = timeZone ?? viewerTimeZone();
+  const nowMs = now ?? mountedAt;
+  const viewerZone = timeZone ?? viewerTimeZone();
   const { counted, data, names } = stats;
-  const activity = useMemo(() => computeActivity(counted, at, zone), [counted, at, zone]);
+  const activity = useMemo(() => computeActivity(counted, nowMs, viewerZone), [counted, nowMs, viewerZone]);
   const timing = useMemo(() => computeTiming(counted), [counted]);
   const [grain, setGrain] = useState<Grain>("week");
   const [chosenView, setView] = useState(LAST_12_MONTHS);
@@ -152,6 +151,7 @@ export function ActivityTab({ stats, now, timeZone }: { stats: StatsContext; now
     MIN_CHANCES
   );
   const { countdown } = timing;
+  const termCount = (n: number) => countLabel(n, ["term", "terms"]);
 
   const drops = rankRows(
     Array.from(timing.byPlayer)
@@ -172,7 +172,7 @@ export function ActivityTab({ stats, now, timeZone }: { stats: StatsContext; now
             <BarChart
               bars={periods.map((p) => ({ label: p.label, long: p.long, value: p.games }))}
               label={`Games per ${grain}`}
-              unit={GAMES}
+              unit={GAME_NOUNS}
             />
           </StatCard>
         </Cell>
@@ -181,7 +181,7 @@ export function ActivityTab({ stats, now, timeZone }: { stats: StatsContext; now
             <BarChart
               bars={periods.map((p) => ({ label: p.label, long: p.long, value: p.cumulative }))}
               label={`Cumulative games per ${grain}`}
-              unit={GAMES}
+              unit={GAME_NOUNS}
             />
           </StatCard>
         </Cell>
@@ -218,7 +218,7 @@ export function ActivityTab({ stats, now, timeZone }: { stats: StatsContext; now
             <BarChart
               bars={activity.byWeekday.map((value, day) => ({ ...weekdayLabel(day), value }))}
               label="Games by day of the week"
-              unit={GAMES}
+              unit={GAME_NOUNS}
             />
           </StatCard>
         </Cell>
@@ -227,16 +227,16 @@ export function ActivityTab({ stats, now, timeZone }: { stats: StatsContext; now
             <BarChart
               bars={activity.byHour.map((value, hour) => ({ ...hourLabel(hour), value }))}
               label="Games by hour of the day"
-              unit={GAMES}
+              unit={GAME_NOUNS}
             />
           </StatCard>
         </Cell>
         <Cell slug="busiest-times">
           <StatCard title="Busiest times" definition="The day, week and month with the most counted games started." empty={empty}>
-            {busiest.day && <p className="activity-line">Busiest day: {busiest.day.long} · {countLabel(busiest.day.games, GAMES)}</p>}
-            {busiest.week && <p className="activity-line">Busiest week: {busiest.week.long} · {countLabel(busiest.week.games, GAMES)}</p>}
+            {busiest.day && <p className="activity-line">Busiest day: {busiest.day.long} · {countLabel(busiest.day.games, GAME_NOUNS)}</p>}
+            {busiest.week && <p className="activity-line">Busiest week: {busiest.week.long} · {countLabel(busiest.week.games, GAME_NOUNS)}</p>}
             {busiest.month && (
-              <p className="activity-line">Busiest month: {busiest.month.long} · {countLabel(busiest.month.games, GAMES)}</p>
+              <p className="activity-line">Busiest month: {busiest.month.long} · {countLabel(busiest.month.games, GAME_NOUNS)}</p>
             )}
           </StatCard>
         </Cell>
@@ -250,7 +250,7 @@ export function ActivityTab({ stats, now, timeZone }: { stats: StatsContext; now
             </p>
             {sessions.most && (
               <p className="activity-line">
-                Most in one: {countLabel(sessions.most.games, GAMES)}, {sessions.most.day}
+                Most in one: {countLabel(sessions.most.games, GAME_NOUNS)}, {sessions.most.day}
               </p>
             )}
           </StatCard>
@@ -320,14 +320,14 @@ export function ActivityTab({ stats, now, timeZone }: { stats: StatsContext; now
           >
             <p className="activity-line">
               Ended by the countdown: {countdown.value === null ? "—" : formatPercent(countdown.value)} ({countdown.hits} of{" "}
-              {countLabel(countdown.chances, ["term", "terms"])})
+              {termCount(countdown.chances)})
             </p>
             <p className="activity-line">Pauses: {timing.pauses}</p>
             <RankedTable
               rows={presidents}
               format={(r: Rate) => formatPercent(r.value ?? 0)}
               names={names}
-              countLabel={(n) => countLabel(n, ["term", "terms"])}
+              countLabel={termCount}
               showCount
             />
           </StatCard>

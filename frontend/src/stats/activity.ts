@@ -2,6 +2,8 @@ import { humanSeats, localDaysBetween, sessions as sessionsOf } from "./counting
 import { localDayKey, viewerTimeZone } from "./format";
 import type { GameRecord } from "./record";
 
+export { countLabel, GAME_NOUNS } from "./countLabel";
+
 /**
  * ACTIVITY's numbers: when the group plays, in the viewer's time zone (or the one passed in, so
  * tests pin one). Every period counts a game by its start, on the wall clock of that zone: only
@@ -103,7 +105,8 @@ export interface ActivityStats {
   daysSinceLast: number | null;
 }
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** The months' names as the stats write them, January first. */
+export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const MONTH_NAMES = [
   "January",
   "February",
@@ -135,14 +138,14 @@ export function localHour(ms: number, timeZone: string): number {
 }
 
 /** A day key's year, month (1 to 12) and day. */
-function split(dayKey: string): [number, number, number] {
+function dayParts(dayKey: string): [number, number, number] {
   const [year, month, day] = dayKey.split("-").map(Number);
   return [year, month, day];
 }
 
 /** A day key's midnight as a UTC date, for arithmetic that no time zone moves. */
 function utcDate(dayKey: string): Date {
-  const [year, month, day] = split(dayKey);
+  const [year, month, day] = dayParts(dayKey);
   return new Date(Date.UTC(year, month - 1, day));
 }
 
@@ -160,7 +163,7 @@ export function weekdayOf(dayKey: string): number {
 
 /** The day key `days` after `dayKey` (before it, when negative). */
 export function addDays(dayKey: string, days: number): string {
-  const [year, month, day] = split(dayKey);
+  const [year, month, day] = dayParts(dayKey);
   return keyOf(new Date(Date.UTC(year, month - 1, day + days)));
 }
 
@@ -182,13 +185,13 @@ function nextMonth(key: string): string {
 
 /** A day: `14 Nov`, and `Sat 14 Nov 2026`. */
 export function dayLabel(key: string): Label {
-  const [year, month, day] = split(key);
+  const [year, month, day] = dayParts(key);
   return { key, label: `${day} ${MONTHS[month - 1]}`, long: `${WEEKDAYS[weekdayOf(key)]} ${day} ${MONTHS[month - 1]} ${year}` };
 }
 
 /** A week, by its Monday's key: `9 Nov`, and `Week of 9 Nov 2026`. */
 export function weekLabel(key: string): Label {
-  const [year, month, day] = split(key);
+  const [year, month, day] = dayParts(key);
   return { key, label: `${day} ${MONTHS[month - 1]}`, long: `Week of ${day} ${MONTHS[month - 1]} ${year}` };
 }
 
@@ -206,11 +209,6 @@ export function weekdayLabel(weekday: number): Label {
 /** An hour of the day, 0 to 23: `21`, and `21:00 to 22:00`. */
 export function hourLabel(hour: number): Label {
   return { key: String(hour), label: pad(hour), long: `${pad(hour)}:00 to ${pad((hour + 1) % 24)}:00` };
-}
-
-/** A count and its noun: `1 game`, `0 games`, `2 losses`. */
-export function countLabel(n: number, [one, many]: [string, string]): string {
-  return `${n} ${n === 1 ? one : many}`;
 }
 
 /** A counted game as ACTIVITY reads it: its record, its start's day key and hour, its players. */

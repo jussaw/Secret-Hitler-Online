@@ -79,10 +79,17 @@ interface Tally {
 const sum = (): Sum => ({ count: 0, total: 0 });
 const meanOf = ({ count, total }: Sum): Mean => ({ count, ms: count > 0 ? total / count : null });
 
-function tally(): Tally {
+/** One `make(kind)` per decision. */
+function perDecision<T>(make: (kind: Decision) => T): Record<Decision, T> {
+  const out = {} as Record<Decision, T>;
+  for (const kind of DECISIONS) out[kind] = make(kind);
+  return out;
+}
+
+function emptyTally(): Tally {
   return {
     games: 0,
-    decisions: { nominate: sum(), vote: sum(), discard: sum(), chancellor: sum(), power: sum(), endTerm: sum() },
+    decisions: perDecision(sum),
     asPresident: sum(),
     termsEnded: 0,
     countdownEnded: 0,
@@ -106,21 +113,22 @@ export function computeTiming(counted: GameRecord[]): TimingStats {
     const playerOf = new Map<number, number>();
     for (const { seat, player } of humanSeats(record)) {
       playerOf.set(seat, player);
-      if (!tallies.has(player)) tallies.set(player, tally());
+      if (!tallies.has(player)) tallies.set(player, emptyTally());
     }
     for (const player of new Set(playerOf.values())) tallies.get(player)!.games++;
-    const of = (seat: number | null | undefined) => {
+    /** The tally of the player in `seat`, or none for a CPU seat (or no seat). */
+    const tallyOf = (seat: number | null | undefined) => {
       const player = seat === null || seat === undefined ? undefined : playerOf.get(seat);
       return player === undefined ? undefined : tallies.get(player);
     };
     const add = (seat: number | null | undefined, decision: Decision, ms: number | null) => {
-      const t = of(seat);
-      if (!t || ms === null) return;
-      t.decisions[decision].count++;
-      t.decisions[decision].total += ms;
+      const tally = tallyOf(seat);
+      if (!tally || ms === null) return;
+      tally.decisions[decision].count++;
+      tally.decisions[decision].total += ms;
       if (decision !== "vote" && decision !== "chancellor") {
-        t.asPresident.count++;
-        t.asPresident.total += ms;
+        tally.asPresident.count++;
+        tally.asPresident.total += ms;
       }
     };
 
@@ -135,7 +143,7 @@ export function computeTiming(counted: GameRecord[]): TimingStats {
       add(round.power ? round.power.seat : round.president, "power", round.ms.power);
       if (round.endTerm?.by === "president") add(round.president, "endTerm", round.ms.endTerm);
 
-      const president = of(round.president);
+      const president = tallyOf(round.president);
       if (president) {
         president.pauses += round.pauses;
         if (round.endTerm) {
@@ -144,30 +152,23 @@ export function computeTiming(counted: GameRecord[]): TimingStats {
         }
       }
       for (const seat of round.disconnects) {
-        const t = of(seat);
-        if (t) t.drops++;
+        const dropped = tallyOf(seat);
+        if (dropped) dropped.drops++;
       }
     }
   }
 
   const byPlayer = new Map<number, PlayerTiming>();
   for (const player of Array.from(tallies.keys()).sort((a, b) => a - b)) {
-    const t = tallies.get(player)!;
+    const tally = tallies.get(player)!;
     byPlayer.set(player, {
-      games: t.games,
-      decisions: {
-        nominate: meanOf(t.decisions.nominate),
-        vote: meanOf(t.decisions.vote),
-        discard: meanOf(t.decisions.discard),
-        chancellor: meanOf(t.decisions.chancellor),
-        power: meanOf(t.decisions.power),
-        endTerm: meanOf(t.decisions.endTerm),
-      },
-      asPresident: meanOf(t.asPresident),
-      termsEnded: t.termsEnded,
-      countdownEnded: t.countdownEnded,
-      pauses: t.pauses,
-      drops: t.drops,
+      games: tally.games,
+      decisions: perDecision((kind) => meanOf(tally.decisions[kind])),
+      asPresident: meanOf(tally.asPresident),
+      termsEnded: tally.termsEnded,
+      countdownEnded: tally.countdownEnded,
+      pauses: tally.pauses,
+      drops: tally.drops,
     });
   }
 
@@ -198,9 +199,9 @@ export function computeTiming(counted: GameRecord[]): TimingStats {
  */
 export function fastestVoter(timing: TimingStats, names: Map<number, string>): number | null {
   let best: { player: number; ms: number; count: number } | null = null;
-  for (const [player, t] of timing.byPlayer) {
-    const { count, ms } = t.decisions.vote;
-    if (count < MIN_TIMED_VOTES || t.games < FASTEST_VOTER_MIN_GAMES || ms === null) continue;
+  for (const [player, theirs] of timing.byPlayer) {
+    const { count, ms } = theirs.decisions.vote;
+    if (count < MIN_TIMED_VOTES || theirs.games < FASTEST_VOTER_MIN_GAMES || ms === null) continue;
     const better =
       best === null ||
       ms < best.ms ||
