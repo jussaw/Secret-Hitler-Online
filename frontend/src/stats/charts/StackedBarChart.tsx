@@ -1,7 +1,7 @@
-import { useId, useRef, useState, type PointerEvent } from "react";
+import { useRef, useState } from "react";
 import { niceTicks } from "./axis";
+import { ChartFrame, nearest, px, YAxis, type TooltipPlace } from "./chartParts";
 import { useChartWidth } from "./useChartWidth";
-import "./charts.css";
 
 /** A bar: its label under it, and its parts, stacked bottom-up in order. */
 export interface StackedBar {
@@ -17,8 +17,6 @@ export interface StackedBarGeometry {
   /** Every part above zero, in px. */
   rects: { bar: number; key: string; x: number; y: number; width: number; height: number }[];
 }
-
-const px = (value: number) => Math.round(value * 100) / 100;
 
 /**
  * Where every part goes in a `width` by `height` chart: one slot per bar, the bar 70% of it, its
@@ -80,7 +78,6 @@ export function StackedBarChart({
 }: StackedBarChartProps): JSX.Element {
   const box = useRef<HTMLDivElement>(null);
   const width = useChartWidth(box);
-  const descriptionId = useId();
   const [active, setActive] = useState<{ bar: number; key: string } | null>(null);
   const geometry = stackedBarGeometry(bars, width, height);
   const bottom = height - BAR_PADDING.bottom;
@@ -91,110 +88,69 @@ export function StackedBarChart({
   for (const bar of bars) for (const part of bar.parts) if (!keys.includes(part.key)) keys.push(part.key);
   const name = (key: string) => legend[key] ?? key;
 
-  const show = (event: PointerEvent<SVGSVGElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = (event.clientX - rect.left) * (rect.width > 0 ? width / rect.width : 1);
-    const y = (event.clientY - rect.top) * (rect.height > 0 ? height / rect.height : 1);
-    let best: (typeof geometry.rects)[number] | null = null;
-    let bestDistance = Infinity;
-    for (const r of geometry.rects) {
-      const dx = Math.max(r.x - x, 0, x - (r.x + r.width));
-      const dy = Math.max(r.y - y, 0, y - (r.y + r.height));
-      const distance = dx * dx + dy * dy;
-      if (distance < bestDistance) {
-        best = r;
-        bestDistance = distance;
-      }
-    }
+  const show = (at: { x: number; y: number }) => {
+    // The part under the pointer, else the nearest one (distance to its box).
+    const best = nearest(geometry.rects, (r) => {
+      const dx = Math.max(r.x - at.x, 0, at.x - (r.x + r.width));
+      const dy = Math.max(r.y - at.y, 0, at.y - (r.y + r.height));
+      return dx * dx + dy * dy;
+    });
     setActive(best ? { bar: best.bar, key: best.key } : null);
   };
 
   const activeRect = active ? geometry.rects.find((r) => r.bar === active.bar && r.key === active.key) : undefined;
-  let line: string | null = null;
-  let share = 0;
+  let tooltip: TooltipPlace | null = null;
   if (active && activeRect) {
     const bar = bars[active.bar];
     const part = bar.parts.find((p) => p.key === active.key)!;
     const total = bar.parts.reduce((sum, p) => sum + p.value, 0);
-    line = `${bar.label} · ${name(part.key)} ${formatValue(part.value)} of ${formatValue(total)}`;
-    share = bars.length > 1 ? (active.bar / (bars.length - 1)) * 100 : 50;
+    tooltip = {
+      // The first bar's details start at the left edge and the last one's end at the right.
+      share: bars.length > 1 ? (active.bar / (bars.length - 1)) * 100 : 50,
+      top: activeRect.y,
+      below: activeRect.y < height / 3,
+      lines: [`${bar.label} · ${name(part.key)} ${formatValue(part.value)} of ${formatValue(total)}`],
+    };
   }
-  const shown = Number(share.toFixed(2));
 
   return (
-    <div className="chart stacked-bar-chart" ref={box}>
-      <svg
-        role="img"
-        aria-label={label}
-        aria-describedby={descriptionId}
-        width="100%"
-        height={height}
-        viewBox={`0 0 ${width} ${height}`}
-        style={{ touchAction: "pan-y" }}
-        onPointerMove={(event) => {
-          if (event.pointerType !== "touch") show(event);
-        }}
-        onPointerDown={show}
-        onPointerLeave={(event) => {
-          if (event.pointerType === "mouse") setActive(null);
-        }}
-      >
-        {geometry.yTicks.map((tick) => (
-          <g key={tick}>
-            <line className="chart-grid" x1={BAR_PADDING.left} x2={width - BAR_PADDING.right} y1={px(yOf(tick))} y2={px(yOf(tick))} />
-            <text className="chart-axis-text" x={BAR_PADDING.left - 6} y={px(yOf(tick))} textAnchor="end" dominantBaseline="middle">
-              {formatValue(tick)}
-            </text>
-          </g>
-        ))}
-        {geometry.rects.map((r) => (
-          <rect
-            key={`${r.bar}-${r.key}`}
-            className={activeRect === r ? "chart-bar is-active" : "chart-bar"}
-            x={px(r.x)}
-            y={px(r.y)}
-            width={px(r.width)}
-            height={px(r.height)}
-            fill={colors[r.key]}
-          />
-        ))}
-        {bars.map((bar, i) => (
-          <text
-            key={i}
-            className="chart-axis-text"
-            x={px(BAR_PADDING.left + (i + 0.5) * slot)}
-            y={height - BAR_PADDING.bottom / 2 + 2}
-            textAnchor="middle"
-            dominantBaseline="middle"
-          >
-            {bar.label}
-          </text>
-        ))}
-      </svg>
-      <p className="chart-description" id={descriptionId}>
-        {describeBars(bars, legend, formatValue)}
-      </p>
-      <ul className="chart-legend" aria-hidden="true">
-        {keys.map((key) => (
-          <li key={key}>
-            <span className="chart-swatch" style={{ backgroundColor: colors[key] }} />
-            {name(key)}
-          </li>
-        ))}
-      </ul>
-      {line && activeRect && (
-        <div
-          className="chart-tooltip"
-          style={{
-            left: `${shown}%`,
-            top: `${px(activeRect.y)}px`,
-            transform: `translateX(-${shown}%) translateY(${activeRect.y < height / 3 ? "6px" : "calc(-100% - 6px)"})`,
-          }}
+    <ChartFrame
+      className="stacked-bar-chart"
+      boxRef={box}
+      label={label}
+      description={describeBars(bars, legend, formatValue)}
+      width={width}
+      height={height}
+      onPoint={show}
+      onLeave={() => setActive(null)}
+      legend={keys.map((key) => ({ key, label: name(key), color: colors[key] }))}
+      tooltip={tooltip}
+    >
+      <YAxis ticks={geometry.yTicks} y={yOf} left={BAR_PADDING.left} right={width - BAR_PADDING.right} format={formatValue} />
+      {geometry.rects.map((r) => (
+        <rect
+          key={`${r.bar}-${r.key}`}
+          className={activeRect === r ? "chart-bar is-active" : "chart-bar"}
+          x={px(r.x)}
+          y={px(r.y)}
+          width={px(r.width)}
+          height={px(r.height)}
+          fill={colors[r.key]}
+        />
+      ))}
+      {bars.map((bar, i) => (
+        <text
+          key={i}
+          className="chart-axis-text"
+          x={px(BAR_PADDING.left + (i + 0.5) * slot)}
+          y={height - BAR_PADDING.bottom / 2 + 2}
+          textAnchor="middle"
+          dominantBaseline="middle"
         >
-          <div>{line}</div>
-        </div>
-      )}
-    </div>
+          {bar.label}
+        </text>
+      ))}
+    </ChartFrame>
   );
 }
 
