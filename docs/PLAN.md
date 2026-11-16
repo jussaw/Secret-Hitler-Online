@@ -772,7 +772,7 @@ Issue #31, the second half of the game recorder: the server stores every record 
 - [x] `GET /api/stats/games`: cached until a record is saved or an account renamed, `ETag` and 304, gzip, 503, no account IDs; the dev server proxies `/api`
 - [x] `frontend/src/stats/fixtures/recorded-games.json` from `./gradlew recordedGamesFixture`, checked against the spec's format
 - [x] `frontend/e2e/recorder.spec.ts`: a real game played to its end is served in the spec's key order
-- [ ] `CLAUDE.md`, `README.md` and `DEVELOPMENT.md` describe the store, the writer, the route and the fixture
+- [x] `CLAUDE.md`, `README.md` and `DEVELOPMENT.md` describe the store, the writer, the route and the fixture
 - [ ] Every finding of the whole-branch review fixed, Minor ones included
 
 **Phase 14B acceptance**
