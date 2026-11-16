@@ -1,0 +1,61 @@
+/* VOTES & POWERS: two sections, each a heading over a grid of cards. App.css centres every div and
+   sizes every h2, so the tab sets its own alignment, sizes and margins. Every grid child has
+   min-width: 0, so a long name wraps inside its card instead of widening the page. The cards'
+   tables are Phase 17A's RankedTable and SplitTable, in their own look. */
+.votes-tab {
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+    min-width: 0;
+    text-align: left;
+}
+
+.votes-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+    min-width: 0;
+}
+
+.votes-section > h2 {
+    font-family: var(--headerFont);
+    font-weight: normal;
+    font-style: normal;
+    font-size: 26px;
+    line-height: 1.2;
+    color: var(--textColorOnDark);
+    margin: 0;
+}
+
+.votes-grid {
+    display: grid;
+    gap: 1em;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 20em), 1fr));
+    align-items: start;
+    min-width: 0;
+}
+
+.votes-grid > * {
+    min-width: 0;
+}
+
+/* INVESTIGATIONS' value names whom they investigated, so it is a line of text that wraps inside
+   its cell, where RankedTable keeps its short values on one line. */
+.votes-investigations .ranked-value {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: left;
+}
+
+/* Phones (the game's phone-only query): less room between the parts. */
+@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
+    .votes-tab,
+    .votes-section,
+    .votes-grid {
+        gap: 8px;
+    }
+
+    .votes-section > h2 {
+        font-size: 22px;
+    }
+}

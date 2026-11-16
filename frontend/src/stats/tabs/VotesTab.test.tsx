@@ -1,0 +1,77 @@
+import { render, screen, within } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import type { GameRecord, Player } from "../record";
+import { NO_GAMES } from "../StatCard";
+import { buildStats } from "../useStats";
+import { ALL, FIVE, gameOf, investigate, range, term } from "../votesTestRounds";
+import { VotesTab } from "./VotesTab";
+
+const PLAYERS: Player[] = ["Ann", "Bo", "Cy", "Di", "Ed"].map((name, i) => ({ number: i + 1, name }));
+
+/** The tab over `games`, every player on and CPU games counted. */
+function show(games: GameRecord[], players: Player[] = PLAYERS) {
+  return render(<VotesTab stats={buildStats({ players, games }, { players: null, cpu: true })} />);
+}
+
+const card = (title: string) => screen.getByRole("region", { name: title });
+
+const TITLES = [
+  "NOMINATED AS CHANCELLOR", "NOMINATIONS PASSED", "ELECTED AS CHANCELLOR", "PICKING A TEAMMATE", "JA RATE",
+  "LIBERAL VOTE ACCURACY", "FASCIST LOYALTY", "VOTED HITLER IN", "SWING VOTES", "LONE DISSENT", "FAILED ELECTIONS",
+  "CHAOS", "INVESTIGATIONS", "LIBERAL FINDS", "CHECKING A TEAMMATE", "TIMES INVESTIGATED", "PEEKS", "EXECUTIONS",
+  "EXECUTION TARGETS", "HITLER EXECUTED", "TIMES EXECUTED", "FIRST TO GO", "SPECIAL ELECTIONS",
+  "SPECIAL ELECTION PICKS", "VETOES AS PRESIDENT", "SURVIVAL",
+];
+
+describe("VotesTab", () => {
+  it("shows the 26 cards in order under their two headings", () => {
+    const { container } = show([]);
+    expect(Array.from(container.querySelectorAll(".votes-section > h2"), (h) => h.textContent)).toEqual(["ELECTIONS AND VOTES", "POWERS AND SURVIVAL"]);
+    expect(Array.from(container.querySelectorAll(".votes-card h3"), (h) => h.textContent)).toEqual(TITLES);
+  });
+
+  it("says so on every card when no game counts", () => {
+    const { container } = show([]);
+    for (const title of TITLES) expect(card(title).textContent).toContain(NO_GAMES);
+    expect(container.querySelectorAll(".votes-card")).toHaveLength(26);
+  });
+
+  it("gives a card nobody had a chance in its own line, and never NaN", () => {
+    const { container } = show([gameOf(FIVE, [term(1, 0, 1, ALL, [])])]);
+    expect(card("VETOES AS PRESIDENT").textContent).toContain("No vetoes yet with these players.");
+    expect(card("HITLER EXECUTED").textContent).toContain("No one has executed Hitler yet with these players.");
+    expect(container.textContent).not.toMatch(/NaN|undefined|Infinity/);
+    expect(container.textContent).not.toContain(NO_GAMES);
+  });
+
+  it("ranks a count card higher first, ties by name", () => {
+    show([gameOf(FIVE, [term(1, 0, 1, [0, 1, 2], [3, 4]), term(2, 0, 1, [1, 3, 4], [0, 2])])]); // Bo 2, the rest 1
+    const text = card("SWING VOTES").textContent!;
+    const at = ["Bo", "Ann", "Cy", "Di", "Ed"].map((name) => text.indexOf(name));
+    expect(at).toEqual([...at].sort((a, b) => a - b));
+  });
+
+  it("shows a split cell's value with its count, and — below the minimum", () => {
+    const five = gameOf(FIVE, range(0, 5).map((i) => term(i + 1, 1, 2, i < 3 ? ALL : [1, 2, 3, 4], i < 3 ? [] : [0])));
+    const once = gameOf(["HITLER", "LIBERAL", "LIBERAL", "FASCIST", "LIBERAL"], [term(1, 1, 2, ALL, [])]);
+    show([five, once]);
+    const table = within(card("JA RATE")).getByRole("region", { name: "JA RATE table" }); // SplitTable's ScrollRegion
+    const row = within(table).getAllByRole("row").find((tr) => within(tr).queryByText("Ann"))!;
+    expect(within(row).getAllByRole("cell").slice(-3).map((td) => td.textContent)) // Liberal, Fascist, Hitler
+      .toEqual([expect.stringMatching(/^60%\s*5$/), expect.stringMatching(/^—\s*0$/), expect.stringMatching(/^—\s*1$/)]);
+  });
+
+  it("says whom each player investigated, CPU seats last", () => {
+    show([gameOf(FIVE, [term(1, 0, 1, ALL, [], investigate(0, 3, "FASCIST")), term(2, 0, 1, ALL, [], investigate(0, 4, "FASCIST")),
+      term(3, 0, 2, ALL, [], investigate(0, 1, "LIBERAL")), term(4, 0, 2, ALL, [], investigate(0, 3, "FASCIST"))],
+      { players: [1, 2, 3, 4, null] })]);
+    expect(within(card("INVESTIGATIONS")).getByText("4 (3 F, 1 L) · Di 2, Bo 1, CPU 1")).toBeInTheDocument();
+  });
+
+  it("shows a renamed player once, under their current name", () => {
+    const seated = (first: string) => gameOf(FIVE, [term(1, 1, 0, ALL, [])], { names: [first, "Bo", "Cy", "Di", "Ed"] });
+    const { container } = show([seated("Rowan"), seated("Ash")], [{ number: 1, name: "Ash" }, ...PLAYERS.slice(1)]);
+    expect(container.textContent).not.toContain("Rowan");
+    expect(within(card("NOMINATED AS CHANCELLOR")).getAllByText("Ash")).toHaveLength(1);
+  });
+});
