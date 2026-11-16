@@ -48,6 +48,15 @@ test("the game page fits every size", async ({ page }) => {
   }
 });
 
+test("a round's lines sit closer together than the header's", async ({ page }) => {
+  await stubStats(page, data);
+  await openGame(page, largest.id);
+  const gap = (selector: string) => page.locator(selector).first().evaluate((el) => getComputedStyle(el).rowGap);
+  // RoundBlock.css's own spacing, over the card look's 8px, which StatsApp.css sets after it.
+  expect(await gap(".round-block")).toBe("4px");
+  expect(await gap(".game-header")).toBe("8px");
+});
+
 test("an unknown game says so", async ({ page }) => {
   await stubStats(page, data);
   await openGame(page, "no-such-game");

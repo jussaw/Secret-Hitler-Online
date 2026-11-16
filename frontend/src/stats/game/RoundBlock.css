@@ -15,7 +15,8 @@
     min-width: 0;
 }
 
-.round-block {
+/* Two classes, so its spacing wins over the card look's, which StatsApp.css sets after it. */
+.stats-card.round-block {
     gap: 4px;
     border-left: 6px solid var(--buttonDisabledFill);
 }
