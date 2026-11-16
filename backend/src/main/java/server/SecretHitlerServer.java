@@ -14,6 +14,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.sqlite.SQLiteErrorCode;
+import org.sqlite.SQLiteException;
 import server.accounts.Account;
 import server.accounts.AccountStore;
 import server.accounts.AuthRoutes;
@@ -217,6 +219,7 @@ public class SecretHitlerServer {
         if (ApplicationConfig.DATABASE_PATH == null || ApplicationConfig.DATABASE_PATH.isBlank()) {
             logger.error("Persistence disabled: no DATABASE_PATH environment variable provided.");
         }
+        useWriteAheadLog(ApplicationConfig.DATABASE_PATH, WAL_TIMEOUT_MS);
         // The same file as the lobby backup, or memory without one.
         accounts = AccountStore.open(ApplicationConfig.DATABASE_PATH);
         warnAboutSignIn();
@@ -404,6 +407,67 @@ public class SecretHitlerServer {
 
     /////// Database Handling
     // <editor-fold desc="Database Handling">
+
+    /** How long {@code main} waits for a busy database file to take WAL mode. */
+    static final long WAL_TIMEOUT_MS = 5000;
+
+    /**
+     * Puts the SQLite file at {@code path} in WAL mode, before anything else opens it, so a
+     * backup's read (devops/backup-db.sh) never blocks the server's writes and a write never fails
+     * because a backup is reading. The mode belongs to the file, so every later connection has it.
+     * A busy or locked file is tried again every 100 ms until {@code timeoutMs} pass, and any other
+     * failure gives up at once. Giving up is logged as an error, and the file keeps its journal
+     * mode: a busy file never keeps the server from starting.
+     *
+     * @return true if the file is in WAL mode afterwards; false otherwise, and for a null or blank
+     *         {@code path}, which creates and logs nothing.
+     */
+    static boolean useWriteAheadLog(String path, long timeoutMs) {
+        if (path == null || path.isBlank()) {
+            return false;
+        }
+        long deadline = System.nanoTime() + timeoutMs * 1_000_000L;
+        SQLException cause = null;
+        while (true) {
+            try (Connection c = DriverManager.getConnection("jdbc:sqlite:" + path);
+                    Statement stmt = c.createStatement()) {
+                // This loop alone decides how long to wait for a busy file.
+                stmt.execute("PRAGMA busy_timeout = 0");
+                try (ResultSet rs = stmt.executeQuery("PRAGMA journal_mode = WAL")) {
+                    if (rs.next() && "wal".equalsIgnoreCase(rs.getString(1))) {
+                        logger.info("Database " + path + " is in WAL mode.");
+                        return true;
+                    }
+                }
+            } catch (SQLException e) {
+                cause = e;
+                if (!isBusy(e)) {
+                    break;
+                }
+            }
+            long remainingNs = deadline - System.nanoTime();
+            if (remainingNs <= 0) {
+                break;
+            }
+            try {
+                Thread.sleep(Math.min(100, (remainingNs + 999_999) / 1_000_000));
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        logger.error("Could not put database " + path + " in WAL mode; it keeps its journal mode.", cause);
+        return false;
+    }
+
+    /** Whether {@code e} is SQLite's SQLITE_BUSY or SQLITE_LOCKED, whose extended codes included. */
+    private static boolean isBusy(SQLException e) {
+        if (!(e instanceof SQLiteException)) {
+            return false;
+        }
+        int primary = ((SQLiteException) e).getResultCode().code & 0xFF;
+        return primary == SQLiteErrorCode.SQLITE_BUSY.code || primary == SQLiteErrorCode.SQLITE_LOCKED.code;
+    }
 
     /**
      * Opens the SQLite backup database at {@code path}, creating the file and the

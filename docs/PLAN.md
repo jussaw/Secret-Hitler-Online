@@ -43,7 +43,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 10. Baseline bugs | `fix/issue-N`, one per issue | done |
 | 11. Lobby redesign | `phase-11-lobby` | done |
 | 12. Accounts with Discord sign-in | `phase-12-accounts` | done |
-| 13. Database backups | `phase-13-db-backups` | planned |
+| 13. Database backups | `phase-13-db-backups` | in progress |
 | 14A. Game timeline | `phase-14a-game-timeline` | done |
 | 14B. Game records | `phase-14b-game-records` | planned |
 | 15A. Stats shell | `phase-15a-stats-shell` | planned |
@@ -720,7 +720,7 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-13-db-backups.md`](superpow
 
 Issue #31 (game stats), the first of its ten phases: the database is backed up before the first game is recorded. The server keeps its SQLite file in WAL mode and logs one line once it listens, the image gains `sqlite3`, and two host scripts take a consistent, checked snapshot while the server writes and put one back. Builds on Phase 12 and merges before Phase 14.
 
-- [ ] `backend/src/main/java/server/SecretHitlerServer.java`: the database file in WAL mode at start, retried while busy for up to 5 s
+- [x] `backend/src/main/java/server/SecretHitlerServer.java`: the database file in WAL mode at start, retried while busy for up to 5 s
 - [ ] `SecretHitlerServer`: one startup line once the server listens, which the restore waits for
 - [ ] `Dockerfile`: `sqlite3` in the final stage; `devops/tests/backup-restore.test.sh` checks it, the startup line and WAL mode in the branch's image
 - [ ] `devops/backup-db.sh` and `devops/.env.example` (`devops/.env` git-ignored): a checked snapshot while the server writes, retention, and the `AFTER_BACKUP` hook
