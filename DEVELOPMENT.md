@@ -114,7 +114,7 @@ The stats pages are at `/stats`: [`http://localhost:3000/stats`](http://localhos
 
 Games are recorded as they finish (or when their lobby times out), so to see one locally, sign in with one test account, create a lobby and start it: four CPU players fill the seats, and once the game ends its record is in `GET /api/stats/games` and on the stats pages after a reload.
 
-The browser tests never play games for the stats pages: they stub `/api/stats/games` with `bigStatsData()` (`e2e/stats.ts`, 400 games of ten players with twelve-character names, the same on every run), and each `stats-*.spec.ts` runs in every project and checks its pages with `checkStatsPage`, at every size its project covers: no sideways scroll, and on phones 44px targets and 16px field text.
+The browser tests never play games for the stats pages: they stub `/api/stats/games` with `bigStatsData()` (`e2e/stats.ts`, 400 games of ten players with twelve-character names, the same on every run), and each `stats-*.spec.ts` runs in every project and checks its pages with `checkStatsPage`, at every size its project covers: no sideways scroll, and wherever the game's stacked query matches (phones, phones held sideways, and narrow and tall windows) 44px targets and 16px field text.
 
 ### The stats pages' fixture
 
