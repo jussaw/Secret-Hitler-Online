@@ -486,6 +486,39 @@ keeps credit to upstream and to the board game's creators.
   with a choice per view, the day of the week, the hour of the day, busiest times, sessions, gaps,
   decision times (a `SplitTable`, "—" under 5 samples), the fastest voter and the slowest president
   (names with `link={false}`), the END TERM countdown and dropped connections.
+  RIVALS (Phase 20, `tabs/RivalsTab.tsx`) reads `rivals.ts`'s `computeRivals(counted, names)`: each
+  pair of people who shared a counted game, by `pairKey` (their games on the same side and won, both
+  on the Fascist side and won, and on opposite sides and each one's wins; `pairOf`, `against`), the
+  best duo and best Fascist duo (the best rate together over 5 or more games, ties by more games,
+  then names), the closest and most lopsided rivalries, each player's people in `byPlayer`
+  (`opponents`, `mostPlayedWith`, `bestTeammate`, `nemesis`, ties by more shared games, then name,
+  and `favouriteOpponent`, which Phase 22 reads), and `nominations`, president to chancellor,
+  passed or not, from `rounds`. People are human seats: a CPU seat is never paired, nominating or
+  nominated, though its game still counts for the humans in it. A rivalry's closeness is
+  `|2·aWins − opposed| / (2·opposed)`, compared from whole numbers, so 3 of 10 and 7 of 10 are
+  exactly as close. The tab shows the four picks as headline cards (their names plain, never
+  links), then the Teammates, Opponents and Who trusts whom matrices and the People table, each card
+  saying in words when it has nothing to show. ENDINGS (`tabs/EndingsTab.tsx`) reads `endings.ts`'s
+  `computeEndings(counted)`: games by player count and outcome (a `StackedBarChart` in
+  `OUTCOME_COLORS` with `OUTCOME_LABELS`, its bars labelled by the seat count alone, so six fit
+  under a phone's chart), the Liberal win rate from 5 games beside `smoothedLiberalRate`, the `p`
+  the Elo handicap of the next game of that size uses, the average length and rounds per size and
+  in all, the fastest win and the longest game, the closest finishes (the losers one policy from
+  winning) and the most lopsided (the losers' track at 0), the 10 latest of each (`FINISHES_SHOWN`)
+  under the count of all, and the most chaos policies, failed elections and vetoes in one game,
+  counted by round from `rounds` (every chaos `enact`, whether a third failed election or an
+  accepted veto caused it, and accepted vetoes only), ties to the earlier game. Length counts only
+  complete games: a `complete: false` record starts at its restore, so it is never the fastest win,
+  though it counts everywhere else. Every game link there is a 44px `StatsLink` at every size. Both
+  tabs lay out their cards in columns at least 22em wide (two on desktop, one on phones), the wide
+  ones across the row. `tabs/PlayerMatrix.tsx` is the player-by-player table: a
+  `table.player-matrix` in a `ScrollRegion` that scrolls sideways inside its card, each row's name
+  held at the left, the diagonal blank, a cell's text with an optional line under it and its title
+  on hover, ahead white and bold, behind grey; a long name wraps in its head (6em, and 7em for a
+  row's name on phones), and in the stacked query every row is at least 44px tall. The tabs' other
+  tables share its class. `testRivals.ts` (`NAMES`, `repeat`, `played`, `together`, `beats`,
+  `nominated`, `statsOf`) and `testEndings.ts` (`ended`, `failed`, `chaosRun`, `vetoed`) are
+  test-only.
   GAMES (`/stats/games`, `src/stats/games/`) lists
   every recorded game, newest first, under a filter of its own kept in the address:
   `gamesFilter.ts` (`GamesFilter`, `NO_GAMES_FILTER`, `PER_PAGE`, `ENDING_PARAM`,
@@ -875,7 +908,11 @@ keeps credit to upstream and to the board game's creators.
   outside its card, no wrapped button label, the charts drawn), a tooltip on a hover or a tap of
   the day-of-week chart and of a heatmap day, and (`desktop`) the arrow keys, PER MONTH, and with
   `timezoneId` that a game across midnight UTC is Saturday's in Auckland and Friday's in Los
-  Angeles. No `e2e/` file imports `src/constants` or anything that does (`api.ts`, `App`): it
+  Angeles. `stats-rivals.spec.ts` checks RIVALS and ENDINGS at every size against
+  `bigStatsData()` (every flex or grid child with text able to shrink, on phones every
+  `table.player-matrix` row 44px tall, and on desktops ENDINGS' two tables whole in their cards),
+  and on phones that RIVALS' matrices scroll inside their cards with the names held in view and
+  leaving room for the columns. No `e2e/` file imports `src/constants` or anything that does (`api.ts`, `App`): it
   reads `window` when it loads, which throws in Playwright's Node process; specs build stats paths
   with `routePath`. Shared helpers are `e2e/lobby.ts`
   (`waitForPlayers`, `joinGuests`, with `pickLooks` false for guests who stay on the default
