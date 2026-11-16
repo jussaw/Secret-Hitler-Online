@@ -1,0 +1,34 @@
+/* A chart's box that takes the keyboard's focus (ChartFocus): charts.css draws the rest. */
+.chart-focus {
+    position: relative;
+    min-width: 0;
+    border-radius: 4px;
+}
+
+.chart-focus:focus {
+    outline: none;
+}
+
+.chart-focus:focus-visible {
+    outline: 2px solid var(--selectionHover);
+    outline-offset: 2px;
+}
+
+/* No legend of its own (one series, or shades the card explains), so no room for one. */
+.chart-focus .chart-legend:empty {
+    display: none;
+}
+
+/* The details a screen reader hears, hidden as charts.css hides a chart's description. */
+.stats-screen .chart-focus-status,
+.chart-focus-status {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}

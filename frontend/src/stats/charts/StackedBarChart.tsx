@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { niceTicks } from "./axis";
 import { ChartFrame, nearest, px, YAxis, type TooltipPlace } from "./chartParts";
+import { labelStep } from "./labelStep";
 import { useChartWidth } from "./useChartWidth";
 
 /** A bar: its label under it, and its parts, stacked bottom-up in order. */
@@ -71,7 +72,8 @@ export interface StackedBarChartProps {
 /**
  * Stacked bars, sized from their card's width, with their own legend below (its users draw none).
  * Hovering (mouse or pen) or tapping a part shows "<bar> · <part> <value> of <total>", inside the
- * chart.
+ * chart. Labels that would overlap are thinned to every few bars (`labelStep`); the tooltip and
+ * the description still name every bar.
  */
 export function StackedBarChart({
   bars,
@@ -88,6 +90,11 @@ export function StackedBarChart({
   const keys: string[] = [];
   for (const bar of bars) for (const part of bar.parts) if (!keys.includes(part.key)) keys.push(part.key);
   const name = (key: string) => legend[key] ?? key;
+  const step = labelStep(
+    bars.length,
+    bars.reduce((most, bar) => Math.max(most, bar.label.length), 0),
+    width - BAR_PADDING.left - BAR_PADDING.right
+  );
 
   const show = (at: { x: number; y: number }) => {
     // The part under the pointer, else the nearest one (distance to its box).
@@ -139,18 +146,20 @@ export function StackedBarChart({
           fill={colors[r.key]}
         />
       ))}
-      {bars.map((bar, i) => (
-        <text
-          key={i}
-          className="chart-axis-text"
-          x={px(BAR_PADDING.left + (i + 0.5) * geometry.slot)}
-          y={height - BAR_PADDING.bottom / 2 + 2}
-          textAnchor="middle"
-          dominantBaseline="middle"
-        >
-          {bar.label}
-        </text>
-      ))}
+      {bars.map((bar, i) =>
+        i % step === 0 ? (
+          <text
+            key={i}
+            className="chart-axis-text"
+            x={px(BAR_PADDING.left + (i + 0.5) * geometry.slot)}
+            y={height - BAR_PADDING.bottom / 2 + 2}
+            textAnchor="middle"
+            dominantBaseline="middle"
+          >
+            {bar.label}
+          </text>
+        ) : null
+      )}
     </ChartFrame>
   );
 }

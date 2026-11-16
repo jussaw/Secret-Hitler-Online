@@ -54,7 +54,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 18. ROLES & CARDS | `phase-18-roles-cards` | planned |
 | 19. VOTES & POWERS | `phase-19-votes-powers` | planned |
 | 20. RIVALS and ENDINGS | `phase-20-rivals-endings` | planned |
-| 21A. ACTIVITY | `phase-21a-activity` | planned |
+| 21A. ACTIVITY | `phase-21a-activity` | done |
 | 21B. RECORDS | `phase-21b-records` | planned |
 | 22A. Trophies and name links | `phase-22a-trophies-links` | planned |
 | 22B. Player pages | `phase-22b-player-pages` | planned |
@@ -981,21 +981,21 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-21a-activity.md`](superpowe
 
 Issue #31, after Phases 16 and 17A, beside 17B, 18, 19 and 20: the ACTIVITY tab shows when the group plays (games over time, attendance, a calendar heatmap, the day and hour games start, sessions and gaps) and how long each decision takes, counted in the viewer's time zone. Adds the bar chart and the calendar heatmap, and the fastest-voter rule Speed Demon shares.
 
-- [ ] `frontend/src/stats/activity.ts`: the viewer's local calendar, games over time, attendance, participation, day of the week and hour of the day
-- [ ] `activity.ts`: the calendar heatmap, sessions, the busiest day, week and month, the longest gap and days since the last game
-- [ ] `frontend/src/stats/timing.ts`: decision times, the fastest voter (one rule with Speed Demon), the slowest president, the countdown's share, pauses and dropped connections, and `formatAverageTime`
-- [ ] `frontend/src/stats/charts/BarChart.tsx`: bars sized from their card, with a tooltip, arrow keys and a description
-- [ ] `frontend/src/stats/charts/CalendarHeatmap.tsx`: a cell per day in four shades, with a tooltip, arrow keys and a description
-- [ ] `frontend/src/stats/tabs/ActivityTab.tsx`: the ACTIVITY tab
-- [ ] `frontend/e2e/stats-activity.spec.ts`: ACTIVITY fits every stats size, its charts show values on hover or tap, and the browser's time zone is used
-- [ ] `CLAUDE.md` and `README.md` (and `DEVELOPMENT.md` if needed) describe the tab
-- [ ] Every finding of the whole-branch review is fixed
-- [ ] The pull request shows the tab before and after, on desktop and on a phone
+- [x] `frontend/src/stats/activity.ts`: the viewer's local calendar, games over time, attendance, participation, day of the week and hour of the day
+- [x] `activity.ts`: the calendar heatmap, sessions, the busiest day, week and month, the longest gap and days since the last game
+- [x] `frontend/src/stats/timing.ts`: decision times, the fastest voter (one rule with Speed Demon), the slowest president, the countdown's share, pauses and dropped connections, and `formatAverageTime`
+- [x] `frontend/src/stats/charts/BarChart.tsx`: bars sized from their card, with a tooltip, arrow keys and a description
+- [x] `frontend/src/stats/charts/CalendarHeatmap.tsx`: a cell per day in four shades, with a tooltip, arrow keys and a description
+- [x] `frontend/src/stats/tabs/ActivityTab.tsx`: the ACTIVITY tab
+- [x] `frontend/e2e/stats-activity.spec.ts`: ACTIVITY fits every stats size, its charts show values on hover or tap, and the browser's time zone is used
+- [x] `CLAUDE.md` and `README.md` (and `DEVELOPMENT.md` if needed) describe the tab
+- [x] Every finding of the whole-branch review is fixed
+- [x] The pull request shows the tab before and after, on desktop and on a phone
 
 **Phase 21A acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] PR merged into `development`
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] PR merged into `development`
 - [ ] The user opens ACTIVITY on the deployed build after a game night, on a desktop and on a phone, and finds the night's games in the charts and the calendar
 
 ---

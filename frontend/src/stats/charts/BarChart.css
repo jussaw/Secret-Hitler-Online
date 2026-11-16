@@ -1,0 +1,5 @@
+/* The bar under the pointer or the keys, brighter, with charts.css's outline. ChartFocus.css
+   draws the chart's box. */
+.bar-chart rect.bar.is-active {
+    filter: brightness(1.25);
+}
