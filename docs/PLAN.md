@@ -46,7 +46,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 13. Database backups | `phase-13-db-backups` | done |
 | 14A. Game timeline | `phase-14a-game-timeline` | done |
 | 14B. Game records | `phase-14b-game-records` | done |
-| 15A. Stats shell | `phase-15a-stats-shell` | planned |
+| 15A. Stats shell | `phase-15a-stats-shell` | in progress |
 | 15B. Game history | `phase-15b-game-history` | planned |
 | 16. The game page | `phase-16-game-page` | planned |
 | 17A. Stats engine | `phase-17a-stats-engine` | planned |
@@ -792,7 +792,7 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-15a-stats-shell.md`](superp
 
 Issue #31: the stats pages' shell at `/stats`, loaded as a chunk of its own so the game's first download does not grow, with the header, the routes and a placeholder for every page; `gameId` in every game packet; and the record's types, labels, names, links and data, and the browser-test helpers, that Phases 15B, 16 and 17A build on. Needs Phase 14B.
 
-- [ ] `GameToJSONConverter` and `Lobby`: every game packet, to players and spectators, carries `gameId`
+- [x] `GameToJSONConverter` and `Lobby`: every game packet, to players and spectators, carries `gameId`
 - [ ] `SecretHitlerServer`: every path under `/stats` answers with the page (Javalin's single-page fallback)
 - [ ] `frontend/src/stats/record.ts`: the record's types, parsed with a format check against the contract fixture, and `testRecords.ts`
 - [ ] `frontend/src/stats/format.ts` and `PlayerName.tsx`: results, lengths, local dates and times in the viewer's zone, and names coloured by role

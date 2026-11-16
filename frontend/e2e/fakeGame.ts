@@ -115,6 +115,9 @@ export function gamePacket(
   return { ...gameState(overrides, roles, dead), you: USER };
 }
 
+/** The scripted game's record ID, which its victory packet carries as `gameId`. */
+export const FAKE_GAME_ID = "0f5e2c1a-7b3d-4e8f-9a6b-2c4d6e8f0a1b";
+
 /**
  * One entry per prompt, in its longest form. Each fixture only changes what opens its own prompt
  * (App.tsx shows a policy-enacted alert whenever the policy counts change in a policy state).
@@ -295,7 +298,10 @@ export const PROMPTS: { name: string; packets: object[]; button: string }[] = [
   {
     name: "victory",
     packets: [
-      gamePacket({ state: LobbyState.FASCIST_VICTORY_POLICY, president: G1, chancellor: G2 }, ALL_ROLES),
+      gamePacket(
+        { state: LobbyState.FASCIST_VICTORY_POLICY, president: G1, chancellor: G2, gameId: FAKE_GAME_ID },
+        ALL_ROLES
+      ),
     ],
     button: "RETURN TO LOBBY",
   },

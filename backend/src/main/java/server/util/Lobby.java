@@ -774,14 +774,14 @@ public class Lobby implements Serializable {
 
     /**
      * Sends a spectator the current state: the lobby packet, or during a game the state with no
-     * secrets ({@code GameToJSONConverter.convertForSpectator()}).
+     * secrets ({@code GameToJSONConverter.convertForSpectator()}), with the game's {@code gameId}.
      *
      * @param ctx the spectator's websocket context.
      */
     synchronized public void updateSpectator(WsContext ctx) {
         JSONObject message;
         if (isInGame()) {
-            message = GameToJSONConverter.convertForSpectator(game);
+            message = GameToJSONConverter.convertForSpectator(game, gameId());
             message.put(SecretHitlerServer.PARAM_PACKET_TYPE, SecretHitlerServer.PACKET_GAME_STATE);
             putTermTimer(message);
         } else {
@@ -847,11 +847,14 @@ public class Lobby implements Serializable {
         updatePlayer(ctx, accountId);
     }
 
-    /** Sends the player's connection the state: the lobby packet, or in a game the game as their seat sees it. */
+    /**
+     * Sends the player's connection the state: the lobby packet, or in a game the game as their
+     * seat sees it, with the game's {@code gameId}.
+     */
     private void updatePlayer(WsContext ctx, String accountId) {
         JSONObject message;
         if (isInGame()) {
-            message = GameToJSONConverter.convert(game, gameSeats.get(accountId)); // sends the game state
+            message = GameToJSONConverter.convert(game, gameSeats.get(accountId), gameId()); // sends the game state
             message.put(SecretHitlerServer.PARAM_PACKET_TYPE, SecretHitlerServer.PACKET_GAME_STATE);
             putTermTimer(message);
         } else {
