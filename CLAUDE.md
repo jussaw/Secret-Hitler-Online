@@ -437,9 +437,8 @@ keeps credit to upstream and to the board game's creators.
   look carrying the filter, the current one orange and `aria-current="page"`, which the row (never
   the page) scrolls to show, again once the web fonts load; it wraps on desktop and in tall windows and scrolls sideways in one row on phones, 44px targets in
   the stacked query) and `tabs/` (`tabs/tabs.ts`'s `TABS`, the seven tabs in order with their
-  labels, OVERVIEW to RECORDS, each a file of its own, `OverviewTab` to `RecordsTab`, a
-  `ComingSoon` card "Coming in a later update." until its phase filled that file; all seven are
-  filled now). `TabsPage` shows
+  labels, OVERVIEW to RECORDS, each a file of its own, `OverviewTab` to `RecordsTab`, every one
+  filled). `TabsPage` shows
   the filter, the tab row and the route's tab, and a filter change stays on the tab (`navigate`).
   `testGames.ts` holds test builders the browser tests may import too (`ROLES` per seat count,
   `seatsOf`, `game`, `match`, and `generateData`, seeded).
