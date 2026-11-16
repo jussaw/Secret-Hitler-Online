@@ -52,7 +52,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 17A. Stats engine | `phase-17a-stats-engine` | done |
 | 17B. OVERVIEW | `phase-17b-overview` | done |
 | 18. ROLES & CARDS | `phase-18-roles-cards` | done |
-| 19. VOTES & POWERS | `phase-19-votes-powers` | planned |
+| 19. VOTES & POWERS | `phase-19-votes-powers` | done |
 | 20. RIVALS and ENDINGS | `phase-20-rivals-endings` | done |
 | 21A. ACTIVITY | `phase-21a-activity` | done |
 | 21B. RECORDS | `phase-21b-records` | planned |
@@ -932,20 +932,20 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-19-votes-powers.md`](superp
 
 Issue #31: the VOTES & POWERS tab at `/stats/votes`. It shows each player's elections, votes, presidential powers and survival over the counted games, computed in the page from `rounds(record)`. It runs after Phases 16 and 17A, beside 17B, 18, 20 and 21A: it fills its own tab file and stat modules and shares only the docs.
 
-- [ ] `frontend/src/stats/votes.ts`: nominations, nominations passed as president and as chancellor, picking a teammate, failed elections and chaos
-- [ ] `frontend/src/stats/votes.ts`: Ja rate by role, Liberal vote accuracy, Fascist loyalty, voted Hitler in, swing votes and lone dissent, checked against the contract fixture
-- [ ] `frontend/src/stats/powers.ts`: investigations (whom they investigated and what they saw, Liberal finds, checking a teammate, times investigated), peeks and special elections
-- [ ] `frontend/src/stats/powers.ts`: executions (targets by side, Hitler executed, times executed, first to go), vetoes as president and survival by role, checked against the contract fixture
-- [ ] `frontend/src/stats/tabs/VotesTab.tsx`: the tab's 26 cards in two sections (INVESTIGATIONS naming whom, split cards through Phase 17A's `SplitTable`), each with its empty state
-- [ ] `frontend/e2e/stats-votes.spec.ts`: the tab fits every stats size against the large stubbed response, with 44px targets on phones
-- [ ] `CLAUDE.md` and `README.md` describe VOTES & POWERS
-- [ ] Every finding of the whole-branch review fixed, Minor ones included
-- [ ] The pull request shows the tab before and after, on a desktop and on a phone
+- [x] `frontend/src/stats/votes.ts`: nominations, nominations passed as president and as chancellor, picking a teammate, failed elections and chaos
+- [x] `frontend/src/stats/votes.ts`: Ja rate by role, Liberal vote accuracy, Fascist loyalty, voted Hitler in, swing votes and lone dissent, checked against the contract fixture
+- [x] `frontend/src/stats/powers.ts`: investigations (whom they investigated and what they saw, Liberal finds, checking a teammate, times investigated), peeks and special elections
+- [x] `frontend/src/stats/powers.ts`: executions (targets by side, Hitler executed, times executed, first to go), vetoes as president and survival by role, checked against the contract fixture
+- [x] `frontend/src/stats/tabs/VotesTab.tsx`: the tab's 26 cards in two sections (INVESTIGATIONS naming whom, split cards through Phase 17A's `SplitTable`), each with its empty state
+- [x] `frontend/e2e/stats-votes.spec.ts`: the tab fits every stats size against the large stubbed response, with 44px targets on phones
+- [x] `CLAUDE.md` and `README.md` describe VOTES & POWERS
+- [x] Every finding of the whole-branch review fixed, Minor ones included
+- [x] The pull request shows the tab before and after, on a desktop and on a phone
 
 **Phase 19 acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] PR merged into `development`
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] PR merged into `development`
 - [ ] The user opens VOTES & POWERS on the deployed build after real games, on a desktop and on a phone, and its numbers match the games played
 
 ---

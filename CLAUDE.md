@@ -577,6 +577,39 @@ keeps credit to upstream and to the board game's creators.
   tables share its class. `testRivals.ts` (`NAMES`, `repeat`, `played`, `together`, `beats`,
   `nominated`, `statsOf`) and `testEndings.ts` (`ended`, `failed`, `chaosRun`, `vetoed`) are
   test-only.
+  VOTES & POWERS (`/stats/votes`, Phase 19) fills `tabs/VotesTab.tsx`: two sections, ELECTIONS AND
+  VOTES and POWERS AND SURVIVAL, of 26 `StatCard`s (`.votes-card`) in a grid. `votes.ts`
+  (`computeVotes`) and `powers.ts` (`computePowers`) read `rounds(record)` and the seats of every
+  counted game, never the raw events, and key `byPlayer` by player number from `humanSeats`: a CPU
+  seat gets no entry, but its vote counts in an election's totals, its role decides who is a
+  teammate, and what it did to a person counts for that person. `PlayerVotes` has nominations,
+  elections passed as president and as chancellor, picking a teammate by side, failed elections,
+  chaos, the Ja rate by role, Liberal vote accuracy, Fascist loyalty, voted Hitler in, swing votes
+  and lone dissent; `PlayerPowers` has investigations (what they saw, whom, with CPU targets left
+  out of `investigatedPlayers` and counted in `investigatedCpu`, Liberal finds, checking a teammate,
+  times investigated by role), peeks, special elections and their teammate picks, executions
+  (targets by the executioner's side, Hitler executed, times executed, first to go), `vetoes` as
+  president by role, and survival over games (`MIN_GAMES`) by role. In a `complete: false` record,
+  a seat that ends dead with no recorded execution was executed before the record starts: it counts
+  as executed, and as first to go when it is the only one. Both modules keep their counts through
+  `tallies.ts` (`Count`, `addChance`, `countRate`, `seatTallies`, a game's seats with each person's
+  tally, and `sideAt`). A swing vote is a Ja in an election that passed with exactly
+  `floor(votes / 2) + 1` Ja, or a Nein in one that failed with one fewer (a tie fails), and a lone
+  dissent the one vote of its kind among three or more. Chaos is every chaos `enact` (a third
+  failed election, or an accepted veto with the tracker at two), counted for that round's
+  president, and an accepted veto is no failed election. Voted Hitler in reads only the last
+  election of a `HITLER_ELECTED` game that made Hitler chancellor. A count card ranks the players
+  above zero (`RankedTable`), a rate card those with a chance, unranked below `MIN_CHANCES`, and a
+  split card (`SplitTable`, by role or by side) lists every player with a chance in any column,
+  every cell given; a card with no row shows its own line, and every card `NO_GAMES` when no game
+  counts. A power's two sides can differ with CPU seats in, so the lines say whom: "None of these
+  players has investigated anyone yet." (INVESTIGATIONS) and "has been investigated" (TIMES
+  INVESTIGATED), "has executed anyone" (EXECUTIONS, EXECUTION TARGETS) and "has been executed"
+  (TIMES EXECUTED, FIRST TO GO). INVESTIGATIONS names whom ("4 (3 F, 1 L) · Di 2, Bo 1, CPU 1": most times first, then by
+  name, CPU seats last); its card spans the grid's row, and `VotesTab.css` lets its value wrap in
+  65% of the table (`.votes-investigations`), the one place it styles a `RankedTable`.
+  `votesTestRounds.ts` holds the tests' builders (`term`, `gameOf`, `investigate`, `execute`,
+  `eventsOf`, `sum`).
   GAMES (`/stats/games`, `src/stats/games/`) lists
   every recorded game, newest first, under a filter of its own kept in the address:
   `gamesFilter.ts` (`GamesFilter`, `NO_GAMES_FILTER`, `PER_PAGE`, `ENDING_PARAM`,
@@ -978,7 +1011,11 @@ keeps credit to upstream and to the board game's creators.
   `bigStatsData()` (every flex or grid child with text able to shrink, on phones every
   `table.player-matrix` row 44px tall, and on desktops ENDINGS' two tables whole in their cards),
   and on phones that RIVALS' matrices scroll inside their cards with the names held in view and
-  leaving room for the columns. No `e2e/` file imports `src/constants` or anything that does (`api.ts`, `App`): it
+  leaving room for the columns. `stats-votes.spec.ts` checks VOTES & POWERS at every size, with
+  CPU games and without, every card's `NO_GAMES` under a filter that counts no game,
+  INVESTIGATIONS' longest value wrapping in at least half its table at 320px, and that every flex
+  and grid child of the tab with text can shrink. No `e2e/` file imports `src/constants` or
+  anything that does (`api.ts`, `App`): it
   reads `window` when it loads, which throws in Playwright's Node process; specs build stats paths
   with `routePath`. Shared helpers are `e2e/lobby.ts`
   (`waitForPlayers`, `joinGuests`, with `pickLooks` false for guests who stay on the default
