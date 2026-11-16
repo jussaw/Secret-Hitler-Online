@@ -24,6 +24,7 @@ import server.accounts.Usernames;
 import server.stats.GameRecordSink;
 import server.stats.GameRecorder;
 import server.stats.GameStore;
+import server.stats.StatsRoutes;
 import server.util.Lobby;
 
 import java.io.*;
@@ -146,6 +147,8 @@ public class SecretHitlerServer {
     // lobby's lock.
     static volatile GameStore games;
     static volatile GameRecorder recorder;
+    // GET /api/stats/games over the store, with its kept response (null until recording starts).
+    static volatile StatsRoutes stats;
     // </editor-fold>
 
     ///// Private Fields
@@ -215,6 +218,7 @@ public class SecretHitlerServer {
                 .get("/check-login", SecretHitlerServer::checkLogin) // Checks if a login is valid.
                 .get("/new-lobby", SecretHitlerServer::createNewLobby) // Creates and returns the code for a new lobby
                 .get("/ping", SecretHitlerServer::ping)
+                .get("/api/stats/games", SecretHitlerServer::getStatsGames) // every record, no sign-in
                 .get("/me", AuthRoutes::getMe)
                 .post("/me/username", AuthRoutes::postUsername)
                 .post("/auth/sign-out", AuthRoutes::postSignOut)
@@ -405,10 +409,11 @@ public class SecretHitlerServer {
      * Package-private for the tests, which call {@code stopRecording} after.
      */
     static void startRecording(GameStore store) {
-        GameRecorder writer = new GameRecorder(store, () -> {
-        });
+        StatsRoutes routes = new StatsRoutes(store, SecretHitlerServer::currentName);
+        GameRecorder writer = new GameRecorder(store, routes::invalidate);
         writer.start();
         games = store;
+        stats = routes;
         recorder = writer;
         Lobby.recordSink = writer;
     }
@@ -424,6 +429,7 @@ public class SecretHitlerServer {
             writer.stop();
         }
         recorder = null;
+        stats = null;
         games = null;
     }
 
@@ -517,6 +523,10 @@ public class SecretHitlerServer {
             // No seat can appear from here on: a game start waits for ACCOUNTS_LOCK.
             if (accounts.setUsername(accountId, normalizedName) == AccountStore.NameResult.TAKEN) {
                 return RenameResult.TAKEN;
+            }
+            StatsRoutes routes = stats;
+            if (routes != null) {
+                routes.invalidate(); // the stats show the account's new name
             }
             boolean changed = false;
             for (Lobby lobby : codeToLobby.values()) {
@@ -765,6 +775,20 @@ public class SecretHitlerServer {
     public static void ping(Context ctx) {
         ctx.status(200);
         ctx.result("OK");
+    }
+
+    /**
+     * Answers {@code GET /api/stats/games} ({@code StatsRoutes}): 503 with
+     * {@code StatsRoutes.UNAVAILABLE} until recording has started.
+     */
+    static void getStatsGames(Context ctx) {
+        StatsRoutes routes = stats;
+        if (routes == null) {
+            ctx.status(503);
+            ctx.result(StatsRoutes.UNAVAILABLE);
+            return;
+        }
+        routes.getGames(ctx);
     }
 
     /**
@@ -1054,7 +1078,11 @@ public class SecretHitlerServer {
         return session.account();
     }
 
-    /** The account's name in the store now, or null if it has none. The caller holds ACCOUNTS_LOCK. */
+    /**
+     * The account's name in the store now, or null if it has none. A join calls it holding
+     * ACCOUNTS_LOCK, so no rename falls between the read and the join; the stats route reads names
+     * through it under no lock.
+     */
     private static String currentName(String accountId) {
         Account account = accounts.find(accountId);
         return account == null ? null : account.username();
