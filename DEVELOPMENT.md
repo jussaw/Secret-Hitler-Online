@@ -15,6 +15,8 @@ Requirements: Java 17 for the backend, Node.js 22.12 or newer for the frontend (
 
 The server backs up all lobbies to a SQLite file every minute (when something changed) and on shutdown, and restores them on start. The same file holds the accounts and sessions, in two tables of their own (`accounts` and `sessions`), written as they change. Set `DATABASE_PATH` to the file to use, for example `DATABASE_PATH=/tmp/sh-backup.db ./gradlew runLocal`. With it unset, the server logs one error and runs without persistence: accounts live in memory and go when it stops.
 
+At start, before anything else opens it, the server puts the file in SQLite's WAL mode (`PRAGMA journal_mode = WAL`), so a backup's read never blocks the server's writes; while it runs, `backup.db-wal` and `backup.db-shm` sit beside the file. A file that another process keeps busy is tried again for up to 5 s, after which the server logs an error and runs on in the file's old journal mode. Once it listens, the server logs `Secret Hitler Online is listening on port <port>.`, the line `devops/restore-db.sh` waits for. Backing the file up and restoring it are in the README, under [Backups](README.md#backups).
+
 ## One port: the production layout
 
 The backend serves the built frontend itself, so the whole app runs on one port:
@@ -121,3 +123,23 @@ docker run --rm --ipc=host --add-host=host.docker.internal:host-gateway -e E2E_P
 ```
 
 The jar serves the `frontend/dist` it was built with, so rebuild both and restart it after a change to the page. Stop it when you are done.
+
+### Backup and restore tests
+
+`devops/tests/backup-restore.test.sh` tests `devops/backup-db.sh` and `devops/restore-db.sh`. From the repo root, with Docker running and `curl` installed:
+
+```bash
+bash devops/tests/backup-restore.test.sh
+```
+
+It builds the image from the checkout under a tag of its own (minutes the first time, then from Docker's layer cache), unless `IMAGE` names one, as CI does (`IMAGE=secret-hitler-online:backup-test`). It runs the stubbed cases first, against a stub `docker` first on `PATH` (the refusals, the failure paths and the settings), then a real container of the image with `TEST_SIGN_IN=true` on a fresh volume: it keeps signing test accounts in while it takes a backup, checks the backup and the hook, refuses bad files without stopping the server, then restores the backup and finds every table's rows as they were. It prints `backup-restore tests passed`, or the failing case, and removes the container, the volume, the tag it built and its temporary files either way. It never reads `devops/.env`: each case reads an empty settings file. It runs on macOS's bash 3.2 and on Linux.
+
+To try the scripts by hand, run the image as a container of your own and point the scripts at it and at a scratch directory. The environment wins over `devops/.env`, and an empty `ENV_FILE` keeps a real `AFTER_BACKUP` in it from running:
+
+```bash
+docker build -t secret-hitler-online . && docker run -d --name sh-try -e TEST_SIGN_IN=true -p 127.0.0.1:8080:8080 -v sh-try-data:/data secret-hitler-online
+dir=$(mktemp -d) && : >"$dir/empty.env"
+ENV_FILE="$dir/empty.env" CONTAINER_NAME=sh-try BACKUP_DIR="$dir" devops/backup-db.sh
+ENV_FILE="$dir/empty.env" CONTAINER_NAME=sh-try devops/restore-db.sh "$dir"/secret-hitler-*.db   # type sh-try
+docker rm -f sh-try && docker volume rm sh-try-data && rm -rf "$dir"
+```
