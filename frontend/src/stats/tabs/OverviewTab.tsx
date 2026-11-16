@@ -15,7 +15,7 @@ import { PowerRanking } from "./PowerRanking";
 import "./OverviewTab.css";
 
 /** A game's result: `outcomeLabel`, its first word (the winners') in their side's colour. */
-function Result({ record }: { record: GameRecord }): JSX.Element {
+function GameResult({ record }: { record: GameRecord }): JSX.Element {
   const label = outcomeLabel(record);
   if (record.winner === null) return <>{label}</>;
   const winners = sideWord(record.winner);
@@ -57,7 +57,7 @@ export function OverviewTab(props: { stats: StatsContext; now?: number; timeZone
   const { stats, now, timeZone } = props;
   const [opened] = useState(Date.now);
   const at = now ?? opened;
-  const o = useMemo(() => computeOverview(stats, at, timeZone), [stats, at, timeZone]);
+  const overview = useMemo(() => computeOverview(stats, at, timeZone), [stats, at, timeZone]);
   const { names, counted } = stats;
   const none = counted.length === 0;
 
@@ -71,62 +71,62 @@ export function OverviewTab(props: { stats: StatsContext; now?: number; timeZone
       });
     return out;
   }, [stats.data.players]);
-  const series: LineSeries[] = o.ratingHistory.map((line) => ({
+  const series: LineSeries[] = overview.ratingHistory.map((line) => ({
     key: String(line.player),
     label: nameOf(names, line.player),
     points: line.points.map((p) => ({ x: p.game, y: p.rating, dashed: p.provisional })),
   }));
   const detail = (s: LineSeries, index: number) => {
-    const line = o.ratingHistory.find((l) => String(l.player) === s.key)!;
+    const line = overview.ratingHistory.find((l) => String(l.player) === s.key)!;
     const point = line.points[index];
     return ratingPointDetail(counted[point.game], s.label, point, timeZone);
   };
 
-  const { headline } = o;
+  const { daysSinceLastGame, lastGame, winStreak, hotHand, playerOfMonth, headline } = overview;
   return (
     <div className="overview-tab">
       <section className="overview-grid overview-dashboard" aria-label="At a glance">
         <StatCard
           title="Since last game"
           definition="Whole days since the last counted game ended."
-          empty={o.daysSinceLastGame === null}
+          empty={daysSinceLastGame === null}
         >
-          {o.daysSinceLastGame !== null && <p className="overview-value">{formatDays(o.daysSinceLastGame)}</p>}
+          {daysSinceLastGame !== null && <p className="overview-value">{formatDays(daysSinceLastGame)}</p>}
         </StatCard>
-        <StatCard title="Last game" definition="The most recent counted game." empty={o.lastGame === null}>
-          {o.lastGame && (
+        <StatCard title="Last game" definition="The most recent counted game." empty={lastGame === null}>
+          {lastGame && (
             <StatsLink
-              href={routePath({ page: "game", id: o.lastGame.id })}
+              href={routePath({ page: "game", id: lastGame.id })}
               className="overview-game-link overview-last-game"
             >
               <span className="overview-game-result">
-                <Result record={o.lastGame} />
+                <GameResult record={lastGame} />
               </span>{" "}
-              <span className="overview-game-when">{formatLocalDateTime(o.lastGame.startedAt, timeZone)}</span>
+              <span className="overview-game-when">{formatLocalDateTime(lastGame.startedAt, timeZone)}</span>
             </StatsLink>
           )}
         </StatCard>
         <StatCard
           title="Win streak"
           definition="The longest current run of wins, among players seen in the last 7 days."
-          empty={none || (o.winStreak === null && "No current win streaks in the last 7 days.")}
+          empty={none || (winStreak === null && "No current win streaks in the last 7 days.")}
         >
-          {o.winStreak && <LeadersValue leaders={o.winStreak} names={names} note={plural(o.winStreak.value, "win")} />}
+          {winStreak && <LeadersValue leaders={winStreak} names={names} note={plural(winStreak.value, "win")} />}
         </StatCard>
         <StatCard
           title="Hot hand"
           definition="Won at least 3 of their last 5 games, and played in the last 7 days."
-          empty={none || (o.hotHand === null && "No one has won 3 of their last 5 in the last 7 days.")}
+          empty={none || (hotHand === null && "No one has won 3 of their last 5 in the last 7 days.")}
         >
-          {o.hotHand && <LeadersValue leaders={o.hotHand} names={names} note={`${o.hotHand.value} of ${HOT_HAND_GAMES}`} />}
+          {hotHand && <LeadersValue leaders={hotHand} names={names} note={`${hotHand.value} of ${HOT_HAND_GAMES}`} />}
         </StatCard>
         <StatCard
           title="Player of the month"
           definition="Most wins this month."
-          empty={none || (o.playerOfMonth === null && "No wins yet this month.")}
+          empty={none || (playerOfMonth === null && "No wins yet this month.")}
         >
-          {o.playerOfMonth && (
-            <LeadersValue leaders={o.playerOfMonth} names={names} note={plural(o.playerOfMonth.value, "win")} />
+          {playerOfMonth && (
+            <LeadersValue leaders={playerOfMonth} names={names} note={plural(playerOfMonth.value, "win")} />
           )}
         </StatCard>
       </section>
@@ -136,9 +136,9 @@ export function OverviewTab(props: { stats: StatsContext; now?: number; timeZone
         <StatCard
           title="Power ranking"
           definition="Elo ratings. Players with fewer than 5 games are provisional, in italics at the bottom."
-          empty={o.powerRanking.length === 0}
+          empty={overview.powerRanking.length === 0}
         >
-          <PowerRanking rows={o.powerRanking} names={names} />
+          <PowerRanking rows={overview.powerRanking} names={names} />
         </StatCard>
         <StatCard
           title="Rating history"
@@ -187,14 +187,18 @@ export function OverviewTab(props: { stats: StatsContext; now?: number; timeZone
       </div>
 
       <h2 className="overview-heading">Games</h2>
-      <StatCard title="Latest games" definition="The ten most recent counted games." empty={o.latestGames.length === 0}>
+      <StatCard
+        title="Latest games"
+        definition="The ten most recent counted games."
+        empty={overview.latestGames.length === 0}
+      >
         <ul className="overview-games">
-          {o.latestGames.map((record) => (
+          {overview.latestGames.map((record) => (
             <li key={record.id}>
               <StatsLink href={routePath({ page: "game", id: record.id })} className="overview-game-link">
                 <span className="overview-game-when">{formatLocalDateTime(record.startedAt, timeZone)}</span>{" "}
                 <span className="overview-game-result">
-                  <Result record={record} />
+                  <GameResult record={record} />
                 </span>
               </StatsLink>
             </li>
