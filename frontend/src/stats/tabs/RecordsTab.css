@@ -1,7 +1,7 @@
 /* RECORDS: a grid of cards, each in a column at least 300px wide (the whole width on a phone),
    under section headings that take a whole row. Every grid child has min-width: 0, so a long
-   name wraps inside its card instead of widening the page. App.css styles every h2, p, a and
-   li, so these set their own sizes and margins. */
+   name wraps inside its card instead of widening the page. App.css styles every h2, p and a,
+   so these set their own sizes and margins. */
 .records-tab {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
