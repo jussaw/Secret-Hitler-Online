@@ -1,7 +1,9 @@
+import { plural } from "./format";
+
 /**
  * How the stats show numbers. Counts with their noun are `format.ts`'s `plural`.
  *
- * This module imports nothing, so the browser tests can use it.
+ * This module imports only `format.ts`, so the browser tests can use it.
  */
 
 /** A share as a whole percent: 0.625 is "63%". */
@@ -26,6 +28,5 @@ export function formatRating(value: number): string {
 
 /** Whole days: "Today", "1 day", "3 days". */
 export function formatDays(days: number): string {
-  if (days === 0) return "Today";
-  return days === 1 ? "1 day" : `${days} days`;
+  return days === 0 ? "Today" : plural(days, "day");
 }
