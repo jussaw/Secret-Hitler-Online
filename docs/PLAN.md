@@ -1036,7 +1036,7 @@ Issue #31: the fifteen trophies and RECORDS' trophy holders, one player's number
 - [x] `frontend/src/stats/tabs/RecordsTab.tsx`: the trophy holders card, with `players/TrophyBadge.tsx`
 - [x] `frontend/src/stats/game/gameElo.ts`, `GameHeader.tsx` and `GamePage.tsx`: the game's Elo change when it counted under the default filter
 - [x] `frontend/e2e/stats-names.spec.ts`: name links in tables are 44px targets that never overlap on phones, a name in GAMES opens its player page, and a game page shows its Elo change
-- [ ] `CLAUDE.md` and `DEVELOPMENT.md` describe trophies, name links and the Elo change; the pull request shows RECORDS and a game page before and after, on desktop and on a phone
+- [x] `CLAUDE.md` and `DEVELOPMENT.md` describe trophies, name links and the Elo change; the pull request shows RECORDS and a game page before and after, on desktop and on a phone
 
 **Phase 22A acceptance**
 
