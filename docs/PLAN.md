@@ -685,7 +685,7 @@ Issue #30: playing needs an account, made by signing in with Discord; each accou
 **Phase 12 acceptance**
 
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] PR merged into `development`
+- [x] PR merged into `development`
 - [ ] The user creates the Discord application and sets `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` and `DISCORD_REDIRECT_URI` on the home server
 - [ ] The user signs in with Discord on the deployed build, on a desktop and on a phone, chooses a name, renames in a lobby, and plays a game
 
