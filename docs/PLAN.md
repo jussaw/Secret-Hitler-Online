@@ -49,7 +49,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 15A. Stats shell | `phase-15a-stats-shell` | done |
 | 15B. Game history | `phase-15b-game-history` | planned |
 | 16. The game page | `phase-16-game-page` | done |
-| 17A. Stats engine | `phase-17a-stats-engine` | planned |
+| 17A. Stats engine | `phase-17a-stats-engine` | done |
 | 17B. OVERVIEW | `phase-17b-overview` | planned |
 | 18. ROLES & CARDS | `phase-18-roles-cards` | planned |
 | 19. VOTES & POWERS | `phase-19-votes-powers` | planned |
@@ -861,22 +861,22 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-17a-stats-engine.md`](super
 
 Issue #31: the stats engine every tab reads (the counting rules, the player filter and the CPU toggle kept in the address, Elo with a handicap per player count), the shared cards, tables and charts, and the tab row with all seven tabs, each "Coming in a later update." until its phase fills it. Needs Phase 15A; runs beside Phases 15B and 16, touching none of their files.
 
-- [ ] `frontend/src/stats/counting.ts`: the filter in the address, counted games, rates with their minimum, ranks with ties, sessions, local days in any time zone
-- [ ] `frontend/src/stats/elo.ts`: Elo replayed over counted games, with the handicap per player count, provisional players and the spec's worked case
-- [ ] `frontend/src/stats/useStats.ts`: counted games, Elo and names, memoized per records and filter
-- [ ] `StatCard`, `RankedTable` and `numbers.ts`: the card look, empty states, ranked tables with "—" below the minimum
-- [ ] `ScrollRegion` and `SplitTable`: tables that scroll inside their card, split by role or side, for Phases 18 to 20
-- [ ] `frontend/src/stats/charts/LineChart.tsx`: lines dashed while provisional, details on hover or tap, a description for screen readers
-- [ ] `frontend/src/stats/charts/StackedBarChart.tsx`: stacked bars with their legend, ready for Phases 20 and 21A
-- [ ] `frontend/src/stats/FilterBar.tsx`: player chips and the CPU toggle, kept in the address; one line and a panel on phones; the toggle alone for the player page
-- [ ] `TabRow.tsx`, `tabs/` and `TabsPage.tsx`: seven tabs, each a "Coming in a later update." placeholder until filled, each keeping the filter
-- [ ] `frontend/e2e/stats-engine.spec.ts`: the tab row and the filter fit every stats size; the filter and toggle change the address; the tabs keep the filter
-- [ ] `CLAUDE.md` and `README.md` describe the stats engine; the pull request shows `/stats` before and after
+- [x] `frontend/src/stats/counting.ts`: the filter in the address, counted games, rates with their minimum, ranks with ties, sessions, local days in any time zone
+- [x] `frontend/src/stats/elo.ts`: Elo replayed over counted games, with the handicap per player count, provisional players and the spec's worked case
+- [x] `frontend/src/stats/useStats.ts`: counted games, Elo and names, memoized per records and filter
+- [x] `StatCard`, `RankedTable` and `numbers.ts`: the card look, empty states, ranked tables with "—" below the minimum
+- [x] `ScrollRegion` and `SplitTable`: tables that scroll inside their card, split by role or side, for Phases 18 to 20
+- [x] `frontend/src/stats/charts/LineChart.tsx`: lines dashed while provisional, details on hover or tap, a description for screen readers
+- [x] `frontend/src/stats/charts/StackedBarChart.tsx`: stacked bars with their legend, ready for Phases 20 and 21A
+- [x] `frontend/src/stats/FilterBar.tsx`: player chips and the CPU toggle, kept in the address; one line and a panel on phones; the toggle alone for the player page
+- [x] `TabRow.tsx`, `tabs/` and `TabsPage.tsx`: seven tabs, each a "Coming in a later update." placeholder until filled, each keeping the filter
+- [x] `frontend/e2e/stats-engine.spec.ts`: the tab row and the filter fit every stats size; the filter and toggle change the address; the tabs keep the filter
+- [x] `CLAUDE.md` and `README.md` describe the stats engine; the pull request shows `/stats` before and after
 
 **Phase 17A acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] PR merged into `development`
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] PR merged into `development`
 - [ ] The user opens `/stats` on the deployed build, on a desktop and on a phone, moves between the tabs, and changes the filter and the toggle
 
 ---

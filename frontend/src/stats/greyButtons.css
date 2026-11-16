@@ -1,0 +1,27 @@
+/* The lobby's grey on the stats pages: App.css's button look, for the filter's chips, its CPU
+   switch and its phone line, and the tabs not shown. One look for all of them: lighter under the
+   pointer and with the keyboard's focus (with an outline), and the rest face after a mouse press,
+   where App.css would leave the hover face on a focused button. */
+.stats-screen .stats-grey {
+    --button-face: #6e655e;
+    --button-shadow: #4b4440;
+    --button-depth: 3px;
+}
+
+.stats-screen .stats-grey:focus {
+    --button-face: #6e655e;
+}
+
+.stats-screen .stats-grey:hover,
+.stats-screen .stats-grey:focus-visible {
+    --button-face: #857b73;
+}
+
+.stats-screen .stats-grey:focus-visible {
+    outline: 2px solid var(--selectionHover);
+    outline-offset: 2px;
+}
+
+.stats-screen .stats-grey:active {
+    --button-face: #6e655e;
+}

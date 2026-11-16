@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetStatsDataForTests, STATS_LOAD_ERROR } from "./api";
-import { formatLocalDateTime, outcomeLabel } from "./format";
+import { outcomeLabel } from "./format";
 import StatsApp from "./StatsApp";
 import { makeData, makeRecord } from "./testRecords";
 
@@ -34,9 +34,14 @@ function openAt(path: string) {
 }
 
 const nav = () => within(screen.getByRole("navigation", { name: "Stats pages" }));
-/** The newest game's link among the latest games, once they are shown. */
-const newestLink = () =>
-  screen.findByRole("link", { name: `${formatLocalDateTime(games[24].startedAt)} · ${outcomeLabel(games[24])}` });
+/** The stats home's tab row, once the games are shown. */
+const overviewTab = () => screen.findByRole("link", { name: "OVERVIEW" });
+/** Moves the page to `path` in place, as a link would (the stats home links to no game). */
+const moveTo = (path: string) =>
+  act(() => {
+    history.pushState(null, "", path);
+    dispatchEvent(new PopStateEvent("popstate"));
+  });
 
 describe("StatsApp", () => {
   beforeEach(() => {
@@ -59,34 +64,34 @@ describe("StatsApp", () => {
     expect(screen.getByRole("banner")).toHaveTextContent("SECRET-HITLER");
     expect(screen.getByRole("status")).toHaveTextContent("Loading the games…");
     await act(async () => answer(json(data)));
-    expect(await screen.findByText("LATEST GAMES")).toBeInTheDocument();
+    expect(await overviewTab()).toBeInTheDocument();
     expect(screen.queryByText("Loading the games…")).toBeNull();
   });
 
-  it("a game from the latest games, and back", async () => {
+  it("a game in place, and back", async () => {
     stubFetch(json(data));
     openAt("/stats");
-    const newest = await newestLink();
-    expect(newest).toHaveAttribute("href", "/stats/games/g25");
-    fireEvent.click(newest);
+    await overviewTab();
+    moveTo("/stats/games/g25");
     expect(location.pathname).toBe("/stats/games/g25");
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(outcomeLabel(games[24]));
     act(() => history.back());
     await waitFor(() => expect(location.pathname).toBe("/stats"));
-    expect(await screen.findByText("LATEST GAMES")).toBeInTheDocument();
+    expect(await overviewTab()).toBeInTheDocument();
   });
 
   it("the games are fetched once", async () => {
     const fetch = stubFetch(json(data));
     openAt("/stats");
-    fireEvent.click(await newestLink());
+    await overviewTab();
+    moveTo("/stats/games/g25");
     expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
     fireEvent.click(nav().getByRole("link", { name: "GAMES" }));
     expect(await screen.findByText("Coming in a later update.")).toBeInTheDocument();
     fireEvent.click(nav().getByRole("link", { name: "PLAYERS" }));
     expect(location.pathname).toBe("/stats/players");
     fireEvent.click(nav().getByRole("link", { name: "STATS" }));
-    expect(await screen.findByText("LATEST GAMES")).toBeInTheDocument();
+    expect(await overviewTab()).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
@@ -95,7 +100,7 @@ describe("StatsApp", () => {
     openAt("/stats");
     expect(await screen.findByRole("alert")).toHaveTextContent(STATS_LOAD_ERROR);
     expect(screen.getByRole("banner")).toHaveTextContent("SECRET-HITLER");
-    expect(screen.queryByText("LATEST GAMES")).toBeNull();
+    expect(screen.queryByRole("link", { name: "OVERVIEW" })).toBeNull();
   });
 
   it("a short page for an address that names nothing", async () => {
@@ -112,9 +117,9 @@ describe("StatsApp", () => {
   it("the page title follows the page", async () => {
     stubFetch(json(data));
     openAt("/stats");
-    await screen.findByText("LATEST GAMES");
+    await overviewTab();
     expect(document.title).toBe("Stats · Secret Hitler Online");
-    fireEvent.click(await newestLink());
+    moveTo("/stats/games/g25");
     await waitFor(() => expect(document.title).toBe("Game · Secret Hitler Online"));
     act(() => {
       history.pushState(null, "", "/stats/nowhere");

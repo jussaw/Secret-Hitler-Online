@@ -1,0 +1,118 @@
+/* What every hand-drawn chart shares: its box, the axis text and grid lines, the legend, the
+   tooltip and the hidden description. */
+.chart {
+    position: relative;
+    min-width: 0;
+    width: 100%;
+}
+
+/* ChartFrame sets the svg's touch-action itself (pan-y). */
+.chart svg {
+    display: block;
+    overflow: visible;
+}
+
+.chart-axis-text {
+    font-family: var(--textFont);
+    font-weight: 500;
+    font-size: 11px;
+    fill: var(--textColorOnDark);
+}
+
+.chart-grid {
+    stroke: rgba(255, 255, 255, 0.12);
+    stroke-width: 1;
+    shape-rendering: crispEdges;
+}
+
+.chart-line {
+    fill: none;
+    stroke-width: 2;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+}
+
+.chart-line.is-dashed {
+    stroke-dasharray: 4 4;
+}
+
+.chart-marker {
+    stroke: var(--backgroundDark);
+    stroke-width: 2;
+}
+
+/* The bar part under the pointer, outlined as the line chart rings its point. */
+.chart-bar.is-active {
+    stroke: var(--headerTextColor);
+    stroke-width: 2;
+}
+
+.chart-legend {
+    list-style: none;
+    margin: 6px 0 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 12px;
+    font-family: var(--textFont);
+    font-weight: 500;
+    font-size: 12px;
+    line-height: 1.3;
+    color: var(--textColorOnDark);
+}
+
+.chart-legend > li {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.chart-swatch {
+    flex: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+}
+
+/* The details of the point or part under the pointer. Its left edge slides with the point's share
+   of the plot and it moves left by as much of its own width, so it never leaves the chart. Its
+   width is its text's (up to the cap), never the room left of `left`, which is none at the right
+   edge. */
+.chart-tooltip {
+    position: absolute;
+    z-index: 2;
+    pointer-events: none;
+    box-sizing: border-box;
+    width: max-content;
+    max-width: min(240px, 100%);
+    padding: 6px 8px;
+    border-radius: 6px;
+    background-color: var(--alertFill);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    font-family: var(--textFont);
+    font-weight: 500;
+    font-size: 13px;
+    line-height: 1.35;
+    color: var(--headerTextColor);
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.chart-tooltip > :first-child {
+    font-weight: 700;
+}
+
+/* The words a screen reader reads for the chart. */
+.chart-description {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}

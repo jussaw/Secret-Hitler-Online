@@ -1,0 +1,71 @@
+/* A ranked table: rank, name, value and count. The name column takes what is left and its name
+   wraps there (PlayerName's overflow-wrap), so the table never needs to scroll sideways. */
+.ranked-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--textFont);
+    font-size: 15px;
+    line-height: 1.3;
+    color: var(--textColorOnDark);
+}
+
+.ranked-table td {
+    padding: 4px 6px;
+    vertical-align: middle;
+    min-width: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ranked-table tr:first-child td {
+    border-top: none;
+}
+
+.ranked-table td:first-child {
+    padding-left: 0;
+}
+
+.ranked-table td:last-child {
+    padding-right: 0;
+}
+
+.ranked-rank {
+    width: 1%;
+    white-space: nowrap;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.ranked-name {
+    width: 100%;
+    font-weight: 500;
+    color: var(--headerTextColor);
+}
+
+.ranked-value {
+    white-space: nowrap;
+    text-align: right;
+    font-weight: 700;
+    color: var(--headerTextColor);
+    font-variant-numeric: tabular-nums;
+}
+
+.ranked-count {
+    white-space: nowrap;
+    text-align: right;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+}
+
+.ranked-unranked .ranked-name,
+.ranked-unranked .ranked-value {
+    color: var(--textColorOnDark);
+}
+
+/* Each row at least 44px tall wherever the game's stacked query matches, so a name that becomes
+   a link (Phase 22) is a 44px target. */
+@media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
+    .ranked-table td {
+        height: 44px;
+        box-sizing: border-box;
+    }
+}

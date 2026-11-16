@@ -353,9 +353,8 @@ keeps credit to upstream and to the board game's creators.
   desktop, the title over a row of four equal columns in the phone-only query) and `StatsApp.css`
   (`.stats-screen`, left-aligned, `.stats-main`, at most 1100px wide, `.stats-card` and
   `.stats-card-title`, the game's card look, and `.stats-link`, a 44px target in the stacked
-  query), and placeholders for later phases to fill: `TabsPage` (17A; for now the ten latest games
-  as links and All games ›), `games/GamesPage` (15B), `players/PlayersPage` and
-  `players/PlayerPage` (22B), each "Coming in a later update." until then. App.css still styles
+  query), and placeholders for later phases to fill: `games/GamesPage` (15B), `players/PlayersPage`
+  and `players/PlayerPage` (22B), each "Coming in a later update." until then. App.css still styles
   the stats pages' `header`, `a`, `p`, `h2` and `div`, and the stats CSS sets what it needs over it.
   `rounds.ts` (Phase 16) turns a record into rounds, `rounds(record)`, which the game page draws
   and every stat phase reads instead of the raw events: one `Round` per round number in the
@@ -389,6 +388,57 @@ keeps credit to upstream and to the board game's creators.
   when nothing came after the nomination, and "<P>'s nomination" before a result it has.
   `game/text.tsx` holds what the header and the rounds share: `joined` (a line's clauses or a
   list's names), `ROLE_WORDS`, `CARD_WORDS` and `RoleWord` (a role's word in its colour).
+  The stats engine (Phase 17A), which every tab
+  reads: `counting.ts` (the counting rules: `StatsFilter`, kept in the address as
+  `?players=1,3,4&cpu=1`, numbers ascending with plain commas, no `players` for every player and
+  `?players=` for none, and only `cpu=1` counting CPU games; `parseFilter` drops a token that is not
+  a positive whole number and keeps a number no player has, which matches no seat; `filterSearch`,
+  `DEFAULT_FILTER`, frozen, and `togglePlayer`, back to every player when the last chip comes back
+  on; `countedGames`, the finished games with no CPU seat unless `cpu` and every human seat a player
+  that is on, in `compareByEnd`'s order (`endedAt`, then `id`), which Elo replays in too; `nameOf`,
+  a name or `Player N`; `MIN_GAMES` and `MIN_CHANCES`, both 5, and `rate`, null
+  below its minimum; `rankRows`, competition ranks (1, 2, 2, 4), ties by count, then
+  `compareNames` (English, ignoring case), then number, and rows below the minimum unranked at the
+  bottom by count; `humanSeats`, `seatWon`, `sessions`, a new one where a game starts 3 h or more
+  after the latest end so far, and `localDaysBetween(from, to, timeZone?)`, the days between two
+  `localDayKey`s, so a span across a clock change counts whole days), `elo.ts` (`replayElo` over
+  the counted games in order, from 1500: each side is the mean of its seats, a CPU seat counting
+  1500 and never rated; `handicap`, added to the Fascists, from the earlier games of the same size
+  pulled towards a half by five games each way; `expectedLiberal` and `eloChange`, K 32; ratings
+  unrounded, `peak` the highest after a game, `provisional` under 5 games, `history` a point per
+  game with every rated player's rating, and `games` each game's expected score, handicap and
+  change), `useStats.ts` (`buildStats(data, filter)`, and `useStats()`, null until the records
+  come, with the filter from `useLocation().search`: one `StatsContext` per records and filter
+  however the address spells it, the last 8 filters kept per set of records), `numbers.ts`
+  (`formatPercent`, `formatSigned` with U+2212 and `0` for anything that rounds to zero,
+  `formatRating`, `formatDays`; counts are `format.ts`'s `plural`), `StatCard` (a `section.stats-card`
+  region named by its `h3` title, the definition, then the stat, or for `empty` `NO_GAMES`, "No
+  games yet with these players.", or `empty`'s own line), `RankedTable` (rank, `PlayerName`, the
+  value or "—" below the minimum, and the count; four columns that fit 320px, rows 44px tall in the
+  stacked query), `ScrollRegion` (a focusable region that scrolls sideways inside its card, named
+  "<card title> table"), `SplitTable` (players down by name, roles or sides across, heads in their
+  colours, a sticky name column with the full name as its title, each cell its text then its count,
+  a 0 too, and "—" for a cell the row lacks, in a `ScrollRegion`; rows 44px in the stacked query),
+  `charts/` (`LineChart`, lines dashed where a point says so, `SERIES_COLORS`, `lineChartGeometry`,
+  `describeLines`; `StackedBarChart`, parts bottom-up with its own legend, the hovered part
+  outlined, `stackedBarGeometry`, `describeBars`; both hand-written SVG sized from their box by
+  `useChartWidth`, inside `chartParts.tsx`'s `ChartFrame`: an image described in words, the legend,
+  `touch-action: pan-y`, and the nearest point's or part's details on a hover, a pen or a tap in
+  `.chart-tooltip`, as wide as its text and sliding with the point's share of the plot, so it never
+  leaves the chart; `chartParts.tsx` also has `YAxis`, `nearest` and `px`; `axis.ts`'s `niceTicks`;
+  `charts.css`; Phase 21's charts share them all),
+  `FilterBar` (a chip per player by name, `aria-pressed`, and the switch "Include games with CPU
+  players", in the lobby's grey, `greyButtons.css`'s `.stats-grey`, which the tabs share;
+  controlled, so the address is the filter's only copy; in the phone-only query one line, "Players:
+  7 of 8 · CPU off", that opens the panel; `showPlayers={false}` shows the switch alone), `TabRow` (a `nav` "Stats sections" of seven `StatsLink`s in the button
+  look carrying the filter, the current one orange and `aria-current="page"`, which the row (never
+  the page) scrolls to show, again once the web fonts load; it wraps on desktop and in tall windows and scrolls sideways in one row on phones, 44px targets in
+  the stacked query) and `tabs/` (`tabs/tabs.ts`'s `TABS`, the seven tabs in order with their
+  labels, OVERVIEW to RECORDS, each a file of its own, `OverviewTab` to `RecordsTab`, a
+  `ComingSoon` card "Coming in a later update." until its phase fills that file). `TabsPage` shows
+  the filter, the tab row and the route's tab, and a filter change stays on the tab (`navigate`).
+  `testGames.ts` holds test builders the browser tests may import too (`ROLES` per seat count,
+  `seatsOf`, `game`, `match`, and `generateData`, seeded).
   `src/App.tsx` owns the WebSocket, all state and the overlays; prompts live in `src/custom-alert/`,
   in one overlay (`CustomAlert`) that `render()` draws for every page, so a prompt open on the login
   page stays open when the page moves to the lobby (`toLoginPage` bumps `alertKey`, so the overlay
@@ -724,7 +774,13 @@ keeps credit to upstream and to the board game's creators.
   policy's colour and its lines' 4px spacing, All games moving in place from the not-found page,
   and (`desktop`) a real seven-seat game's page
   opened by its `gameId`: a block per round, the first election failed, a decision's time and the
-  accepted veto. No `e2e/` file imports `src/constants` or anything that does (`api.ts`, `App`): it
+  accepted veto. `stats-engine.spec.ts` checks the filter and the tab row at every size (on phones
+  the tab row one row that scrolls, and the open panel of ten twelve-character chips fitting at
+  320x568), that the chips and the CPU switch change the address and follow back and a reload, that
+  the tabs keep the filter and a link to a tab shows it in the row, that phones fold the filter into
+  one line, that every flex or grid child with text can shrink, that the grey controls share one
+  look, and, on `charts.css` alone, that a tooltip keeps its width at either edge and a hovered bar
+  is outlined. No `e2e/` file imports `src/constants` or anything that does (`api.ts`, `App`): it
   reads `window` when it loads, which throws in Playwright's Node process; specs build stats paths
   with `routePath`. Shared helpers are `e2e/lobby.ts`
   (`waitForPlayers`, `joinGuests`, with `pickLooks` false for guests who stay on the default

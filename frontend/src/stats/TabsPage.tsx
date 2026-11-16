@@ -1,44 +1,32 @@
-import { useId } from "react";
-import { formatLocalDateTime, outcomeLabel } from "./format";
-import type { GameRecord } from "./record";
-import { routePath, type PageProps } from "./routes";
-import StatsLink from "./StatsLink";
+import { filterSearch } from "./counting";
+import { FilterBar } from "./FilterBar";
+import { navigate, useLocation, type PageProps } from "./routes";
+import { TabRow } from "./TabRow";
+import { TABS } from "./tabs/tabs";
+import { useStats } from "./useStats";
 import "./TabsPage.css";
 
-/** Newest first: by `endedAt`, then `id`. */
-function newestFirst(a: GameRecord, b: GameRecord): number {
-  if (a.endedAt !== b.endedAt) return b.endedAt - a.endedAt;
-  return a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
-}
-
 /**
- * The stats' home and its tabs (`/stats`, `/stats/<tab>`). A placeholder until the tabs come
- * (Phase 17A fills it): the ten latest games, each a link to its page, and a link to GAMES.
+ * The stats' home and its tabs (`/stats`, `/stats/<tab>`): the filter, which lives in the address
+ * (a change stays on the tab), the tab row, which carries it to every tab, and the route's tab.
+ * Each tab is a file of its own in `tabs/`, registered in `tabs/tabs.ts`.
  */
-export default function TabsPage({ data }: PageProps): JSX.Element {
-  const titleId = useId();
-  const latest = [...data.games].sort(newestFirst).slice(0, 10);
+export default function TabsPage({ route }: PageProps): JSX.Element {
+  const stats = useStats();
+  const { pathname } = useLocation();
+  if (!stats) return <></>; // the records are on their way (StatsApp shows them once they come)
+  const current = route.page === "tab" ? route.tab : "overview";
+  const tab = TABS.find((t) => t.id === current) ?? TABS[0];
+  const Tab = tab.Component;
   return (
-    <section className="stats-card latest-games" aria-labelledby={titleId}>
-      <h2 className="stats-card-title" id={titleId}>
-        LATEST GAMES
-      </h2>
-      {latest.length === 0 ? (
-        <p>No games recorded yet.</p>
-      ) : (
-        <ul className="latest-games-list">
-          {latest.map((record) => (
-            <li key={record.id}>
-              <StatsLink href={routePath({ page: "game", id: record.id })} className="latest-games-link">
-                {`${formatLocalDateTime(record.startedAt)} · ${outcomeLabel(record)}`}
-              </StatsLink>
-            </li>
-          ))}
-        </ul>
-      )}
-      <StatsLink href={routePath({ page: "games" })} className="stats-link">
-        All games ›
-      </StatsLink>
-    </section>
+    <div className="stats-tabs-page">
+      <FilterBar
+        players={stats.data.players}
+        filter={stats.filter}
+        onChange={(next) => navigate(pathname + filterSearch(next))}
+      />
+      <TabRow current={tab.id} search={filterSearch(stats.filter)} />
+      <Tab stats={stats} />
+    </div>
   );
 }
