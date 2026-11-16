@@ -18,6 +18,8 @@ COPY --from=frontend /app/frontend/dist /app/frontend/dist
 RUN ./gradlew --no-daemon jar && mkdir -p /out/data
 
 FROM eclipse-temurin:17-jre
+# sqlite3 is for devops/backup-db.sh, which takes its snapshot inside the running container.
+RUN apt-get update && apt-get install -y --no-install-recommends sqlite3 && rm -rf /var/lib/apt/lists/*
 ENV PORT=8080 DATABASE_PATH=/data/backup.db
 COPY --from=backend --chown=1000:1000 /out/data /data
 COPY --from=backend /app/backend/build/libs/secret-hitler-online.jar /app/secret-hitler-online.jar

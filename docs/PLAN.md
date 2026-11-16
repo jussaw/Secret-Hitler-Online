@@ -722,7 +722,7 @@ Issue #31 (game stats), the first of its ten phases: the database is backed up b
 
 - [x] `backend/src/main/java/server/SecretHitlerServer.java`: the database file in WAL mode at start, retried while busy for up to 5 s
 - [x] `SecretHitlerServer`: one startup line once the server listens, which the restore waits for
-- [ ] `Dockerfile`: `sqlite3` in the final stage; `devops/tests/backup-restore.test.sh` checks it, the startup line and WAL mode in the branch's image
+- [x] `Dockerfile`: `sqlite3` in the final stage; `devops/tests/backup-restore.test.sh` checks it, the startup line and WAL mode in the branch's image
 - [ ] `devops/backup-db.sh` and `devops/.env.example` (`devops/.env` git-ignored): a checked snapshot while the server writes, retention, and the `AFTER_BACKUP` hook
 - [ ] `devops/restore-db.sh`: a bad file refused before anything stops, the file swapped in one move, the startup line waited for
 - [ ] `.github/workflows/ci.yml`: a `devops` job runs the backup and restore test against the branch's image on pull requests
