@@ -488,7 +488,9 @@ keeps credit to upstream and to the board game's creators.
   (names with `link={false}`), the END TERM countdown and dropped connections.
   RIVALS (Phase 20, `tabs/RivalsTab.tsx`) reads `rivals.ts`'s `computeRivals(counted, names)`: each
   pair of people who shared a counted game, by `pairKey` (their games on the same side and won, both
-  on the Fascist side and won, and on opposite sides and each one's wins; `pairOf`, `against`), the
+  on the Fascist side and won, and on opposite sides and each one's wins; `pairOf`, `against`,
+  `pairRecord`, a pair turned round to one player, and `namesInOrder`; a game nobody won is left
+  out), the
   best duo and best Fascist duo (the best rate together over 5 or more games, ties by more games,
   then names), the closest and most lopsided rivalries, each player's people in `byPlayer`
   (`opponents`, `mostPlayedWith`, `bestTeammate`, `nemesis`, ties by more shared games, then name,
@@ -509,9 +511,11 @@ keeps credit to upstream and to the board game's creators.
   counted by round from `rounds` (every chaos `enact`, whether a third failed election or an
   accepted veto caused it, and accepted vetoes only), ties to the earlier game. Length counts only
   complete games: a `complete: false` record starts at its restore, so it is never the fastest win,
-  though it counts everywhere else. Every game link there is a 44px `StatsLink` at every size. Both
-  tabs lay out their cards in columns at least 22em wide (two on desktop, one on phones), the wide
-  ones across the row. `tabs/PlayerMatrix.tsx` is the player-by-player table: a
+  though it counts everywhere else (`gameLength`). Every game link there is a 44px `StatsLink` at
+  every size. Both tabs lay out their cards in `tabs/cardGrid.css`'s columns at least 22em wide
+  (two on desktop, one on phones), the wide ones across the row; both pick by `pick.ts`'s `firstBy`
+  (never by the games' order), and their cells write a rate or `NO_VALUE` with `tabs/cellText.ts`'s
+  `rateText`. `tabs/PlayerMatrix.tsx` is the player-by-player table: a
   `table.player-matrix` in a `ScrollRegion` that scrolls sideways inside its card, each row's name
   held at the left, the diagonal blank, a cell's text with an optional line under it and its title
   on hover, ahead white and bold, behind grey; a long name wraps in its head (6em, and 7em for a
