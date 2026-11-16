@@ -14,7 +14,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.sqlite.SQLiteConfig;
 
 /**
  * The game records (#31), in the SQLite file lobbies are backed up to, beside the accounts, or in
@@ -41,12 +40,8 @@ public class GameStore implements AutoCloseable {
         String url = databasePath == null || databasePath.isBlank()
                 ? "jdbc:sqlite::memory:"
                 : "jdbc:sqlite:" + databasePath;
-        // A save's transaction takes the write lock at its start, so it waits for another
-        // connection's write (busy_timeout) instead of failing when it first writes.
-        SQLiteConfig config = new SQLiteConfig();
-        config.setTransactionMode(SQLiteConfig.TransactionMode.IMMEDIATE);
         try {
-            Connection c = DriverManager.getConnection(url, config.toProperties());
+            Connection c = DriverManager.getConnection(url);
             try {
                 createTables(c);
             } catch (SQLException | RuntimeException e) {
@@ -103,28 +98,46 @@ public class GameStore implements AutoCloseable {
      * @throws IllegalStateException if the save fails, writing nothing.
      */
     public synchronized boolean save(GameRecord record) {
+        // The connection stays in autocommit mode, and the save runs its own BEGIN IMMEDIATE,
+        // COMMIT and ROLLBACK: the driver's own transactions begin again after each commit, and a
+        // begin that timed out would leave its next save outside any transaction. IMMEDIATE takes
+        // the write lock at the start, so the save waits for another connection's write
+        // (busy_timeout) instead of failing when it first writes.
         try {
-            connection.setAutoCommit(false);
-            try {
-                boolean written = write(record);
-                if (written) {
-                    connection.commit();
-                } else {
-                    connection.rollback();
-                }
-                return written;
-            } catch (SQLException | RuntimeException e) {
-                try {
-                    connection.rollback();
-                } catch (SQLException rollbackFailure) {
-                    e.addSuppressed(rollbackFailure);
-                }
-                throw e;
-            } finally {
-                connection.setAutoCommit(true);
-            }
-        } catch (SQLException | RuntimeException e) {
+            execute("BEGIN IMMEDIATE");
+        } catch (SQLException e) {
             throw new IllegalStateException("Could not save the record of game " + record.id() + ".", e);
+        }
+        boolean open = true;
+        try {
+            boolean written = write(record);
+            execute(written ? "COMMIT" : "ROLLBACK");
+            open = false;
+            return written;
+        } catch (SQLException | RuntimeException e) {
+            IllegalStateException failure =
+                    new IllegalStateException("Could not save the record of game " + record.id() + ".", e);
+            try {
+                execute("ROLLBACK");
+                open = false;
+            } catch (SQLException rollbackFailure) {
+                failure.addSuppressed(rollbackFailure);
+            }
+            throw failure;
+        } finally {
+            if (open) {
+                try {
+                    execute("ROLLBACK"); // an Error on the way out: never leave the write lock held
+                } catch (SQLException ignored) {
+                    // the transaction is gone with the connection's state; nothing more to undo
+                }
+            }
+        }
+    }
+
+    private void execute(String sql) throws SQLException {
+        try (Statement s = connection.createStatement()) {
+            s.execute(sql);
         }
     }
 
@@ -134,7 +147,7 @@ public class GameStore implements AutoCloseable {
         long now = System.currentTimeMillis();
         // A number is looked up before one is made: an ignored INSERT OR IGNORE would still use up
         // an AUTOINCREMENT number, leaving gaps. The transaction holds the write lock from its
-        // start, so no other connection makes a number in between.
+        // start (BEGIN IMMEDIATE), so no other connection makes a number in between.
         try (PreparedStatement select = connection.prepareStatement(
                 "SELECT number FROM players WHERE account_id = ?");
                 PreparedStatement insert = connection.prepareStatement(

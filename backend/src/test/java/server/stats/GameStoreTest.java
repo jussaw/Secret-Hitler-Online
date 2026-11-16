@@ -250,6 +250,47 @@ public class GameStoreTest {
         assertEquals(List.of("g1"), rows("SELECT id FROM games"));
     }
 
+    /**
+     * A save that gives up on another connection's write (after the 5 s busy timeout) writes
+     * nothing and leaves the store as it was: the next saves are whole transactions again, and
+     * succeed.
+     */
+    @Test
+    public void aSaveAfterALockThatOutlastedTheTimeoutIsOneTransaction() throws Exception {
+        GameStore store = file();
+        CountDownLatch locked = new CountDownLatch(1);
+        CountDownLatch gaveUp = new CountDownLatch(1);
+        Thread holder = new Thread(() -> {
+            try (Connection c = DriverManager.getConnection("jdbc:sqlite:" + path());
+                    Statement s = c.createStatement()) {
+                s.execute("BEGIN IMMEDIATE");
+                locked.countDown();
+                gaveUp.await();
+                s.execute("ROLLBACK");
+            } catch (Exception e) {
+                throw new IllegalStateException(e);
+            }
+        });
+        holder.start();
+        locked.await();
+        try {
+            store.save(TestRecords.record("g1", 2_000_000L, GameRecord.LIBERAL_POLICIES, TestRecords.seats("acct-Ann")));
+            fail("the write lock was held past the busy timeout");
+        } catch (IllegalStateException expected) {
+        } finally {
+            gaveUp.countDown();
+            holder.join(5_000);
+        }
+
+        assertTrue(store.save(TestRecords.record("g2", 3_000_000L, GameRecord.LIBERAL_POLICIES,
+                TestRecords.seats("acct-Ann"))));
+        assertTrue(store.save(TestRecords.record("g3", 4_000_000L, GameRecord.LIBERAL_POLICIES,
+                TestRecords.seats("acct-Bob"))));
+        assertEquals(List.of("g2", "g3"), rows("SELECT id FROM games ORDER BY id"));
+        assertEquals(List.of("g2|5", "g3|5"), rows("SELECT game_id, COUNT(*) FROM game_seats GROUP BY game_id"));
+        assertEquals(List.of("1|acct-Ann", "2|acct-Bob"), rows("SELECT number, account_id FROM players"));
+    }
+
     /** After every kind of save, another connection can write at once: the store holds no lock between calls. */
     @Test
     public void aSaveLeavesNoLockBehind() throws Exception {
