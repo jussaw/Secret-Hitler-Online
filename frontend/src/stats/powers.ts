@@ -1,15 +1,23 @@
-import { humanSeats, MIN_CHANCES, rate, type Rate } from "./counting";
+import { humanSeats, MIN_CHANCES, MIN_GAMES, rate, type Rate } from "./counting";
 import { sideOf, type GameRecord, type Role, type Side } from "./record";
 import { rounds } from "./rounds";
 
 /**
- * VOTES & POWERS' powers (the spec's "VOTES & POWERS"): each player's investigations, peeks and
- * special elections as president over the counted games, read from `rounds(record)` (a power is
- * `round.power`, used by its `seat`) and the seats, never the raw events. Keyed by player number:
- * a CPU seat gets no entry, though what it did to a person counts for that person.
+ * VOTES & POWERS' powers and survival (the spec's "VOTES & POWERS"): each player's
+ * investigations, peeks, special elections, executions and veto answers as president, and whether
+ * they were alive at the end, over the counted games, read from `rounds(record)` (a power is
+ * `round.power`, used by its `seat`; a veto answer is `round.veto`, given by the president) and
+ * the seats, never the raw events. Keyed by player number: a CPU seat gets no entry, though what
+ * it did to a person counts for that person.
  *
  * This module imports nothing that reads the browser, so the browser tests can use it.
  */
+
+/** A president's answers to their chancellors' vetoes. */
+export interface VetoAnswers {
+  accepted: number;
+  refused: number;
+}
 
 export interface PlayerPowers {
   games: number;
@@ -29,6 +37,19 @@ export interface PlayerPowers {
   specialElections: number;
   /** Special elections whose target is on their side / special elections. */
   specialTeammate: Rate;
+  executions: number;
+  /** By the executioner's side: targets on the Fascist side / executions. */
+  fascistTargets: Record<Side, Rate>;
+  /** Executions whose target was HITLER. */
+  hitlerExecuted: number;
+  timesExecuted: number;
+  /** Games whose first execution targeted them. */
+  executedFirst: number;
+  /** As president, answers to a chancellor's veto, by their role. */
+  vetoes: Record<Role, VetoAnswers>;
+  /** Games alive at the end / games (`MIN_GAMES`). */
+  survival: Rate;
+  survivalByRole: Record<Role, Rate>;
 }
 
 export interface PowerStats {
@@ -50,9 +71,16 @@ interface Tally {
   timesInvestigated: Record<Role, number>;
   peeks: number;
   specialTeammate: Count;
+  fascistTargets: Record<Side, Count>;
+  hitlerExecuted: number;
+  timesExecuted: number;
+  executedFirst: number;
+  vetoes: Record<Role, VetoAnswers>;
+  survivalByRole: Record<Role, Count>;
 }
 
 const count = (): Count => ({ hits: 0, chances: 0 });
+const answers = (): VetoAnswers => ({ accepted: 0, refused: 0 });
 
 function newTally(): Tally {
   return {
@@ -64,6 +92,12 @@ function newTally(): Tally {
     timesInvestigated: { LIBERAL: 0, FASCIST: 0, HITLER: 0 },
     peeks: 0,
     specialTeammate: count(),
+    fascistTargets: { LIBERAL: count(), FASCIST: count() },
+    hitlerExecuted: 0,
+    timesExecuted: 0,
+    executedFirst: 0,
+    vetoes: { LIBERAL: answers(), FASCIST: answers(), HITLER: answers() },
+    survivalByRole: { LIBERAL: count(), FASCIST: count(), HITLER: count() },
   };
 }
 
@@ -74,8 +108,17 @@ function add(c: Count, hit: boolean): void {
 }
 
 const toRate = (c: Count): Rate => rate(c.hits, c.chances, MIN_CHANCES);
+const toGamesRate = (c: Count): Rate => rate(c.hits, c.chances, MIN_GAMES);
 
-/** Each player's presidential powers over `counted`, keyed by player number. */
+/** Every role's games alive at the end, together. */
+function alive(byRole: Record<Role, Count>): Count {
+  return {
+    hits: byRole.LIBERAL.hits + byRole.FASCIST.hits + byRole.HITLER.hits,
+    chances: byRole.LIBERAL.chances + byRole.FASCIST.chances + byRole.HITLER.chances,
+  };
+}
+
+/** Each player's presidential powers and survival over `counted`, keyed by player number. */
 export function computePowers(counted: GameRecord[]): PowerStats {
   const tallies = new Map<number, Tally>();
   for (const g of counted) {
@@ -89,6 +132,7 @@ export function computePowers(counted: GameRecord[]): PowerStats {
         tallies.set(player, tally);
       }
       tally.games++;
+      add(tally.survivalByRole[g.seats[seat].role], g.seats[seat].alive);
       playerAt.set(seat, tally);
       numberAt.set(seat, player);
     }
@@ -98,7 +142,15 @@ export function computePowers(counted: GameRecord[]): PowerStats {
       return r === null ? null : sideOf(r);
     };
 
+    let executedYet = false;
     for (const round of rounds(g)) {
+      const president = playerAt.get(round.president);
+      const presidentRole = role(round.president);
+      const answer = round.veto?.accepted;
+      if (president && presidentRole !== null && answer !== undefined && answer !== null) {
+        president.vetoes[presidentRole][answer ? "accepted" : "refused"]++;
+      }
+
       const power = round.power;
       if (power === null) continue;
       const user = playerAt.get(power.seat);
@@ -124,8 +176,18 @@ export function computePowers(counted: GameRecord[]): PowerStats {
         case "specialElection":
           if (user && userSide !== null) add(user.specialTeammate, side(power.target) === userSide);
           break;
-        default:
+        case "execute": {
+          const target = playerAt.get(power.target);
+          if (target) {
+            target.timesExecuted++;
+            if (!executedYet) target.executedFirst++;
+          }
+          executedYet = true;
+          if (!user || userSide === null) break;
+          add(user.fascistTargets[userSide], side(power.target) === "FASCIST");
+          if (role(power.target) === "HITLER") user.hitlerExecuted++;
           break;
+        }
       }
     }
   }
@@ -143,6 +205,18 @@ export function computePowers(counted: GameRecord[]): PowerStats {
       peeks: t.peeks,
       specialElections: t.specialTeammate.chances,
       specialTeammate: toRate(t.specialTeammate),
+      executions: t.fascistTargets.LIBERAL.chances + t.fascistTargets.FASCIST.chances,
+      fascistTargets: { LIBERAL: toRate(t.fascistTargets.LIBERAL), FASCIST: toRate(t.fascistTargets.FASCIST) },
+      hitlerExecuted: t.hitlerExecuted,
+      timesExecuted: t.timesExecuted,
+      executedFirst: t.executedFirst,
+      vetoes: t.vetoes,
+      survival: toGamesRate(alive(t.survivalByRole)),
+      survivalByRole: {
+        LIBERAL: toGamesRate(t.survivalByRole.LIBERAL),
+        FASCIST: toGamesRate(t.survivalByRole.FASCIST),
+        HITLER: toGamesRate(t.survivalByRole.HITLER),
+      },
     });
   }
   return { byPlayer };
