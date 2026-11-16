@@ -767,7 +767,7 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-14b-game-records.md`](super
 Issue #31, the second half of the game recorder: the server stores every record Phase 14A hands over in SQLite exactly once, with player numbers in place of accounts, and serves every record from `GET /api/stats/games`, with the contract fixture the stats pages test against. It changes nothing on screen. It starts once Phase 14A has merged and merges after Phase 13, so the backups land before any record is written.
 
 - [x] `backend/src/main/java/server/stats/GameStore.java`: `players`, `games` and `game_seats`, player numbers, one write per game ID
-- [ ] `GameRecorder`: the sink, writing on its own thread; a record that fails waits for the next try
+- [x] `GameRecorder`: the sink, writing on its own thread; a record that fails waits for the next try
 - [ ] `SecretHitlerServer`: start-up (recording, the backup, the drop of a restored game that has a record, the sweep), the minute's retry and the shutdown's flush, each a method the tests call
 - [ ] `GET /api/stats/games`: cached until a record is saved or an account renamed, `ETag` and 304, gzip, 503, no account IDs; the dev server proxies `/api`
 - [ ] `frontend/src/stats/fixtures/recorded-games.json` from `./gradlew recordedGamesFixture`, checked against the spec's format
