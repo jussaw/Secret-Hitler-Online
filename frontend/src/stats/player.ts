@@ -1,4 +1,4 @@
-import { allStats } from "./allStats";
+import { allStats, playerSlice } from "./allStats";
 import type { HandCounts } from "./cards";
 import {
   compareByEnd,
@@ -16,7 +16,7 @@ import { ELO_START, PROVISIONAL_GAMES, type EloResult } from "./elo";
 import { playerName, sideOf, type GameRecord, type Outcome, type Role } from "./record";
 import { byRole } from "./roles";
 import { DECISIONS, type Decision } from "./timing";
-import { awardTrophies, speedDemonOf, trophyFacts, type Trophy } from "./trophies";
+import { trophiesOf, type Trophy } from "./trophies";
 import { buildStats, type StatsContext } from "./useStats";
 
 /**
@@ -25,9 +25,10 @@ import { buildStats, type StatsContext } from "./useStats";
  * `withoutPlayerFilter(stats)`; PLAYERS uses the whole filter. Every number comes from the stat
  * modules' `byPlayer` maps (through `allStats`), Elo, or the records themselves where no module
  * counts it (the counted games, dates, overall wins, CPU and recorded games, the latest games).
- * Pure: `now` is passed in.
+ * Pure: `now` and the time zone are passed in.
  *
- * This module imports nothing that reads the browser, so the browser tests can use it.
+ * It builds a context with `buildStats` (`useStats.ts`, whose `api.ts` loads `src/constants`), so
+ * the browser tests cannot import it.
  */
 
 /** Another player, by number and name. */
@@ -132,7 +133,8 @@ const seatOf = (record: GameRecord, player: number) => record.seats.findIndex((s
 /**
  * OVERVIEW's power ranking order, with ranks: settled players by rounded rating (`rankRows`, ties
  * to more games, then the name), then the provisional ones, unranked, by rounded rating, games and
- * name.
+ * name. The same rule as `computeOverview`'s `powerRanking` (`overview.ts`, Phase 17B's, which
+ * builds it inside a whole tab's numbers); `player.test.ts` holds the two to the same order.
  */
 function powerRanking(elo: EloResult, names: Map<number, string>): { player: number; rank: number | null }[] {
   const rated = Array.from(elo.ratings.values());
@@ -156,14 +158,19 @@ function powerRanking(elo: EloResult, names: Map<number, string>): { player: num
   return [...settled.map((row) => ({ player: row.player, rank: row.rank })), ...provisional.map((player) => ({ player, rank: null }))];
 }
 
-/** A person by number, named. */
-const person = (names: Map<number, string>, player: number): PersonLink => ({ player, name: nameOf(names, player) });
+/** A person from a module's people (`{ player, …counts }`), with their name, or null. */
+function named<T extends { player: number }>(names: Map<number, string>, person: T | null): (T & PersonLink) | null {
+  return person === null ? null : { ...person, name: nameOf(names, person.player) };
+}
 
-/** One player's numbers under `stats`' CPU toggle, whatever its player filter, seen at `now`. */
-export function computePlayer(stats: StatsContext, player: number, now: number): PlayerStats {
+/**
+ * One player's numbers under `stats`' CPU toggle, whatever its player filter, seen at `now` in
+ * `timeZone` (the viewer's by default).
+ */
+export function computePlayer(stats: StatsContext, player: number, now: number, timeZone?: string): PlayerStats {
   const ctx = withoutPlayerFilter(stats);
   const { names } = ctx;
-  const all = allStats(ctx, now);
+  const all = allStats(ctx, now, timeZone);
 
   // The counted games they sat in, oldest first, with their seat.
   const theirs: { record: GameRecord; seat: number }[] = [];
@@ -186,8 +193,7 @@ export function computePlayer(stats: StatsContext, player: number, now: number):
       return { id: record.id, endedAt: record.endedAt, role: record.seats[seat].role, result, outcome: record.outcome, cpu: hasCpu(record) };
     });
 
-  const facts = trophyFacts(ctx, all);
-  const trophies = awardTrophies(facts, ctx.counted.length, speedDemonOf(all, names)).get(player) ?? [];
+  const trophies = trophiesOf(ctx, all).get(player) ?? [];
 
   const rating = ctx.elo.ratings.get(player);
   let elo: PlayerStats["elo"] = null;
@@ -203,13 +209,7 @@ export function computePlayer(stats: StatsContext, player: number, now: number):
     elo = { rating: rating.rating, provisional: rating.provisional, rank, peak: rating.peak, history };
   }
 
-  const roles = all.roles.byPlayer.get(player);
-  const cards = all.cards.byPlayer.get(player);
-  const votes = all.votes.byPlayer.get(player);
-  const powers = all.powers.byPlayer.get(player);
-  const rivals = all.rivals.byPlayer.get(player);
-  const recs = all.records.byPlayer.get(player);
-  const timing = all.timing.byPlayer.get(player);
+  const { roles, cards, votes, powers, rivals, records: recs, timing } = playerSlice(all, player);
 
   const bySeats = roles
     ? Array.from(roles.bySize.entries())
@@ -268,16 +268,10 @@ export function computePlayer(stats: StatsContext, player: number, now: number):
       survival: powers?.survival ?? NO_GAMES_RATE,
     },
     people: {
-      mostPlayedWith: rivals?.mostPlayedWith ? { ...person(names, rivals.mostPlayedWith.player), games: rivals.mostPlayedWith.games } : null,
-      bestTeammate: rivals?.bestTeammate
-        ? { ...person(names, rivals.bestTeammate.player), wins: rivals.bestTeammate.wins, games: rivals.bestTeammate.games }
-        : null,
-      nemesis: rivals?.nemesis
-        ? { ...person(names, rivals.nemesis.player), losses: rivals.nemesis.losses, games: rivals.nemesis.games }
-        : null,
-      favouriteOpponent: rivals?.favouriteOpponent
-        ? { ...person(names, rivals.favouriteOpponent.player), wins: rivals.favouriteOpponent.wins, games: rivals.favouriteOpponent.games }
-        : null,
+      mostPlayedWith: named(names, rivals?.mostPlayedWith ?? null),
+      bestTeammate: named(names, rivals?.bestTeammate ?? null),
+      nemesis: named(names, rivals?.nemesis ?? null),
+      favouriteOpponent: named(names, rivals?.favouriteOpponent ?? null),
     },
     timing: Object.fromEntries(DECISIONS.map((kind) => [kind, timing?.decisions[kind].ms ?? null])) as Record<Decision, number | null>,
     latest,

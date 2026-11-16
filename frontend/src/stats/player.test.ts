@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_FILTER } from "./counting";
+import fixture from "./fixtures/recorded-games.json";
+import { computeOverview } from "./overview";
 import { computePlayer, computePlayersList, withoutPlayerFilter, type PlayerStats } from "./player";
-import { SAMPLE_NOW, sampleData, withRatings } from "./players/testStats";
+import { SAMPLE_NOW, sampleData, TZ, withRatings } from "./players/testStats";
+import { parseStatsData } from "./record";
 import { computeRivals } from "./rivals";
 import { buildStats } from "./useStats";
 
@@ -225,3 +228,32 @@ describe("computePlayersList", () => {
     expect(rows.find((r) => r.player === 1)!.games).toBe(5);
   });
 });
+
+describe("the power ranking", () => {
+  it("PLAYERS and a player's rank follow OVERVIEW's power ranking", () => {
+    const tied = withRatings(ctx, {
+      1: { rating: 1540, games: 6 },
+      2: { rating: 1560, games: 6 },
+      3: { rating: 1520, games: 6 },
+      4: { rating: 1540.4, games: 6 },
+      5: { rating: 1560, games: 5 },
+      6: { rating: 1700, games: 1 },
+    });
+    // Bo and Ed tie settled at 1560, Cy and Di tie provisional at 1520: each tie goes to more games.
+    const provisionalTie = withRatings(ctx, {
+      1: { rating: 1540, games: 6 },
+      2: { rating: 1560, games: 6 },
+      3: { rating: 1520.2, games: 3 },
+      4: { rating: 1519.8, games: 4 },
+      5: { rating: 1560, games: 5 },
+      6: { rating: 1700, games: 1 },
+    });
+    const fixtureCtx = buildStats(parseStatsData(JSON.parse(JSON.stringify(fixture))), DEFAULT_FILTER);
+    for (const stats of [ctx, tied, provisionalTie, fixtureCtx]) {
+      const overview = computeOverview(stats, SAMPLE_NOW, TZ).powerRanking;
+      expect(computePlayersList(stats).map((row) => row.player)).toEqual(overview.map((row) => row.player));
+      for (const row of overview) expect(computePlayer(stats, row.player, SAMPLE_NOW, TZ).elo!.rank, `player ${row.player}`).toBe(row.rank);
+    }
+  });
+});
+

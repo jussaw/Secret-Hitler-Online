@@ -24,4 +24,12 @@ describe("allStats", () => {
     expect(all.timing).toEqual(computeTiming(ctx.counted));
     expect(all.roles.byPlayer.size).toBe(6);
   });
+
+  it("counts RECORDS' periods in the zone it is given", () => {
+    const ctx = buildStats(sampleData(), DEFAULT_FILTER);
+    // 20:00 UTC is the next morning in Auckland, so the best weeks' and months' days differ from UTC's.
+    const auckland = allStats(ctx, SAMPLE_NOW, "Pacific/Auckland").records;
+    expect(auckland).toEqual(computeRecords(ctx.counted, ctx.elo, SAMPLE_NOW, "Pacific/Auckland"));
+    expect(auckland).not.toEqual(computeRecords(ctx.counted, ctx.elo, SAMPLE_NOW, "UTC"));
+  });
 });

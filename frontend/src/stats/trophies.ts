@@ -1,4 +1,4 @@
-import { allStats, type AllStats } from "./allStats";
+import { allStats, playerSlice, type AllStats } from "./allStats";
 import { compareNames, humanSeats, nameOf, rate, type Rate } from "./counting";
 import { ELO_START } from "./elo";
 import { fastestVoter } from "./timing";
@@ -191,12 +191,7 @@ export function trophyFacts(stats: StatsContext, all: AllStats): Map<number, Tro
 
   const out = new Map<number, TrophyFacts>();
   for (const player of players) {
-    const roles = all.roles.byPlayer.get(player);
-    const cards = all.cards.byPlayer.get(player);
-    const votes = all.votes.byPlayer.get(player);
-    const powers = all.powers.byPlayer.get(player);
-    const rivals = all.rivals.byPlayer.get(player);
-    const records = all.records.byPlayer.get(player);
+    const { roles, cards, votes, powers, rivals, records } = playerSlice(all, player);
     const rating = stats.elo.ratings.get(player);
     out.set(player, {
       games: roles?.games ?? 0,
@@ -221,8 +216,15 @@ export function speedDemonOf(all: AllStats, names: Map<number, string>): number 
   return fastestVoter(all.timing, names);
 }
 
-/** Every player with a counted game's trophies under `stats`' filter, seen at `now`. */
-export function computeTrophies(stats: StatsContext, now: number): Map<number, Trophy[]> {
-  const all = allStats(stats, now);
+/** Every player with a counted game's trophies, from `all`, the modules' results over `stats`. */
+export function trophiesOf(stats: StatsContext, all: AllStats): Map<number, Trophy[]> {
   return awardTrophies(trophyFacts(stats, all), stats.counted.length, speedDemonOf(all, stats.names));
+}
+
+/**
+ * Every player with a counted game's trophies under `stats`' filter, seen at `now` in `timeZone`
+ * (the viewer's by default; no trophy depends on it, but the modules' periods do).
+ */
+export function computeTrophies(stats: StatsContext, now: number, timeZone?: string): Map<number, Trophy[]> {
+  return trophiesOf(stats, allStats(stats, now, timeZone));
 }

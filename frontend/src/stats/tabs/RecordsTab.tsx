@@ -138,7 +138,7 @@ export function RecordsTab(props: { stats: StatsContext; now?: number; timeZone?
   const now = props.now ?? mountedAt;
   const zone = props.timeZone ?? viewerTimeZone();
   const records = useMemo(() => computeRecords(stats.counted, stats.elo, now, zone), [stats.counted, stats.elo, now, zone]);
-  const trophies = useMemo(() => trophyHolders(computeTrophies(stats, now), stats.names), [stats, now]);
+  const trophies = useMemo(() => trophyHolders(computeTrophies(stats, now, zone), stats.names), [stats, now, zone]);
   const { names } = stats;
   const empty = stats.counted.length === 0;
 
