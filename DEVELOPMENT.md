@@ -110,7 +110,7 @@ npm run preview       # serve dist/ on port 3000
 
 ### The stats pages' fixture
 
-`frontend/src/stats/fixtures/recorded-games.json` is what `GET /api/stats/games` would serve for 62 games played by CPU players, recorded as if twelve accounts held the seats. The stats pages' tests read it, and `RecordedGamesFixtureTest` checks it against the record's format, so the Java and TypeScript sides agree. After a change to the format, remake it from `backend/` and commit it with the change:
+`frontend/src/stats/fixtures/recorded-games.json` is what `GET /api/stats/games` would serve for 62 or more games played by CPU players, recorded as if twelve accounts held the seats. The stats pages' tests read it, and `RecordedGamesFixtureTest` checks it against the record's format, so the Java and TypeScript sides agree. After a change to the format, remake it from `backend/` and commit it with the change:
 
 ```bash
 ./gradlew recordedGamesFixture
