@@ -15,6 +15,8 @@ Requirements: Java 17 for the backend, Node.js 22.12 or newer for the frontend (
 
 The server backs up all lobbies to a SQLite file every minute (when something changed) and on shutdown, and restores them on start. The same file holds the accounts and sessions, in two tables of their own (`accounts` and `sessions`), written as they change, and a record of every game that ends or whose lobby times out, in three more (`players`, `games` and `game_seats`), each written once, on a thread of its own, just after its game. Set `DATABASE_PATH` to the file to use, for example `DATABASE_PATH=/tmp/sh-backup.db ./gradlew runLocal`. With it unset, the server logs one error and runs without persistence: accounts and records live in memory and go when it stops.
 
+At start, before anything else opens it, the server puts the file in SQLite's WAL mode (`PRAGMA journal_mode = WAL`), so a backup's read never blocks the server's writes; while it runs, `backup.db-wal` and `backup.db-shm` sit beside the file. A file that another process keeps busy is tried again for up to 5 s, after which the server logs an error and runs on in the file's old journal mode. Once it listens, the server logs `Secret Hitler Online is listening on port <port>.`, the line `devops/restore-db.sh` waits for.
+
 To see a local run's records, as the stats pages will read them:
 
 ```bash
@@ -22,8 +24,6 @@ curl -s localhost:4040/api/stats/games
 ```
 
 It needs no sign-in, and shows each player by number with their name now, never an account ID.
-
-At start, before anything else opens it, the server puts the file in SQLite's WAL mode (`PRAGMA journal_mode = WAL`), so a backup's read never blocks the server's writes; while it runs, `backup.db-wal` and `backup.db-shm` sit beside the file. A file that another process keeps busy is tried again for up to 5 s, after which the server logs an error and runs on in the file's old journal mode. Once it listens, the server logs `Secret Hitler Online is listening on port <port>.`, the line `devops/restore-db.sh` waits for.
 
 ## Backing up and restoring the database
 
