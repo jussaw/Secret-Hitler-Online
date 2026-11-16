@@ -107,11 +107,16 @@ export function EndingsTab({ stats }: { stats: StatsContext }): JSX.Element {
     <div className="endings-tab">
       <StatCard
         title="How games are won"
-        definition="Counted games by the number of players and how they ended."
+        definition="Counted games by the number of players, along the bottom, and how they ended."
         className="endings-wide"
         empty={none}
       >
-        <StackedBarChart bars={outcomeBars(endings)} colors={OUTCOME_COLORS} legend={OUTCOME_LABELS} label="How games are won" />
+        <StackedBarChart
+          bars={outcomeBars(endings)}
+          colors={OUTCOME_COLORS}
+          legend={OUTCOME_LABELS}
+          label="How games are won by the number of players"
+        />
       </StatCard>
       <StatCard
         title="Liberal win rate by player count"
@@ -178,6 +183,7 @@ export function EndingsTab({ stats }: { stats: StatsContext }): JSX.Element {
       <StatCard
         title="Most in one game"
         definition="Chaos policies, failed elections and vetoed agendas. Ties go to the earlier game."
+        className="endings-wide"
         empty={none}
       >
         <ul className="endings-list endings-most">

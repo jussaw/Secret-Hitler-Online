@@ -31,7 +31,7 @@ describe("EndingsTab", () => {
     const cards = Array.from(document.querySelectorAll("section"), (s) => s.querySelector("h3")!.textContent);
     expect(cards).toEqual(TITLES);
     for (const title of TITLES) expect(screen.getByRole("region", { name: title })).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "How games are won" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "How games are won by the number of players" })).toBeInTheDocument();
   });
 
   it("links each listed game to its page", () => {

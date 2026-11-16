@@ -1,9 +1,10 @@
-/* RIVALS: the four headline cards in a grid of columns at least 18em wide (one on phones), then
-   the four wide cards across the whole row. Every child has min-width: 0, so a long name wraps
-   inside its card, and the tables scroll inside theirs (PlayerMatrix.css). */
+/* RIVALS: the four headline cards in a grid of columns at least 22em wide (two on desktops and
+   wide windows, one on phones, so the four always fill their rows), then the four wide cards
+   across the whole row. Every child has min-width: 0, so a long name wraps inside its card, and
+   the tables scroll inside theirs (PlayerMatrix.css). */
 .rivals-tab {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 18em), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 22em), 1fr));
     gap: 16px;
     min-width: 0;
 }
@@ -36,7 +37,13 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* A rivalry's score stays on one line between its names. */
+.rivals-score {
+    white-space: nowrap;
+}
+
 /* The people's table reads left to right, names first in each cell. */
+.player-matrix.rivals-people th,
 .player-matrix.rivals-people td {
     text-align: left;
 }

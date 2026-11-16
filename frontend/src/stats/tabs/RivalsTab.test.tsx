@@ -54,13 +54,15 @@ describe("RivalsTab", () => {
       "Ann 3–2 Cy",
       "Ann 3–2 Cy",
     ]);
-    expect(within(screen.getByRole("region", { name: "Closest rivalry" })).getByText("5 games")).toHaveClass("rivals-figure");
+    const closest = screen.getByRole("region", { name: "Closest rivalry" });
+    expect(within(closest).getByText("5 games")).toHaveClass("rivals-figure");
+    expect(closest.querySelector(".rivals-score")).toHaveTextContent(/^3–2$/); // kept on one line
     expect(screen.getByText("No pair has 5 games together on the Fascist side yet.")).toBeInTheDocument();
   });
 
   it("puts the winner of a rivalry first, and an even one by name", () => {
     render(<RivalsTab stats={statsOf([...repeat(3, () => beats(4, 2)), ...repeat(3, () => beats(2, 4)), ...repeat(5, () => beats(5, 3))], true)} />);
-    const headline = (title: string) => within(screen.getByRole("region", { name: title })).getByText(/–/).textContent;
+    const headline = (title: string) => screen.getByRole("region", { name: title }).querySelector(".rivals-headline")!.textContent;
     expect(headline("Closest rivalry")).toBe("Bo 3–3 Di");
     expect(headline("Most lopsided rivalry")).toBe("Ed 5–0 Cy");
   });

@@ -31,6 +31,15 @@ describe("PlayerMatrix", () => {
     expect(within(rows[3]).getAllByRole("cell").map((c) => c.textContent)).toEqual(["", "", ""]);
   });
 
+  it("puts each name in a box that lets a long one wrap", () => {
+    render(<PlayerMatrix title="Opponents" players={[1, 2]} names={NAMES} cell={() => null} />);
+    const heads = [...screen.getAllByRole("columnheader"), ...screen.getAllByRole("rowheader")];
+    for (const head of heads) {
+      expect(head.firstElementChild).toHaveClass("player-matrix-name");
+      expect(head.querySelector(".player-matrix-name > .player-name")).not.toBeNull();
+    }
+  });
+
   it("never asks for the diagonal, and shows a cell's sub on its own", () => {
     const asked: [number, number][] = [];
     render(

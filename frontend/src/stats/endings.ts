@@ -110,10 +110,13 @@ export function smoothedLiberalRate(liberalWins: number, games: number): number 
   return (liberalWins + ELO_PRIOR) / (games + 2 * ELO_PRIOR);
 }
 
-/** One bar per size, `<seats> players`, its parts the four outcomes in `FINISHED_OUTCOMES` order. */
+/**
+ * One bar per size, labelled by its number of seats alone (so six labels fit under a phone's
+ * chart), its parts the four outcomes in `FINISHED_OUTCOMES` order.
+ */
 export function outcomeBars(stats: EndingStats): { label: string; parts: { key: string; value: number }[] }[] {
   return stats.bySize.map((size) => ({
-    label: `${size.seats} players`,
+    label: String(size.seats),
     parts: FINISHED_OUTCOMES.map((key) => ({ key, value: size.outcomes[key] })),
   }));
 }

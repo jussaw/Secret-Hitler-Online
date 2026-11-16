@@ -43,7 +43,8 @@ function RivalryLine({ rivalry, names }: { rivalry: Rivalry; names: Map<number, 
   return (
     <>
       <p className="rivals-headline">
-        <Plain player={first} names={names} /> {`${won}–${lost}`} <Plain player={second} names={names} />
+        <Plain player={first} names={names} /> <span className="rivals-score">{`${won}–${lost}`}</span>{" "}
+        <Plain player={second} names={names} />
       </p>
       <p className="rivals-figure">{plural(pair.opposed, "game")}</p>
     </>
@@ -54,6 +55,8 @@ function RivalryLine({ rivalry, names }: { rivalry: Rivalry; names: Map<number, 
 function PeopleTable({ rivals, names }: { rivals: RivalStats; names: Map<number, string> }): JSX.Element {
   const name = (player: number) => <PlayerName player={player} name={nameOf(names, player)} />;
   const cell = (content: ReactNode | null) => <td>{content ?? "—"}</td>;
+  /** A row's name, in PlayerMatrix's box, so it wraps on phones as the matrices' do. */
+  const rowName = (player: number) => <span className="player-matrix-name">{name(player)}</span>;
   return (
     <ScrollRegion label="People table">
       <table className="player-matrix rivals-people">
@@ -71,7 +74,7 @@ function PeopleTable({ rivals, names }: { rivals: RivalStats; names: Map<number,
             const { mostPlayedWith: most, nemesis, favouriteOpponent: favourite } = people;
             return (
               <tr key={player}>
-                <th scope="row">{name(player)}</th>
+                <th scope="row">{rowName(player)}</th>
                 {cell(most && <>{name(most.player)}{` · ${plural(most.games, "game")}`}</>)}
                 {cell(nemesis && <>{name(nemesis.player)}{` · lost ${nemesis.losses}`}</>)}
                 {cell(favourite && <>{name(favourite.player)}{` · won ${favourite.wins}`}</>)}

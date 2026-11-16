@@ -51,7 +51,7 @@ describe("how games end", () => {
       [7, 2, { LIBERAL_POLICIES: 0, HITLER_EXECUTED: 1, FASCIST_POLICIES: 1, HITLER_ELECTED: 0 }, 1],
     ]);
     expect(outcomeBars(e)[0]).toEqual({
-      label: "5 players",
+      label: "5",
       parts: [
         { key: "LIBERAL_POLICIES", value: 2 },
         { key: "HITLER_EXECUTED", value: 0 },
@@ -59,7 +59,7 @@ describe("how games end", () => {
         { key: "HITLER_ELECTED", value: 1 },
       ],
     });
-    expect(outcomeBars(e).map((b) => b.label)).toEqual(["5 players", "7 players"]);
+    expect(outcomeBars(e).map((b) => b.label)).toEqual(["5", "7"]);
   });
 
   it("rates Liberal wins per player count: raw from 5 games, smoothed at any count", () => {

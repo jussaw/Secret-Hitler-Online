@@ -1,10 +1,11 @@
-/* ENDINGS: the cards in RIVALS' grid (columns at least 18em wide, one on phones), How games are
-   won and the two finish lists across the whole row. Every child has min-width: 0, so a long name
-   wraps inside its card, and the tables scroll inside theirs (PlayerMatrix.css). App.css styles
-   every p and a, so these set their own sizes and margins. */
+/* ENDINGS: the cards in RIVALS' grid (columns at least 22em wide: two on desktops and wide
+   windows, one on phones), How games are won, Most in one game and the two finish lists across the
+   whole row, so the other four pair up. Every child has min-width: 0, so a long name wraps inside
+   its card, and the tables scroll inside theirs (PlayerMatrix.css) where they do not fit. App.css
+   styles every p and a, so these set their own sizes and margins. */
 .endings-tab {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 18em), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 22em), 1fr));
     gap: 16px;
     min-width: 0;
 }
@@ -42,7 +43,14 @@
     font-variant-numeric: tabular-nums;
 }
 
+.endings-list > li {
+    min-width: 0;
+}
+
 .endings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
     list-style: none;
     margin: 0;
     padding: 0;

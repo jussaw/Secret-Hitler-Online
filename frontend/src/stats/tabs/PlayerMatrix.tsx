@@ -26,10 +26,15 @@ const TONE_CLASS: Record<NonNullable<MatrixCell["tone"]>, string> = { ahead: "is
 /**
  * A player-by-player table (RIVALS' teammates, opponents and nominations): a row and a column per
  * player, each row's name held at the left while the rest scroll sideways inside the card
- * (`ScrollRegion`), the diagonal blank.
+ * (`ScrollRegion`), the diagonal blank. A long name wraps inside its box (`.player-matrix-name`)
+ * rather than widening its column.
  */
 export function PlayerMatrix({ title, players, names, cell }: PlayerMatrixProps): JSX.Element {
-  const name = (player: number) => <PlayerName player={player} name={nameOf(names, player)} />;
+  const name = (player: number) => (
+    <span className="player-matrix-name">
+      <PlayerName player={player} name={nameOf(names, player)} />
+    </span>
+  );
   return (
     <ScrollRegion label={`${title} table`}>
       <table className="player-matrix">
