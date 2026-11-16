@@ -89,7 +89,7 @@ export function replayElo(counted: GameRecord[]): EloResult {
   for (const record of [...counted].sort(compareByEnd)) {
     const size = record.seats.length;
     const earlier = tally.get(size) ?? { wins: 0, games: 0 };
-    const h = handicap(earlier.wins, earlier.games);
+    const fascistHandicap = handicap(earlier.wins, earlier.games);
 
     const liberal: number[] = [];
     const fascist: number[] = [];
@@ -98,11 +98,11 @@ export function replayElo(counted: GameRecord[]): EloResult {
       (sideOf(seat.role) === "LIBERAL" ? liberal : fascist).push(rated ? rated.rating : ELO_START);
     });
     const liberalWon = record.winner === "LIBERAL";
-    const e = expectedLiberal(mean(liberal), mean(fascist), h);
-    const d = eloChange(e, liberalWon);
+    const expected = expectedLiberal(mean(liberal), mean(fascist), fascistHandicap);
+    const liberalChange = eloChange(expected, liberalWon);
 
     for (const { seat, player } of humanSeats(record)) {
-      const change = sideOf(record.seats[seat].role) === "LIBERAL" ? d : -d;
+      const change = sideOf(record.seats[seat].role) === "LIBERAL" ? liberalChange : -liberalChange;
       const before = ratings.get(player);
       const rating = (before ? before.rating : ELO_START) + change;
       ratings.set(player, {
@@ -116,7 +116,7 @@ export function replayElo(counted: GameRecord[]): EloResult {
     }
 
     tally.set(size, { wins: earlier.wins + (liberalWon ? 1 : 0), games: earlier.games + 1 });
-    games.set(record.id, { gameId: record.id, expectedLiberal: e, handicap: h, liberalChange: d });
+    games.set(record.id, { gameId: record.id, expectedLiberal: expected, handicap: fascistHandicap, liberalChange });
     const after = new Map<number, number>();
     ratings.forEach((r, player) => after.set(player, r.rating));
     history.push({ gameId: record.id, endedAt: record.endedAt, ratings: after });

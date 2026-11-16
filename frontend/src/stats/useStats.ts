@@ -33,7 +33,7 @@ export const STATS_CACHE_SIZE = 8;
 const cache = new WeakMap<StatsData, Map<string, StatsContext>>();
 
 /** The context for `data` at `search`, built once per filter and kept for the next caller. */
-function lookup(data: StatsData, search: string): StatsContext {
+function cachedStats(data: StatsData, search: string): StatsContext {
   let contexts = cache.get(data);
   if (!contexts) {
     contexts = new Map();
@@ -62,5 +62,5 @@ function lookup(data: StatsData, search: string): StatsContext {
 export function useStats(): StatsContext | null {
   const { data } = useStatsData();
   const { search } = useLocation();
-  return useMemo(() => (data ? lookup(data, search) : null), [data, search]);
+  return useMemo(() => (data ? cachedStats(data, search) : null), [data, search]);
 }
