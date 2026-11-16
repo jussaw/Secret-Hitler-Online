@@ -455,9 +455,12 @@ keeps credit to upstream and to the board game's creators.
   as `PlayerName`s, above the link's area, and the seat and round counts sit outside it, so no
   anchor wraps a name; a subgrid of the row's columns on desktop, of its first three rows on
   phones) and `GamesPage` (the filter card: Players with a grey chip per chosen player, `Remove
-  <name>`, and Add a player; From and To, whose typed day reaches the address once its year is
-  whole; Seats, Ending and CPU players; Clear filters; then the summary line with Games a page, the
-  rows or "No games match these filters.", and the `Pages` nav; unknown player numbers are dropped,
+  <name>`, and Add a player; From and To, whose typed day reaches the address once it is a whole
+  day, its year from 1000, and typing has paused, or on Enter or leaving the field, so a day typed
+  part by part is one step back; Seats, Ending and CPU players; Clear filters, which keeps the page
+  size; then the summary line with Games a page, the
+  rows, an `ol` with `role="list"`, or "No games match these filters.", and the `Pages` nav, whose
+  Previous and Next with nowhere to go are disabled links; unknown player numbers are dropped,
   a page past the last shows the last, every control but a page link goes back to page 1, and a
   new page of the same filter scrolls the summary into view). `GamesPage.css` lays the controls in
   two columns in the phone-only query (From and To one each below 360px wide) and makes every
@@ -703,8 +706,9 @@ keeps credit to upstream and to the board game's creators.
   card and, signed in, a twelve-character name and `LONGEST_DISCORD_NAME` (32 m's, Discord's
   widest; "signed in, short Discord name" puts Sign out on the line just under CHANGE NAME). The
   thinnest fits are the signed-in login page at 800x700, about 6px to spare, and on phones at
-  360x740 on Linux, where the widest Discord username takes three lines, also about 6px
-  (`LoginScreen.css`): an added line fails there first. `lobby-switch.spec.ts` (`desktop`
+  360x740 on Linux, where the widest Discord username takes three lines and the footer's links
+  two, about 10px, from the phone page's 8px bottom padding (`LoginScreen.css`): an added line
+  fails there first. `lobby-switch.spec.ts` (`desktop`
   and `phone-360`) plays the seat switch in a real lobby: watching instead and playing instead, a
   full lobby, a taken name (a first sign-in from watching gets CHOOSE A NAME over the lobby, which
   refuses the host's name), the host passing on, reloads, the grace window, and a game started

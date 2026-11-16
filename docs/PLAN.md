@@ -821,7 +821,7 @@ Issue #31: GAMES at `/stats/games`, every recorded game, newest first, with its 
 - [x] The links in: Stats in the login page's and the lobby's footers, See this game on the victory screen
 - [x] `frontend/e2e/stats-games.spec.ts`: GAMES fits every tested size, names stay in their columns at 320px, filters and pages go through the address, and a real game shows up in GAMES and its victory link opens it
 - [ ] `CLAUDE.md`, `README.md` and `DEVELOPMENT.md` describe GAMES and the links in; the pull request shows the footers, the victory screen and GAMES before and after
-- [ ] Every finding of the whole-branch review fixed, Minor ones included
+- [x] Every finding of the whole-branch review fixed, Minor ones included
 
 **Phase 15B acceptance**
 
