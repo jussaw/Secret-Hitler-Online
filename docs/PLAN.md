@@ -58,6 +58,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 21B. RECORDS | `phase-21b-records` | planned |
 | 22A. Trophies and name links | `phase-22a-trophies-links` | planned |
 | 22B. Player pages | `phase-22b-player-pages` | planned |
+| 23. One header for the site | `phase-23-site-header` | planned |
 
 ---
 
@@ -1061,6 +1062,25 @@ Issue #31, its last phase: PLAYERS lists every player with counted games by Elo,
 - [ ] PR merged into `development`
 - [ ] The user browses the stats on the deployed build, on a desktop and on a phone: PLAYERS, their own page and its trophies, a name followed from GAMES, and a game page's Elo change
 - [ ] The user closes issue #31 once every phase (13 to 22B) is merged
+
+---
+
+## Phase 23: One header for the site
+
+Added after Phases 13 to 22B were planned. The stats pages' top bar (SECRET-HITLER and STATS · GAMES · PLAYERS · PLAY) becomes the header of the login page and the lobby too, so the stats are reached from the top of every page instead of a footer link. Starts once Phase 22B has merged, when the stats header is final. The step-by-step breakdown is written to `docs/superpowers/plans/` when the phase starts.
+
+- [ ] One shared header component, taken from 15A's `StatsHeader`, used by the stats pages, the login page and the lobby; the game page keeps its own header
+- [ ] Login page: the shared header, with PLAY marked as the current page (`aria-current="page"`, the tab row's current look); the footer's "Stats" link removed; the header's sound control removed (sounds stay in the lobby and the game)
+- [ ] Lobby: the shared header, with its sound control and spectator count kept; the footer's "Stats" link removed; the victory screen's "See this game" stays
+- [ ] The login page and the lobby still fit one screen at every tested size and keep 44px targets on phones (the cards' spacing re-fitted, checked with Linux fonts in the Playwright image)
+- [ ] Browser and unit tests updated: the header on each page, PLAY current on the login page, no speaker on the login page, no footer "Stats" link
+- [ ] `CLAUDE.md`, `README.md` (screenshots in `docs/images/` if the login page or lobby look different) and `DEVELOPMENT.md` updated; the pull request shows the login page and the lobby before and after, on desktop and on a phone
+
+**Phase 23 acceptance**
+
+- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [ ] PR merged into `development`
+- [ ] The user opens the deployed build on a desktop and a phone and moves between the login page, the lobby and the stats with the header
 
 ---
 
