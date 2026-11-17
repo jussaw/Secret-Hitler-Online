@@ -3,6 +3,8 @@ package server;
 import game.datastructures.Identity;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
+import io.javalin.http.Handler;
+import io.javalin.http.NotFoundResponse;
 import io.javalin.http.staticfiles.Location;
 import io.javalin.websocket.WsCloseContext;
 import io.javalin.websocket.WsConnectContext;
@@ -28,6 +30,7 @@ import server.stats.StatsRoutes;
 import server.util.Lobby;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.sql.*;
 
 import java.text.SimpleDateFormat;
@@ -198,22 +201,60 @@ public class SecretHitlerServer {
         return createApp("/public");
     }
 
+    /** A classpath resource's text (UTF-8). */
+    private static String readResource(String path) {
+        try (InputStream in = SecretHitlerServer.class.getResourceAsStream(path)) {
+            return new String(Objects.requireNonNull(in, path).readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Could not read " + path, e);
+        }
+    }
+
+    /**
+     * The stats pages' roots: the tabs under {@code /stats}, GAMES and each game under
+     * {@code /games}, PLAYERS and each player under {@code /players}.
+     */
+    static final List<String> PAGE_ROOTS = List.of("/stats", "/games", "/players");
+
+    /**
+     * Whether {@code path} is a stats page's: one of {@link #PAGE_ROOTS} or a path under one, by
+     * whole segments, so {@code /gamesx} is not, and neither is the players' socket, {@code /game}.
+     */
+    static boolean isPagePath(String path) {
+        for (String root : PAGE_ROOTS) {
+            if (path.equals(root) || path.startsWith(root + "/")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * Builds the server's app as {@code createApp()} does, serving the frontend from the
      * classpath directory {@code frontendDir}. When that directory has an {@code index.html},
-     * every path under {@code /stats} that no route or file answers is answered with it
-     * (Javalin's single-page fallback, for GETs that ask for HTML), so a reload or a link to
-     * any stats page works. Package-private for StatsFallbackTest.
+     * every stats page's path ({@link #isPagePath}) that no route or file answers is answered
+     * with it (Javalin's single-page fallback, for GETs that ask for HTML), so a reload or a link
+     * to any stats page works. Package-private for StatsFallbackTest.
      */
     static Javalin createApp(String frontendDir) {
         return Javalin.create(config -> {
             // Serve the built frontend when it was bundled into the jar (see build.gradle).
-            // Javalin refuses to start if a classpath static directory is missing, and the
-            // fallback refuses a missing file.
+            // Javalin refuses to start if a classpath static directory is missing.
             String indexHtml = frontendDir + "/index.html";
             if (SecretHitlerServer.class.getResource(indexHtml) != null) {
                 config.staticFiles.add(frontendDir, Location.CLASSPATH);
-                config.spaRoot.addFile("/stats", indexHtml, Location.CLASSPATH);
+                // Javalin's fallback matches a root by its start alone ("/games" would take
+                // "/gamesx"), so each root's handler checks the whole segment itself.
+                String page = readResource(indexHtml);
+                Handler servePage = ctx -> {
+                    if (!isPagePath(ctx.path())) {
+                        throw new NotFoundResponse();
+                    }
+                    ctx.html(page);
+                };
+                for (String root : PAGE_ROOTS) {
+                    config.spaRoot.addHandler(root, servePage);
+                }
             }
             // The frontend is served from this same origin, so CORS is only needed when a
             // separately hosted dev frontend calls the server directly (debug mode). Outside
