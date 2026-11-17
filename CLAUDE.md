@@ -112,6 +112,9 @@ keeps credit to upstream and to the board game's creators.
   `Lobby.rename` (refused while seated) changes only the name packets show (`LobbyRenameTest`).
   Packets keep their shape (`usernames` and `icon` by name, game packets by seat name), and every
   player's packet adds `you`, their name or, in a game, their seat's; a spectator's gets none.
+  Every lobby packet, a player's or a spectator's, adds `bots` (#70), the names of the CPU players
+  a game started now would seat (`Bot 1`, `Bot 2`, …), so a page never counts or names them (the
+  host's stepper works out only its own limits from the people).
   Every game packet, a player's or a spectator's, the victory packet included, carries `gameId`,
   the running game's record ID (`Lobby.gameId()`, not a secret): `GameToJSONConverter.convert(game,
   name, gameId)` and `convertForSpectator(game, gameId)` put it in (org.json leaves a null out),
@@ -141,7 +144,23 @@ keeps credit to upstream and to the board game's creators.
   only players with a live connection: an account still inside the 3 s grace window after a
   disconnect is dropped from `activeAccounts`, `accountToName` and `accountToIcon` (its preferred
   portrait is kept), so no seat is made for someone who cannot take it, and a start that fails
-  leaves the lobby untouched (`LobbyStartTest`). A player who rejoins a running game after that
+  leaves the lobby untouched (`LobbyStartTest`). The host (`Lobby.isHost`, the first of
+  `activeAccounts`) chooses how many CPU players join (#70) with `set-bot-count` (`count`, a
+  number, `PARAM_BOT_COUNT`). Another player's closes their socket with 1002, as a command they
+  may not make does, a spectator's is dropped as every command of theirs but `ping` and
+  `get-state` is, and the host's once a game runs (a press just after START GAME) is logged and
+  dropped with no OK, as a late END TERM is (`setBotCount` itself throws in a game).
+  `Lobby.chosenBots` is the host's aim, transient and null for the fewest that make `MIN_PLAYERS`:
+  a new lobby's, one restored from a backup, and any pick at the fewest or below (`setBotCount`
+  stores null then), which so goes on following the fewest as people come and go. Every read
+  moves the aim into the range for the people (`botsFor(choice, people)`: from `max(0,
+  MIN_PLAYERS − people)` to `MAX_PLAYERS − people`), and nothing else changes it: a join takes a
+  bot's seat only when the table would pass ten, a leave adds a bot only when it would fall below
+  five, and the host's number comes back when the people allow it, after a game too. Bots never
+  fill the lobby: `isFull` counts people only. `startNewGame` seats `botNames(botsFor(chosenBots,
+  seated))`, the names the lobby packet showed, worked out for the people seated after the grace
+  window's are dropped (`LobbyBotCountTest`, `BotCountServerTest`). `LobbyTesting` also has the
+  lobby tests' shared `strings(JSONArray)` and `waitForUserCount`. A player who rejoins a running game after that
   window, or after a restore from a backup (`activeAccounts` is transient, so a restored lobby has
   no one in it), goes back at the end of `activeAccounts`, and to their seat by account: the lobby
   counts them at once, and lists and seats them when the game ends. So a host back after the
@@ -861,7 +880,8 @@ keeps credit to upstream and to the board game's creators.
   (an outline, held steady with reduced motion) while the countdown runs. It stands just above END
   TERM on desktop and in tall windows, in the room the table keeps there beside the tracker, and
   at its right on phones, so it moves nothing.
-  `RosterRow` (`src/game/`) draws one row and is shared by `PlayerRoster` and `LobbyRoster`.
+  `RosterRow` (`src/game/`) draws one row and is shared by `PlayerRoster` and `LobbyRoster`
+  (whose bots take its `bot` option).
   `usePlayerRows` (`src/player/`) is the per-player state the roster rows and the prompts' card
   tiles share. Desktops get the roster as a column at the left, the tracker over the boards, and
   END TERM, the counts box, the draw pile and the discard pile in a column beside them, on one
@@ -892,9 +912,13 @@ keeps credit to upstream and to the board game's creators.
   with About this project and Report a bug, each in a new tab, so the lobby stays open; the lobby
   keeps its own header, `App-header`, with the spectator count and the speaker),
   `LobbyRoster` (a `RosterRow` per player, `Picking a look…`
-  for a player on the default portrait, HOST on the host's row), `lobbyStatus` (a pure function from
-  the usernames, portraits and viewer to the status line; it names who START GAME waits for and says
-  when bots fill the table), `joinError` (`joinErrorMessage`, `CONTACT_ERROR`, `CONNECT_ERROR`: the
+  for a player on the default portrait, HOST on the host's row, then, for every viewer, a row per
+  name in the lobby packet's `bots`, a `RosterRow` with `bot` (`li.roster-row.is-bot` with
+  `data-bot` in place of `data-player`, so a person's size in every layout, dashed by an outline
+  drawn inside the row, with Lucide's `Bot` in place of a portrait)), `lobbyStatus` (a pure function from the usernames, portraits, viewer and
+  the number of bots to the status line; it names who START GAME waits for and says how many bots
+  will join: "4 players. 2 bots will join to make 6." for the host, "Waiting for Ann to start. 2
+  bots will join." for the others), `joinError` (`joinErrorMessage`, `CONTACT_ERROR`, `CONNECT_ERROR`: the
   `/check-login` messages JOIN and PLAY INSTEAD share, 401 "Sign in to play." and 403 "You're
   already in this lobby in another tab or window." among them), `normalizeName` (runs of whitespace
   made one space, then trimmed, as the server's `Usernames.normalize` does: the name prompt saves
@@ -904,8 +928,19 @@ keeps credit to upstream and to the board game's creators.
   column, so the roster cannot drift between the lobby and the game; `LobbyScreen.css` holds only
   what the lobby has (and the login page shares), with its own phone-only and tall-window blocks
   written out as in the game's files. With ten players and the longest status it fits one screen at
-  the same sizes the game does, for every kind of viewer. The buttons: the host gets START GAME (off
-  until every player has picked a look); every player gets CHANGE NAME (the CHANGE NAME prompt,
+  the same sizes the game does, for every kind of viewer. The roster's heading counts every seat,
+  bots too (`6 / 10`), while the full lobby's note and PLAY INSTEAD count people only, since a bot
+  gives its seat up to a person. The buttons: the host gets the bot stepper (`BotStepper`, a
+  `role="group"` "Bots": Lucide's `Minus`, "Fewer bots", the count and its word, `2 BOTS`, and
+  `Plus`, "More bots"; − off at the fewest bots that make five and + at the most that keep ten,
+  each press sending `set-bot-count` with one fewer or more; the stepper shows the count it asked
+  for until the next lobby packet, a new `bots`, answers, so a second quick press steps on from
+  the first, while the roster's rows follow the packets alone; App's `onClickSetBots`) at the
+  left of START GAME (off until every player has picked a look) on one row, `.lobby-start-row`,
+  as tall as START GAME's face (on phones the stepper's buttons fill its height, 44px wide at
+  least, and START GAME takes the rest). START GAME never shrinks below its label: where the two
+  do not fit, the row wraps and the stepper takes a line of its own above it; every player gets
+  CHANGE NAME (the CHANGE NAME prompt,
   which starts from the roster's name, `nameToChange`), CHANGE LOOK, WATCH INSTEAD and LEAVE LOBBY
   (`.lobby-player-buttons`: a wrapping centred row on desktop and in tall windows, two rows of two
   on phones); a signed-in spectator gets PLAY INSTEAD (off when the lobby is full) and LEAVE LOBBY;
@@ -1009,21 +1044,24 @@ keeps credit to upstream and to the board game's creators.
   lobby there; the login page fits without scrolling in each of `LOGIN_STATES`, with 44px targets
   (SIGN IN WITH DISCORD, TEST SIGN-IN, CHANGE NAME and Sign out among them, and the header's links,
   `smallLinks` in `e2e/layout.ts`), 16px field text and unwrapped button labels; the lobby tests (the lobby fits without scrolling for each of
-  `longestLineViewers`' six viewers, each with its note, with 44px targets and 16px field text,
+  `longestLineViewers`' seven viewers, each with its note, with 44px targets, 16px field text and
+  bot rows a person's row's size (`botRowMismatches`),
   the roster first, the busy bubble at 320px, and `checkNamePrompt` for CHOOSE A NAME on the login
   page and over the lobby, after which PLAY INSTEAD takes a seat at once, and for CHANGE NAME on the
   login page and in the lobby: 44px targets, 16px field text, unwrapped labels, both buttons on one
   row and twelve characters at most); and a phone held sideways gets the phone layout).
-  `no-scroll.spec.ts` also has a lobby test, for the same six viewers, each one's buttons checked
-  by label (`actionLabels`), a spectator's note by its text, and the buttons 44px targets at every
+  `no-scroll.spec.ts` also has a lobby test, for the same seven viewers, each one's buttons checked
+  by label (`actionLabels`, an icon-only button by its accessible name), a spectator's note by its
+  text, its roster rows and bot rows (`botRowMismatches`), and the buttons 44px targets at every
   size, and a login page test per state (the header, the cards and the footer in order, 44px
   targets, the header's links among them, and 16px field text, and Sign out's box clear of CHANGE
   NAME's, `accountTargets`), both at
-  `DESKTOP_SIZES`, `SQUARE_DESKTOPS` and the `NARROW_WINDOWS`. The viewers are the host and a guest
-  (the four player buttons), a signed-in spectator (PLAY INSTEAD, off in the full lobby) and two
-  signed-out ones, on a server with Discord sign-in and one without (`/me` stubbed), all in the
-  full lobby; and a signed-in spectator of a lobby of nine, with the longest line too, whose PLAY
-  INSTEAD's `/check-login` failed: its note, `CONTACT_ERROR`, is the longest a spectator gets (one
+  `DESKTOP_SIZES`, `SQUARE_DESKTOPS` and the `NARROW_WINDOWS`. The viewers are the host (the bot
+  stepper, both off at ten people, and START GAME) and a guest (the four player buttons), a
+  signed-in spectator (PLAY INSTEAD, off in the full lobby) and two signed-out ones, on a server
+  with Discord sign-in and one without (`/me` stubbed), all in the full lobby; and, in a lobby of
+  nine people and the bot its host's stepper added (ten seats), its host and a signed-in
+  spectator, with the longest lines too, whose PLAY INSTEAD's `/check-login` failed: its note, `CONTACT_ERROR`, is the longest a spectator gets (one
   line on desktop, with 220px or more to spare; two on phones, with 170px to spare at 360x740 and
   27px at 320x568, on Linux too). The login tests open the page with `longestLogin(page, state)`
   (`e2e/lobby.ts`): each state at its fullest from stubbed requests, the longest error under every
@@ -1191,8 +1229,10 @@ keeps credit to upstream and to the board game's creators.
   anything that does (`api.ts`, `App`): it
   reads `window` when it loads, which throws in Playwright's Node process; specs build stats paths
   with `routePath`. Shared helpers are `e2e/lobby.ts`
-  (`waitForPlayers`, `joinGuests`, with `pickLooks` false for guests who stay on the default
-  portrait, `joinLobby`, `pickPortrait`, `longestLineLobby`, `longestLineViewers`, `actionLabels`,
+  (`waitForPlayers`, which counts the roster's people, `PEOPLE_ROWS`, since the heading counts
+  bots too, `botRowMismatches`, `joinGuests`, with `pickLooks` false for guests who stay on the
+  default portrait, `joinLobby`, `pickPortrait`, `longestLineLobby`, `longestLineViewers`,
+  `actionLabels`,
   `longestLogin`, `accountTargets`, `lobbyStatusCard`, `waitForPrompt`, `watchLobby`, and
   `codeField`, the login page's one field), `e2e/accounts.ts`, `e2e/layout.ts` (`wrappedLabels` and
   `smallTargets`, which measure links drawn as buttons, `.button-link`, too, `smallLinks` for plain
@@ -1349,12 +1389,13 @@ no trailing period, at most 72 characters. Scopes in use: `frontend`, `backend`,
 
 ## Constraints
 
-- No new art (the header's speaker icons and the spectator count's eye come from the Lucide icon
-  pack). Sound clips are CC0 only and listed in `docs/SOUND-CREDITS.md`.
+- No new art (the header's speaker icons, the spectator count's eye and the lobby's `Bot`,
+  `Minus` and `Plus` come from the Lucide icon pack). Sound clips are CC0 only and listed in `docs/SOUND-CREDITS.md`.
 - The WebSocket protocol stays backward compatible for spectators. Players need a signed-in
   session (accounts), and their packets only add fields (`you`); spectator support only adds
-  fields and a query parameter, the END TERM countdown only adds `termTimer` and two commands, and
-  recording games only adds `gameId` to every game packet.
+  fields and a query parameter, the END TERM countdown only adds `termTimer` and two commands,
+  recording games only adds `gameId` to every game packet, and the host's bot count only adds
+  `bots` to every lobby packet and the host's `set-bot-count` command.
 - Never set `TEST_SIGN_IN` in the `Dockerfile` or CI's image job (the backup test sets it only on
   its own `docker run`), and never log a session token,
   an OAuth code, an access token or the Discord client secret, or put one in a URL or a file.
