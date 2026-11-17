@@ -160,7 +160,9 @@ export function playerName(data: StatsData, player: number): string;
   GAMES and the ten latest games), `game/GamePage.tsx` (until Phase 16: the game's header line from
   `outcomeLabel` and its seats), `players/PlayersPage.tsx` and `players/PlayerPage.tsx` (until Phase
   22: one `StatCard`-like box saying "Coming in a later update.").
-- `StatsHeader.tsx`: SECRET-HITLER and STATS · GAMES · PLAYERS · PLAY.
+- `StatsHeader.tsx`: SECRET-HITLER and STATS · GAMES · PLAYERS · PLAY. (Since Phase 23 it draws
+  the site header, `src/header/SiteHeader.tsx`, shared with the login page: PLAY · STATS · GAMES ·
+  PLAYERS.)
 - `PlayerName.tsx`: `<PlayerName player={number | null} name={string} role?={Role} />`, the one
   way any page shows a seat's or player's name (coloured by role when given; Hitler underlined).
   Plain text until Phase 22 makes a non-null `player` a link to `/stats/players/<number>`.

@@ -1069,7 +1069,7 @@ Issue #31, its last phase: PLAYERS lists every player with counted games by Elo,
 
 Breakdown: [`docs/superpowers/plans/2026-11-16-phase-23-site-header.md`](superpowers/plans/2026-11-16-phase-23-site-header.md) · Spec: [`docs/superpowers/specs/2026-11-15-game-stats-design.md`](superpowers/specs/2026-11-15-game-stats-design.md), "The header" and "The links in"
 
-Added after Phases 13 to 22B were planned. The stats pages' top bar (SECRET-HITLER and STATS · GAMES · PLAYERS · PLAY) becomes the login page's header too, so the stats are reached from the top of the home page instead of a footer link. The lobby keeps its own header. Planned to start once Phase 22B had merged, when the stats header is final; it runs beside 22B instead, since 22B does not touch the header.
+Added after Phases 13 to 22B were planned. The stats pages' top bar (SECRET-HITLER and STATS · GAMES · PLAYERS · PLAY) becomes the login page's header too, with PLAY moved first (PLAY · STATS · GAMES · PLAYERS, the user's choice after the review), so the stats are reached from the top of the home page instead of a footer link. The lobby keeps its own header. Planned to start once Phase 22B had merged, when the stats header is final; it runs beside 22B instead, since 22B does not touch the header.
 
 - [x] One shared header component, taken from 15A's `StatsHeader`, used by the stats pages and the login page; the lobby and the game page keep their own headers
 - [x] Login page: the shared header, with PLAY marked as the current page (`aria-current="page"`, the tab row's current look); the footer's "Stats" link removed; the header's sound control removed (sounds stay in the lobby and the game)

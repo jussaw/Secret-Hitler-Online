@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** The stats pages' header (SECRET-HITLER and STATS · GAMES · PLAYERS · PLAY) becomes the
+**Goal:** The stats pages' header (SECRET-HITLER and STATS · GAMES · PLAYERS · PLAY; PLAY first since the review) becomes the
 login page's header too, with PLAY marked current, so the stats are reached from the top of the
 home page; the login page and the lobby lose their footer "Stats" links, and the login page its
 sound control.
@@ -43,6 +43,9 @@ what players see or use beyond it.
   PLAY honestly, and the rename landed on its own (`fix(frontend): name the site header's
   navigation "Site"`).
 - **PLAY's look:** the user confirmed the underline after the review.
+- **PLAY first:** after the review the user asked for PLAY · STATS · GAMES · PLAYERS on every page
+  with the header (`fix(frontend): put PLAY first in the site header`, test first: the header's
+  links in that order on a stats page and on the login page).
 - **On the login page every header link is a plain `<a>`:** STATS, GAMES and PLAYERS load the stats
   in the same tab (the login page has nothing to keep open, as for the old footer link), and PLAY,
   the current page, loads `/` again. On the stats pages STATS, GAMES and PLAYERS stay `StatsLink`s
@@ -81,8 +84,8 @@ line there without "Stats"). Signed out at 360x740: 38.9 → 15.6px. The header:
   update."`, `/stats/players…`), or `src/stats/StatsApp.tsx`. If 22B merges first and a rebase
   conflicts in those two test files, keep both phases' lines and re-run them; a conflict in any
   other source file: stop and report.
-- **Copy, exactly.** Header: `SECRET-HITLER`; links `STATS` (`/stats`), `GAMES` (`/stats/games`),
-  `PLAYERS` (`/stats/players`), `PLAY` (`/`); nav `aria-label="Site"`. Login footer's first
+- **Copy, exactly.** Header: `SECRET-HITLER`; links, in order, `PLAY` (`/`), `STATS` (`/stats`),
+  `GAMES` (`/stats/games`), `PLAYERS` (`/stats/players`); nav `aria-label="Site"`. Login footer's first
   line: `How to play · About this project · Report a bug`. Lobby footer: `About this project · Report
   a bug`. Every other line of both pages is unchanged.
 - **Download.** The header's paths come from `src/constants`, never from `src/stats/`; the game's
@@ -235,7 +238,7 @@ line there without "Stats"). Signed out at 360x740: 38.9 → 15.6px. The header:
   `.login-screen`, and the comments say the login page shares the page, not the header.
 
 - [ ] **Step 1: Write the failing unit tests** in `LoginScreen.test.tsx`: `theHeaderMarksPlay` (the
-  banner holds `SECRET-HITLER` and the nav "Site" with STATS, GAMES, PLAYERS and PLAY;
+  banner holds `SECRET-HITLER` and the nav "Site" with PLAY, STATS, GAMES and PLAYERS;
   `document.querySelectorAll('[aria-current="page"]')` is PLAY alone); `noSoundControl` (no button
   `Mute sounds`, no `.sound-control`); the footer test becomes "the footer links to the rules, the
   project and its issues": first line `/^How to play · About this project · Report a bug$/`, no link
