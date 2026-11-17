@@ -111,11 +111,11 @@ test("All N games opens GAMES filtered to the player", async ({ page }) => {
 test("the player page's CPU switch counts CPU games", async ({ page }) => {
   await open(page, routePath({ page: "player", number: busiest }));
   const line = page.locator(".player-summary");
-  await expect(line).toContainText(/ · \+\d+ with CPU players, not counted · /);
+  await expect(line).toContainText(/ · \+\d+ with Bots, not counted · /);
   const before = Number((await line.textContent())!.match(/^(\d+) games/)![1]);
   await page.getByRole("switch", { name: "Include games with Bots" }).click();
   await expect(page).toHaveURL(/[?&]cpu=1$/);
-  await expect(line).not.toContainText("with CPU players");
+  await expect(line).not.toContainText("with Bots");
   const after = Number((await line.textContent())!.match(/^(\d+) games/)![1]);
   expect(after, "the CPU games now counted").toBeGreaterThan(before);
 });

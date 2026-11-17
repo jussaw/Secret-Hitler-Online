@@ -180,7 +180,7 @@ describe("GamesPage", () => {
 
     const cpu = screen.getByRole("combobox", { name: "Bots" });
     expect(within(cpu).getAllByRole("option").map((o) => o.textContent)).toEqual([
-      "With or without CPU",
+      "With or without Bots",
       "Without Bots",
       "With Bots",
     ]);

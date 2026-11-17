@@ -68,17 +68,17 @@ describe("VotesTab", () => {
       .toEqual([expect.stringMatching(/^60%\s*5$/), expect.stringMatching(/^—\s*0$/), expect.stringMatching(/^—\s*1$/)]);
   });
 
-  it("says whom each player investigated, CPU seats last", () => {
+  it("says whom each player investigated, Bots last", () => {
     show([gameOf(FIVE, [term(1, 0, 1, ALL, [], investigate(0, 3, "FASCIST")), term(2, 0, 1, ALL, [], investigate(0, 4, "FASCIST")),
       term(3, 0, 2, ALL, [], investigate(0, 1, "LIBERAL")), term(4, 0, 2, ALL, [], investigate(0, 3, "FASCIST"))],
       { players: [1, 2, 3, 4, null] })]);
-    expect(within(card("INVESTIGATIONS")).getByText("4 (3 F, 1 L) · Di 2, Bo 1, CPU 1")).toBeInTheDocument();
+    expect(within(card("INVESTIGATIONS")).getByText("4 (3 F, 1 L) · Di 2, Bo 1, Bots ×1")).toBeInTheDocument();
   });
 
   it("says none of these players was investigated or executed when only CPU seats were", () => {
     show([gameOf(FIVE, [term(1, 0, 1, ALL, [], investigate(0, 4, "FASCIST")), term(2, 0, 1, ALL, [], execute(0, 4, "HITLER"))],
       { players: [1, 2, 3, 4, null], outcome: "HITLER_EXECUTED" })]);
-    expect(within(card("INVESTIGATIONS")).getByText("1 (1 F, 0 L) · CPU 1")).toBeInTheDocument();
+    expect(within(card("INVESTIGATIONS")).getByText("1 (1 F, 0 L) · Bots ×1")).toBeInTheDocument();
     expect(card("TIMES INVESTIGATED").textContent).toContain("None of these players has been investigated yet.");
     expect(within(card("EXECUTIONS")).getByText("Ann")).toBeInTheDocument();
     for (const title of ["TIMES EXECUTED", "FIRST TO GO"]) {

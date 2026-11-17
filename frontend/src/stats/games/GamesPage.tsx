@@ -36,7 +36,7 @@ const ENDING_LABEL: Record<Outcome, string> = {
 
 /** Each choice's name in the Bots (CPU players) select. */
 const CPU_LABEL: Record<CpuChoice, string> = {
-  any: "With or without CPU",
+  any: "With or without Bots",
   without: "Without Bots",
   with: "With Bots",
 };

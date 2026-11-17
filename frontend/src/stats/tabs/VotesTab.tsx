@@ -118,13 +118,16 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
     chance: accepted + refused > 0,
   });
 
-  /** "4 (3 F, 1 L) · Bo 2, Cy 1, CPU 1": whom by most times, then name, and CPU seats last. */
+  /**
+   * "4 (3 F, 1 L) · Bo 2, Cy 1, Bots ×1": whom by most times, then name, and the Bots last. The
+   * "×" keeps the Bots' count from reading as a seat's name ("Bot 1") or a player called "Bots".
+   */
   const investigations = (p: PlayerPowers): string => {
     const whom = Array.from(p.investigatedPlayers)
       .map(([player, times]) => ({ name: nameOf(names, player), times }))
       .sort((a, b) => b.times - a.times || compareNames(a.name, b.name))
       .map((target) => `${target.name} ${target.times}`);
-    if (p.investigatedCpu > 0) whom.push(`CPU ${p.investigatedCpu}`);
+    if (p.investigatedCpu > 0) whom.push(`Bots ×${p.investigatedCpu}`);
     return `${p.investigations} (${p.saw.FASCIST} F, ${p.saw.LIBERAL} L) · ${whom.join(", ")}`;
   };
   const investigationRows = powers

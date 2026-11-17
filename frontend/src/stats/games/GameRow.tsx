@@ -49,7 +49,7 @@ export function GameRow({ record }: { record: GameRecord }): JSX.Element {
         <span className="games-row-date">{formatLocalDate(record.startedAt)}</span>
         <span className="games-row-result">
           <Result record={record} />
-          {record.hasCpu && <> <span className="games-row-cpu">CPU</span></>}
+          {record.hasCpu && <> <span className="games-row-cpu">Bots</span></>}
         </span>
       </StatsLink>{" "}
       <span className="games-row-when">

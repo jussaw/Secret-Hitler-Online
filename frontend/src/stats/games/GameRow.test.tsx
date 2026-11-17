@@ -31,10 +31,11 @@ describe("GameRow", () => {
     expect(names[4]).toHaveClass("stats-hitler");
     expect(names[0]).toHaveClass("stats-liberal");
     expect(names[2]).toHaveClass("stats-fascist");
-    expect(row).not.toHaveTextContent("CPU");
+    expect(row.querySelector(".games-row-cpu")).toBeNull();
+    expect(row).not.toHaveTextContent("Bots");
   });
 
-  it("tags a CPU game and reads an unfinished one", () => {
+  it("tags a game with Bots and reads an unfinished one", () => {
     const cpu = renderRow(
       makeRecord({
         id: "bots",
@@ -44,7 +45,7 @@ describe("GameRow", () => {
         seats: makeSeats(["LIBERAL", "LIBERAL", "FASCIST", "LIBERAL", "HITLER"], [1, 2, null, 4, null]),
       })
     );
-    expect(cpu.querySelector(".games-row-link")).toHaveTextContent("CPU");
+    expect(cpu.querySelector(".games-row-cpu")).toHaveTextContent(/^Bots$/);
     expect(cpu.querySelector(".games-row-link")).toHaveAccessibleName(
       "Sat 14 Nov 2026, 9:42 PM · Fascists win · Hitler elected · with Bots"
     );
@@ -68,7 +69,7 @@ describe("GameRow", () => {
     const result = unfinished.querySelector(".games-row-result")!;
     expect(result).toHaveTextContent(/^Unfinished after round 6 · 4 L, 3 F$/);
     expect(result.querySelector(".stats-liberal, .stats-fascist")).toBeNull();
-    expect(unfinished).not.toHaveTextContent("CPU");
+    expect(unfinished).not.toHaveTextContent("Bots");
     expect(unfinished).toHaveTextContent("6 rounds");
   });
 

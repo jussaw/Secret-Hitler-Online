@@ -36,7 +36,7 @@ describe("PlayerView", () => {
     view();
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/^Ann$/);
     expect(within(screen.getByRole("heading", { level: 1 })).queryByRole("link")).toBeNull();
-    expect(screen.getByText("6 games since 2 Oct · +1 with CPU players, not counted · last played 2 days ago")).toBeInTheDocument();
+    expect(screen.getByText("6 games since 2 Oct · +1 with Bots, not counted · last played 2 days ago")).toBeInTheDocument();
     for (const label of ["Hitler Hunter", "Chancellor Hitler"]) {
       const trophy = TROPHIES.find((t) => t.label === label)!;
       expect(screen.getByText(label)).toHaveAttribute("title", trophy.rule);
@@ -47,7 +47,7 @@ describe("PlayerView", () => {
   it("theToggleDropsTheCpuNote", () => {
     view(1, { players: null, cpu: true });
     expect(screen.getByText("7 games since 2 Oct · last played 2 days ago")).toBeInTheDocument();
-    expect(screen.queryByText(/with CPU players/)).toBeNull();
+    expect(screen.queryByText(/with Bots/)).toBeNull();
   });
 
   it("eloShowsRatingRankAndPeak", () => {
@@ -74,8 +74,8 @@ describe("PlayerView", () => {
     expect(rows).toHaveLength(5);
     expect(within(rows[0]).getByRole("link")).toHaveAttribute("href", "/games/unf");
     const cpuRow = rows.find((row) => within(row).getByRole("link").getAttribute("href") === "/games/cpu")!;
-    expect(cpuRow).toHaveTextContent("CPU");
-    expect(rows.filter((row) => row.textContent!.includes("CPU"))).toHaveLength(1);
+    expect(cpuRow.querySelector(".games-row-cpu")).toHaveTextContent(/^Bots$/);
+    expect(rows.filter((row) => row.textContent!.includes("Bots"))).toHaveLength(1);
     expect(rows[0]).toHaveTextContent("unfinished");
     expect(rows[1]).toHaveTextContent(/Liberal.*won.*Liberal policies/);
   });
@@ -116,7 +116,7 @@ describe("PlayerView", () => {
   it("aPlayerWithNoCountedGamesShowsEmptyCards", () => {
     view(7);
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/^Gus$/);
-    expect(screen.getByText("No counted games · +1 with CPU players, not counted")).toBeInTheDocument();
+    expect(screen.getByText("No counted games · +1 with Bots, not counted")).toBeInTheDocument();
     expect(screen.queryByRole("list", { name: "Trophies" })).toBeNull();
     const empty = screen.getAllByRole("region").filter((region) => region.textContent!.includes("No counted games yet."));
     expect(empty.map((region) => region.querySelector("h3")?.textContent)).toEqual(TITLES.slice(0, 8));
