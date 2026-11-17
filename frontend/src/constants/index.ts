@@ -71,7 +71,8 @@ export const ABOUT_URL = "https://github.com/jussaw/Secret-Hitler-Online#readme"
 /** This fork's issues, for bug reports. */
 export const ISSUES_URL = "https://github.com/jussaw/Secret-Hitler-Online/issues";
 
-//////// The stats pages, for the links into them from the game's pages. They are written out here,
+//////// The stats pages, for the links into them: the site header's (`src/header/SiteHeader`, on
+// the login page and the stats pages alike) and the victory screen's. They are written out here,
 // not imported from the stats (`src/stats/routes.ts`), so the game's first download holds none of
 // the stats' code; `statsPaths.test.ts` checks they are the stats' own routes.
 /** The stats' home: the site header's STATS. */

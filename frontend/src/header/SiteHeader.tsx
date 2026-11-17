@@ -20,8 +20,8 @@ function PlainLink(props: HeaderLinkProps): JSX.Element {
   return <a {...props} />;
 }
 
-/** The links drawn with `link`, each with its place. */
-const IN_PAGE: { place: SitePlace; label: string; href: string }[] = [
+/** STATS, GAMES and PLAYERS, the links drawn with `link`, each with its place. */
+const STATS_LINKS: { place: SitePlace; label: string; href: string }[] = [
   { place: "stats", label: "STATS", href: STATS_PATH },
   { place: "games", label: "GAMES", href: STATS_GAME_LIST_PATH },
   { place: "players", label: "PLAYERS", href: STATS_PLAYER_LIST_PATH },
@@ -46,7 +46,7 @@ export function SiteHeader({
     <header className="site-header">
       <span className="site-title">SECRET-HITLER</span>
       <nav className="site-nav" aria-label="Stats pages">
-        {IN_PAGE.map(({ place, label, href }) => (
+        {STATS_LINKS.map(({ place, label, href }) => (
           <Link key={place} href={href} className="site-nav-link" aria-current={mark(place)}>
             {label}
           </Link>

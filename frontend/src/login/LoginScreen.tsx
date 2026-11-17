@@ -37,10 +37,10 @@ const UPSTREAM_URL = "https://github.com/ShrimpCryptid/Secret-Hitler-Online";
 const LICENCE_URL = "https://creativecommons.org/licenses/by-nc-sa/4.0/";
 
 /**
- * The login page: the site header (the stats pages' too, with PLAY marked), then three cards in the lobby's look (the account; a lobby
- * code with JOIN and WATCH; CREATE LOBBY) and a footer with the links and the credit line. JOIN
- * needs a signed-in account with a name and the code, WATCH only the code, CREATE LOBBY only the
- * account with a name. Each card shows its own error line.
+ * The login page: the site header (the stats pages' too, with PLAY marked), then three cards in
+ * the lobby's look (the account; a lobby code with JOIN and WATCH; CREATE LOBBY) and a footer with
+ * the links and the credit line. JOIN needs a signed-in account with a name and the code, WATCH
+ * only the code, CREATE LOBBY only the account with a name. Each card shows its own error line.
  */
 export default function LoginScreen(props: LoginScreenProps) {
   const account = props.account;

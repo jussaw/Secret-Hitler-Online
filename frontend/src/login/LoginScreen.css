@@ -11,9 +11,9 @@
    --control and --card-gap are the same lengths wherever they are used, whatever the font size
    there. --control is the height of the fields and of the buttons' faces, a touch target at the
    least. Below 786px tall --control is that 44px, more of the window the shorter it is, and the
-   header (SiteHeader.css) is 44px tall at every desktop size, which is more of the window too, so
-   below 900px tall the gaps between the cards close from 18px to 8px at 700px, and the space above
-   the cards from 16px to 8px. Signed in, the widest Discord username (32 m's) takes the account's
+   header (SiteHeader.css) is its links' 44px up to about 1125px tall (its title's line beyond),
+   which is more of the window too, so below 900px tall the gaps between the cards close from 18px
+   to 8px at 700px, and the space above the cards from 16px to 8px. Signed in, the widest Discord username (32 m's) takes the account's
    line to three lines, and with every error line showing the page fills about the whole window
    from 700px to 950px tall, where everything scales with the window: half an em between a card's
    lines leaves it room at every tested size. */
