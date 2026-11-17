@@ -139,8 +139,10 @@
     border-radius: 0.5em;
 }
 
+/* The focus of the lobby's field, the login page's and the name prompt's (NamePrompt.css). */
 .lobby-link-row input:focus,
-.login-card input:focus {
+.login-card input:focus,
+.name-prompt-field input:focus {
     border-color: #f08a5d;
 }
 

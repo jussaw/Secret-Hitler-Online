@@ -245,6 +245,28 @@ test("the portrait picker's CONFIRM is in view without scrolling", async ({ page
   }
 });
 
+test("the name prompt's field looks like the lobby's and the login page's fields", async ({ page }) => {
+  // CHANGE NAME, over the lobby, whose invite link has a field label of its own.
+  await openFakeGame(page);
+  await page.locator(".lobby-actions").getByRole("button", { name: "CHANGE NAME" }).click();
+  const alertBox = page.locator("#alert-box.appear-custom-alert");
+  const field = alertBox.getByRole("textbox", { name: "Your name" });
+  await field.waitFor();
+
+  const look = (selector: string) =>
+    page.locator(selector).evaluate((el) => {
+      const style = getComputedStyle(el);
+      return { color: style.color, fontFamily: style.fontFamily, fontWeight: style.fontWeight };
+    });
+  // The label is the lobby's field label: its font, weight and colour.
+  expect(await look("#alert-box .name-prompt-field-label"), "the label").toEqual(await look(".lobby-invite-label"));
+
+  // The field marks the focus as the login page's fields do: an orange border.
+  await field.focus();
+  const border = await field.evaluate((el) => getComputedStyle(el).borderTopColor);
+  expect(border, "the focused field's border").toBe("rgb(240, 138, 93)");
+});
+
 const SHORT_SHAPES = [
   { name: "sideways", shape: (w: number, h: number) => ({ width: h, height: w }) },
   { name: "upright and short", shape: (w: number) => ({ width: w, height: 600 }) },
