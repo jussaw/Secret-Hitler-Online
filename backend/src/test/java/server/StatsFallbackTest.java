@@ -72,6 +72,7 @@ public class StatsFallbackTest {
     public void theGameSocketIsNotAPage() throws Exception {
         app = SecretHitlerServer.createApp("/spa-test").start(0);
         HttpResponse<String> response = get("/game");
+        assertEquals("/game's status", 404, response.statusCode());
         assertTrue("/game's body: " + response.body(), !response.body().contains("spa-test"));
         // The socket still upgrades: with no session it is opened and then refused, never a page.
         TestSocket socket = TestSocket.connect(app.port(), "lobby=ABCD");
