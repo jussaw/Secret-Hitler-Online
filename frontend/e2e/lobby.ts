@@ -39,9 +39,32 @@ export async function createLobby(page: Page, host: string): Promise<string> {
   return new URL(link).searchParams.get("lobby")!;
 }
 
-/** Waits for the lobby's heading to count `count` players. */
-export async function waitForPlayers(page: Page, count: number): Promise<void> {
-  await expect(page.locator(".lobby-player-count")).toHaveText(`${count} / 10`);
+/** The lobby roster's rows of people: not the bots' rows after them (#70). */
+export const PEOPLE_ROWS = ".lobby-players li.roster-row:not(.is-bot)";
+
+/**
+ * Waits for the lobby's roster to list `count` people. The heading counts the bots too, so it is
+ * no count of people.
+ */
+export async function waitForPlayers(page: Page, count: number, options?: { timeout?: number }): Promise<void> {
+  await expect(page.locator(PEOPLE_ROWS)).toHaveCount(count, options);
+}
+
+/**
+ * Every bot row whose box is not a person's row's size (#70), as "<bot>: <w>x<h> against
+ * <w>x<h>": empty when the bots' rows match the first person's, or there are none.
+ */
+export function botRowMismatches(page: Page): Promise<string[]> {
+  return page.evaluate((peopleRows) => {
+    const person = document.querySelector(peopleRows)?.getBoundingClientRect();
+    if (!person) return [];
+    const size = (r: DOMRect) => `${Math.round(r.width * 10) / 10}x${Math.round(r.height * 10) / 10}`;
+    return Array.from(document.querySelectorAll<HTMLElement>(".lobby-players li.roster-row.is-bot")).flatMap((bot) => {
+      const r = bot.getBoundingClientRect();
+      const same = Math.abs(r.width - person.width) <= 0.5 && Math.abs(r.height - person.height) <= 0.5;
+      return same ? [] : [`${bot.dataset.bot}: ${size(r)} against ${size(person)}`];
+    });
+  }, PEOPLE_ROWS);
 }
 
 /** A raw guest's socket, with the name its account plays under. */
@@ -229,35 +252,49 @@ export async function longestLineLobby(
 }
 
 /**
- * One viewer of a lobby layout test: who it is, its page, the players its lobby has, the buttons it
- * gets (actionLabels) and, for a spectator, the note under them (#lobby-note, "" for none).
+ * One viewer of a lobby layout test: who it is, its page, the people and the bots its lobby has,
+ * the buttons it gets (actionLabels) and, for a spectator, the note under them (#lobby-note, ""
+ * for none).
  */
-export type LobbyViewer = { viewer: string; page: Page; players: number; buttons: string[]; note?: string };
+export type LobbyViewer = {
+  viewer: string;
+  page: Page;
+  players: number;
+  bots: number;
+  buttons: string[];
+  note?: string;
+};
 
 const PLAYER_BUTTONS = ["CHANGE NAME", "CHANGE LOOK", "WATCH INSTEAD", "LEAVE LOBBY"];
+/** The host's: the bot stepper's two buttons, by their names, then START GAME and a player's four. */
+const HOST_BUTTONS = ["Fewer bots", "More bots", "START GAME", ...PLAYER_BUTTONS];
 const FULL_NOTE = "The lobby is full (10 / 10). You can play when a seat frees up.";
 
 /**
- * A signed-in spectator's longest note, on `page`: PLAY INSTEAD's CONTACT_ERROR, from a
- * /check-login that never answers, in a lobby with a seat free, where the note is not the full
- * lobby's. The lobby has nine raw guests, all still picking a look, so the spectator reads the
- * longest line too ("You are watching. Waiting for <the first guest> and 8 others to pick a
- * look."); a raw account that never joins makes it. Returns the guests' sockets, which the caller
- * closes.
+ * Ten seats with a bot among them (#70), and a signed-in spectator's longest note: `host` creates
+ * the lobby as uniqueName("Host Player") and picks a look, eight raw guests stay on the default
+ * portrait, still picking, and the host's stepper adds the one bot nine people leave room for.
+ * The host reads the longest line a player gets ("Waiting for <the first guest> and 7 others to
+ * pick a look."), and `page`, a signed-in spectator, the longest a spectator gets, then presses
+ * PLAY INSTEAD against a /check-login that never answers: CONTACT_ERROR, the longest note, in a
+ * lobby with a seat free, where the note is not the full lobby's. Returns the guests' sockets,
+ * which the caller closes.
  */
-async function failedPlayInstead(baseURL: string, page: Page): Promise<WebSocket[]> {
-  const maker = await signInRaw(baseURL, uniqueName("Maker"));
-  const made = await fetch(new URL("/new-lobby", baseURL), { headers: { Cookie: maker } });
-  if (made.status !== 200) throw new Error(`/new-lobby answered ${made.status}: ${await made.text()}`);
-  const lobby = await made.text();
-  const guests = await joinGuests(baseURL, lobby, 9, { pickLooks: false });
+async function failedPlayInstead(baseURL: string, host: Page, page: Page): Promise<WebSocket[]> {
+  const lobby = await createLobby(host, uniqueName("Host Player"));
+  const guests = await joinGuests(baseURL, lobby, 8, { pickLooks: false });
   try {
+    await waitForPlayers(host, 9);
+    await host.getByRole("button", { name: "More bots" }).click();
+    await expect(host.locator(".lobby-player-count")).toHaveText("10 / 10");
+    await expect(host.getByRole("button", { name: "More bots" })).toBeDisabled();
+    const playerLine = `Waiting for ${guests[0].name} and 7 others to pick a look.`;
+    await expect(host.locator("#lobby-status-text")).toHaveText(playerLine);
     await signInPage(page, uniqueName("Watcher"));
     await watchLobby(page, lobby);
     await waitForPlayers(page, 9);
-    await expect(page.locator("#lobby-status-text")).toHaveText(
-      `You are watching. Waiting for ${guests[0].name} and 8 others to pick a look.`
-    );
+    await expect(page.locator(".lobby-players li.roster-row.is-bot")).toHaveCount(1);
+    await expect(page.locator("#lobby-status-text")).toHaveText(`You are watching. ${playerLine}`);
     await page.route("**/check-login?**", (route) => route.abort());
     await page.getByRole("button", { name: "PLAY INSTEAD" }).click();
     await expect(page.locator("#lobby-note")).toHaveText(CONTACT_ERROR);
@@ -270,25 +307,34 @@ async function failedPlayInstead(baseURL: string, page: Page): Promise<WebSocket
 
 /**
  * longestLineLobby, seen by every kind of viewer, each on a page of its own: the host and a guest
- * (the four player buttons, the host START GAME above them), and three spectators, signed in
- * (PLAY INSTEAD, off in the full lobby), signed out on a server with Discord sign-in (SIGN IN TO
- * PLAY, a link), and signed out on one without (SIGN IN TO PLAY off); both signed-out pages' /me
- * are stubbed. A sixth, `failed`, is a signed-in spectator of another lobby, with a seat free,
- * whose PLAY INSTEAD could not reach the server: the longest note a spectator gets
- * (failedPlayInstead). Returns the raw guests' sockets, which the caller closes.
+ * (the four player buttons, the host the bot stepper and START GAME above them), and three
+ * spectators, signed in (PLAY INSTEAD, off in the full lobby), signed out on a server with Discord
+ * sign-in (SIGN IN TO PLAY, a link), and signed out on one without (SIGN IN TO PLAY off); both
+ * signed-out pages' /me are stubbed. Two more are in another lobby, of nine people and a bot
+ * (failedPlayInstead): `botHost`, its host, and `failed`, a signed-in spectator whose PLAY INSTEAD
+ * could not reach the server, the longest note a spectator gets. Returns the raw guests' sockets,
+ * which the caller closes.
  */
 export async function longestLineViewers(
   baseURL: string,
-  pages: { host: Page; guest: Page; signedIn: Page; signedOut: Page; noDiscord: Page; failed: Page }
+  pages: {
+    host: Page;
+    guest: Page;
+    signedIn: Page;
+    signedOut: Page;
+    noDiscord: Page;
+    botHost: Page;
+    failed: Page;
+  }
 ): Promise<{ sockets: WebSocket[]; viewers: LobbyViewer[] }> {
-  const { host, guest, signedIn, signedOut, noDiscord, failed } = pages;
+  const { host, guest, signedIn, signedOut, noDiscord, botHost, failed } = pages;
   await signInPage(signedIn, uniqueName("Watcher"));
   // Both signed-out pages' /me are stubbed, so the server's own Discord setting decides neither.
   await stubMe(signedOut, signedOutMe({ discord: true }));
   await stubMe(noDiscord, signedOutMe({ discord: false }));
   const { sockets } = await longestLineLobby(baseURL, { host, guest, spectators: [signedIn, signedOut, noDiscord] });
   try {
-    sockets.push(...(await failedPlayInstead(baseURL, failed)));
+    sockets.push(...(await failedPlayInstead(baseURL, botHost, failed)));
   } catch (error) {
     sockets.forEach((ws) => ws.close());
     throw error;
@@ -296,12 +342,13 @@ export async function longestLineViewers(
   return {
     sockets,
     viewers: [
-      { viewer: "host", page: host, players: 10, buttons: ["START GAME", ...PLAYER_BUTTONS] },
-      { viewer: "guest", page: guest, players: 10, buttons: PLAYER_BUTTONS },
+      { viewer: "host", page: host, players: 10, bots: 0, buttons: HOST_BUTTONS },
+      { viewer: "guest", page: guest, players: 10, bots: 0, buttons: PLAYER_BUTTONS },
       {
         viewer: "signed-in spectator",
         page: signedIn,
         players: 10,
+        bots: 0,
         buttons: ["PLAY INSTEAD", "LEAVE LOBBY"],
         note: FULL_NOTE,
       },
@@ -309,6 +356,7 @@ export async function longestLineViewers(
         viewer: "signed-out spectator",
         page: signedOut,
         players: 10,
+        bots: 0,
         buttons: ["SIGN IN TO PLAY", "LEAVE LOBBY"],
         note: FULL_NOTE,
       },
@@ -316,13 +364,16 @@ export async function longestLineViewers(
         viewer: "signed-out spectator without Discord",
         page: noDiscord,
         players: 10,
+        bots: 0,
         buttons: ["SIGN IN TO PLAY", "LEAVE LOBBY"],
         note: "Sign-in is not set up on this server.",
       },
+      { viewer: "host of nine and a bot", page: botHost, players: 9, bots: 1, buttons: HOST_BUTTONS },
       {
         viewer: "signed-in spectator whose PLAY INSTEAD failed",
         page: failed,
         players: 9,
+        bots: 1,
         buttons: ["PLAY INSTEAD", "LEAVE LOBBY"],
         note: CONTACT_ERROR,
       },
@@ -330,10 +381,17 @@ export async function longestLineViewers(
   };
 }
 
-/** The labels of the lobby's buttons under its status line (links in a button's look among them). */
+/**
+ * The labels of the lobby's buttons under its status line (links in a button's look among them),
+ * or the accessible name of one that shows only an icon (the bot stepper's).
+ */
 export async function actionLabels(page: Page): Promise<string[]> {
-  const labels = await page.locator(".lobby-actions").locator("button, .button-link").allInnerTexts();
-  return labels.map((label) => label.trim());
+  return page
+    .locator(".lobby-actions")
+    .locator("button, .button-link")
+    .evaluateAll((buttons) =>
+      buttons.map((b) => (b as HTMLElement).innerText.trim() || (b.getAttribute("aria-label") ?? ""))
+    );
 }
 
 /**

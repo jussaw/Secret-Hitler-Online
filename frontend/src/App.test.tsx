@@ -7,6 +7,7 @@ import type { Me } from "./account/account";
 import {
   PACKET_GAME_STATE,
   PACKET_LOBBY,
+  PARAM_BOTS,
   PARAM_ICON,
   PARAM_PACKET_TYPE,
   PARAM_USERNAMES,
@@ -188,6 +189,41 @@ test("the lobby marks only the first player as HOST", async () => {
   const rows = [...container.querySelectorAll(".lobby-players li.roster-row")];
   expect(rows.map((row) => row.getAttribute("data-player"))).toEqual(["A", "B", "C"]);
   expect(rows.map((row) => row.querySelector(".roster-detail")?.textContent)).toEqual(["HOST", "", ""]);
+});
+
+test("the lobby shows the server's bots, and the host's stepper asks it for one more", async () => {
+  const app = createRef<App>();
+  const { container } = render(<App ref={app} />);
+  act(() => {
+    app.current!.tryOpenWebSocket("A", "HBIA");
+  });
+  await deliver(app.current!, {
+    [PARAM_PACKET_TYPE]: PACKET_LOBBY,
+    [PARAM_USERNAMES]: ["A", "B", "C"],
+    [PARAM_ICON]: { A: "p1", B: "p2", C: "p3" },
+    [PARAM_BOTS]: ["Bot 1", "Bot 2"],
+  });
+  const rows = [...container.querySelectorAll(".lobby-players li.roster-row")];
+  expect(rows.map((row) => row.querySelector(".roster-name-text")?.textContent)).toEqual([
+    "A",
+    "B",
+    "C",
+    "Bot 1",
+    "Bot 2",
+  ]);
+  expect(container.querySelector(".lobby-player-count")).toHaveTextContent(/^5 \/ 10$/);
+  fireEvent.click(screen.getByRole("button", { name: "More bots" }));
+  const socket = app.current!.websocket as unknown as FakeSocket;
+  const sent = socket.send.mock.calls.map(([data]) => JSON.parse(data));
+  expect(sent[sent.length - 1]).toEqual({ command: "set-bot-count", count: 3, name: "A", lobby: "HBIA" });
+});
+
+test("a lobby packet without bots shows none", async () => {
+  const app = createRef<App>();
+  const { container } = render(<App ref={app} />);
+  await deliver(app.current!, lobbyPacket);
+  expect(container.querySelectorAll(".lobby-players li.roster-row.is-bot")).toHaveLength(0);
+  expect(container.querySelector(".lobby-player-count")).toHaveTextContent(/^2 \/ 10$/);
 });
 
 test("the login checks send the lobby as a whole query value, and no name", async () => {

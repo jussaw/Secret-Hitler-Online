@@ -1,6 +1,6 @@
-import { useRef } from "react";
-import { Copy, Eye, UserPlus } from "lucide-react";
-import { ABOUT_URL, ISSUES_URL, MAX_PLAYERS } from "../constants";
+import { useRef, useState } from "react";
+import { Copy, Eye, Minus, Plus, UserPlus } from "lucide-react";
+import { ABOUT_URL, ISSUES_URL, MAX_PLAYERS, MIN_PLAYERS } from "../constants";
 import SoundControl from "../sound/SoundControl";
 import SpectatorCount from "../spectator/SpectatorCount";
 import OutLink from "../util/OutLink";
@@ -16,6 +16,8 @@ export type LobbyScreenProps = {
   lobby: string;
   inviteLink: string;
   usernames: string[];
+  /** The bots the game will seat, as the lobby packet names them (`Bot 1`, `Bot 2`, …). */
+  bots: string[];
   icons: Record<string, string>;
   /** The viewer's name (the packets' `you`), "" for a spectator. */
   user: string;
@@ -34,6 +36,8 @@ export type LobbyScreenProps = {
    */
   spectatorError: string;
   onStartGame: () => void;
+  /** The host's stepper: asks the server for this many bots, which it keeps inside the range. */
+  onSetBots: (count: number) => void;
   onChangeName: () => void;
   onChangeLook: () => void;
   onWatchInstead: () => void;
@@ -59,19 +63,65 @@ function spectatorNote(props: LobbyScreenProps, full: boolean): string {
 }
 
 /**
- * The lobby page below the prompts: the game's header, the roster of players beside (or, in tall
- * windows and on phones, above) the code card, the status line, the buttons and the footer links.
- * A player gets CHANGE NAME, CHANGE LOOK, WATCH INSTEAD and LEAVE LOBBY (the host START GAME above
- * them); a spectator PLAY INSTEAD signed in, SIGN IN TO PLAY signed out, and LEAVE LOBBY, with a
- * note under them when there is something to say.
+ * The host's stepper, at the left of START GAME: − 2 BOTS +. People and bots together stay between
+ * MIN_PLAYERS and MAX_PLAYERS, so − is off at the fewest bots that make a table of five and + at
+ * the most that keep it at ten (the server keeps the count inside the same range). A press asks
+ * the server for one bot fewer or more, and the stepper shows that count until the next lobby
+ * packet, a new `bots`, answers: so a second press before then steps on from the first rather than
+ * asking for the same count again. The roster's rows are the packets' alone.
+ */
+function BotStepper(props: { people: number; bots: string[]; onSetBots: (count: number) => void }) {
+  const { people, bots, onSetBots } = props;
+  const [asked, setAsked] = useState<{ on: string[]; count: number } | null>(null);
+  const count = asked !== null && asked.on === bots ? asked.count : bots.length;
+  const fewest = Math.max(0, MIN_PLAYERS - people);
+  const most = Math.max(0, MAX_PLAYERS - people);
+  const press = (next: number) => {
+    setAsked({ on: bots, count: next });
+    onSetBots(next);
+  };
+  return (
+    <div className="lobby-bots" role="group" aria-label="Bots">
+      <button
+        type="button"
+        className="lobby-bots-step"
+        aria-label="Fewer bots"
+        disabled={count <= fewest}
+        onClick={() => press(count - 1)}
+      >
+        <Minus className="lobby-bots-icon" aria-hidden="true" />
+      </button>
+      <span className="lobby-bots-count">
+        <span className="lobby-bots-number">{count}</span> <span className="lobby-bots-word">{count === 1 ? "BOT" : "BOTS"}</span>
+      </span>
+      <button
+        type="button"
+        className="lobby-bots-step"
+        aria-label="More bots"
+        disabled={count >= most}
+        onClick={() => press(count + 1)}
+      >
+        <Plus className="lobby-bots-icon" aria-hidden="true" />
+      </button>
+    </div>
+  );
+}
+
+/**
+ * The lobby page below the prompts: the game's header, the roster of players and bots beside (or,
+ * in tall windows and on phones, above) the code card, the status line, the buttons and the footer
+ * links. A player gets CHANGE NAME, CHANGE LOOK, WATCH INSTEAD and LEAVE LOBBY (the host the bot
+ * stepper and START GAME above them); a spectator PLAY INSTEAD signed in, SIGN IN TO PLAY signed
+ * out, and LEAVE LOBBY, with a note under them when there is something to say.
  */
 export default function LobbyScreen(props: LobbyScreenProps) {
-  const { usernames, icons, user, spectator } = props;
+  const { usernames, bots, icons, user, spectator } = props;
   const linkField = useRef<HTMLInputElement>(null);
   const isHost = !spectator && usernames.length > 0 && usernames[0] === user;
   const everyonePicked = usernames.every((name) => !isPicking(name, icons));
+  // Bots give their seats up to people, so only people fill the lobby.
   const full = usernames.length >= MAX_PLAYERS;
-  const status = lobbyStatus(usernames, icons, { user, spectator });
+  const status = lobbyStatus(usernames, icons, { user, spectator }, bots.length);
   const note = spectator ? spectatorNote(props, full) : "";
 
   const copy = async () => {
@@ -90,9 +140,9 @@ export default function LobbyScreen(props: LobbyScreenProps) {
         <div className="lobby-players">
           <div className="lobby-players-head">
             <span>PLAYERS</span>
-            <span className="lobby-player-count">{`${usernames.length} / ${MAX_PLAYERS}`}</span>
+            <span className="lobby-player-count">{`${usernames.length + bots.length} / ${MAX_PLAYERS}`}</span>
           </div>
-          <LobbyRoster usernames={usernames} icons={icons} user={spectator ? "" : user} />
+          <LobbyRoster usernames={usernames} bots={bots} icons={icons} user={spectator ? "" : user} />
         </div>
 
         <main className="lobby-main">
@@ -131,14 +181,17 @@ export default function LobbyScreen(props: LobbyScreenProps) {
 
           <div className="lobby-actions">
             {isHost && (
-              <button
-                type="button"
-                className="lobby-start"
-                disabled={!everyonePicked}
-                onClick={props.onStartGame}
-              >
-                START GAME
-              </button>
+              <div className="lobby-start-row">
+                <BotStepper people={usernames.length} bots={bots} onSetBots={props.onSetBots} />
+                <button
+                  type="button"
+                  className="lobby-start"
+                  disabled={!everyonePicked}
+                  onClick={props.onStartGame}
+                >
+                  START GAME
+                </button>
+              </div>
             )}
             {/* A player's four make two rows of two on phones (lobby-player-buttons). */}
             <div className={spectator ? "lobby-secondary" : "lobby-secondary lobby-player-buttons"}>

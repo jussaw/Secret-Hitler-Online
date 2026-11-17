@@ -22,6 +22,7 @@ import {
   createLobby,
   joinGuests,
   lobbyStatusCard,
+  botRowMismatches,
   longestLineViewers,
   longestLogin,
   settle,
@@ -118,8 +119,8 @@ for (const narrow of [false, true]) {
     test.setTimeout(120_000);
     if (narrow) await narrowPhone(page);
     // Each viewer has a page (and cookies) of its own, with the project's phone settings.
-    const others = await Promise.all(Array.from({ length: 5 }, () => browser.newPage()));
-    const [host, signedIn, signedOut, noDiscord, failed] = others;
+    const others = await Promise.all(Array.from({ length: 6 }, () => browser.newPage()));
+    const [host, signedIn, signedOut, noDiscord, botHost, failed] = others;
     try {
       const { width, height } = page.viewportSize()!;
       for (const other of others) await other.setViewportSize({ width, height });
@@ -129,6 +130,7 @@ for (const narrow of [false, true]) {
         signedIn,
         signedOut,
         noDiscord,
+        botHost,
         failed,
       });
       try {
@@ -146,6 +148,8 @@ for (const narrow of [false, true]) {
           expect(overflow.offscreen, `past the edge for the ${viewer}`).toEqual([]);
           expect(await smallTargets(viewerPage, "body"), `the ${viewer}'s small touch targets`).toEqual([]);
           expect(await wrappedLabels(viewerPage, ".lobby-screen"), `the ${viewer}'s wrapped button labels`).toEqual([]);
+          // A bot's row (#70) is a person's row's size.
+          expect(await botRowMismatches(viewerPage), `the ${viewer}'s bot rows`).toEqual([]);
           expect(
             await smallFieldText(viewerPage, ".lobby-screen"),
             `small text in the ${viewer}'s text fields`

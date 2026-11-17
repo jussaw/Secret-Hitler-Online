@@ -4,16 +4,19 @@ import RosterRow from "../game/RosterRow";
 import { isPicking } from "./lobbyStatus";
 
 /**
- * The lobby's players in join order, in the game's roster rows. The first player is the host
- * (`HOST` under the name, or after it in the phones' compact rows); a player still on the default
- * portrait gets `Picking a look…` and the busy bubble. The host keeps `HOST` while picking.
+ * The lobby's players in join order, in the game's roster rows, then a row for each bot the game
+ * will seat. The first player is the host (`HOST` under the name, or after it in the phones'
+ * compact rows); a player still on the default portrait gets `Picking a look…` and the busy
+ * bubble. The host keeps `HOST` while picking. A bot's row is dashed, with Lucide's robot in place
+ * of a portrait and the name the game will give it.
  */
 export default function LobbyRoster(props: {
   usernames: string[];
+  bots: string[];
   icons: Record<string, string>;
   user: string;
 }) {
-  const { usernames, icons, user } = props;
+  const { usernames, bots, icons, user } = props;
   return (
     <ol className="roster" aria-label="Players">
       {usernames.map((name, i) => {
@@ -33,6 +36,21 @@ export default function LobbyRoster(props: {
           />
         );
       })}
+      {/* RosterRow's own parts, so a bot's row takes a person's size in every layout. */}
+      {bots.map((name) => (
+        <RosterRow
+          key={`bot:${name}`}
+          bot
+          name={name}
+          icon={defaultPortrait}
+          isUser={false}
+          disabled={false}
+          detail=""
+          detailClass=""
+          tag=""
+          status={null}
+        />
+      ))}
     </ol>
   );
 }

@@ -28,6 +28,35 @@
     color: #b9ab9f;
 }
 
+/* A bot's row (#70), after the people's: the same parts and size as a person's row
+   (PlayerRoster.css, GameScreen.css), dashed, with Lucide's robot on a plain tile in place of a
+   portrait and the name in grey. The dashes are an outline drawn inside the row, so the row keeps a
+   person's box. */
+.lobby-players .roster-row.is-bot {
+    background: transparent;
+    outline: 2px dashed rgba(185, 171, 159, 0.45);
+    outline-offset: -2px;
+}
+
+.roster-bot-portrait {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.roster-bot-icon {
+    width: 62%;
+    height: 62%;
+    stroke-width: 1.75;
+    color: #b9ab9f;
+}
+
+.roster-row.is-bot .roster-name {
+    font-weight: 600;
+    color: #b9ab9f;
+}
+
 /* The cards, the buttons and the footer, centred both ways. Auto margins centre the stack, and
    fall to zero rather than push its top out of reach when it is taller than the column.
    --lobby-font is the column's text size, set in px and window units only, so --card-width is the
@@ -210,6 +239,74 @@
     padding: 0.4em 1.4em;
 }
 
+/* START GAME's row: the host's bot stepper (#70) at its left. The stepper is as tall as START
+   GAME's face, so the row is no taller than START GAME was alone. START GAME never shrinks below
+   its label: where the two do not fit side by side, the stepper takes a line of its own above it. */
+.lobby-start-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: stretch;
+    gap: 1em;
+    max-width: 100%;
+}
+
+.lobby-start-row .lobby-start {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+/* − 2 BOTS +, in a card of the status line's colour. */
+.lobby-bots {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    box-sizing: border-box;
+    padding: 0 0.45em;
+    background-color: var(--backgroundDark);
+    border-radius: 0.6em;
+    box-shadow: 0 0.4vh 0 rgba(0, 0, 0, 0.25);
+}
+
+/* 44px targets at every size, as every button under the status line is. */
+.lobby-main .lobby-bots-step {
+    min-width: 44px;
+    min-height: calc(44px + var(--button-depth));
+    font-size: 1.3em;
+    padding: 0.35em;
+}
+
+.lobby-bots-icon {
+    flex: none;
+    width: 1.1em;
+    height: 1.1em;
+    stroke-width: 3;
+}
+
+/* The number and its word, wide enough for "9 BOTS", so a press never moves the buttons. */
+.lobby-bots-count {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.3em;
+    min-width: 4.1em;
+    font-family: var(--headerFont);
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.lobby-bots-number {
+    font-size: 2.1em;
+    color: var(--headerTextColor);
+}
+
+.lobby-bots-word {
+    font-size: 1.15em;
+    letter-spacing: 0.06em;
+    color: #b9ab9f;
+}
+
 .lobby-secondary {
     display: flex;
     flex-wrap: wrap;
@@ -349,6 +446,33 @@
     .lobby-main .lobby-start {
         font-size: 1.9em;
         padding: 0.3em 0.6em;
+    }
+
+    /* START GAME takes what the stepper leaves; where both do not fit, the stepper is a line of
+       its own above it, START GAME across the column below (at 320px with Linux's wider fonts, say). */
+    .lobby-start-row {
+        gap: 6px;
+    }
+
+    .lobby-start-row .lobby-start {
+        flex: 1 0 auto;
+    }
+
+    /* The stepper's buttons fill its height, so their faces are START GAME's height, and 44px
+       wide at least. */
+    .lobby-bots {
+        align-items: stretch;
+        gap: 0.4em;
+        padding: 0;
+    }
+
+    .lobby-main .lobby-bots-step {
+        padding: 0 0.3em;
+    }
+
+    .lobby-bots-count {
+        align-self: center;
+        min-width: 3.9em;
     }
 
     /* A spectator's two grey buttons share one row, down to 320px wide: the switch icons go. Each

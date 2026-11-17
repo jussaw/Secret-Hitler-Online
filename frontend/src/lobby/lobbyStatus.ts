@@ -1,8 +1,7 @@
 import { defaultPortrait } from "../assets";
-import { MIN_PLAYERS } from "../constants";
 
 /**
- * The lobby's status line: what START GAME is waiting for, and when bots will fill the table.
+ * The lobby's status line: what START GAME is waiting for, and how many bots will join the table.
  * A pure function of the lobby and the viewer, like the game's status lines.
  */
 
@@ -37,10 +36,15 @@ function guestLine(usernames: string[], bots: number): StatusSegment[] {
   return [plain("Waiting for "), host, plain(" to start the game.")];
 }
 
+/**
+ * @param bots how many bots the game will seat: the lobby packet's `bots`, which the host chooses
+ *             and the server keeps between a table of five and ten.
+ */
 export function lobbyStatus(
   usernames: string[],
   icons: Record<string, string>,
   viewer: LobbyViewer,
+  bots: number,
 ): StatusSegment[] {
   const prefix = viewer.spectator ? [plain(WATCHING)] : [];
   if (usernames.length === 0) {
@@ -48,7 +52,6 @@ export function lobbyStatus(
   }
 
   const picking = usernames.filter((n) => isPicking(n, icons));
-  const bots = Math.max(0, MIN_PLAYERS - usernames.length);
 
   if (picking.length > 0) {
     const first =
@@ -69,7 +72,7 @@ export function lobbyStatus(
     if (bots > 0) {
       return [
         plain(
-          `${plural(usernames.length, "player")}. ${plural(bots, "bot")} will join to make ${MIN_PLAYERS}.`,
+          `${plural(usernames.length, "player")}. ${plural(bots, "bot")} will join to make ${usernames.length + bots}.`,
         ),
       ];
     }

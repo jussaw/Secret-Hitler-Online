@@ -19,6 +19,7 @@ import {
   SERVER_ADDRESS,
   WEBSOCKET,
   PARAM_USERNAMES,
+  PARAM_BOTS,
   PARAM_STATE,
   STATE_CHANCELLOR_NOMINATION,
   STATE_CHANCELLOR_VOTING,
@@ -200,6 +201,8 @@ type AppState = {
   spectator: boolean;
   spectatorCount: number;
   usernames: string[];
+  /** The lobby packet's bots: the names of the bots the host's game will seat (#70). */
+  bots: string[];
   icons: { [key: string]: string };
   gameState: GameState;
   /* Stores the last gameState[PARAM_STATE] value to check for changes. */
@@ -242,6 +245,7 @@ const defaultAppState: AppState = {
   spectator: false,
   spectatorCount: 0,
   usernames: [],
+  bots: [],
   icons: {},
   gameState: DEFAULT_GAME_STATE,
   lastState: {},
@@ -367,6 +371,7 @@ class App extends Component<{}, AppState> {
     this.tryOpenWebSocket = this.tryOpenWebSocket.bind(this);
     this.onClickLeaveLobby = this.onClickLeaveLobby.bind(this);
     this.onClickStartGame = this.onClickStartGame.bind(this);
+    this.onClickSetBots = this.onClickSetBots.bind(this);
     this.sendWSCommand = this.sendWSCommand.bind(this);
     this.showSnackBar = this.showSnackBar.bind(this);
     this.onAnimationFinish = this.onAnimationFinish.bind(this);
@@ -556,7 +561,7 @@ class App extends Component<{}, AppState> {
       this.setState({ page: PAGE.LOBBY });
     }
     if (!sameLobby) {
-      this.setState({ usernames: [] });
+      this.setState({ usernames: [], bots: [] });
     }
     this.setState({
       name: name,
@@ -812,6 +817,8 @@ class App extends Component<{}, AppState> {
         this.setState(
           (state) => ({
             usernames,
+            // The server names the bots the game will seat; a page never counts or names them.
+            bots: message[PARAM_BOTS] ?? [],
             icons: message[PARAM_ICON],
             spectatorCount: message[PARAM_SPECTATOR_COUNT] ?? 0,
             page: PAGE.LOBBY,
@@ -1402,6 +1409,11 @@ class App extends Component<{}, AppState> {
     this.sendWSCommand({ command: WSCommandType.START_GAME });
   }
 
+  /** The host's bot stepper: the number of bots to seat, which the server keeps inside the range. */
+  onClickSetBots(count: number) {
+    this.sendWSCommand({ command: WSCommandType.SET_BOT_COUNT, count });
+  }
+
   onClickLeaveLobby() {
     // A PLAY INSTEAD check answering before the socket's close must not seat the person.
     this.cancelPlayInstead();
@@ -1447,6 +1459,7 @@ class App extends Component<{}, AppState> {
           lobby={this.state.lobby}
           inviteLink={window.location.origin + "/?lobby=" + this.state.lobby}
           usernames={this.state.usernames}
+          bots={this.state.bots}
           icons={this.state.icons}
           user={this.state.name}
           spectator={this.state.spectator}
@@ -1463,6 +1476,7 @@ class App extends Component<{}, AppState> {
                 : ""
           }
           onStartGame={this.onClickStartGame}
+          onSetBots={this.onClickSetBots}
           onChangeName={this.onClickChangeName}
           onChangeLook={this.onClickChangeIcon}
           onWatchInstead={this.onClickWatchInstead}
