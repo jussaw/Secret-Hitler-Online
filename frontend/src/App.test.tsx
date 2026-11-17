@@ -795,7 +795,7 @@ async function watchToVictory(extra: object) {
 test("the victory screen links to its game in a new tab", async () => {
   await watchToVictory({ gameId: "g-1" });
   const link = alertBox().getByRole("link", { name: "See this game" });
-  expect(link).toHaveAttribute("href", "/stats/games/g-1");
+  expect(link).toHaveAttribute("href", "/games/g-1");
   expect(link).toHaveAttribute("target", "_blank");
   expect(link).toHaveAttribute("rel", "noopener noreferrer");
   expect(link.closest("p.victory-game")).not.toBeNull();

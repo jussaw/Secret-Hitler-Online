@@ -14,20 +14,20 @@ describe("StatsLink", () => {
 
   it("a plain click moves the page in place", () => {
     render(
-      <StatsLink href="/stats/games" className="here" aria-current="page">
+      <StatsLink href="/games" className="here" aria-current="page">
         GAMES
       </StatsLink>
     );
     const link = screen.getByRole("link", { name: "GAMES" });
-    expect(link).toHaveAttribute("href", "/stats/games");
+    expect(link).toHaveAttribute("href", "/games");
     expect(link).toHaveClass("here");
     expect(link).toHaveAttribute("aria-current", "page");
     expect(fireEvent.click(link)).toBe(false); // cancelled
-    expect(location.pathname).toBe("/stats/games");
+    expect(location.pathname).toBe("/games");
   });
 
   it("modified and middle clicks are the browser's", () => {
-    render(<StatsLink href="/stats/games">GAMES</StatsLink>);
+    render(<StatsLink href="/games">GAMES</StatsLink>);
     const link = screen.getByRole("link", { name: "GAMES" });
     for (const init of [{ ctrlKey: true }, { metaKey: true }, { shiftKey: true }, { altKey: true }, { button: 1 }]) {
       expect(fireEvent.click(link, init), JSON.stringify(init)).toBe(true); // not cancelled
@@ -37,7 +37,7 @@ describe("StatsLink", () => {
 
   it("a link with a target is the browser's", () => {
     render(
-      <StatsLink href="/stats/games" target="_blank">
+      <StatsLink href="/games" target="_blank">
         GAMES
       </StatsLink>
     );

@@ -50,7 +50,7 @@ test("See the game opens the upset's game", async ({ page }) => {
   const data = bigStatsData();
   await open(page, data);
   await page.locator('[data-card="rating-records"]').getByRole("link", { name: "See the game" }).click();
-  await expect(page).toHaveURL(/\/stats\/games\/[^/]+$/);
+  await expect(page).toHaveURL(/\/games\/[^/]+$/);
   const id = decodeURIComponent(new URL(page.url()).pathname.split("/").pop()!);
   expect(data.games.map((game) => game.id)).toContain(id);
 });

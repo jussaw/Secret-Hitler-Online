@@ -31,10 +31,10 @@ function game(i: number): GameRecord {
 
 const DATA = makeData(Array.from({ length: 45 }, (_, i) => game(i + 1)));
 
-/** Renders GAMES at `/stats/games<search>`, in place of anything rendered before. */
+/** Renders GAMES at `/games<search>`, in place of anything rendered before. */
 function open(search = "", data = DATA) {
   cleanup();
-  history.pushState(null, "", `/stats/games${search}`);
+  history.pushState(null, "", `/games${search}`);
   return render(<GamesPage data={data} route={{ page: "games" }} />);
 }
 
@@ -72,10 +72,10 @@ describe("GamesPage", () => {
     expect(previous).toHaveAttribute("aria-disabled", "true");
     expect(previous).not.toHaveAttribute("href");
     expect(previous.tagName).toBe("SPAN");
-    expect(within(pages).getByRole("link", { name: "Next ›" })).toHaveAttribute("href", "/stats/games?page=2");
+    expect(within(pages).getByRole("link", { name: "Next ›" })).toHaveAttribute("href", "/games?page=2");
     expect(within(pages).getByText("1")).toHaveAttribute("aria-current", "page");
-    expect(within(pages).getByRole("link", { name: "2" })).toHaveAttribute("href", "/stats/games?page=2");
-    expect(within(pages).getByRole("link", { name: "3" })).toHaveAttribute("href", "/stats/games?page=3");
+    expect(within(pages).getByRole("link", { name: "2" })).toHaveAttribute("href", "/games?page=2");
+    expect(within(pages).getByRole("link", { name: "3" })).toHaveAttribute("href", "/games?page=3");
   });
 
   it("the last page", () => {
@@ -86,8 +86,8 @@ describe("GamesPage", () => {
     const next = within(pages).getByRole("link", { name: "Next ›" });
     expect(next).toHaveAttribute("aria-disabled", "true");
     expect(next).not.toHaveAttribute("href");
-    expect(within(pages).getByRole("link", { name: "‹ Previous" })).toHaveAttribute("href", "/stats/games?page=2");
-    expect(within(pages).getByRole("link", { name: "1" })).toHaveAttribute("href", "/stats/games");
+    expect(within(pages).getByRole("link", { name: "‹ Previous" })).toHaveAttribute("href", "/games?page=2");
+    expect(within(pages).getByRole("link", { name: "1" })).toHaveAttribute("href", "/games");
   });
 
   it("a page past the last shows the last", () => {
@@ -105,7 +105,7 @@ describe("GamesPage", () => {
     const per = screen.getByRole("combobox", { name: "Games a page" });
     expect(within(per).getAllByRole("option").map((o) => o.textContent)).toEqual(["20 a page", "50 a page", "100 a page"]);
     fireEvent.change(per, { target: { value: "50" } });
-    expect(address()).toBe("/stats/games?per=50");
+    expect(address()).toBe("/games?per=50");
     expect(rowIds()).toEqual(ids(45, 1));
     expect(screen.getByText("45 games recorded · showing 1–45")).toBeInTheDocument();
     expect(screen.queryByRole("navigation", { name: "Pages" })).toBeNull();
@@ -118,7 +118,7 @@ describe("GamesPage", () => {
     const options = within(add).getAllByRole("option").map((o) => o.textContent);
     expect(options).toEqual(["Add a player", "P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"]);
     fireEvent.change(add, { target: { value: "3" } });
-    expect(address()).toBe("/stats/games?players=3");
+    expect(address()).toBe("/games?players=3");
     expect(screen.getByRole("combobox", { name: "Add a player" })).toHaveValue("");
     expect(within(screen.getByRole("combobox", { name: "Add a player" })).queryByText("P3")).toBeNull();
     for (const id of rowIds()) {
@@ -126,24 +126,24 @@ describe("GamesPage", () => {
       expect(record.seats.some((s) => s.player === 3), `${id} seats player 3`).toBe(true);
     }
     fireEvent.change(screen.getByRole("combobox", { name: "Add a player" }), { target: { value: "1" } });
-    expect(address()).toBe("/stats/games?players=1,3");
+    expect(address()).toBe("/games?players=1,3");
     fireEvent.click(screen.getByRole("button", { name: "Remove P1" }));
-    expect(address()).toBe("/stats/games?players=3");
+    expect(address()).toBe("/games?players=3");
     fireEvent.click(screen.getByRole("button", { name: "Remove P3" }));
-    expect(address()).toBe("/stats/games");
+    expect(address()).toBe("/games");
     expect(screen.queryByRole("button", { name: /^Remove/ })).toBeNull();
   });
 
   it("every filter goes back to page 1", () => {
     open("?page=2");
     fireEvent.change(screen.getByRole("combobox", { name: "Seats" }), { target: { value: "7" } });
-    expect(address()).toBe("/stats/games?size=7");
+    expect(address()).toBe("/games?size=7");
     expect(screen.getByRole("combobox", { name: "Seats" })).toHaveValue("7");
     expect(screen.getByText("45 games recorded · 15 match · showing 1–15")).toBeInTheDocument();
 
     open("?size=7&page=2");
     fireEvent.change(screen.getByRole("combobox", { name: "Ending" }), { target: { value: "unfinished" } });
-    expect(address()).toBe("/stats/games?size=7&ending=unfinished");
+    expect(address()).toBe("/games?size=7&ending=unfinished");
   });
 
   it("dates, ending and Bots", () => {
@@ -153,16 +153,16 @@ describe("GamesPage", () => {
     // Leaving a field puts its day in the address at once.
     fireEvent.change(from, { target: { value: "2026-10-02" } });
     fireEvent.blur(from);
-    expect(address()).toBe("/stats/games?from=2026-10-02");
+    expect(address()).toBe("/games?from=2026-10-02");
     expect(screen.getByLabelText("To")).toHaveAttribute("min", "2026-10-02");
     fireEvent.change(to, { target: { value: "2026-10-02" } });
     fireEvent.keyDown(to, { key: "Enter" });
-    expect(address()).toBe("/stats/games?from=2026-10-02&to=2026-10-02");
+    expect(address()).toBe("/games?from=2026-10-02&to=2026-10-02");
     expect(screen.getByLabelText("From")).toHaveAttribute("max", "2026-10-02");
     expect(screen.getByText("45 games recorded · 24 match · showing 1–20")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("From"), { target: { value: "" } });
     fireEvent.blur(screen.getByLabelText("From"));
-    expect(address()).toBe("/stats/games?to=2026-10-02");
+    expect(address()).toBe("/games?to=2026-10-02");
 
     open();
     const ending = screen.getByRole("combobox", { name: "Ending" });
@@ -175,7 +175,7 @@ describe("GamesPage", () => {
       "Unfinished",
     ]);
     fireEvent.change(ending, { target: { value: "unfinished" } });
-    expect(address()).toBe("/stats/games?ending=unfinished");
+    expect(address()).toBe("/games?ending=unfinished");
     expect(rowIds()).toEqual(["g40", "g30", "g20", "g10"]);
 
     const cpu = screen.getByRole("combobox", { name: "Bots" });
@@ -185,7 +185,7 @@ describe("GamesPage", () => {
       "With Bots",
     ]);
     fireEvent.change(cpu, { target: { value: "with" } });
-    expect(address()).toBe("/stats/games?ending=unfinished&cpu=with");
+    expect(address()).toBe("/games?ending=unfinished&cpu=with");
     expect(rowIds()).toEqual(["g40", "g20"]);
 
     const seats = screen.getByRole("combobox", { name: "Seats" });
@@ -214,7 +214,7 @@ describe("GamesPage", () => {
       expect(pushes).not.toHaveBeenCalled();
       act(() => vi.advanceTimersByTime(1000));
       expect(pushes).toHaveBeenCalledTimes(1);
-      expect(address()).toBe("/stats/games?from=2025-10-14");
+      expect(address()).toBe("/games?from=2025-10-14");
       expect(screen.getByLabelText("From")).toHaveValue("2025-10-14");
 
       // A year left half typed is not put in the address, and leaving the field shows the address's day.
@@ -230,7 +230,7 @@ describe("GamesPage", () => {
 
   it("Clear filters keeps the page size", () => {
     open("?size=7&per=50&page=2");
-    expect(screen.getByRole("link", { name: "Clear filters" })).toHaveAttribute("href", "/stats/games?per=50");
+    expect(screen.getByRole("link", { name: "Clear filters" })).toHaveAttribute("href", "/games?per=50");
   });
 
   it("an unknown player in the address is ignored", () => {
@@ -239,7 +239,7 @@ describe("GamesPage", () => {
     expect(screen.getByText("45 games recorded · showing 1–20")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Clear filters" })).toBeNull();
     fireEvent.change(screen.getByRole("combobox", { name: "Add a player" }), { target: { value: "2" } });
-    expect(address()).toBe("/stats/games?players=2");
+    expect(address()).toBe("/games?players=2");
   });
 
   it("junk in the address reads as the defaults", () => {
@@ -257,9 +257,9 @@ describe("GamesPage", () => {
     expect(screen.queryByRole("list")).toBeNull();
     expect(screen.queryByRole("navigation", { name: "Pages" })).toBeNull();
     const clear = screen.getByRole("link", { name: "Clear filters" });
-    expect(clear).toHaveAttribute("href", "/stats/games");
+    expect(clear).toHaveAttribute("href", "/games");
     fireEvent.click(clear);
-    expect(address()).toBe("/stats/games");
+    expect(address()).toBe("/games");
     expect(rowIds()).toEqual(ids(45, 26));
     expect(screen.queryByRole("link", { name: "Clear filters" })).toBeNull();
   });
@@ -278,14 +278,14 @@ describe("GamesPage", () => {
     open();
     expect(scrollIntoView).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("link", { name: "Next ›" }));
-    expect(address()).toBe("/stats/games?page=2");
+    expect(address()).toBe("/games?page=2");
     expect(rowIds()).toEqual(ids(25, 6));
     expect(scrollIntoView).toHaveBeenCalledTimes(1);
     expect(window.scrollTo).not.toHaveBeenCalled();
 
     scrollIntoView.mockClear();
     fireEvent.change(screen.getByRole("combobox", { name: "Seats" }), { target: { value: "7" } });
-    expect(address()).toBe("/stats/games?size=7");
+    expect(address()).toBe("/games?size=7");
     expect(scrollIntoView).not.toHaveBeenCalled();
     expect(window.scrollTo).not.toHaveBeenCalled();
   });

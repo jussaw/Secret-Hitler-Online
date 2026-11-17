@@ -71,8 +71,8 @@ test("the header is the site's, with PLAY the page you are on", () => {
   expect(within(nav).getAllByRole("link").map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
     ["PLAY", "/"],
     ["STATS", "/stats"],
-    ["GAMES", "/stats/games"],
-    ["PLAYERS", "/stats/players"],
+    ["GAMES", "/games"],
+    ["PLAYERS", "/players"],
   ]);
   // The one current link on the page.
   expect(Array.from(document.querySelectorAll('[aria-current="page"]'), (el) => el.textContent)).toEqual(["PLAY"]);

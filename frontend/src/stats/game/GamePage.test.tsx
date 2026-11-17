@@ -32,7 +32,7 @@ describe("GamePage", () => {
   ])("%s is not found", (_what, id) => {
     open([makeRecord({ id: ID })], id);
     expect(screen.getByText("This game was not found.")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "All games" })).toHaveAttribute("href", "/stats/games");
+    expect(screen.getByRole("link", { name: "All games" })).toHaveAttribute("href", "/games");
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
   });
 

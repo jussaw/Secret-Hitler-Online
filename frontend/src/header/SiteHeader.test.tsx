@@ -31,8 +31,8 @@ describe("SiteHeader", () => {
     expect(nav().getAllByRole("link").map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
       ["PLAY", "/"],
       ["STATS", "/stats"],
-      ["GAMES", "/stats/games"],
-      ["PLAYERS", "/stats/players"],
+      ["GAMES", "/games"],
+      ["PLAYERS", "/players"],
     ]);
   });
 
@@ -62,8 +62,8 @@ describe("SiteHeader", () => {
       .filter((a) => a.getAttribute("data-drawn") === "yes");
     expect(drawn.map((a) => [a.textContent, a.getAttribute("href"), a.className])).toEqual([
       ["STATS", "/stats", "site-nav-link"],
-      ["GAMES", "/stats/games", "site-nav-link"],
-      ["PLAYERS", "/stats/players", "site-nav-link"],
+      ["GAMES", "/games", "site-nav-link"],
+      ["PLAYERS", "/players", "site-nav-link"],
     ]);
     expect(nav().getByRole("link", { name: "GAMES" })).toHaveAttribute("aria-current", "page");
   });

@@ -78,12 +78,12 @@ export const ISSUES_URL = "https://github.com/jussaw/Secret-Hitler-Online/issues
 /** The stats' home: the site header's STATS. */
 export const STATS_PATH = "/stats";
 /** Every recorded game: the site header's GAMES. */
-export const STATS_GAME_LIST_PATH = "/stats/games";
+export const STATS_GAME_LIST_PATH = "/games";
 /** Every player: the site header's PLAYERS. */
-export const STATS_PLAYER_LIST_PATH = "/stats/players";
+export const STATS_PLAYER_LIST_PATH = "/players";
 /** A recorded game's page: the victory screen's "See this game". */
 export function statsGamePath(id: string): string {
-  return "/stats/games/" + encodeURIComponent(id);
+  return "/games/" + encodeURIComponent(id);
 }
 
 //////// JSON Packet Data

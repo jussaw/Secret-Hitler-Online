@@ -72,8 +72,8 @@ describe("StatsApp", () => {
     stubFetch(json(data));
     openAt("/stats");
     await overviewTab();
-    moveTo("/stats/games/g25");
-    expect(location.pathname).toBe("/stats/games/g25");
+    moveTo("/games/g25");
+    expect(location.pathname).toBe("/games/g25");
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(outcomeLabel(games[24]));
     act(() => history.back());
     await waitFor(() => expect(location.pathname).toBe("/stats"));
@@ -84,12 +84,12 @@ describe("StatsApp", () => {
     const fetch = stubFetch(json(data));
     openAt("/stats");
     await overviewTab();
-    moveTo("/stats/games/g25");
+    moveTo("/games/g25");
     expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
     fireEvent.click(nav().getByRole("link", { name: "GAMES" }));
     expect(await screen.findByText("25 games recorded · showing 1–20")).toBeInTheDocument();
     fireEvent.click(nav().getByRole("link", { name: "PLAYERS" }));
-    expect(location.pathname).toBe("/stats/players");
+    expect(location.pathname).toBe("/players");
     fireEvent.click(nav().getByRole("link", { name: "STATS" }));
     expect(await overviewTab()).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledTimes(1);
@@ -104,7 +104,7 @@ describe("StatsApp", () => {
   });
 
   it("a short page for an address that names nothing", async () => {
-    for (const path of ["/stats/nowhere", "/stats/players/07"]) {
+    for (const path of ["/stats/nowhere", "/players/07"]) {
       resetStatsDataForTests();
       stubFetch(json(data));
       const { unmount } = openAt(path);
@@ -119,7 +119,7 @@ describe("StatsApp", () => {
     openAt("/stats");
     await overviewTab();
     expect(document.title).toBe("Stats · Secret Hitler Online");
-    moveTo("/stats/games/g25");
+    moveTo("/games/g25");
     await waitFor(() => expect(document.title).toBe("Game · Secret Hitler Online"));
     act(() => {
       history.pushState(null, "", "/stats/nowhere");

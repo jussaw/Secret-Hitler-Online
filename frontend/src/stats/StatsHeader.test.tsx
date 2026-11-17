@@ -15,8 +15,8 @@ describe("StatsHeader", () => {
     expect(found.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
       ["PLAY", "/"],
       ["STATS", "/stats"],
-      ["GAMES", "/stats/games"],
-      ["PLAYERS", "/stats/players"],
+      ["GAMES", "/games"],
+      ["PLAYERS", "/players"],
     ]);
     expect(screen.getByRole("banner")).toHaveTextContent("SECRET-HITLER");
   });
@@ -53,9 +53,9 @@ describe("StatsHeader", () => {
       const found = links({ page: "tab", tab: "overview" });
       const link = (label: string) => found.find((a) => a.textContent === label)!;
       expect(heldBack(link("GAMES")), "GAMES moves in place").toBe(true);
-      expect(location.pathname).toBe("/stats/games");
+      expect(location.pathname).toBe("/games");
       expect(heldBack(link("PLAYERS")), "PLAYERS moves in place").toBe(true);
-      expect(location.pathname).toBe("/stats/players");
+      expect(location.pathname).toBe("/players");
       expect(heldBack(link("PLAY")), "PLAY is the browser's").toBe(false);
     });
   });

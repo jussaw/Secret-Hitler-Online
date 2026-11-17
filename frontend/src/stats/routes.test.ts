@@ -7,21 +7,27 @@ const cases: [string, StatsRoute][] = [
   ["/stats/", { page: "tab", tab: "overview" }],
   ["/stats/roles", { page: "tab", tab: "roles" }],
   ["/stats/records", { page: "tab", tab: "records" }],
-  ["/stats/games", { page: "games" }],
-  ["/stats/games/", { page: "games" }],
-  ["/stats/games/abc-123", { page: "game", id: "abc-123" }],
-  ["/stats/games/a%20b", { page: "game", id: "a b" }],
-  ["/stats/players", { page: "players" }],
-  ["/stats/players/7", { page: "player", number: 7 }],
+  ["/games", { page: "games" }],
+  ["/games/", { page: "games" }],
+  ["/games/abc-123", { page: "game", id: "abc-123" }],
+  ["/games/a%20b", { page: "game", id: "a b" }],
+  ["/players", { page: "players" }],
+  ["/players/7", { page: "player", number: 7 }],
   ...[
-    "/stats/players/07",
-    "/stats/players/0",
-    "/stats/players/x",
-    "/stats/players/-1",
+    "/players/07",
+    "/players/0",
+    "/players/x",
+    "/players/-1",
     "/stats/overview",
     "/stats/nope",
-    "/stats/games/a/b",
-    "/stats/games/%E0%A4%A",
+    "/games/a/b",
+    "/games/%E0%A4%A",
+    // GAMES' and PLAYERS' old addresses: the entry sends them on before the page reads them
+    // (followMovedStatsPath).
+    "/stats/games",
+    "/stats/players/7",
+    "/gamesx",
+    "/game",
   ].map((p) => [p, { page: "notFound" }] as [string, StatsRoute]),
 ];
 
@@ -47,18 +53,18 @@ describe("routePath", () => {
       "/stats",
       "/stats/roles",
       "/stats/records",
-      "/stats/games",
-      "/stats/games",
-      "/stats/games/abc-123",
-      "/stats/games/a%20b",
-      "/stats/players",
-      "/stats/players/7",
-      ...Array.from({ length: 8 }, () => "/stats"),
+      "/games",
+      "/games",
+      "/games/abc-123",
+      "/games/a%20b",
+      "/players",
+      "/players/7",
+      ...Array.from({ length: 12 }, () => "/stats"),
     ]);
     for (const [, route] of cases) {
       if (route.page !== "notFound") expect(parseRoute(routePath(route))).toEqual(route);
     }
-    expect(routePath({ page: "game", id: "a/b?c" })).toBe("/stats/games/a%2Fb%3Fc");
+    expect(routePath({ page: "game", id: "a/b?c" })).toBe("/games/a%2Fb%3Fc");
     expect(parseRoute(routePath({ page: "game", id: "a/b?c" }))).toEqual({ page: "game", id: "a/b?c" });
   });
 });
@@ -67,7 +73,7 @@ describe("navigate and useLocation", () => {
   let scrollTo: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    history.replaceState(null, "", "/stats/games");
+    history.replaceState(null, "", "/games");
     scrollTo = vi.fn();
     vi.stubGlobal("scrollTo", scrollTo);
   });
@@ -78,37 +84,37 @@ describe("navigate and useLocation", () => {
 
   it("navigate pushes once and tells useLocation", () => {
     const { result } = renderHook(() => useLocation());
-    expect(result.current).toEqual({ pathname: "/stats/games", search: "" });
+    expect(result.current).toEqual({ pathname: "/games", search: "" });
     const first = result.current;
     const length = history.length;
 
-    act(() => navigate("/stats/games/g1?x=1"));
-    expect(result.current).toEqual({ pathname: "/stats/games/g1", search: "?x=1" });
+    act(() => navigate("/games/g1?x=1"));
+    expect(result.current).toEqual({ pathname: "/games/g1", search: "?x=1" });
     expect(result.current).not.toBe(first);
     expect(history.length).toBe(length + 1);
 
     const second = result.current;
-    act(() => navigate("/stats/games/g1?x=1"));
+    act(() => navigate("/games/g1?x=1"));
     expect(history.length).toBe(length + 1);
     expect(result.current).toBe(second);
   });
 
   it("navigate scrolls to the top only for a new page", () => {
-    act(() => navigate("/stats/games/g1"));
+    act(() => navigate("/games/g1"));
     expect(scrollTo).toHaveBeenCalledWith(0, 0);
 
-    history.replaceState(null, "", "/stats/games");
+    history.replaceState(null, "", "/games");
     scrollTo.mockClear();
-    act(() => navigate("/stats/games?size=7"));
+    act(() => navigate("/games?size=7"));
     expect(location.search).toBe("?size=7");
     expect(scrollTo).not.toHaveBeenCalled();
   });
 
   it("the back button tells useLocation", async () => {
     const { result } = renderHook(() => useLocation());
-    act(() => navigate("/stats/players"));
-    expect(result.current.pathname).toBe("/stats/players");
+    act(() => navigate("/players"));
+    expect(result.current.pathname).toBe("/players");
     act(() => history.back());
-    await waitFor(() => expect(result.current.pathname).toBe("/stats/games"));
+    await waitFor(() => expect(result.current.pathname).toBe("/games"));
   });
 });

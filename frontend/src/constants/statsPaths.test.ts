@@ -9,6 +9,6 @@ describe("the stats paths", () => {
     expect(STATS_GAME_LIST_PATH).toBe(routePath({ page: "games" }));
     expect(STATS_PLAYER_LIST_PATH).toBe(routePath({ page: "players" }));
     expect(statsGamePath("a b")).toBe(routePath({ page: "game", id: "a b" }));
-    expect(statsGamePath("0f5e2c1a-7b3d")).toBe("/stats/games/0f5e2c1a-7b3d");
+    expect(statsGamePath("0f5e2c1a-7b3d")).toBe("/games/0f5e2c1a-7b3d");
   });
 });

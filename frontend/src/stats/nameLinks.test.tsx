@@ -82,7 +82,7 @@ describe("name links", () => {
         }
         for (const link of Array.from(container.querySelectorAll("a.player-link"))) {
           expect(link.textContent ?? "", `${path}: a CPU seat's link`).not.toMatch(/^Bot /);
-          expect(link.getAttribute("href"), path).toMatch(/^\/stats\/players\/\d+(\?|$)/);
+          expect(link.getAttribute("href"), path).toMatch(/^\/players\/\d+(\?|$)/);
           linked++;
         }
         cleanup();

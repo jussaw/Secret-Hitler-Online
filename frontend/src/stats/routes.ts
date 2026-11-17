@@ -33,32 +33,42 @@ const NOT_FOUND: StatsRoute = { page: "notFound" };
 /** A player's number in an address: no sign, no leading zero, not 0. */
 const PLAYER_NUMBER = /^[1-9][0-9]*$/;
 
-/** The route of a stats address's path; anything that names no page is `notFound`. */
+/**
+ * The route of a stats address's path; anything that names no page is `notFound`. The tabs are
+ * under `/stats`, GAMES and each game under `/games`, PLAYERS and each player under `/players`.
+ * GAMES' and PLAYERS' old addresses (`/stats/games…`, `/stats/players…`) name nothing here: the
+ * entry moves them to their new ones before the page reads the address (`followMovedStatsPath`).
+ */
 export function parseRoute(pathname: string): StatsRoute {
   const segments = pathname.split("/");
-  if (segments[0] !== "" || segments[1] !== "stats") return NOT_FOUND;
+  if (segments[0] !== "") return NOT_FOUND;
   const rest = segments.slice(2);
   if (rest.length > 0 && rest[rest.length - 1] === "") rest.pop(); // a trailing slash
-  if (rest.length === 0) return { page: "tab", tab: "overview" };
-  const [first, second] = rest;
-  if (rest.length === 1 && first !== "overview" && (TAB_IDS as string[]).includes(first)) {
-    return { page: "tab", tab: first as TabId };
-  }
-  if (first === "games") {
-    if (rest.length === 1) return { page: "games" };
-    if (rest.length === 2 && second !== "") {
-      try {
-        return { page: "game", id: decodeURIComponent(second) };
-      } catch {
-        return NOT_FOUND; // a bad % escape
+  const [first] = rest;
+  switch (segments[1]) {
+    case "stats":
+      if (rest.length === 0) return { page: "tab", tab: "overview" };
+      if (rest.length === 1 && first !== "overview" && (TAB_IDS as string[]).includes(first)) {
+        return { page: "tab", tab: first as TabId };
       }
-    }
+      return NOT_FOUND;
+    case "games":
+      if (rest.length === 0) return { page: "games" };
+      if (rest.length === 1 && first !== "") {
+        try {
+          return { page: "game", id: decodeURIComponent(first) };
+        } catch {
+          return NOT_FOUND; // a bad % escape
+        }
+      }
+      return NOT_FOUND;
+    case "players":
+      if (rest.length === 0) return { page: "players" };
+      if (rest.length === 1 && PLAYER_NUMBER.test(first)) return { page: "player", number: Number(first) };
+      return NOT_FOUND;
+    default:
+      return NOT_FOUND;
   }
-  if (first === "players") {
-    if (rest.length === 1) return { page: "players" };
-    if (rest.length === 2 && PLAYER_NUMBER.test(second)) return { page: "player", number: Number(second) };
-  }
-  return NOT_FOUND;
 }
 
 /** The path of a route; `notFound` gives the stats' home, `/stats`. */
@@ -67,13 +77,13 @@ export function routePath(route: StatsRoute): string {
     case "tab":
       return route.tab === "overview" ? "/stats" : `/stats/${route.tab}`;
     case "games":
-      return "/stats/games";
+      return "/games";
     case "game":
-      return `/stats/games/${encodeURIComponent(route.id)}`;
+      return `/games/${encodeURIComponent(route.id)}`;
     case "players":
-      return "/stats/players";
+      return "/players";
     case "player":
-      return `/stats/players/${route.number}`;
+      return `/players/${route.number}`;
     case "notFound":
       return "/stats";
   }
