@@ -85,7 +85,9 @@ line there without "Stats"). Signed out at 360x740: 38.9 → 15.6px. The header:
   conflicts in those two test files, keep both phases' lines and re-run them; a conflict in any
   other source file: stop and report.
 - **Copy, exactly.** Header: `SECRET-HITLER`; links, in order, `PLAY` (`/`), `STATS` (`/stats`),
-  `GAMES` (`/stats/games`), `PLAYERS` (`/stats/players`); nav `aria-label="Site"`. Login footer's first
+  `GAMES` (`/games`), `PLAYERS` (`/players`); nav `aria-label="Site"`. (As first built, before the
+  changes after the review: STATS, GAMES, PLAYERS, PLAY, the nav "Stats pages", and GAMES and
+  PLAYERS under `/stats`; Task 2's tests below are as first written.) Login footer's first
   line: `How to play · About this project · Report a bug`. Lobby footer: `About this project · Report
   a bug`. Every other line of both pages is unchanged.
 - **Download.** The header's paths come from `src/constants`, never from `src/stats/`; the game's
