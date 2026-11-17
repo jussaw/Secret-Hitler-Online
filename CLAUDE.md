@@ -456,7 +456,7 @@ keeps credit to upstream and to the board game's creators.
   `FilterBar` (a chip per player by name, `aria-pressed`, and the switch "Include games with
   Bots", the user's word for games with CPU players, in the lobby's grey, `greyButtons.css`'s
   `.stats-grey`, which the tabs share; controlled, so the address is the filter's only copy; in
-  the phone-only query one line, "Players: 7 of 8 · CPU off", that opens the panel;
+  the phone-only query one line, "Players: 7 of 8 · Bots off", that opens the panel;
   `showPlayers={false}` shows the switch alone), `TabRow` (a `nav` "Stats sections" of seven
   `StatsLink`s in the button
   look carrying the filter, the current one orange and `aria-current="page"`, which the row (never
@@ -632,8 +632,8 @@ keeps credit to upstream and to the board game's creators.
   counts. A power's two sides can differ with CPU seats in, so the lines say whom: "None of these
   players has investigated anyone yet." (INVESTIGATIONS) and "has been investigated" (TIMES
   INVESTIGATED), "has executed anyone" (EXECUTIONS, EXECUTION TARGETS) and "has been executed"
-  (TIMES EXECUTED, FIRST TO GO). INVESTIGATIONS names whom ("4 (3 F, 1 L) · Di 2, Bo 1, CPU 1": most times first, then by
-  name, CPU seats last); its card spans the grid's row, and `VotesTab.css` lets its value wrap in
+  (TIMES EXECUTED, FIRST TO GO). INVESTIGATIONS names whom ("4 (3 F, 1 L) · Di 2, Bo 1, Bots ×1": most times first, then by
+  name, the Bots last, their "×" so the count never reads as a seat's name, "Bot 1"); its card spans the grid's row, and `VotesTab.css` lets its value wrap in
   65% of the table (`.votes-investigations`), the one place it styles a `RankedTable`.
   `votesTestRounds.ts` holds the tests' builders (`term`, `gameOf`, `investigate`, `execute`,
   `eventsOf`, `sum`).
@@ -724,7 +724,7 @@ keeps credit to upstream and to the board game's creators.
   otherwise the CPU switch on its own (`FilterBar` with `showPlayers={false}`: a `players` list
   in the address is kept for the links out, and ignored) over `PlayerView`, which draws
   `computePlayer`'s numbers (memoized, with `now` from the page's mount): a header card with the
-  name (an `h1`, not a link), the line `6 games since 2 Oct · +1 with CPU players, not counted ·
+  name (an `h1`, not a link), the line `6 games since 2 Oct · +1 with Bots, not counted ·
   last played 2 days ago` (`No counted games` with none; the CPU part only while the switch is
   off and some CPU game was left out) and the trophies (`TrophyBadge`s in a `ul` "Trophies"), then
   nine `StatCard`s in a grid of `repeat(auto-fill, minmax(min(100%, 18em), 1fr))` (three columns
@@ -737,7 +737,7 @@ keeps credit to upstream and to the board game's creators.
   teammate, nemesis and favourite opponent, each a name link and its count), Timing
   (`formatAverageTime`) and Latest games (their 5 newest records of any kind: the day it started,
   `LatestGame.startedAt`, as GAMES dates it, linking the game, their role in its colour
-  (`game/text`'s `RoleWord`), won, lost or unfinished, the ending and GAMES' CPU tag; then `All
+  (`game/text`'s `RoleWord`), won, lost or unfinished, the ending and GAMES' Bots tag; then `All
   N games ›` to GAMES filtered to them by `gamesFilterSearch`, the `›` after a no-break space
   and hidden from screen readers). A value that is not there is `tabs/cellText`'s `NO_VALUE` (`—`),
   and a rate below its minimum shows it and its count. With no counted games every card but
@@ -758,7 +758,7 @@ keeps credit to upstream and to the board game's creators.
   reading as the default; newest first is by `endedAt`, then `id`), `pages.ts` (`pageCount`,
   `pageLinks`, the first and last pages and the current one's neighbours with `null` for a gap,
   and `gamesSummary`, "142 games recorded · 37 match · showing 21–37"), `GameRow` (an
-  `li.games-row`: the date and the result, its winners' word in their colour and a `CPU` tag, are
+  `li.games-row`: the date and the result, its winners' word in their colour and a `Bots` tag, are
   its one link, `a.games-row-link`, named for the date, the result and, with CPU players, `· with
   Bots`, whose `::after` covers the row; the time and length, the seats
   as `PlayerName`s (links of their own since Phase 22A, which `.games-row-seats a` lets take a
@@ -767,7 +767,7 @@ keeps credit to upstream and to the board game's creators.
   phones) and `GamesPage` (the filter card: Players with a grey chip per chosen player, `Remove
   <name>`, and Add a player; From and To, whose typed day reaches the address once it is a whole
   day, its year from 1000, and typing has paused, or on Enter or leaving the field, so a day typed
-  part by part is one step back; Seats, Ending and Bots (With or without CPU, Without Bots, With
+  part by part is one step back; Seats, Ending and Bots (With or without Bots, Without Bots, With
   Bots); Clear filters, which keeps the page
   size; then the summary line with Games a page, the
   rows, an `ol` with `role="list"`, or "No games match these filters.", and the `Pages` nav, whose
