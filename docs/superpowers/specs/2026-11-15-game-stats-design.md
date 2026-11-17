@@ -446,7 +446,8 @@ load as their own chunk (`React.lazy`), with no part of `App`. The server answer
 Moving between them changes the address (the History API) without reloading, and the back button
 works. The records are fetched once per visit.
 
-**The header** is the game's: SECRET-HITLER and STATS · GAMES · PLAYERS · PLAY (PLAY goes to `/`),
+**The header** is the game's: SECRET-HITLER and PLAY · STATS · GAMES · PLAYERS (PLAY goes to `/`;
+it came last until Phase 23, which made the header the login page's too and put PLAY first),
 the current one underlined. On phones the links sit in a row under the title, each a 44px target.
 
 **The filter and the CPU toggle** (Phase 17A) sit at the top of every tab and the PLAYERS list, and
