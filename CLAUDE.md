@@ -318,7 +318,8 @@ keeps credit to upstream and to the board game's creators.
   preload, or the stats pages, `React.lazy`'s `src/stats/StatsApp` in `Suspense`, with neither.
   The stats are a chunk of their own: nothing outside `src/stats/` imports from it but that
   `import()`, and nothing in it imports `App`, the game, lobby or login pages or `SoundManager`
-  (leaf modules such as `src/constants` are fine), so the game's first download holds none of it
+  (leaf modules such as `src/constants` and `src/header/SiteHeader` are fine), so the game's first
+  download holds none of it
   (`npm run first-download` gives its gzipped size). `src/stats/` (issue #31; the interfaces file
   names who fills what): `record.ts` (the record's types, format 1, with `ROLES`, `SIDES` and
   `OUTCOMES` the lists their unions come from, `STATS_GAMES_PATH`,
@@ -358,10 +359,10 @@ keeps credit to upstream and to the board game's creators.
   `resetStatsDataForTests`), `StatsApp` (the header and `main.stats-main`: `Loading the games…`
   while they come, `STATS_LOAD_ERROR` if they cannot, else the route's page, or for an address that
   names nothing "This page was not found." with Go to the stats, at once; `document.title` is
-  `<Page> · Secret Hitler Online`; no later phase edits it), `StatsHeader` (SECRET-HITLER, then a
-  `nav` "Stats pages" of STATS, GAMES and PLAYERS, `StatsLink`s, and PLAY, a full load of `/`, the
-  current one `aria-current="page"` and underlined, each a 44px target at every size; one row on
-  desktop, the title over a row of four equal columns in the phone-only query) and `StatsApp.css`
+  `<Page> · Secret Hitler Online`; no later phase edits it), `StatsHeader` (the site header,
+  `src/header/SiteHeader`, which the login page shares, with STATS, GAMES and PLAYERS as
+  `StatsLink`s and the route's place marked: a tab under STATS, a game under GAMES, a player under
+  PLAYERS, nothing on a page that was not found) and `StatsApp.css`
   (`.stats-screen`, left-aligned, `.stats-main`, at most 1100px wide, `.stats-card` and
   `.stats-card-title`, the game's card look, and `.stats-link`, a 44px target in the stacked
   query); PLAYERS and a player's page are `players/` (Phase 22B, below). App.css still styles
@@ -768,8 +769,9 @@ keeps credit to upstream and to the board game's creators.
   a page past the last shows the last, every control but a page link goes back to page 1, and a
   new page of the same filter scrolls the summary into view). `GamesPage.css` lays the controls in
   two columns in the phone-only query (From and To one each below 360px wide) and makes every
-  control a 44px target with 16px text in the stacked query. The links in: the login page's and
-  the lobby's footers have Stats, and the victory screen, under its message, has "See this game"
+  control a 44px target with 16px text in the stacked query. The links in: the login page's header
+  (the stats pages' own, `SiteHeader`) has STATS, GAMES and PLAYERS, and the victory screen, under
+  its message, has "See this game"
   (`p.victory-game` in `App.tsx`, an `OutLink` to `statsGamePath(gameId)`, a 44px target whose
   margins take back all but its line's height, as Sign out's do); a packet with no `gameId`, from a
   server that does not record games, gets no link.
@@ -781,11 +783,20 @@ keeps credit to upstream and to the board game's creators.
   `testSignIn`, which signs in as a new random test account) and `discordSignInHref`, the link to
   `/auth/discord` with `?lobby=CODE` for a whole code. The page keeps no name of its own: the `name`
   cookie is gone (`lobby` and `spectator` stay), and neither `/check-login` nor `/game` is sent one.
-  The login page is `src/login/LoginScreen` (markup and `LoginScreen.css`): the header, then three
-  cards in the lobby's look, the account card (`AccountCard`), JOIN A GAME (the lobby code, JOIN and
-  WATCH, a hint and its error line) and OR START ONE (CREATE LOBBY and its error line), then a
-  footer with How to play (the official rules), Stats (`/stats`, in the same tab), About this
-  project, Report a bug and the credit line the licence asks for. The account card is blank, at
+  The login page is `src/login/LoginScreen` (markup and `LoginScreen.css`): the site header, then
+  three cards in the lobby's look, the account card (`AccountCard`), JOIN A GAME (the lobby code,
+  JOIN and WATCH, a hint and its error line) and OR START ONE (CREATE LOBBY and its error line),
+  then a footer with How to play (the official rules), About this project, Report a bug and the
+  credit line the licence asks for. The site header (`src/header/SiteHeader`, Phase 23, with
+  `SiteHeader.css`) is the stats pages' too: SECRET-HITLER, then a `nav` "Stats pages" of STATS,
+  GAMES, PLAYERS and PLAY, each a 44px target at every size, the current one `aria-current="page"`
+  and underlined; one row on desktop and in tall windows, the title over a row of four equal
+  columns in the phone-only query. It takes `current`, a `SitePlace` (`stats`, `games`, `players`,
+  `play`) or null, and `link`, which draws STATS, GAMES and PLAYERS: a plain `<a>` by default, a
+  full load, so on the login page they open the stats in the same tab, and `StatsLink` on the
+  stats pages. PLAY is always a plain link to `/`, and the login page marks it. The login page has
+  no sound control: sounds are the lobby's and the game's (it still listens for the first gesture
+  and preloads the clips, so the lobby's first sound plays). The account card is blank, at
   the signed-in card's height, until `/me`
   answers (and says `CONTACT_ERROR` if it fails); signed out it is YOUR ACCOUNT, with SIGN IN WITH
   DISCORD (a `.button-link` to `discordSignInHref` of the code field, in the same tab), "Sign in to
@@ -818,12 +829,12 @@ keeps credit to upstream and to the board game's creators.
   four letters at most). In `App`, `loginForm` fills or empties the code field and the error lines
   together. The footer links are in `src/constants`:
   `RULES_URL`, and `ABOUT_URL` and `ISSUES_URL`, which the lobby's footer shares, each an `OutLink`
-  (`src/util/`, a new tab), and `STATS_PATH` (`/stats`), a plain link here and an `OutLink` in the
-  lobby. `src/constants` also has `statsGamePath(id)` (`/stats/games/<id>`, the victory screen's
-  link): the game's pages write the stats' paths out there rather than import `src/stats/routes.ts`,
-  and `statsPaths.test.ts` checks they are the stats' own routes. `GameScreen.css` lists
-  `.login-screen` beside the lobby and the game
-  for the page and its header, and `LobbyScreen.css` lists the login page's selectors beside the
+  (`src/util/`, a new tab). `src/constants` also has the site header's `STATS_PATH` (`/stats`),
+  `STATS_GAME_LIST_PATH` (`/stats/games`) and `STATS_PLAYER_LIST_PATH` (`/stats/players`), and
+  `statsGamePath(id)` (`/stats/games/<id>`, the victory screen's link): the game's pages write the
+  stats' paths out there rather than import `src/stats/routes.ts`, and `statsPaths.test.ts` checks
+  they are the stats' own routes. `GameScreen.css` lists `.login-screen` beside the lobby and the
+  game for the page (its header is `SiteHeader.css`'s), and `LobbyScreen.css` lists the login page's selectors beside the
   lobby's for the cards' look, the fields' focus, the centred column, the grey buttons and the
   footer; `LoginScreen.css` holds the rest. The cards are a column centred both ways on desktop and
   in tall windows, and start at the top on phones (`LoginScreen.css` writes out the phone-only
@@ -871,7 +882,8 @@ keeps credit to upstream and to the board game's creators.
   The lobby is `src/lobby/`, built like the game page and on the same three layouts: `LobbyScreen`
   (markup and `LobbyScreen.css`: the header, the roster column, then a code card with the invite
   link and COPY, a status card kept two lines tall, the buttons by viewer, the note, and a footer
-  with Stats, About this project and Report a bug, each in a new tab, so the lobby stays open),
+  with About this project and Report a bug, each in a new tab, so the lobby stays open; the lobby
+  keeps its own header, `App-header`, with the spectator count and the speaker),
   `LobbyRoster` (a `RosterRow` per player, `Picking a look…`
   for a player on the default portrait, HOST on the host's row), `lobbyStatus` (a pure function from
   the usernames, portraits and viewer to the status line; it names who START GAME waits for and says
@@ -969,8 +981,8 @@ keeps credit to upstream and to the board game's creators.
   waits for; `App` puts each sound into its animation queue just before that animation; and
   `lobbySounds`, `playerJoined` for a name the last lobby packet did not have, but none for a
   rename, a list of the same length with one place changed) and
-  `SoundControl` (the speaker button and volume slider in all three headers, above the prompt
-  overlay, with Lucide icons from `lucide-react`). The clips are in `src/assets/sounds/`, an Ogg
+  `SoundControl` (the speaker button and volume slider in the lobby's and the game's headers, above
+  the prompt overlay; the login page has the site header, with none, with Lucide icons from `lucide-react`). The clips are in `src/assets/sounds/`, an Ogg
   Opus and an MP3 per sound, each credited in `docs/SOUND-CREDITS.md`. Spectators are in
   `src/spectator/`: `spectatorStatus` (the status lines a spectator gets in place of prompts, naming
   the players) and `SpectatorCount` (Lucide's eye and the number, at the left of the lobby and game
@@ -988,8 +1000,8 @@ keeps credit to upstream and to the board game's creators.
   scrolling, in order, with 44px targets, for players and a spectator; at 320x568 it keeps the
   phone layout and only scrolls down, for both, and `phone-360` also checks the login page and the
   lobby there; the login page fits without scrolling in each of `LOGIN_STATES`, with 44px targets
-  (SIGN IN WITH DISCORD, TEST SIGN-IN, CHANGE NAME and Sign out among them), 16px field text and
-  unwrapped button labels; the lobby tests (the lobby fits without scrolling for each of
+  (SIGN IN WITH DISCORD, TEST SIGN-IN, CHANGE NAME and Sign out among them, and the header's links,
+  `smallHeaderLinks` in `e2e/lobby.ts`), 16px field text and unwrapped button labels; the lobby tests (the lobby fits without scrolling for each of
   `longestLineViewers`' six viewers, each with its note, with 44px targets and 16px field text,
   the roster first, the busy bubble at 320px, and `checkNamePrompt` for CHOOSE A NAME on the login
   page and over the lobby, after which PLAY INSTEAD takes a seat at once, and for CHANGE NAME on the
@@ -997,8 +1009,9 @@ keeps credit to upstream and to the board game's creators.
   row and twelve characters at most); and a phone held sideways gets the phone layout).
   `no-scroll.spec.ts` also has a lobby test, for the same six viewers, each one's buttons checked
   by label (`actionLabels`), a spectator's note by its text, and the buttons 44px targets at every
-  size, and a login page test per state (the cards and the footer in order, 44px targets and 16px
-  field text, and Sign out's box clear of CHANGE NAME's, `accountTargets`), both at
+  size, and a login page test per state (the header, the cards and the footer in order, 44px
+  targets, the header's links among them, and 16px field text, and Sign out's box clear of CHANGE
+  NAME's, `accountTargets`), both at
   `DESKTOP_SIZES`, `SQUARE_DESKTOPS` and the `NARROW_WINDOWS`. The viewers are the host and a guest
   (the four player buttons), a signed-in spectator (PLAY INSTEAD, off in the full lobby) and two
   signed-out ones, on a server with Discord sign-in and one without (`/me` stubbed), all in the
@@ -1009,10 +1022,10 @@ keeps credit to upstream and to the board game's creators.
   (`e2e/lobby.ts`): each state at its fullest from stubbed requests, the longest error under every
   card and, signed in, a twelve-character name and `LONGEST_DISCORD_NAME` (32 m's, Discord's
   widest; "signed in, short Discord name" puts Sign out on the line just under CHANGE NAME). The
-  thinnest fits are the signed-in login page at 800x700, about 6px to spare, and on phones at
-  360x740 on Linux, where the widest Discord username takes three lines and the footer's links
-  two, about 10px, from the phone page's 8px bottom padding (`LoginScreen.css`): an added line
-  fails there first. `lobby-switch.spec.ts` (`desktop`
+  thinnest fits are the signed-in login page at 800x700, about 9px to spare, and on phones at
+  360x740, where the site header takes about 77px and the widest Discord username three lines,
+  about 15px, from the phone page's 8px bottom padding (`LoginScreen.css`; the same in the Linux
+  image): an added line fails there first. `lobby-switch.spec.ts` (`desktop`
   and `phone-360`) plays the seat switch in a real lobby: watching instead and playing instead, a
   full lobby, a taken name (a first sign-in from watching gets CHOOSE A NAME over the lobby, which
   refuses the host's name), the host passing on, reloads, the grace window, and a game started
@@ -1048,7 +1061,8 @@ keeps credit to upstream and to the board game's creators.
   but a colour) as the game page appears (END TERM, the president's countdown chip and the
   header's speaker did in Firefox). `sounds.spec.ts` runs in every
   project: no sound and no `AudioContext` before the first trusted gesture, each sound in step with
-  its animation, and the header control's fit, touch targets, keyboard use and saved settings.
+  its animation, and the header control's fit, touch targets, keyboard use and saved settings, in
+  the lobby and the game (the login page has none).
   `spectator.spec.ts` plays a scripted game to a spectator (no prompt before the victory screen, the
   status lines, the sounds), plays a real game whose spectator frames it scans for secrets
   (`e2e/driveGame.ts` seats raw-socket players; `e2e/secrets.ts` mirrors the backend's list), and
@@ -1107,8 +1121,9 @@ keeps credit to upstream and to the board game's creators.
   text). `stats-shell.spec.ts` checks `bigStatsData` and the page check itself, every shell page at
   every size (the loading and error lines too), a twelve-character name of wide letters inside its
   line at 320px, that the game's first download holds no stats code and fetches the clips while the
-  stats fetch their chunk and no clip, the header moving in place, and back, forward, reload and a
-  deep link. `stats-game.spec.ts` checks the game page at every size against `bigStatsData()` (its
+  stats fetch their chunk and no clip, the header moving in place, the login page's header
+  matching the stats' at every size (its box, the title's and each link's, PLAY marked, no
+  speaker), and back, forward, reload and a deep link. `stats-game.spec.ts` checks the game page at every size against `bigStatsData()` (its
   largest game, ten twelve-character names voting, its first incomplete and first unfinished
   games, and an unknown ID; at every size each line and name inside its card's padding, and on
   phones each round's block at least the window's width less 32px), a round's 6px edge in its
@@ -1124,8 +1139,8 @@ keeps credit to upstream and to the board game's creators.
   is outlined. `stats-overview.spec.ts` checks OVERVIEW at every size against `bigStatsData()`
   two days after its last game (twelve-character leaders, CPU games off and on), that its numbers
   follow the chips, the CPU switch, back and a fresh load, and that a hover or a tap on the rating
-  history shows a game's change, at the right edge of a 320px phone too. `stats-games.spec.ts` follows the login page's Stats link (same tab) and the lobby's
-  (a new tab, the lobby still open) (`desktop`), finds See this game on the victory screen, a 44px
+  history shows a game's change, at the right edge of a 320px phone too. `stats-games.spec.ts` follows the login page's header to the stats (same tab), checks the
+  lobby has no stats link (`desktop`), finds See this game on the victory screen, a 44px
   target on phones, checks GAMES at a hundred a page and with every filter set at every size, and
   twelve-character names inside their columns and chips at 320px; on `desktop` it goes through a
   filter, a page, a game and back, forward and reload by the address, and plays a real game of
