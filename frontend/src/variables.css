@@ -23,7 +23,7 @@
     --buttonAltHoverFill: #7abcca;
     --buttonAltShadowFill: #386F8B;
 
-    /* The snackbar's, the event bar's and the charts' tooltips' fill. */
+    /* The snackbar's and the charts' tooltips' fill. */
     --alertFill: #141414;
     /* The page under an open prompt (CustomAlert.css), which is blurred too. */
     --alertDim: rgba(20, 20, 20, 0.55);
