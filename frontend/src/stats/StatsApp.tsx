@@ -30,8 +30,8 @@ const PAGES: Record<Exclude<StatsRoute["page"], "notFound">, (props: PageProps) 
 };
 
 /**
- * The stats pages, loaded as a chunk of their own for paths under `/stats` (`main.tsx`): the
- * header, then the page the address names. The records are fetched once per page load; until
+ * The stats pages, loaded as a chunk of their own for their paths, under `/stats`, `/games` and
+ * `/players` (`main.tsx`, `isStatsPath`): the header, then the page the address names. The records are fetched once per page load; until
  * they come the page says so, and if they cannot be loaded it says that instead. An address that
  * names no page gets a short not-found page.
  */
