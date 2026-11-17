@@ -820,7 +820,9 @@ keeps credit to upstream and to the board game's creators.
   only the code" after. A 401 from JOIN, CREATE LOBBY or the name prompt's save says "Sign in to
   play." and asks `/me` again (a session that has ended closes the prompt). CHOOSE A NAME and CHANGE
   NAME are one prompt, `NamePrompt`: its title, "Others see it in lobbies and games. Up to 12
-  characters.", the field, which takes `typedName` (`src/lobby/normalizeName.ts`: runs of whitespace
+  characters.", the field, labelled "Your name" in the lobby's field-label look (`.lobby-invite-label`:
+  Montserrat 500 in `--textColorOnDark`) and marking its focus with the lobby's and the login page's
+  orange border (`LobbyScreen.css`), which takes `typedName` (`src/lobby/normalizeName.ts`: runs of whitespace
   one space, none at the start, twelve characters at most) and saves `normalizeName`'s, then the
   confirm button and the other on one row (`.name-prompt-buttons`, 44px targets on phones): CONTINUE
   and SIGN OUT, or SAVE and CANCEL. The server's message shows under the field and the prompt stays
@@ -1091,7 +1093,9 @@ keeps credit to upstream and to the board game's creators.
   either way, shows no line and no overflow (a scroll bar's width cannot be measured, as headless
   Chromium hides them). The policy alert's middle, sampled every frame while its folder turns
   over, never scrolls (at 1920x1080 and 1600x900 in `desktop`, and at each phone's size), and a
-  prompt that opens over a scrolled phone page has its title and CONFIRM in view.
+  prompt that opens over a scrolled phone page has its title and CONFIRM in view. CHANGE NAME's
+  field label has the lobby's invite label's font, weight and colour, and its focused field the
+  orange border.
   `prompt-close.spec.ts` runs in every project: after the role
   alert's OKAY, a vote closed by the server's OK, the policy alert (then END TERM, which must take
   the press) and the portrait picker in the lobby, the overlay stops being drawn within the
