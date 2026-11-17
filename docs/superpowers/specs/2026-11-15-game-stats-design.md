@@ -463,7 +463,7 @@ links:
   whose every human seat is a player still on.
 - **Include games with Bots** (games with CPU players): off by default.
 
-On phones they fold into one line ("Players: 7 of 8 · CPU off") that opens a panel.
+On phones they fold into one line ("Players: 7 of 8 · Bots off") that opens a panel.
 
 **The tabs** (Phase 17A: OVERVIEW, ROLES & CARDS, VOTES & POWERS, RIVALS, ENDINGS, ACTIVITY, RECORDS)
 are a row of buttons under the filter; on phones they scroll sideways. Until Phase 17A, `/stats` shows
@@ -688,11 +688,11 @@ filter; it has its own, also in the address:
 - **From** and **To:** local dates, inclusive.
 - **Size:** any, or 5 to 10 seats.
 - **Ending:** any, one of the four outcomes, or unfinished.
-- **Bots** (CPU players): any, without, or with ("With or without CPU", "Without Bots", "With Bots").
+- **Bots** (CPU players): any, without, or with ("With or without Bots", "Without Bots", "With Bots").
 
 Each row shows the local date and time, the length, the result ("Liberals win · 5 Liberal policies",
 "Fascists win · Hitler elected", "Unfinished after round 6 · 4 L, 3 F"), the seats in turn order
-coloured by role (Hitler underlined), the seat and round counts, and a CPU tag. A row opens its game
+coloured by role (Hitler underlined), the seat and round counts, and a Bots tag. A row opens its game
 (one link stretched over the row, never an anchor wrapped round the names, which become links of
 their own in Phase 22A).
 
@@ -724,7 +724,7 @@ played, by Elo. It uses the stats filter.
 **The player page** (`player-and-phone.jpg`, left) has the CPU toggle on its own (no player chips)
 and ignores the player filter:
 
-- **Header:** the name, counted games since their first, "+N with CPU players, not counted" when the
+- **Header:** the name, counted games since their first, "+N with Bots, not counted" when the
   toggle is off, when they last played, and their trophies.
 - **Elo:** rating, rank, peak, and their rating history.
 - **Win rate:** overall, as Liberal, as Fascist and as Hitler, and by player count.
