@@ -415,6 +415,29 @@ The user asked for it after the review; built on top of the header work, then re
 
 ---
 
+### Task 9B: "Bots", not "CPU", on every page (added after the review)
+
+The user asked for it after 22B merged; built on top of Task 9A.
+
+**Files:** `frontend/src/stats/FilterBar.tsx` (17A), `games/GamesPage.tsx` and `games/GameRow.tsx`
+(15B), `players/PlayerPage.tsx` (22B), `tabs/VotesTab.tsx` (19), their tests, and
+`e2e/stats-engine.spec.ts` and `stats-players.spec.ts`; approved edits to other phases' files.
+
+**Copy, exactly:** "Players: 7 of 8 · Bots off" (and "on"); "With or without Bots"; the tag
+"Bots"; "+N with Bots, not counted"; investigations "… · Bo 2, Cy 1, Bots ×1", the "×" so the
+count never reads as a seat's name ("Bot 1") or a player called "Bots". Code identifiers, data
+and addresses (`cpu=`, `hasCpu`, `CpuChoice`, class names) and comments stay.
+
+- [x] **Step 1: Failing tests:** each test that pinned the old text asserts the new one
+  (`FilterBar`, `GamesPage`, `GameRow`, `PlayerPage`, `VotesTab`, and the two specs); 11 failed.
+- [x] **Step 2: Implement** the five strings; the unit suite, the build and the four stats specs
+  pass (`stats-games`, `stats-players`, `stats-engine`, `stats-votes`; the longer strings still fit
+  at 320px).
+- [x] **Step 3: Commit** `fix(frontend): say bots instead of cpu on every page`, then the docs that
+  quote these strings (`CLAUDE.md`, the spec, `DEVELOPMENT.md`'s "Bots switch"), ticking the box.
+
+---
+
 ### Task 9: Pull request
 
 - [ ] **Step 1: Push and open the PR.** `git push -u origin phase-23-site-header`; `gh pr create
