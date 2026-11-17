@@ -32,7 +32,7 @@ function Result({ record }: { record: GameRecord }): JSX.Element {
 /**
  * One game in GAMES' list (`games.jpg`): its local date and result, the time it started and its
  * length, its seats in turn order coloured by role, and its seat and round counts, with a `CPU`
- * tag for a game with CPU players.
+ * tag for a game with CPU players (its link's name says "with Bots").
  *
  * The date and result are the row's one link, to the game's page, and the link's `::after`
  * stretches over the whole row, so a press anywhere on it opens the game. The seats sit above that
@@ -41,7 +41,7 @@ function Result({ record }: { record: GameRecord }): JSX.Element {
  */
 export function GameRow({ record }: { record: GameRecord }): JSX.Element {
   const label = `${formatLocalDateTime(record.startedAt)} · ${outcomeLabel(record)}${
-    record.hasCpu ? " · with CPU players" : ""
+    record.hasCpu ? " · with Bots" : ""
   }`;
   return (
     <li className="games-row">
