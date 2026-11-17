@@ -872,7 +872,11 @@ keeps credit to upstream and to the board game's creators.
   (the four steps of a round, the current one lit, over the status line `#status-bar-text`; its line
   always keeps two lines' height, and `--round-tracker-ems` is the whole card's height in its own
   ems, which the layouts reserve) and `roundStep` (a pure function from the game state and
-  `lastState` to the step; `App` queues the step with each status line). `TermTimer` is the END
+  `lastState` to the step; `App` queues the step with each status line). The tracker is the only
+  phase cue: no band crosses the screen when the phase changes (#104), and the status line or
+  prompt that follows a phase change comes at once. Every viewer gets each phase's status line,
+  the president during a presidential power too, so EXECUTIVE ACTION lights for everyone; the
+  president's prompt opens just after it. `TermTimer` is the END
   TERM countdown: an icon and the seconds left, counted down on the page from each packet's
   `remainingMs`. The page takes the time passed since the packet from `remainingMs`, not the page
   time from a deadline, whose fractions could show a second too many: the first frame shows the
@@ -975,8 +979,8 @@ keeps credit to upstream and to the board game's creators.
   socket before it closes the old one, keeping the lobby's players on screen when it reopens to the
   same lobby. `alertShowCount` and `pickerShownAt` keep a late reply from touching the wrong prompt:
   the picker updates only while it is the alert on screen. `animationStep` names the running queue
-  step, and every queue timer (`finishStepAfter`, for the event bar, the board, the vote tally and a
-  held status line, and the fade in `hideAlertAndFinish`) finishes only the step it belongs to, so a
+  step, and every queue timer (`finishStepAfter`, for the board, the vote tally and a held status
+  line, and the fade in `hideAlertAndFinish`) finishes only the step it belongs to, so a
   timer left from a cleared queue never cuts short the next one's step. A prompt's server-OK
   listener (`addServerOKListener`) is tied to its step the same way: an OK goes to the first
   listener whose step is still the current one, and `clearAnimationQueue` drops them all (and a name
