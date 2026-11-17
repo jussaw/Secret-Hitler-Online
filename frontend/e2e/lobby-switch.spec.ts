@@ -7,6 +7,7 @@ import {
   joinLobby,
   lobbyCode,
   waitForPlayers,
+  PEOPLE_ROWS,
   watchLobby,
 } from "./lobby";
 
@@ -62,7 +63,7 @@ test("a player watches instead, and the others see the seat go", async ({ page, 
     await expect(page.getByRole("button", { name: "PLAY INSTEAD" })).toBeVisible();
     expect(await spectatorCookie(page)).toBe("true");
 
-    await expect(host.locator(".lobby-player-count")).toHaveText("1 / 10", { timeout: 10_000 });
+    await waitForPlayers(host, 1, { timeout: 10_000 });
     await expect(host.locator(".App-header .spectator-count")).toHaveText("1");
   } finally {
     await opened.close();
@@ -90,7 +91,7 @@ test("a spectator plays instead and picks a look", async ({ page, browser }) => 
 
     await expect(page.locator(`.lobby-players li.is-user[data-player="${sam}"]`)).toBeVisible();
     expect(await spectatorCookie(page)).toBeUndefined();
-    await expect(host.locator(".lobby-player-count")).toHaveText("2 / 10");
+    await waitForPlayers(host, 2);
   } finally {
     await opened.close();
   }
@@ -130,7 +131,7 @@ test("a taken name keeps the spectator watching", async ({ page, browser }) => {
     await page.getByRole("button", { name: "CONTINUE" }).click();
     await expect(page.locator(".prompt-error")).toHaveText("Another player already has that name.");
     expect(await spectatorCookie(page)).toBe("true");
-    await expect(host.locator(".lobby-player-count")).toHaveText("1 / 10");
+    await waitForPlayers(host, 1);
 
     // A free name is saved, and the page keeps watching, PLAY INSTEAD ready.
     await field.fill(uniqueName("Sam"));
@@ -139,7 +140,7 @@ test("a taken name keeps the spectator watching", async ({ page, browser }) => {
     await expect(page.getByRole("button", { name: "PLAY INSTEAD" })).toBeVisible();
     await expect(page.getByRole("button", { name: "PLAY INSTEAD" })).toBeEnabled();
     expect(await spectatorCookie(page)).toBe("true");
-    await expect(host.locator(".lobby-player-count")).toHaveText("1 / 10");
+    await waitForPlayers(host, 1);
   } finally {
     await opened.close();
   }
@@ -185,7 +186,7 @@ test("a reload keeps each switch, and coming back as Sam keeps the look", async 
 
     // The seat is certainly gone now, so this return is outside the 3 s grace window. The server
     // still remembers the portrait: Sam gets it back and no picker opens.
-    await expect(host.locator(".lobby-player-count")).toHaveText("1 / 10", { timeout: 10_000 });
+    await waitForPlayers(host, 1, { timeout: 10_000 });
     await page.getByRole("button", { name: "PLAY INSTEAD" }).click();
     await expect(page.locator(`.lobby-players li.is-user[data-player="${sam}"]`)).toBeVisible();
     expect(await faceOf(page, sam)).toBe(look);
@@ -214,14 +215,14 @@ test("the host comes back inside the grace window and is still the host", async 
     await joinLobby(ann, code, annName);
     await waitForPlayers(page, 2);
     const look = await faceOf(ann, hostName);
-    // Ann's page records whether the host's seat ever went (the count dropping to 1 / 10).
-    await ann.evaluate(() => {
+    // Ann's page records whether the host's seat ever went (the roster dropping to one person).
+    await ann.evaluate((peopleRows) => {
       const w = window as unknown as { __seatWentAway: boolean };
       w.__seatWentAway = false;
       new MutationObserver(() => {
-        if (document.querySelector(".lobby-player-count")?.textContent === "1 / 10") w.__seatWentAway = true;
+        if (document.querySelectorAll(peopleRows).length === 1) w.__seatWentAway = true;
       }).observe(document, { subtree: true, childList: true, characterData: true });
-    });
+    }, PEOPLE_ROWS);
 
     await page.getByRole("button", { name: "WATCH INSTEAD" }).click();
     await page.getByRole("button", { name: "PLAY INSTEAD" }).click();
@@ -231,7 +232,7 @@ test("the host comes back inside the grace window and is still the host", async 
       "HOST"
     );
     await expectNoPicker(page);
-    const order = () => ann.locator(".lobby-players li.roster-row").evaluateAll((rows) =>
+    const order = () => ann.locator(PEOPLE_ROWS).evaluateAll((rows) =>
       rows.map((row) => row.getAttribute("data-player"))
     );
     expect(await order()).toEqual([hostName, annName]);
@@ -261,16 +262,16 @@ test("a game started right after someone watches instead seats only the connecte
     await joinLobby(ann, code, annName);
     await waitForPlayers(page, 6);
 
-    // The host's page records whether Ann's seat went (the count dropping to 5 / 10) before the
-    // game screen appeared: a start after her grace window would seat five without the fix too.
-    await page.evaluate(() => {
+    // The host's page records whether Ann's seat went (the roster dropping to five people) before
+    // the game screen appeared: a start after her grace window would seat five without the fix too.
+    await page.evaluate((peopleRows) => {
       const w = window as unknown as { __seatWentAway: boolean };
       w.__seatWentAway = false;
       new MutationObserver(() => {
         if (document.querySelector(".game-screen")) return;
-        if (document.querySelector(".lobby-player-count")?.textContent === "5 / 10") w.__seatWentAway = true;
+        if (document.querySelectorAll(peopleRows).length === 5) w.__seatWentAway = true;
       }).observe(document, { subtree: true, childList: true, characterData: true });
-    });
+    }, PEOPLE_ROWS);
 
     await ann.getByRole("button", { name: "WATCH INSTEAD" }).click();
     // Ann's spectator socket is open, so her player socket has closed. The server still holds her

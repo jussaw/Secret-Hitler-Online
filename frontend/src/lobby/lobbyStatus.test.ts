@@ -155,27 +155,49 @@ describe("lobbyStatus", () => {
     ["player before the first packet", [], [], player("Sam"), "", []],
   ];
 
+  // A new lobby's bots: the fewest that make five.
+  const fewest = (players: string[]) => Math.max(0, 5 - players.length);
+
   it.each(cases)(
     "%s",
     (_label, players, picking, viewer, line, highlighted) => {
-      const status = lobbyStatus(players, icons(players, picking), viewer);
+      const status = lobbyStatus(players, icons(players, picking), viewer, fewest(players));
       expect(text(status)).toBe(line);
       expect(names(status)).toEqual(highlighted);
     },
   );
+
+  // #70: the host chose how many bots join.
+  const chosen: [string, number, number, LobbyViewer, string][] = [
+    ["host, four and two bots", 4, 2, player(HOST), "4 players. 2 bots will join to make 6."],
+    ["host, six and four bots", 6, 4, player(HOST), "6 players. 4 bots will join to make 10."],
+    ["host, one and nine bots", 1, 9, player(HOST), "1 player. 9 bots will join to make 10."],
+    ["host, five and one bot", 5, 1, player(HOST), "5 players. 1 bot will join to make 6."],
+    ["host, five and none", 5, 0, player(HOST), "Everyone is ready. Start when you like."],
+    ["guest, four and two bots", 4, 2, player(lg(1)), "Waiting for Host Player to start. 2 bots will join."],
+    ["guest, seven and one bot", 7, 1, player(lg(1)), "Waiting for Host Player to start. 1 bot will join."],
+    ["guest, seven and none", 7, 0, player(lg(1)), "Waiting for Host Player to start the game."],
+    ["spectator, four and two bots", 4, 2, spectator, "You are watching. Waiting for Host Player to start. 2 bots will join."],
+  ];
+
+  it.each(chosen)("%s", (_label, people, bots, viewer, line) => {
+    const players = TEN.slice(0, people);
+    expect(text(lobbyStatus(players, icons(players), viewer, bots))).toBe(line);
+  });
 
   it("lets picking beat ready for the host", () => {
     const status = lobbyStatus(
       TEN.slice(0, 3),
       icons(TEN.slice(0, 3), [lg(2)]),
       player(HOST),
+      2,
     );
     expect(text(status)).toBe("Waiting for Long Guest 2 to pick a look.");
   });
 
   it("lets picking beat the bots line for a host with fewer than five players", () => {
     const players = TEN.slice(0, 4);
-    const status = lobbyStatus(players, icons(players, [lg(3)]), player(HOST));
+    const status = lobbyStatus(players, icons(players, [lg(3)]), player(HOST), 3);
     expect(text(status)).toBe("Waiting for Long Guest 3 to pick a look.");
   });
 });

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { defaultPortrait } from "../assets";
 import { copyText } from "./copyText";
 import LobbyScreen, { LobbyScreenProps } from "./LobbyScreen";
-import { lobbyStatus } from "./lobbyStatus";
+import { lobbyStatus, StatusSegment } from "./lobbyStatus";
 
 vi.mock("./copyText");
 
@@ -37,6 +37,7 @@ function lobbyProps(overrides: Partial<LobbyScreenProps> = {}): LobbyScreenProps
     lobby: "HBIA",
     inviteLink: LINK,
     usernames: TEN,
+    bots: [],
     icons: icons(TEN),
     user: HOST,
     spectator: false,
@@ -46,6 +47,7 @@ function lobbyProps(overrides: Partial<LobbyScreenProps> = {}): LobbyScreenProps
     signInHref: SIGN_IN_HREF,
     spectatorError: "",
     onStartGame: vi.fn(),
+    onSetBots: vi.fn(),
     onChangeName: vi.fn(),
     onChangeLook: vi.fn(),
     onWatchInstead: vi.fn(),
@@ -56,11 +58,14 @@ function lobbyProps(overrides: Partial<LobbyScreenProps> = {}): LobbyScreenProps
   };
 }
 
-/** The page's own actions, buttons and links drawn as buttons, in order (not the header's sound control). */
+/**
+ * The page's own actions, buttons and links drawn as buttons, in order (not the header's sound
+ * control): each one's label, or its accessible name if it has only an icon.
+ */
 const buttons = () =>
   Array.from(
     document.querySelectorAll(".lobby-main button, .lobby-main .button-link"),
-    (b) => b.textContent
+    (b) => b.textContent || b.getAttribute("aria-label")
   );
 const button = (name: string) => screen.getByRole("button", { name });
 /** The note under a spectator's buttons: always there, and empty when there is nothing to say. */
@@ -70,13 +75,22 @@ const watching = (overrides: Partial<LobbyScreenProps> = {}) =>
   renderLobby({ usernames: NINE, icons: icons(NINE), user: "", spectator: true, ...overrides });
 const rows = () => Array.from(document.querySelectorAll<HTMLElement>(".lobby-players li.roster-row"));
 const row = (name: string) => document.querySelector<HTMLElement>(`li.roster-row[data-player="${name}"]`)!;
+const text = (segments: StatusSegment[]) => segments.map((s) => s.text).join("");
 const statusText = () => document.getElementById("lobby-status-text")!.textContent;
+const FOUR = TEN.slice(0, 4);
+const bots = (n: number) => Array.from({ length: n }, (_, i) => `Bot ${i + 1}`);
+/** The host's stepper, or null for anyone else. */
+const stepper = () => screen.queryByRole("group", { name: "Bots" });
+const botRows = () => Array.from(document.querySelectorAll<HTMLElement>(".lobby-players li.roster-row.is-bot"));
+const playerCount = () => document.querySelector(".lobby-player-count")!.textContent;
 
 describe("LobbyScreen", () => {
   it("the host's buttons", () => {
     renderLobby();
     expect(buttons()).toEqual([
       "COPY",
+      "Fewer bots",
+      "More bots",
       "START GAME",
       "CHANGE NAME",
       "CHANGE LOOK",
@@ -321,7 +335,7 @@ describe("LobbyScreen", () => {
       { user: "", spectator: true },
     ]) {
       renderLobby({ icons: picking, ...viewer });
-      const segments = lobbyStatus(TEN, picking, viewer);
+      const segments = lobbyStatus(TEN, picking, viewer, 0);
       expect(statusText()).toBe(segments.map((s) => s.text).join(""));
       expect(
         Array.from(document.querySelectorAll("#lobby-status-text .lobby-status-name"), (n) => n.textContent)
@@ -353,6 +367,116 @@ describe("LobbyScreen", () => {
       expect(link).toHaveAttribute("rel", "noopener noreferrer");
       expect(link.closest(".lobby-footer")).not.toBeNull();
     }
+  });
+
+  it("the host chooses how many bots join, between a table of five and ten", () => {
+    const props = renderLobby({ usernames: FOUR, icons: icons(FOUR), bots: bots(2) });
+    expect(stepper()).toHaveTextContent(/^2\s*BOTS$/);
+    expect(button("Fewer bots")).toBeEnabled();
+    expect(button("More bots")).toBeEnabled();
+    fireEvent.click(button("Fewer bots"));
+    expect(props.onSetBots).toHaveBeenLastCalledWith(1);
+    cleanup();
+    const again = renderLobby({ usernames: FOUR, icons: icons(FOUR), bots: bots(2) });
+    fireEvent.click(button("More bots"));
+    expect(again.onSetBots).toHaveBeenLastCalledWith(3);
+    // The stepper is on START GAME's row, at its left.
+    const row = document.querySelector(".lobby-start-row")!;
+    expect(Array.from(row.children)).toEqual([stepper(), button("START GAME")]);
+  });
+
+  it("a second press before the server answers steps on from the first", () => {
+    const props = lobbyProps({ usernames: FOUR, icons: icons(FOUR), bots: bots(2) });
+    const { rerender } = render(<LobbyScreen {...props} />);
+    fireEvent.click(button("More bots"));
+    fireEvent.click(button("More bots"));
+    expect(vi.mocked(props.onSetBots).mock.calls).toEqual([[3], [4]]);
+    expect(stepper()).toHaveTextContent(/^4\s*BOTS$/);
+    // The rows are the server's: they follow its packets.
+    expect(botRows()).toHaveLength(2);
+    // The server's next packet answers the first press, and the stepper shows what it holds.
+    rerender(<LobbyScreen {...props} bots={bots(3)} />);
+    expect(stepper()).toHaveTextContent(/^3\s*BOTS$/);
+    expect(botRows()).toHaveLength(3);
+    fireEvent.click(button("Fewer bots"));
+    expect(props.onSetBots).toHaveBeenLastCalledWith(2);
+  });
+
+  it("quick presses stop at the limits", () => {
+    const props = renderLobby({ usernames: FOUR, icons: icons(FOUR), bots: bots(5) });
+    fireEvent.click(button("More bots"));
+    expect(button("More bots")).toBeDisabled();
+    fireEvent.click(button("More bots"));
+    expect(vi.mocked(props.onSetBots).mock.calls).toEqual([[6]]);
+  });
+
+  it("− is off at the fewest bots that make five", () => {
+    renderLobby({ usernames: FOUR, icons: icons(FOUR), bots: bots(1) });
+    expect(stepper()).toHaveTextContent(/^1\s*BOT$/);
+    expect(button("Fewer bots")).toBeDisabled();
+    expect(button("More bots")).toBeEnabled();
+  });
+
+  it("+ is off at the most bots that keep ten", () => {
+    renderLobby({ usernames: FOUR, icons: icons(FOUR), bots: bots(6) });
+    expect(button("Fewer bots")).toBeEnabled();
+    expect(button("More bots")).toBeDisabled();
+  });
+
+  it("with five people, − is off at no bots", () => {
+    const five = TEN.slice(0, 5);
+    renderLobby({ usernames: five, icons: icons(five), bots: [] });
+    expect(stepper()).toHaveTextContent(/^0\s*BOTS$/);
+    expect(button("Fewer bots")).toBeDisabled();
+    expect(button("More bots")).toBeEnabled();
+  });
+
+  it("with ten people, both are off at no bots", () => {
+    renderLobby();
+    expect(stepper()).toHaveTextContent(/^0\s*BOTS$/);
+    expect(button("Fewer bots")).toBeDisabled();
+    expect(button("More bots")).toBeDisabled();
+  });
+
+  it("only the host gets the stepper", () => {
+    renderLobby({ usernames: FOUR, icons: icons(FOUR), bots: bots(2), user: lg(1) });
+    expect(stepper()).toBeNull();
+    cleanup();
+    renderLobby({ usernames: FOUR, icons: icons(FOUR), bots: bots(2), user: "", spectator: true });
+    expect(stepper()).toBeNull();
+  });
+
+  it("every viewer sees a row per bot after the people, and the heading counts them", () => {
+    for (const viewer of [
+      { user: HOST, spectator: false },
+      { user: lg(1), spectator: false },
+      { user: "", spectator: true },
+    ]) {
+      renderLobby({ usernames: FOUR, icons: icons(FOUR), bots: bots(2), ...viewer });
+      expect(rows().map((r) => r.querySelector(".roster-name-text")!.textContent)).toEqual([
+        ...FOUR,
+        "Bot 1",
+        "Bot 2",
+      ]);
+      expect(botRows().map((r) => r.dataset.bot)).toEqual(["Bot 1", "Bot 2"]);
+      for (const bot of botRows()) {
+        expect(bot).not.toHaveClass("is-user");
+        expect(bot.querySelector(".roster-portrait svg.lucide-bot")).not.toBeNull();
+        expect(bot).toHaveAttribute("title", bot.dataset.bot);
+      }
+      expect(playerCount()).toBe("6 / 10");
+      expect(statusText()).toBe(
+        text(lobbyStatus(FOUR, icons(FOUR), viewer, 2))
+      );
+      cleanup();
+    }
+  });
+
+  it("a bot's seat is a person's for the full note: bots never fill the lobby", () => {
+    watching({ bots: bots(1) });
+    expect(playerCount()).toBe("10 / 10");
+    expect(button("PLAY INSTEAD")).toBeEnabled();
+    expect(note()).toBeEmptyDOMElement();
   });
 
   it("the header", () => {

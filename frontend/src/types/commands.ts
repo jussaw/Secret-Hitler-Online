@@ -12,6 +12,8 @@ export const enum WSCommandType {
   RESUME_TERM_TIMER = "resume-term-timer",
   // Select an icon
   SELECT_ICON = "select-icon",
+  // The host chooses how many bots join, in the lobby (#70).
+  SET_BOT_COUNT = "set-bot-count",
   // Select a player
   NOMINATE_CHANCELLOR = "nominate-chancellor",
   REGISTER_EXECUTION = "register-execution",
@@ -36,6 +38,7 @@ export type ServerRequestPayload =
   | { command: WSCommandType.PAUSE_TERM_TIMER }
   | { command: WSCommandType.RESUME_TERM_TIMER }
   | { command: WSCommandType.SELECT_ICON; icon: string }
+  | { command: WSCommandType.SET_BOT_COUNT; count: number }
   | { command: WSCommandType.NOMINATE_CHANCELLOR; target: string }
   | { command: WSCommandType.REGISTER_EXECUTION; target: string }
   | { command: WSCommandType.REGISTER_SPECIAL_ELECTION; target: string }
@@ -54,6 +57,7 @@ export type SendWSCommand = (payload: ServerRequestPayload) => void;
  *
  * Optional, depending on command:
  * @param {number} icon The icon to select.
+ * @param {number} count The number of bots the host chose (set-bot-count).
  * @param {string} target The target of the command. Used for powers and nominations.
  * @param {boolean} vote The vote to register.
  * @param {number} choice The policy index to register.

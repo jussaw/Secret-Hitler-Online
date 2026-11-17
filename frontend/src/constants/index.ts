@@ -147,6 +147,8 @@ export const STATE_FASCIST_VICTORY_ELECTION = "FASCIST_VICTORY_ELECTION"; // Fas
 // Lobby
 export const PARAM_USER_COUNT = "user-count";
 export const PARAM_USERNAMES = "usernames";
+/** The lobby packet's bots: the names of the bots a game started now seats (#70). */
+export const PARAM_BOTS = "bots";
 
 // Peek
 export const PARAM_PEEK = "peek";
