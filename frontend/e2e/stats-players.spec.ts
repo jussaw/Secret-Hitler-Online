@@ -55,7 +55,7 @@ test("PLAYERS has the CPU switch alone and ignores a player filter", async ({ pa
   await open(page, `${routePath({ page: "players" })}?players=2,3`);
   await expect(page.getByRole("region", { name: "Players" }).locator("tbody tr")).toHaveCount(data.players.length);
   await expect(page.locator(".filter-chip, .filter-summary")).toHaveCount(0);
-  await page.getByRole("switch", { name: "Include games with CPU players" }).click();
+  await page.getByRole("switch", { name: "Include games with Bots" }).click();
   await expect(page).toHaveURL(/\/stats\/players\?cpu=1$/);
   await expect(page.getByRole("region", { name: "Players" }).locator("tbody tr")).toHaveCount(data.players.length);
 });
@@ -113,7 +113,7 @@ test("the player page's CPU switch counts CPU games", async ({ page }) => {
   const line = page.locator(".player-summary");
   await expect(line).toContainText(/ · \+\d+ with CPU players, not counted · /);
   const before = Number((await line.textContent())!.match(/^(\d+) games/)![1]);
-  await page.getByRole("switch", { name: "Include games with CPU players" }).click();
+  await page.getByRole("switch", { name: "Include games with Bots" }).click();
   await expect(page).toHaveURL(/[?&]cpu=1$/);
   await expect(line).not.toContainText("with CPU players");
   const after = Number((await line.textContent())!.match(/^(\d+) games/)![1]);

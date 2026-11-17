@@ -94,7 +94,7 @@ test("the numbers follow the filter and the toggle", async ({ page }) => {
     ]);
 
     await openPanel();
-    await page.getByRole("switch", { name: "Include games with CPU players" }).click();
+    await page.getByRole("switch", { name: "Include games with Bots" }).click();
     await expect(page, at).toHaveURL(/\/stats\?cpu=1$/);
     await expect.poll(() => rows(gamesPlayed), at).toEqual([
       ["1.", "Ann", "8", ""],

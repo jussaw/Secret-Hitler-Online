@@ -97,7 +97,7 @@ describe("PlayersPage", () => {
     const players = await screen.findByRole("region", { name: "Players" });
     expect(within(players).queryByRole("link", { name: "Gus" })).toBeNull();
     expect(playerChooser()).toEqual([null, null]);
-    fireEvent.click(screen.getByRole("switch", { name: "Include games with CPU players" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Include games with Bots" }));
     expect(location.pathname).toBe("/stats/players");
     expect(location.search).toBe("?cpu=1");
     expect(within(screen.getByRole("region", { name: "Players" })).getByRole("link", { name: "Gus" })).toBeInTheDocument();
@@ -111,7 +111,7 @@ describe("PlayersPage", () => {
     expect(cellTexts(rowOf("Ann"))[0]).toBe("6");
     expect(playerChooser()).toEqual([null, null]);
     // The next change of the switch leaves the ignored player filter out of the address.
-    fireEvent.click(screen.getByRole("switch", { name: "Include games with CPU players" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Include games with Bots" }));
     expect(location.search).toBe("?cpu=1");
     expect(parseFilter(location.search)).toEqual({ players: null, cpu: true });
   });

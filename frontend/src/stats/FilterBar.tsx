@@ -24,9 +24,9 @@ export function filterSummary(players: Player[], filter: StatsFilter): string {
 
 /**
  * The filter at the top of the stats: a chip per player (on by default; a game counts only when
- * every person in it is on) and the switch that counts games with CPU players. It shows the filter
- * it is given and hands every change to `onChange`, which puts it in the address. On phones it
- * folds into one line that opens the panel.
+ * every person in it is on) and the switch that counts games with CPU players, "Include games
+ * with Bots" (the address's `cpu`). It shows the filter it is given and hands every change to
+ * `onChange`, which puts it in the address. On phones it folds into one line that opens the panel.
  */
 export function FilterBar({ players, filter, onChange, showPlayers = true }: FilterBarProps): JSX.Element {
   const [open, setOpen] = useState(false);
@@ -45,7 +45,7 @@ export function FilterBar({ players, filter, onChange, showPlayers = true }: Fil
       onClick={() => onChange({ players: filter.players, cpu: !filter.cpu })}
     >
       <span className="filter-switch-track" aria-hidden="true" />
-      Include games with CPU players
+      Include games with Bots
     </button>
   );
 

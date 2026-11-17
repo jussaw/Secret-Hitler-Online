@@ -43,7 +43,7 @@ function openTab(tab: TabId, pathname: string, search = "") {
 }
 
 const tabRow = () => within(screen.getByRole("navigation", { name: "Stats sections" }));
-const cpuSwitch = () => screen.getByRole("switch", { name: "Include games with CPU players" });
+const cpuSwitch = () => screen.getByRole("switch", { name: "Include games with Bots" });
 
 describe("TabsPage", () => {
   it("showsTheFilterTheTabRowAndTheRoutesTab", () => {

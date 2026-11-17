@@ -204,7 +204,7 @@ describe("PlayerPage", () => {
     it("theCpuToggleStandsAlone", async () => {
       history.replaceState(null, "", "/stats/players/1?players=2,3");
       render(<StatsApp />);
-      const toggle = await screen.findByRole("switch", { name: "Include games with CPU players" });
+      const toggle = await screen.findByRole("switch", { name: "Include games with Bots" });
       expect(screen.queryByRole("group", { name: "Players" })).toBeNull();
       expect(screen.queryByRole("button", { name: /^Players:/ })).toBeNull();
       expect(screen.getByText(/^6 games since 2 Oct/)).toBeInTheDocument();
