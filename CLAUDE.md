@@ -477,7 +477,7 @@ keeps credit to upstream and to the board game's creators.
   `.stats-grey`, which the tabs share; controlled, so the address is the filter's only copy; in
   the phone-only query one line, "Players: 7 of 8 · Bots off", that opens the panel;
   `showPlayers={false}` shows the switch alone, after `beforeSwitch` when it is given, which only
-  PLAYERS fills, `.has-lead`: one line where both fit, their tops in line), `TabRow` (a `nav`
+  PLAYERS fills, `.has-before-switch`: one line where both fit, their tops in line), `TabRow` (a `nav`
   "Stats sections" of seven
   `StatsLink`s in the button
   look carrying the filter, the current one orange and `aria-current="page"`, which the row (never
@@ -741,7 +741,8 @@ keeps credit to upstream and to the board game's creators.
   `.ranked-unranked.is-provisional`, grey and in italics wherever it falls), and `NO_GAMES` when the
   filter counts no game. It opens in `computePlayersList`'s name order. Each column's head is a
   button (`.players-sort`, in the head's own look, an arrow from Lucide: `ArrowUpDown` dimmed until
-  it sorts, then `ArrowUp` or `ArrowDown`, before the word in a column of numbers) that sorts by
+  it sorts, then `ArrowUp` or `ArrowDown`, before the word in every column but Player's, which
+  stand at the right; `HEADS` names each column's word, class and arrow side) that sorts by
   its column, with `aria-sort` on the sorted head; a second press turns the order round.
   `players/playersOrder.ts` holds the rules (`NAME_ORDER`, `pressHead`, `sortPlayers`,
   `searchPlayers`, `noMatchLine`): a first press puts names A to Z and every other column the most
@@ -755,7 +756,8 @@ keeps credit to upstream and to the board game's creators.
   moves the address, as the page stays mounted, and a reload opens in name order with no search.
   In the phone-only query the Last played column, its head too, gives way to a `played 2
   days ago` line under the name, so the table fits 320px without a scroll of its own (sorting by
-  it is a desktop thing), and the search box takes the bar's line above the switch; in the stacked
+  it is a desktop thing), and the search box takes the bar's line above the switch unless it gets
+  12em beside it (a phone held sideways); in the stacked
   query the box and each head are 44px targets and the box's text 16px. A player's
   page (`/players/<n>`, `players/PlayerPage`) is "This player was not found." and All
   players (`/players`) for a number no player has, decided before any hook
