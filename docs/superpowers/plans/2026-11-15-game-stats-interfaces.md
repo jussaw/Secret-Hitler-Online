@@ -146,7 +146,7 @@ export function playerName(data: StatsData, player: number): string;
     | { page: "players" } | { page: "player"; number: number }
     | { page: "notFound" };
   export function parseRoute(pathname: string): StatsRoute;
-  export function routePath(route: StatsRoute): string;      // "/stats", "/stats/roles", "/stats/games/<id>", …
+  export function routePath(route: StatsRoute): string;      // "/stats", "/stats/roles", "/games/<id>" (since Phase 23), …
   export function navigate(pathAndSearch: string): void;      // History API, no reload
   export function useLocation(): { pathname: string; search: string };
   ```
@@ -165,7 +165,7 @@ export function playerName(data: StatsData, player: number): string;
   PLAYERS.)
 - `PlayerName.tsx`: `<PlayerName player={number | null} name={string} role?={Role} />`, the one
   way any page shows a seat's or player's name (coloured by role when given; Hitler underlined).
-  Plain text until Phase 22 makes a non-null `player` a link to `/stats/players/<number>`.
+  Plain text until Phase 22 makes a non-null `player` a link to `/players/<number>` (`/stats/players/<number>` until Phase 23).
 - `format.ts`: `outcomeLabel(record: GameRecord): string` ("Liberals win · 5 Liberal policies",
   "Liberals win · Hitler executed", "Fascists win · 6 Fascist policies", "Fascists win · Hitler
   elected", "Unfinished after round N · L L, F F"), `formatDuration(ms: number): string`
