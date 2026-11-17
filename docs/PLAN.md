@@ -57,7 +57,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 21A. ACTIVITY | `phase-21a-activity` | done |
 | 21B. RECORDS | `phase-21b-records` | done |
 | 22A. Trophies and name links | `phase-22a-trophies-links` | done |
-| 22B. Player pages | `phase-22b-player-pages` | planned |
+| 22B. Player pages | `phase-22b-player-pages` | done |
 | 23. One header for the site | `phase-23-site-header` | planned |
 
 ---
@@ -1059,7 +1059,7 @@ Issue #31, its last phase: PLAYERS lists every player with counted games by Elo,
 **Phase 22B acceptance**
 
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] PR merged into `development`
+- [x] PR merged into `development`
 - [ ] The user browses the stats on the deployed build, on a desktop and on a phone: PLAYERS, their own page and its trophies, a name followed from GAMES, and a game page's Elo change
 - [ ] The user closes issue #31 once every phase (13 to 22B) is merged
 
