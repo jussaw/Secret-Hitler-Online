@@ -28,8 +28,8 @@ const STATS_LINKS: { place: SitePlace; label: string; href: string }[] = [
 ];
 
 /**
- * The header of the login page and the stats pages: SECRET-HITLER, then STATS, GAMES, PLAYERS and
- * PLAY. The place you are at is marked (`aria-current="page"`, underlined); `null` marks none.
+ * The header of the login page and the stats pages: SECRET-HITLER, then PLAY, STATS, GAMES and
+ * PLAYERS. The place you are at is marked (`aria-current="page"`, underlined); `null` marks none.
  * `link` draws STATS, GAMES and PLAYERS: the stats pass `StatsLink`, which moves the page in place,
  * and the login page leaves the default, a plain link. PLAY is always a plain link, a full load of
  * the game.
@@ -46,14 +46,14 @@ export function SiteHeader({
     <header className="site-header">
       <span className="site-title">SECRET-HITLER</span>
       <nav className="site-nav" aria-label="Site">
+        <a href="/" className="site-nav-link" aria-current={mark("play")}>
+          PLAY
+        </a>
         {STATS_LINKS.map(({ place, label, href }) => (
           <Link key={place} href={href} className="site-nav-link" aria-current={mark(place)}>
             {label}
           </Link>
         ))}
-        <a href="/" className="site-nav-link" aria-current={mark("play")}>
-          PLAY
-        </a>
       </nav>
     </header>
   );

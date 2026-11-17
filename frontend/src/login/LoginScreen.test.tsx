@@ -69,10 +69,10 @@ test("the header is the site's, with PLAY the page you are on", () => {
   expect(header).toHaveTextContent(/^SECRET-HITLER/);
   const nav = within(header).getByRole("navigation", { name: "Site" });
   expect(within(nav).getAllByRole("link").map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
+    ["PLAY", "/"],
     ["STATS", "/stats"],
     ["GAMES", "/stats/games"],
     ["PLAYERS", "/stats/players"],
-    ["PLAY", "/"],
   ]);
   // The one current link on the page.
   expect(Array.from(document.querySelectorAll('[aria-current="page"]'), (el) => el.textContent)).toEqual(["PLAY"]);

@@ -10,13 +10,13 @@ function links(route: StatsRoute) {
 }
 
 describe("StatsHeader", () => {
-  it("links to the four places", () => {
+  it("links to the four places, PLAY first", () => {
     const found = links({ page: "tab", tab: "overview" });
     expect(found.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
+      ["PLAY", "/"],
       ["STATS", "/stats"],
       ["GAMES", "/stats/games"],
       ["PLAYERS", "/stats/players"],
-      ["PLAY", "/"],
     ]);
     expect(screen.getByRole("banner")).toHaveTextContent("SECRET-HITLER");
   });

@@ -268,7 +268,9 @@ test("the login page has the stats' header at every size", async ({ page, contex
     const home = await headerLayout(login);
     expect(stats.current, `nothing marked on a page that was not found, ${at}`).toEqual([]);
     expect(home.current, `PLAY marked on the login page, ${at}`).toEqual(["PLAY"]);
-    expect(home.links.map((l) => l.text), at).toEqual(["STATS", "GAMES", "PLAYERS", "PLAY"]);
+    // PLAY first, then the stats' sections, on both pages.
+    expect(stats.links.map((l) => l.text), `the stats page's links, ${at}`).toEqual(["PLAY", "STATS", "GAMES", "PLAYERS"]);
+    expect(home.links.map((l) => l.text), `the login page's links, ${at}`).toEqual(["PLAY", "STATS", "GAMES", "PLAYERS"]);
     const same = (a: number, b: number, what: string) => expect(a, `${what}, ${at}`).toBeCloseTo(b, 0);
     same(home.header.width, stats.header.width, "the header's width");
     same(home.header.height, stats.header.height, "the header's height");

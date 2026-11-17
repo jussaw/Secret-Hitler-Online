@@ -25,14 +25,14 @@ describe("SiteHeader", () => {
     expect(screen.getByRole("navigation")).toHaveAccessibleName("Site");
   });
 
-  it("links to the four places", () => {
+  it("links to the four places, PLAY first", () => {
     render(<SiteHeader current={null} />);
     expect(screen.getByRole("banner")).toHaveTextContent("SECRET-HITLER");
     expect(nav().getAllByRole("link").map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
+      ["PLAY", "/"],
       ["STATS", "/stats"],
       ["GAMES", "/stats/games"],
       ["PLAYERS", "/stats/players"],
-      ["PLAY", "/"],
     ]);
   });
 
