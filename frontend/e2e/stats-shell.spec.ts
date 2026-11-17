@@ -3,7 +3,7 @@ import { outcomeLabel } from "../src/stats/format";
 import { EVENT_FIELDS, parseStatsData, STATS_GAMES_PATH, type Outcome } from "../src/stats/record";
 import { routePath } from "../src/stats/routes";
 import { signedOutMe, stubMe } from "./accounts";
-import { MIN_TARGET, NARROW_PHONE } from "./layout";
+import { NARROW_PHONE, smallLinks } from "./layout";
 import { settle } from "./lobby";
 import {
   bigStatsData,
@@ -218,21 +218,16 @@ test.describe("every page fits every size", () => {
   });
 });
 
+/** The header's nav, on the stats pages and the login page alike. */
+const HEADER_NAV = 'header nav[aria-label="Stats pages"]';
+
 test("the header's links are 44px targets at every size", async ({ page }) => {
   test.slow();
   await open(page, "/stats", "OVERVIEW");
-  const links = page.getByRole("navigation", { name: "Stats pages" }).getByRole("link");
+  await expect(page.locator(`${HEADER_NAV} a`)).toHaveCount(4);
   for (const size of statsSizesFor(test.info().project.name, page.viewportSize()!)) {
     await page.setViewportSize(size);
-    const boxes = await links.evaluateAll((all) =>
-      all.map((a) => {
-        const r = a.getBoundingClientRect();
-        return { text: a.textContent, width: r.width, height: r.height };
-      })
-    );
-    expect(boxes.length).toBe(4);
-    const small = boxes.filter((b) => b.width < MIN_TARGET - 0.01 || b.height < MIN_TARGET - 0.01);
-    expect(small, `small header links at ${size.width}x${size.height}`).toEqual([]);
+    expect(await smallLinks(page, HEADER_NAV), `small header links at ${size.width}x${size.height}`).toEqual([]);
   }
 });
 
@@ -282,9 +277,8 @@ test("the login page has the stats' header at every size", async ({ page, contex
       for (const key of ["width", "height", "top", "right"] as const) {
         same(link[key], stats.links[i][key], `${link.text}'s ${key}`);
       }
-      expect(link.width, `${link.text}'s width, ${at}`).toBeGreaterThanOrEqual(MIN_TARGET - 0.01);
-      expect(link.height, `${link.text}'s height, ${at}`).toBeGreaterThanOrEqual(MIN_TARGET - 0.01);
     });
+    expect(await smallLinks(login, HEADER_NAV), `small header links on the login page, ${at}`).toEqual([]);
     expect((await statsPageProblems(login)).sideways, `the login page past the edge, ${at}`).toEqual([]);
   }
   await login.close();

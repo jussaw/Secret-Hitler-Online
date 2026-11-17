@@ -13,6 +13,7 @@ import {
   pageHeight,
   rowShift,
   smallFieldText,
+  smallLinks,
   smallTargets,
   trackerReserved,
   withStatus,
@@ -28,7 +29,6 @@ import {
   longestLineViewers,
   longestLogin,
   settle,
-  smallHeaderLinks,
   startGame,
   watchLobby,
 } from "./lobby";
@@ -588,7 +588,7 @@ for (const state of LOGIN_STATES) {
       expect(await wrappedLabels(page, ".login-screen"), `wrapped button labels at ${at}`).toEqual([]);
       // Sign out among them, a 44px target like every control on the page, the header's links too.
       expect(await smallTargets(page, ".login-screen"), `small targets at ${at}`).toEqual([]);
-      expect(await smallHeaderLinks(page), `small header links at ${at}`).toEqual([]);
+      expect(await smallLinks(page, ".login-screen > header nav"), `small header links at ${at}`).toEqual([]);
       if (state.startsWith("signed in")) {
         const { signOut, changeName } = await accountTargets(page);
         expect(overlaps(signOut, changeName), `Sign out's target over CHANGE NAME at ${at}`).toBe(false);

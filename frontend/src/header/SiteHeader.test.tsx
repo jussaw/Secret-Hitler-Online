@@ -1,6 +1,7 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import SiteHeader, { type HeaderLinkProps, type SitePlace } from "./SiteHeader";
+import { heldBack } from "./testClicks";
 
 const nav = () => within(screen.getByRole("navigation", { name: "Stats pages" }));
 const marked = () =>
@@ -8,22 +9,6 @@ const marked = () =>
     .getAllByRole("link")
     .filter((a) => a.getAttribute("aria-current") === "page")
     .map((a) => a.textContent);
-
-/**
- * Clicks `link` and says whether the page held the click back (a move in place). The browser's
- * own navigation, which jsdom cannot do, is stopped once that is read.
- */
-function heldBack(link: HTMLElement, init?: MouseEventInit): boolean {
-  let prevented = false;
-  const look = (event: Event) => {
-    prevented = event.defaultPrevented;
-    event.preventDefault();
-  };
-  document.addEventListener("click", look);
-  fireEvent.click(link, init);
-  document.removeEventListener("click", look);
-  return prevented;
-}
 
 /** A link component that marks what it draws, as the stats' StatsLink stands in for <a>. */
 function DrawnLink(props: HeaderLinkProps) {
