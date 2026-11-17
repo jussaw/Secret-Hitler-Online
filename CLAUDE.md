@@ -697,9 +697,12 @@ keeps credit to upstream and to the board game's creators.
   whole filter, in the power ranking's order). `players/testStats.ts` is their test data
   (`sampleData()`, seven players and eight games, `SAMPLE_NOW`, `TZ`, `played`, `term` and
   `withRatings`), which Phase 22B's tests reuse. PLAYERS (`/stats/players`,
-  `players/PlayersPage`, Phase 22B) is the stats filter (`FilterBar`, its changes put in the
-  address) over `PlayersList`, the Players card: a row per player with a counted game under the
-  whole filter, in `computePlayersList`'s order, with their counted games, win rate (`formatRate`:
+  `players/PlayersPage`, Phase 22B) is the CPU switch on its own (`FilterBar` with
+  `showPlayers={false}`, as on a player's page: the user found a player filter unnecessary there)
+  over `PlayersList`, the Players card: a row per player with a counted game under the switch,
+  whatever `players` list the address carries (`withoutPlayerFilter`; the switch writes only
+  `cpu`, so its next change drops that list), in `computePlayersList`'s order, with their
+  counted games, win rate (`formatRate`:
   a whole percent, or `— (N)` below 5 games), rounded Elo and when they last played
   (`formatLastPlayed`: `today`, `yesterday`, `N days ago`, in local days), in OVERVIEW's power
   ranking's look (`RankedTable.css` and `tabs/PowerRanking.css`: a header row, a provisional row,
@@ -1151,13 +1154,14 @@ keeps credit to upstream and to the board game's creators.
   header, ENDINGS' games) are 44px targets; that a name in GAMES' last row opens its player's page
   (not the row's game) at its top; and that a counted game's page shows its Elo line and an
   unfinished one's none. `stats-players.spec.ts` (Phase 22B) checks PLAYERS (with CPU games and
-  without), the busiest player's page (with at least one trophy) and an unknown player's page
-  with `checkStatsPage` at every `statsSizesFor` size against `bigStatsData()`; that a name in
-  GAMES opens its player's page at its top; that All N games opens GAMES filtered to the player,
-  every row on its first page naming them; and that the page's CPU switch adds `cpu=1` to the
-  address and counts the CPU games the header's `+N` left out, and that All N games keeps a
-  space before its arrow on phones. No `e2e/` file imports `src/constants` or anything that does
-  (`api.ts`, `App`): it
+  without; with `?players=2,3` it lists every player, shows no player chooser, and its switch
+  leaves only `?cpu=1`), the busiest player's page (with at least one trophy) and an unknown
+  player's page with `checkStatsPage` at every `statsSizesFor` size against `bigStatsData()`;
+  that a name in GAMES opens its player's page at its top; that All N games opens GAMES filtered
+  to the player, every row on its first page naming them; and that the page's CPU switch adds
+  `cpu=1` to the address and counts the CPU games the header's `+N` left out, and that All N
+  games keeps a space before its arrow on phones. No `e2e/` file imports `src/constants` or
+  anything that does (`api.ts`, `App`): it
   reads `window` when it loads, which throws in Playwright's Node process; specs build stats paths
   with `routePath`. Shared helpers are `e2e/lobby.ts`
   (`waitForPlayers`, `joinGuests`, with `pickLooks` false for guests who stay on the default
