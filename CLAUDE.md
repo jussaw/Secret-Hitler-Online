@@ -788,7 +788,7 @@ keeps credit to upstream and to the board game's creators.
   JOIN and WATCH, a hint and its error line) and OR START ONE (CREATE LOBBY and its error line),
   then a footer with How to play (the official rules), About this project, Report a bug and the
   credit line the licence asks for. The site header (`src/header/SiteHeader`, Phase 23, with
-  `SiteHeader.css`) is the stats pages' too: SECRET-HITLER, then a `nav` "Stats pages" of STATS,
+  `SiteHeader.css`, and `testClicks.ts`'s `heldBack` for its tests) is the stats pages' too: SECRET-HITLER, then a `nav` "Stats pages" of STATS,
   GAMES, PLAYERS and PLAY, each a 44px target at every size, the current one `aria-current="page"`
   and underlined; one row on desktop and in tall windows, the title over a row of four equal
   columns in the phone-only query. It takes `current`, a `SitePlace` (`stats`, `games`, `players`,
@@ -982,8 +982,8 @@ keeps credit to upstream and to the board game's creators.
   `lobbySounds`, `playerJoined` for a name the last lobby packet did not have, but none for a
   rename, a list of the same length with one place changed) and
   `SoundControl` (the speaker button and volume slider in the lobby's and the game's headers, above
-  the prompt overlay; the login page has the site header, with none, with Lucide icons from `lucide-react`). The clips are in `src/assets/sounds/`, an Ogg
-  Opus and an MP3 per sound, each credited in `docs/SOUND-CREDITS.md`. Spectators are in
+  the prompt overlay, with Lucide icons from `lucide-react`; the login page's site header has none).
+  The clips are in `src/assets/sounds/`, an Ogg Opus and an MP3 per sound, each credited in `docs/SOUND-CREDITS.md`. Spectators are in
   `src/spectator/`: `spectatorStatus` (the status lines a spectator gets in place of prompts, naming
   the players) and `SpectatorCount` (Lucide's eye and the number, at the left of the lobby and game
   headers). A spectator's name is `""`, and the `spectator` cookie takes a reload straight back to
@@ -1001,7 +1001,7 @@ keeps credit to upstream and to the board game's creators.
   phone layout and only scrolls down, for both, and `phone-360` also checks the login page and the
   lobby there; the login page fits without scrolling in each of `LOGIN_STATES`, with 44px targets
   (SIGN IN WITH DISCORD, TEST SIGN-IN, CHANGE NAME and Sign out among them, and the header's links,
-  `smallHeaderLinks` in `e2e/lobby.ts`), 16px field text and unwrapped button labels; the lobby tests (the lobby fits without scrolling for each of
+  `smallLinks` in `e2e/layout.ts`), 16px field text and unwrapped button labels; the lobby tests (the lobby fits without scrolling for each of
   `longestLineViewers`' six viewers, each with its note, with 44px targets and 16px field text,
   the roster first, the busy bubble at 320px, and `checkNamePrompt` for CHOOSE A NAME on the login
   page and over the lobby, after which PLAY INSTEAD takes a seat at once, and for CHANGE NAME on the
@@ -1187,7 +1187,8 @@ keeps credit to upstream and to the board game's creators.
   portrait, `joinLobby`, `pickPortrait`, `longestLineLobby`, `longestLineViewers`, `actionLabels`,
   `longestLogin`, `accountTargets`, `lobbyStatusCard`, `waitForPrompt`, `watchLobby`, and
   `codeField`, the login page's one field), `e2e/accounts.ts`, `e2e/layout.ts` (`wrappedLabels` and
-  `smallTargets`, which measure links drawn as buttons, `.button-link`, too, `smallFieldText`,
+  `smallTargets`, which measure links drawn as buttons, `.button-link`, too, `smallLinks` for plain
+  links such as the site header's, `smallFieldText`,
   `MIN_FIELD_TEXT`, and `addPngDecoder` for page functions that read screenshots) and
   `e2e/soundLog.ts`. `App.css` hides
   `overflow-x` on `html` and `body`, so horizontal overflow shows only in `body.scrollWidth`, and
