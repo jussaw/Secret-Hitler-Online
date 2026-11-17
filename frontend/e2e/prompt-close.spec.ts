@@ -13,6 +13,14 @@ import { pickPortrait, waitForPrompt } from "./lobby";
 /** CustomAlert's ALERT_FADE_OUT_MS is 1 s; the rest is room for a slow frame. */
 const GONE_WITHIN_MS = 2_500;
 
+/**
+ * The least share of its box an open prompt changes on screen. The box is a card in the page's own
+ * --backgroundDark (CustomAlert.css), so where a plain stretch of it covers a plain stretch of the
+ * page's cards (the round tracker, the lobby's) no pixel changes: 0.85 to 0.9 of the box changes
+ * in the measured windows, against under 0.01 once it has gone.
+ */
+const OPEN_SHARE = 0.5;
+
 type Rect = { x: number; y: number; width: number; height: number };
 
 /**
@@ -31,8 +39,8 @@ async function hideOverlay(page: Page): Promise<() => Promise<void>> {
 
 /**
  * The share of `rect` that the prompt overlay changes on screen: the screenshot as it is against
- * one with the overlay hidden. Nearly all of it while a prompt is up (the box, and the dimmed page
- * around it), and none of it once the prompt has gone. The page's running animations (END TERM's
+ * one with the overlay hidden. Most of it while a prompt is up (OPEN_SHARE), and none of it once the
+ * prompt has gone. The page's running animations (END TERM's
  * flash, under the box on a phone) are paused where they are for both screenshots, so the overlay
  * is the only difference between them. The overlay's own are left alone: it is hidden in the
  * second screenshot whatever state they are in.
@@ -79,7 +87,7 @@ async function openBox(page: Page): Promise<Rect> {
   await page.addStyleTag({ content: "#event-bar { display: none !important; }" });
   await waitForPrompt(page);
   const rect = (await page.locator("#alert-box").boundingBox())!;
-  expect(await overlayShare(page, rect), "the open prompt is drawn").toBeGreaterThan(0.9);
+  expect(await overlayShare(page, rect), "the open prompt is drawn").toBeGreaterThan(OPEN_SHARE);
   return rect;
 }
 
@@ -121,7 +129,8 @@ test("the vote prompt is gone once the server's OK closes it", async ({ page }) 
   const alertBox = page.locator("#alert-box.appear-custom-alert");
   await alertBox.locator("#voting-card").first().click();
   await alertBox.getByRole("button", { name: "CONFIRM" }).click();
-  // The OK empties the box at once, so it fades out empty: the box upstream saw left behind.
+  // The OK empties the box at once, so it fades out empty, at the height it had (CustomAlert): the
+  // box upstream saw left behind.
   game.send({ type: "ok" });
   await expectGone(page, rect);
 });

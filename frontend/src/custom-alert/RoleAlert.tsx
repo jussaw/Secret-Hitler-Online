@@ -11,6 +11,7 @@ import RoleFascist2 from "../assets/role-fascist-2.png";
 import RoleFascist3 from "../assets/role-fascist-3.png";
 
 import "./RoleAlert.css";
+import PromptLayout from "./PromptLayout";
 import { GameState, Role } from "../types";
 
 const LiberalImages = [
@@ -112,20 +113,15 @@ class RoleAlert extends Component<RoleAlertProps> {
     const { image, alt } = this.getRoleImageAndAlt();
 
     return (
-      <div>
-        <div>
-          <h2 id="alert-header" className={"left-align"}>
-            YOU ARE: {this.props.role}
-          </h2>
-          <img id="role" src={image} alt={alt} />
-
-          <p className={"left-align"}>{roleText[0]}</p>
-          <p className={"left-align"}>{roleText[1]}</p>
-          <p className="highlight left-align">{roleText[2]}</p>
-        </div>
-
-        <button onClick={this.props.onClick}>OKAY</button>
-      </div>
+      <PromptLayout
+        title={<h2 id="alert-header">YOU ARE: {this.props.role}</h2>}
+        buttons={<button onClick={this.props.onClick}>OKAY</button>}
+      >
+        <img id="role" src={image} alt={alt} />
+        <p className={"left-align"}>{roleText[0]}</p>
+        <p className={"left-align"}>{roleText[1]}</p>
+        <p className="highlight left-align">{roleText[2]}</p>
+      </PromptLayout>
     );
   }
 }

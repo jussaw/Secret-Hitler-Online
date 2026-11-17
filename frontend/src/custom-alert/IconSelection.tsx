@@ -106,7 +106,7 @@ class IconSelection extends Component<IconSelectionProps> {
 
   render() {
     return (
-      // The grid is the only part that scrolls, with CONFIRM pinned below it (IconSelection.css).
+      // The label and CONFIRM stay in place, and the line and the grid scroll between them (PromptLayout).
       <ButtonPrompt
         className={"icon-picker"}
         label={"PLAYER LOOK"}

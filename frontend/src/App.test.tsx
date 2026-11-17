@@ -809,3 +809,13 @@ test("the victory screen has no game link without a gameId", async () => {
   expect(alertBox().getByText("Fascists successfully passed six policies!")).toBeInTheDocument();
   expect(alertBox().queryAllByRole("link")).toHaveLength(0);
 });
+
+test("the victory screen's header image is its title, the message, link and roles its middle", async () => {
+  await watchToVictory({ gameId: "g-1" });
+  const part = (name: string) => document.querySelector(`#alert-box .prompt > .prompt-${name}`)!;
+  expect(part("title").querySelector("img#victory-header")).not.toBeNull();
+  expect(part("title")).toHaveTextContent("");
+  expect(part("body")).toHaveTextContent("Fascists successfully passed six policies!");
+  expect(part("body").querySelector("p.victory-game a")).toHaveTextContent("See this game");
+  expect(within(part("buttons") as HTMLElement).getByRole("button", { name: "RETURN TO LOBBY" })).toBeInTheDocument();
+});

@@ -1,14 +1,21 @@
 @import '../variables.css';
 
-/* Fixed to the window, so a prompt opens on screen however far the page is scrolled. */
+/* Fixed to the window, so a prompt opens on screen however far the page is scrolled. The box is
+   centred in the room between the page's header and the bottom of the window, 16px clear of each:
+   --alert-header is the header's height, which CustomAlert measures (the header's height differs
+   between the pages and their layouts). The box can shrink to that room, and no further. */
 #alert {
+    --alert-gap: 16px;
     position: fixed;
     inset: 0;
+    z-index: 75;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    display: flex;
+    padding: calc(var(--alert-header, 0px) + var(--alert-gap)) var(--alert-gap) var(--alert-gap);
     visibility: hidden;
-    z-index: 75;
 }
 
 /* A closed prompt whose fade-out has had its time (CustomAlert sets `hidden`). The display above
@@ -18,12 +25,23 @@
 }
 
 /* A closing prompt lets presses through to the page while it fades out: the dimmed background
-   stays drawn for its whole second, and the box for half of it. */
+   and the box stay drawn for half of its second. */
 #alert.disappear-custom-alert,
 #alert.disappear-custom-alert * {
     pointer-events: none;
 }
 
+/* The overlay itself draws nothing, and fades nothing: the background and the box fade on their
+   own. An ancestor fading would also keep the background's blur from seeing the page until the
+   fade ended (it would be the blur's backdrop root). */
+#alert.appear-custom-alert,
+#alert.disappear-custom-alert {
+    -webkit-animation: none;
+    animation: none;
+}
+
+/* The page under a prompt, its header included, dimmed and blurred. A browser without
+   backdrop-filter dims it alone. The header's speaker stays above the overlay (SoundControl.css). */
 #alert-background {
     position: fixed;
     width: 100%;
@@ -34,27 +52,106 @@
     margin: 0;
     z-index: 50;
     box-sizing: border-box;
-    background-color: var(--alertFill);
-    opacity:var(--alertOverlayOpacity);
+    background-color: var(--alertDim);
+    -webkit-backdrop-filter: blur(5px);
+    backdrop-filter: blur(5px);
 }
 
+/* The box is a card in the lobby's look (LobbyScreen.css): as tall as the prompt it holds, up to
+   the room the overlay gives it; 80vmin wide on desktop and in tall windows, and on phones the
+   window's width less 16px each side (below). It has no padding of its own, so the line above the
+   buttons reaches its edges: each part pads itself by --prompt-pad. A prompt drawn with
+   PromptLayout keeps its title and buttons in the box and scrolls only its middle (below); the box
+   scrolls as a whole only in a window too short even for those two. */
 #alert-box {
-    position: absolute;
+    --prompt-pad: 28px;
+    position: relative;
     z-index: 60;
-    opacity: 1;
-    min-width: 80vmin;
-    max-width: 40vw;
-    min-height: 60vmin;
-    padding: 20px 30px;
-    background-color: var(--alertFill);
-    text-align: center;
-    top: 10vh;
-    margin-bottom: 10px;
-    /* A prompt taller than the window scrolls inside its box instead of growing the page.
-       50px is the 40px of vertical padding plus 10px clear of the bottom. */
-    max-height: calc(100% - 10vh - 50px);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    flex: 0 1 auto;
+    min-height: 0;
+    width: 80vmin;
+    max-width: 100%;
     overflow-y: auto;
     overscroll-behavior: contain;
+    background-color: var(--backgroundDark);
+    border-radius: 12px;
+    box-shadow: 0 6px 0 rgba(0, 0, 0, 0.25);
+    text-align: center;
+}
+
+/* PromptLayout's three parts. The prompt is a column the box's height can shrink, and of its
+   parts only the middle gives way, scrolling what it holds. */
+.prompt {
+    display: flex;
+    flex-direction: column;
+    flex: 0 1 auto;
+    min-height: 0;
+}
+
+/* The title, centred. flow-root keeps its margins inside it, and its last one goes: the middle's
+   first margin is the space under it. */
+.prompt-title {
+    flex: none;
+    display: flow-root;
+    padding: 8px var(--prompt-pad) 0;
+    text-align: center;
+}
+
+.prompt-title > :last-child {
+    margin-bottom: 0;
+}
+
+/* Positioned, so what the middle places absolutely (the alerts' cards) scrolls with it. */
+.prompt-body {
+    position: relative;
+    flex: 0 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0 var(--prompt-pad);
+}
+
+/* What the middle holds, margins and floats included, so its height is all of it: PromptLayout
+   watches it. */
+.prompt-content {
+    display: flow-root;
+}
+
+.prompt-buttons {
+    position: relative;
+    flex: none;
+    padding: 0 var(--prompt-pad) 4px;
+    text-align: center;
+}
+
+/* While the middle scrolls (PromptLayout): a thin line over the buttons, across the box, and a
+   shade at the foot of the middle. Neither takes room, so drawing them never changes whether the
+   middle scrolls. */
+.prompt-scrolls > .prompt-buttons {
+    box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.prompt-scrolls > .prompt-buttons::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: 10px;
+    background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.15));
+    pointer-events: none;
+}
+
+/* Phones (the game's phone-only query, GameScreen.css): the window's width less 16px each side,
+   with a little less room inside. */
+@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
+    #alert-box {
+        --prompt-pad: 20px;
+        width: 100%;
+    }
 }
 
 .left-align {
@@ -102,38 +199,4 @@
     0% {opacity: 1;}
     50% {opacity: 0;}
     100%{opacity: 0;}
-}
-
-/* BACKGROUND APPEAR/DISAPPEAR */
-
-#alert-background.appear-custom-alert {
-    -webkit-animation: appear-background 0.5s;
-    animation: appear-background 0.5s;
-}
-
-#alert-background.disappear-custom-alert {
-    -webkit-animation: disappear-background 1s;
-    animation: disappear-background 1s;
-}
-
-@-webkit-keyframes appear-background {
-    0% {opacity: 0; visibility: visible}
-    50% {opacity: var(--alertOverlayOpacity);}
-}
-
-@keyframes appear-background {
-    0% {opacity: 0; visibility: visible}
-    50% {opacity: var(--alertOverlayOpacity);}
-}
-
-@-webkit-keyframes disappear-background {
-    0% {opacity: var(--alertOverlayOpacity); visibility: visible}
-    40% {opacity: var(--alertOverlayOpacity); visibility: visible}
-    100% {opacity: 0; visibility: hidden}
-}
-
-@keyframes disappear-background {
-    0% {opacity: var(--alertOverlayOpacity); visibility: visible}
-    40% {opacity: var(--alertOverlayOpacity); visibility: visible}
-    100% {opacity: 0; visibility: hidden}
 }

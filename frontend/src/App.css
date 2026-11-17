@@ -277,8 +277,13 @@ textarea {
 }
 
 
+/* The victory screen's title (PromptLayout), which stays in place while its middle scrolls: as
+   wide as the box, up to a quarter of the window's height, so a short window keeps room for the
+   message and the roles. */
 #victory-header {
     width: 100%;
+    max-height: 25vh;
+    object-fit: contain;
 }
 
 /* "See this game", under the victory message: the game's record in a new tab. Its link is a 44px

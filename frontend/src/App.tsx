@@ -1972,14 +1972,12 @@ class App extends Component<{}, AppState> {
             this.setState({
               alertContent: (
                 <ButtonPrompt
-                  renderLabel={() => {
+                  renderLabel={() => (
+                    <img src={headerImage} alt={headerAlt} id={"victory-header"} />
+                  )}
+                  renderHeader={() => {
                     return (
                       <>
-                        <img
-                          src={headerImage}
-                          alt={headerAlt}
-                          id={"victory-header"}
-                        />
                         <p
                           style={{ textAlign: "center" }}
                           className={messageClass}
