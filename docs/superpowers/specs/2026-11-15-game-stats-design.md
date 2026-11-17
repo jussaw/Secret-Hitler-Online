@@ -438,10 +438,13 @@ load as their own chunk (`React.lazy`), with no part of `App`. The server answer
 |---|---|
 | `/stats` | OVERVIEW |
 | `/stats/roles`, `/stats/votes`, `/stats/rivals`, `/stats/endings`, `/stats/activity`, `/stats/records` | The other tabs |
-| `/stats/games` | GAMES: the list |
-| `/stats/games/<id>` | One game |
-| `/stats/players` | PLAYERS: the list |
-| `/stats/players/<number>` | One player |
+| `/games` | GAMES: the list |
+| `/games/<id>` | One game |
+| `/players` | PLAYERS: the list |
+| `/players/<number>` | One player |
+
+GAMES and PLAYERS were `/stats/games…` and `/stats/players…` until Phase 23 moved them out of
+`/stats`; the page moves an old address to its new one, query and all.
 
 Moving between them changes the address (the History API) without reloading, and the back button
 works. The records are fetched once per visit.
@@ -472,7 +475,7 @@ under the filter says so ("No games yet with these players.").
 
 - The login page's footer and the lobby's footer get "Stats" beside "About this project". On the
   login page it opens in the same tab; in the lobby, in a new one, so the lobby stays open.
-- The victory screen gets "See this game", which opens `/stats/games/<id>` in a new tab. For it,
+- The victory screen gets "See this game", which opens `/games/<id>` in a new tab. For it,
   every game packet, to players and spectators, carries **`gameId`**: the record's ID. It is not a
   secret.
 
