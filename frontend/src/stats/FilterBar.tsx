@@ -1,5 +1,5 @@
 import { ChevronDown } from "lucide-react";
-import { useId, useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { compareNames, togglePlayer, type StatsFilter } from "./counting";
 import type { Player } from "./record";
 import "./greyButtons.css";
@@ -12,6 +12,8 @@ export interface FilterBarProps {
   onChange: (filter: StatsFilter) => void;
   /** The player chips and the phone's line; false leaves the CPU switch alone (a player's page). */
   showPlayers?: boolean;
+  /** What stands left of the switch in the switch-only bar (PLAYERS' search box); nothing by default. */
+  beforeSwitch?: ReactNode;
 }
 
 const isOn = (filter: StatsFilter, player: number) => filter.players === null || filter.players.has(player);
@@ -27,8 +29,9 @@ export function filterSummary(players: Player[], filter: StatsFilter): string {
  * every person in it is on) and the switch that counts games with CPU players, "Include games
  * with Bots" (the address's `cpu`). It shows the filter it is given and hands every change to
  * `onChange`, which puts it in the address. On phones it folds into one line that opens the panel.
+ * Without the chips, the switch stands alone in its bar, after `beforeSwitch` when there is one.
  */
-export function FilterBar({ players, filter, onChange, showPlayers = true }: FilterBarProps): JSX.Element {
+export function FilterBar({ players, filter, onChange, showPlayers = true, beforeSwitch }: FilterBarProps): JSX.Element {
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const labelId = useId();
@@ -50,7 +53,12 @@ export function FilterBar({ players, filter, onChange, showPlayers = true }: Fil
   );
 
   if (!showPlayers) {
-    return <div className="filter-bar is-switch-only">{cpuSwitch}</div>;
+    return (
+      <div className={beforeSwitch ? "filter-bar is-switch-only has-lead" : "filter-bar is-switch-only"}>
+        {beforeSwitch}
+        {cpuSwitch}
+      </div>
+    );
   }
   return (
     <div className="filter-bar">

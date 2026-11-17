@@ -207,6 +207,9 @@ describe("PlayerPage", () => {
       const toggle = await screen.findByRole("switch", { name: "Include games with Bots" });
       expect(screen.queryByRole("group", { name: "Players" })).toBeNull();
       expect(screen.queryByRole("button", { name: /^Players:/ })).toBeNull();
+      // PLAYERS' search box is PLAYERS' alone.
+      expect(screen.queryByRole("searchbox")).toBeNull();
+      expect(toggle.closest(".filter-bar")).not.toHaveClass("has-lead");
       expect(screen.getByText(/^6 games since 2 Oct/)).toBeInTheDocument();
       fireEvent.click(toggle);
       expect(location.pathname).toBe("/players/1");

@@ -26,12 +26,134 @@
     display: none;
 }
 
+/* The search box, left of the switch in the filter bar (FilterBar.css's .has-lead): GAMES' dark
+   field, with Lucide's Search inside it at the left, as tall as the switch's face (6px, a 16.8px
+   line, 6px and its 1px borders: 30.8px, the face's 5px, the line and 5px, and 2px borders). App.css
+   sizes every input for the login page, so this sets its own size. */
+.players-search {
+    position: relative;
+    display: flex;
+    flex: 0 1 16em;
+    min-width: 0;
+}
+
+.players-search-icon {
+    position: absolute;
+    top: 50%;
+    left: 8px;
+    width: 16px;
+    height: 16px;
+    transform: translateY(-50%);
+    color: var(--textColorOnDark);
+    pointer-events: none;
+}
+
+.stats-screen .players-search input {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
+    padding: 6px 8px 6px 30px;
+    font-family: var(--textFont);
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 1.2;
+    color: var(--textColorWhite);
+    background-color: var(--backgroundLight);
+    border: 1px solid #6e655e;
+    border-radius: 6px;
+    color-scheme: dark;
+    outline: none;
+}
+
+.stats-screen .players-search input::placeholder {
+    color: var(--textColorOnDark);
+    opacity: 1;
+}
+
+.stats-screen .players-search input:focus-visible {
+    outline: 2px solid var(--headerTextColor);
+    outline-offset: 1px;
+}
+
+/* A column's head: a button in the head's own look (PowerRanking.css's th: small, bold, grey), its
+   arrow dimmed until it sorts the table, and the sorted head white. App.css gives every button the
+   game's look, which this undoes, as the login page's Sign out does. */
+.stats-screen .players-table .players-sort {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font: inherit;
+    line-height: inherit;
+    color: inherit;
+    text-align: inherit;
+    white-space: nowrap;
+    vertical-align: bottom;
+}
+
+.stats-screen .players-table .players-sort:active {
+    border-width: 0;
+}
+
+.stats-screen .players-table .players-sort::before {
+    content: none;
+}
+
+.stats-screen .players-table .players-sort:hover,
+.stats-screen .players-table .players-sort.is-sorted {
+    color: var(--headerTextColor);
+}
+
+.stats-screen .players-table .players-sort:focus-visible {
+    outline: 2px solid var(--selectionHover);
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+.players-sort-arrow {
+    flex: none;
+    width: 12px;
+    height: 12px;
+}
+
+.players-sort:not(.is-sorted) .players-sort-arrow {
+    opacity: 0.45;
+}
+
+/* Wherever the game's stacked query matches, the search box and each head are 44px targets, and
+   the box's text 16px. A head's button fills its column's width; a number's word and arrow stay at
+   the right. */
+@media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
+    .stats-screen .players-search input {
+        min-height: 44px;
+        font-size: 16px;
+    }
+
+    .stats-screen .players-table .players-sort {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    .players-table th.power-number .players-sort {
+        justify-content: flex-end;
+    }
+}
+
 /* Phones (the game's phone-only query): less room between the parts, and the last played line
    under the name in place of its own column, so a twelve-character name keeps the table inside
    320px. */
 @media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
     .players-page {
         gap: 8px;
+    }
+
+    /* The search box takes the bar's whole line, the switch the line below it. */
+    .players-search {
+        flex: 1 1 100%;
     }
 
     .players-table .players-last {

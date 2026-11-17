@@ -289,9 +289,9 @@ export function computePlayer(stats: StatsContext, player: number, now: number, 
 }
 
 /**
- * PLAYERS: every player with a counted game under `stats`' whole filter, in the power ranking's
- * order (settled players by rounded rating, ties to more games, then the name; then the
- * provisional ones by rounded rating, games and name).
+ * PLAYERS: every player with a counted game under `stats`' whole filter, in name order
+ * (`compareNames`, A to Z ignoring case, then by number), provisional players among the rest.
+ * PLAYERS' column heads sort these rows again (`players/playersOrder.ts`).
  */
 export function computePlayersList(stats: StatsContext): PlayerListRow[] {
   const tallies = new Map<number, { games: number; wins: number; lastPlayed: number }>();
@@ -304,10 +304,8 @@ export function computePlayersList(stats: StatsContext): PlayerListRow[] {
       tallies.set(player, t);
     }
   }
-  const order = powerRanking(stats.elo, stats.names).map((row) => row.player);
-  const place = new Map(order.map((player, i) => [player, i]));
   return Array.from(tallies.entries())
-    .sort(([a], [b]) => (place.get(a) ?? Infinity) - (place.get(b) ?? Infinity) || compareNames(nameOf(stats.names, a), nameOf(stats.names, b)) || a - b)
+    .sort(([a], [b]) => compareNames(nameOf(stats.names, a), nameOf(stats.names, b)) || a - b)
     .map(([player, t]) => {
       const rating = stats.elo.ratings.get(player);
       return {
