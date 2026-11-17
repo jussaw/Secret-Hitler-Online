@@ -998,8 +998,8 @@ keeps credit to upstream and to the board game's creators.
   `--alertDim` (`#141414` at 55%) and blurred by 5px (`backdrop-filter`; a browser without it gets
   the dim alone), the header's speaker above it, and over it the lobby's card (`--backgroundDark`,
   and the corners, 0.6em, and flat shadow, `0 0.4vh 0`, that `LobbyScreen.css` and
-  `RoundTracker.css` give theirs; `--alertFill` stays the snackbar's, the event bar's and the
-  charts' tooltips'). The card is as tall as its prompt, up to the room between the page's header
+  `RoundTracker.css` give theirs; `--alertFill` stays the snackbar's and the charts'
+  tooltips'). The card is as tall as its prompt, up to the room between the page's header
   and the window's bottom, 16px clear of each, and centred in it: the header's height is
   `--alert-header` on `#alert`, which `CustomAlert` measures from the first `header` beside it
   (never one inside a prompt), looked for again after every render (a prompt open from the login
