@@ -33,11 +33,13 @@ keeps credit to upstream and to the board game's creators.
   classpath directory `/public`, which `processResources` fills from `frontend/dist` when it exists;
   CORS is enabled only in debug mode. `createApp()` is `createApp("/public")`; `createApp(frontendDir)`
   serves that classpath directory when it has an `index.html` and then adds Javalin's single-page
-  fallback for `/stats` (`config.spaRoot.addFile`), so a GET of any path starting `/stats` (a prefix
-  match: `/statsx` too) that no route or file answered, whose `Accept` has `text/html` or `*/*` or is
-  empty, gets `index.html`: a reload or a link to any stats page works. Routes always answer first,
-  other paths stay 404, and without a frontend there is no fallback (`StatsFallbackTest`, over the
-  test classpath's `/spa-test`). Playing needs an account, made by signing in with Discord;
+  fallback for the stats pages' roots, `PAGE_ROOTS` (`/stats`, `/games`, `/players`;
+  `config.spaRoot.addHandler`), so a GET of a stats page's path that no route or file answered,
+  whose `Accept` has `text/html` or `*/*` or is empty, gets `index.html`: a reload or a link to any
+  stats page works. Javalin matches a root by its start alone, so the handler checks whole segments
+  itself (`isPagePath`: `/gamesx` and `/statsx` stay 404, and the players' socket, `/game`, is never
+  a page and still upgrades). Routes always answer first, other paths stay 404, and without a
+  frontend there is no fallback (`StatsFallbackTest`, over the test classpath's `/spa-test`). Playing needs an account, made by signing in with Discord;
   watching needs none. `server.accounts` has `Usernames` (the page's name rules, which the server
   applies itself, with the messages both show: `normalize` makes each run of what JavaScript's `\s`
   matches one space and trims, a name has at most 12 UTF-16 code units, `key` lowers it with
@@ -313,8 +315,11 @@ keeps credit to upstream and to the board game's creators.
 - `frontend/`: React 18 and TypeScript 5, built with Vite and tested with Vitest. The entry is
   `src/main.tsx`, with `index.html` at the `frontend/` root, whose description is one plain line
   and which has no preview image, so an invite link previews as that line (`linkPreview.test.ts`).
-  `main.tsx` checks the path once (`isStatsPath`, `src/statsPath.ts`: `/stats` or a path under
-  `/stats/`) and renders either `App`, after starting the sound gesture listener and the clips'
+  `main.tsx` first moves GAMES' and PLAYERS' old addresses to their new ones in place
+  (`followMovedStatsPath`: `/stats/games…` to `/games…` and `/stats/players…` to `/players…`, with
+  the query and hash, by `history.replaceState`), then checks the path once (`isStatsPath`,
+  `src/statsPath.ts`: `/stats`, `/games` or `/players`, or a path under one, by whole segments) and
+  renders either `App`, after starting the sound gesture listener and the clips'
   preload, or the stats pages, `React.lazy`'s `src/stats/StatsApp` in `Suspense`, with neither.
   The stats are a chunk of their own: nothing outside `src/stats/` imports from it but that
   `import()`, and nothing in it imports `App`, the game, lobby or login pages or `SoundManager`
@@ -335,7 +340,7 @@ keeps credit to upstream and to the board game's creators.
   coloured by role through `stats-liberal`, `stats-fascist` and `stats-hitler`, underlined, which
   any stats page may use for a side's word through `roleClass`, and `data-player`: since Phase 22A
   a player's name is a `StatsLink`, `a.player-name.player-link`, to their page at `playerHref(n,
-  location)`, `/stats/players/<n>` with the address's stats filter (`filterSearch(parseFilter(…))`)
+  location)`, `/players/<n>` with the address's stats filter (`filterSearch(parseFilter(…))`)
   from a tab, PLAYERS or a player page and none from GAMES or a game page, whose address holds
   GAMES' own; a CPU seat's name, and one with `link={false}` (a name inside a sentence or a
   headline: OVERVIEW's At a glance, RIVALS' headlines, ACTIVITY's fastest voter and slowest
@@ -348,7 +353,8 @@ keeps credit to upstream and to the board game's creators.
   which Phase 16 leaves as links) stays inline. No name is ever inside another link,
   a button or a label; `nameLinks.test.tsx` checks that across every page, and that headlines
   stay plain), `routes.ts` (`TabId`, `TAB_IDS`, `StatsRoute`,
-  `PageProps`, `parseRoute`, `routePath`, `navigate`, which pushes one history entry, none for the
+  `PageProps`, `parseRoute`, `routePath`: the tabs under `/stats`, GAMES at `/games` and a game at
+  `/games/<id>`, PLAYERS at `/players` and a player at `/players/<n>`, since Phase 23; `navigate`, which pushes one history entry, none for the
   address the page is at, and scrolls to the top only for a new path, and `useLocation`, which
   follows `navigate` and the back and forward buttons; no router library), `StatsLink` (the one
   in-page link: an `<a href>` whose plain click navigates in place, while a modified or middle
@@ -699,7 +705,7 @@ keeps credit to upstream and to the board game's creators.
   `computePlayersList(stats)` gives PLAYERS' rows (every player with a counted game under the
   whole filter, in the power ranking's order). `players/testStats.ts` is their test data
   (`sampleData()`, seven players and eight games, `SAMPLE_NOW`, `TZ`, `played`, `term` and
-  `withRatings`), which Phase 22B's tests reuse. PLAYERS (`/stats/players`,
+  `withRatings`), which Phase 22B's tests reuse. PLAYERS (`/players`,
   `players/PlayersPage`, Phase 22B) is the CPU switch on its own (`FilterBar` with
   `showPlayers={false}`, as on a player's page: the user found a player filter unnecessary there)
   over `PlayersList`, the Players card: a row per player with a counted game under the switch,
@@ -712,9 +718,9 @@ keeps credit to upstream and to the board game's creators.
   `.ranked-unranked.is-provisional`, grey and in italics at the bottom), and `NO_GAMES` when the
   filter counts no game. In the phone-only query the Last played column gives way to a `played 2
   days ago` line under the name, so the table fits 320px without a scroll of its own. A player's
-  page (`/stats/players/<n>`, `players/PlayerPage`) is "This player was not found." and All
-  players (`/stats/players`) for a number no player has, decided before any hook
-  (`/stats/players/0` is no player's address: `parseRoute` gives the shell's not-found page);
+  page (`/players/<n>`, `players/PlayerPage`) is "This player was not found." and All
+  players (`/players`) for a number no player has, decided before any hook
+  (`/players/0` is no player's address: `parseRoute` gives the shell's not-found page);
   otherwise the CPU switch on its own (`FilterBar` with `showPlayers={false}`: a `players` list
   in the address is kept for the links out, and ignored) over `PlayerView`, which draws
   `computePlayer`'s numbers (memoized, with `now` from the page's mount): a header card with the
@@ -741,7 +747,7 @@ keeps credit to upstream and to the board game's creators.
   (signed points: `+7%`, `−3%`, `0%`), `formatShortDate` (`2 Oct`, with the year when it is not
   `now`'s, its month as `format.ts` writes it, `Sep` and not en-GB's `Sept`) and
   `formatLastPlayed`, each date in the zone it is passed, the viewer's by default.
-  GAMES (`/stats/games`, `src/stats/games/`) lists
+  GAMES (`/games`, `src/stats/games/`) lists
   every recorded game, newest first, under a filter of its own kept in the address:
   `gamesFilter.ts` (`GamesFilter`, `NO_GAMES_FILTER`, `PER_PAGE`, `ENDING_PARAM`,
   `parseGamesFilter`, `gamesFilterSearch`, `isFiltered` and `filterGames`: `players`, numbers in
@@ -831,8 +837,8 @@ keeps credit to upstream and to the board game's creators.
   together. The footer links are in `src/constants`:
   `RULES_URL`, and `ABOUT_URL` and `ISSUES_URL`, which the lobby's footer shares, each an `OutLink`
   (`src/util/`, a new tab). `src/constants` also has the site header's `STATS_PATH` (`/stats`),
-  `STATS_GAME_LIST_PATH` (`/stats/games`) and `STATS_PLAYER_LIST_PATH` (`/stats/players`), and
-  `statsGamePath(id)` (`/stats/games/<id>`, the victory screen's link): the game's pages write the
+  `STATS_GAME_LIST_PATH` (`/games`) and `STATS_PLAYER_LIST_PATH` (`/players`), and
+  `statsGamePath(id)` (`/games/<id>`, the victory screen's link): the game's pages write the
   stats' paths out there rather than import `src/stats/routes.ts`, and `statsPaths.test.ts` checks
   they are the stats' own routes. `GameScreen.css` lists `.login-screen` beside the lobby and the
   game for the page (its header is `SiteHeader.css`'s), and `LobbyScreen.css` lists the login page's selectors beside the
@@ -1141,7 +1147,8 @@ keeps credit to upstream and to the board game's creators.
   two days after its last game (twelve-character leaders, CPU games off and on), that its numbers
   follow the chips, the CPU switch, back and a fresh load, and that a hover or a tap on the rating
   history shows a game's change, at the right edge of a 320px phone too. `stats-games.spec.ts` follows the login page's header to the stats (same tab), checks the
-  lobby has no stats link (`desktop`), finds See this game on the victory screen, a 44px
+  lobby has no stats link and that GAMES' and PLAYERS' old addresses (`/stats/games…`,
+  `/stats/players…`) move to their new ones with their query (`desktop`), finds See this game on the victory screen, a 44px
   target on phones, checks GAMES at a hundred a page and with every filter set at every size, and
   twelve-character names inside their columns and chips at 320px; on `desktop` it goes through a
   filter, a page, a game and back, forward and reload by the address, and plays a real game of
@@ -1196,7 +1203,8 @@ keeps credit to upstream and to the board game's creators.
   `body` scrolls vertically by itself (`pageHeight` measures both). The client talks to its own
   origin (`src/constants/serverUrls.ts`; `wss:` on `https:` pages) unless `VITE_SERVER_ADDRESS` is
   set, and the dev server proxies the backend paths (`/check-login`, `/new-lobby`, `/ping`, `/auth`,
-  `/me`, `/api` and `/game`) to `BACKEND_URL` (default `http://localhost:4040`). `VITE_*` variables
+  `/me`, `/api` and the socket, `/game` exactly: its key is `^/game(\?|$)`, as a prefix key would
+  take `/games` too, `devProxy.test.ts`) to `BACKEND_URL` (default `http://localhost:4040`). `VITE_*` variables
   live in `.env.development` (dev server only: `VITE_DEBUG`) and `.env.dev` (`--mode dev`), typed in
   `src/vite-env.d.ts`.
 - `devops/`: host scripts for the database, each self-contained bash (it works copied alone, on
