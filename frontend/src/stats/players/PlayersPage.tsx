@@ -72,7 +72,7 @@ export function PlayersList(props: { stats: StatsContext; now: number; timeZone?
 }
 
 /**
- * PLAYERS (`/stats/players`): the CPU switch on its own, as on a player's page, above the list of
+ * PLAYERS (`/players`): the CPU switch on its own, as on a player's page, above the list of
  * every player with a counted game. The list ignores a player filter in the address (the user
  * found one unnecessary here), and the switch writes only `cpu`, so its next change drops it.
  * `now` is the time the page opened.

@@ -468,7 +468,7 @@ function KnownPlayer({ number }: { number: number }): JSX.Element {
 }
 
 /**
- * One player's page (`/stats/players/<number>`), or a short not-found page for a number no player
+ * One player's page (`/players/<number>`), or a short not-found page for a number no player
  * has, with a way back to PLAYERS.
  */
 export default function PlayerPage({ data, route }: PageProps): JSX.Element {

@@ -119,11 +119,11 @@ test("a name in GAMES opens its player page, at its top", async ({ page }) => {
   await lastRow.scrollIntoViewIfNeeded();
   const name = lastRow.locator("a.player-link").first();
   const href = await name.getAttribute("href");
-  expect(href).toMatch(/^\/stats\/players\/\d+$/);
+  expect(href).toMatch(/^\/players\/\d+$/);
   expect(await page.evaluate(() => window.scrollY), "scrolled down to the last row").toBeGreaterThan(0);
   await name.click();
   await expect(page).toHaveURL(new RegExp(`${href}$`));
-  expect(new URL(page.url()).pathname).not.toMatch(/^\/stats\/games/);
+  expect(new URL(page.url()).pathname).not.toMatch(/^\/games/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(data.players.find((p) => routePath({ page: "player", number: p.number }) === href)!.name);
   await expect(page.getByRole("heading", { name: "Latest games" })).toBeVisible();
   expect(await page.evaluate(() => window.scrollY)).toBe(0);

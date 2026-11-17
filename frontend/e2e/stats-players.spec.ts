@@ -56,7 +56,7 @@ test("PLAYERS has the CPU switch alone and ignores a player filter", async ({ pa
   await expect(page.getByRole("region", { name: "Players" }).locator("tbody tr")).toHaveCount(data.players.length);
   await expect(page.locator(".filter-chip, .filter-summary")).toHaveCount(0);
   await page.getByRole("switch", { name: "Include games with Bots" }).click();
-  await expect(page).toHaveURL(/\/stats\/players\?cpu=1$/);
+  await expect(page).toHaveURL(/\/players\?cpu=1$/);
   await expect(page.getByRole("region", { name: "Players" }).locator("tbody tr")).toHaveCount(data.players.length);
 });
 
@@ -73,7 +73,7 @@ test("a name in GAMES opens its player page", async ({ page }) => {
   const name = page.locator(".games-row").first().locator("a.player-link").first();
   const text = (await name.textContent())!.trim();
   await name.click();
-  await expect(page).toHaveURL(/\/stats\/players\/\d+$/);
+  await expect(page).toHaveURL(/\/players\/\d+$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(text);
   await expect(page.getByRole("region", { name: "Latest games" })).toBeVisible();
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
@@ -98,7 +98,7 @@ test("All N games opens GAMES filtered to the player", async ({ page }) => {
   });
   expect(gap, "the space before the arrow, in px").toBeGreaterThan(2);
   await all.click();
-  await expect(page).toHaveURL(new RegExp(`/stats/games\\?players=${busiest}$`));
+  await expect(page).toHaveURL(new RegExp(`/games\\?players=${busiest}$`));
   const rows = page.locator(".games-row");
   await expect(rows.first()).toBeVisible();
   const count = await rows.count();

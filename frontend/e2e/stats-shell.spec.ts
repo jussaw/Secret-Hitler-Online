@@ -163,7 +163,7 @@ test.describe("every page fits every size", () => {
 
   test("GAMES", async ({ page }) => {
     test.slow();
-    await open(page, "/stats/games", "400 games recorded · showing 1–20");
+    await open(page, "/games", "400 games recorded · showing 1–20");
     await checkEverySize(page);
   });
 
@@ -175,19 +175,19 @@ test.describe("every page fits every size", () => {
 
   test("an unknown game", async ({ page }) => {
     test.slow();
-    await open(page, "/stats/games/no-such-game", "This game was not found.");
+    await open(page, "/games/no-such-game", "This game was not found.");
     await checkEverySize(page);
   });
 
   test("PLAYERS", async ({ page }) => {
     test.slow();
-    await open(page, "/stats/players", "Win rate");
+    await open(page, "/players", "Win rate");
     await checkEverySize(page);
   });
 
   test("a player's page", async ({ page }) => {
     test.slow();
-    await open(page, "/stats/players/1", "Latest games");
+    await open(page, "/players/1", "Latest games");
     await checkEverySize(page);
   });
 
@@ -337,8 +337,8 @@ test("the header moves between the pages in place", async ({ page }) => {
   const current = nav.locator('[aria-current="page"]');
 
   for (const [label, path, ready] of [
-    ["GAMES", "/stats/games", "400 games recorded · showing 1–20"],
-    ["PLAYERS", "/stats/players", "Win rate"],
+    ["GAMES", "/games", "400 games recorded · showing 1–20"],
+    ["PLAYERS", "/players", "Win rate"],
     ["STATS", "/stats", "OVERVIEW"],
   ]) {
     await nav.getByRole("link", { name: label, exact: true }).click();
@@ -380,6 +380,6 @@ test("back, forward, reload and a deep link", async ({ page }) => {
   await expect(heading).toHaveText(outcomeLabel(newest));
   await expect(page).toHaveTitle("Game · Secret Hitler Online");
 
-  await page.goto("/stats/players/1");
+  await page.goto("/players/1");
   await expect(inMain(page, "Latest games")).toBeVisible();
 });
