@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import "./CustomAlert.css";
+import { watchSize } from "./watchSize";
 
 /**
  * How long a closing prompt fades out: the length of the disappear animations in CustomAlert.css.
@@ -54,31 +55,39 @@ export default function CustomAlert({ show, children }: Props) {
 }
 
 /**
+ * The page's header: the first `header` beside the overlay (App draws the page there), never one
+ * inside a prompt.
+ */
+function pageHeader(overlay: HTMLElement): Element | null {
+  for (const sibling of Array.from(overlay.parentElement?.children ?? [])) {
+    if (sibling === overlay) continue;
+    const header = sibling.matches("header") ? sibling : sibling.querySelector("header");
+    if (header) return header;
+  }
+  return null;
+}
+
+/**
  * Keeps `--alert-header`, on the overlay, the height of the page's header, which the box keeps
- * clear of. The header is the first one beside the overlay (App draws the page there). It is looked
- * for again after every render, since the page under an open prompt can change (CHOOSE A NAME stays
- * open from the login page to the lobby), and measured again whenever its size changes.
+ * clear of. The header is looked for again after every render, since the page under an open prompt
+ * can change (CHOOSE A NAME stays open from the login page to the lobby), and measured again
+ * whenever its size changes.
  */
 function useHeaderRoom(overlay: RefObject<HTMLDivElement>): void {
   const [header, setHeader] = useState<Element | null>(null);
 
   useLayoutEffect(() => {
-    const found = overlay.current?.parentElement?.querySelector("header") ?? null;
+    const found = overlay.current ? pageHeader(overlay.current) : null;
     if (found !== header) setHeader(found);
   });
 
   useLayoutEffect(() => {
     const el = overlay.current;
     if (!el) return;
-    const measure = () => {
+    return watchSize(header ? [header] : [], () => {
       const height = header ? header.getBoundingClientRect().height : 0;
       el.style.setProperty("--alert-header", `${height}px`);
-    };
-    measure();
-    if (!header || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(measure);
-    observer.observe(header);
-    return () => observer.disconnect();
+    });
   }, [overlay, header]);
 }
 
@@ -92,18 +101,14 @@ function useHeldHeight(box: RefObject<HTMLDivElement>, show: boolean): number | 
   const shownHeight = useRef(0);
   const [held, setHeld] = useState<number | null>(null);
 
+  // Only once the last fade-out's height has let go of the box: until then it measures that.
   useLayoutEffect(() => {
     const el = box.current;
-    if (!show || !el) return;
-    const measure = () => {
+    if (!show || held !== null || !el) return;
+    return watchSize([el], () => {
       shownHeight.current = el.getBoundingClientRect().height;
-    };
-    measure();
-    if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [box, show]);
+    });
+  }, [box, show, held]);
 
   // Before the closed box is painted: its content is gone already, its last height is not.
   useLayoutEffect(() => {

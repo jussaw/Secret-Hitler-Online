@@ -106,11 +106,16 @@ class IconSelection extends Component<IconSelectionProps> {
 
   render() {
     return (
-      // The label and CONFIRM stay in place, and the line and the grid scroll between them (PromptLayout).
+      // The label, its line and CONFIRM stay in place, and only the grid scrolls (PromptLayout).
       <ButtonPrompt
         className={"icon-picker"}
-        label={"PLAYER LOOK"}
-        renderHeader={() => <p>Choose a look, then press confirm.</p>}
+        renderLabel={() => (
+          <>
+            <h2 id={"prompt-label"}>PLAYER LOOK</h2>
+            <p>Choose a look, then press confirm.</p>
+          </>
+        )}
+        renderHeader={() => null}
         renderFooter={() => null}
         buttonDisabled={
           this.props.playerToIcon[this.props.user] === defaultPortrait

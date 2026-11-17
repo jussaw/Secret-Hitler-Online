@@ -34,7 +34,10 @@ async function settleLayout(page: Page): Promise<void> {
 type PromptState = {
   /** The class of each of the prompt's parts, in order. */
   parts: string[];
-  /** Whether the middle holds more than it shows. */
+  /**
+   * Whether the middle holds more than it shows, by a pixel or more: the browser's own test for a
+   * scroll bar (headless Chromium hides scroll bars, so their width cannot be measured).
+   */
   middleScrolls: boolean;
   /** Whether the line above the buttons is drawn (PromptLayout's prompt-scrolls). */
   line: boolean;
@@ -48,9 +51,9 @@ function promptState(alertBox: Locator): Promise<PromptState> {
     const body = prompt.querySelector(".prompt-body")!;
     return {
       parts: Array.from(prompt.children).map((part) => part.className),
-      middleScrolls: body.scrollHeight - body.clientHeight > 1,
+      middleScrolls: body.scrollHeight > body.clientHeight,
       line: prompt.classList.contains("prompt-scrolls"),
-      boxScrolls: box.scrollHeight - box.clientHeight > 1,
+      boxScrolls: box.scrollHeight > box.clientHeight,
     };
   });
 }
@@ -139,7 +142,8 @@ async function scrollMiddleToEnd(alertBox: Locator, button: Locator, at: string)
     const last = el.querySelector(".prompt-content")!.lastElementChild!;
     return { last: last.getBoundingClientRect().bottom, view: el.getBoundingClientRect().bottom };
   });
-  expect(end.last, `the end of the middle shows at ${at}`).toBeLessThanOrEqual(end.view + 0.5);
+  // Within a pixel: the middle scrolls by whole pixels, and what it holds can end on a fraction.
+  expect(end.last, `the end of the middle shows at ${at}`).toBeLessThanOrEqual(end.view + 1);
   expect(await title.boundingBox(), `the title moved at ${at}`).toEqual(pinned.title);
   expect(await button.boundingBox(), `the button moved at ${at}`).toEqual(pinned.button);
   await expect(button, `the button after scrolling at ${at}`).toBeInViewport({ ratio: 1 });
@@ -168,40 +172,50 @@ test("a prompt that fits shows no line above its buttons and no scroll bar", asy
   const { width, height } = page.viewportSize()!;
   const sizes = isMobile ? [{ width, height }, { width: height, height: width }] : [{ width: 1600, height: 900 }];
   const { alertBox, button } = await openPrompt(page, "role");
-  const body = alertBox.locator(".prompt-body");
   for (const size of sizes) {
     const at = `${size.width}x${size.height}`;
+    // A middle that holds no more than it shows has no scroll bar to draw.
     const state = await resizeAndCheckFit(page, alertBox, button, isMobile, size);
     expect(state.middleScrolls, `the role alert's middle scrolls at ${at}`).toBe(false);
     expect(state.line, `the line above the buttons at ${at}`).toBe(false);
-    const scrollBar = await body.evaluate((el) => (el as HTMLElement).offsetWidth - el.clientWidth);
-    expect(scrollBar, `a scroll bar's width at ${at}`).toBe(0);
   }
 });
 
+/**
+ * Opens the policy alert at the page's size and checks, frame by frame, that its middle never
+ * scrolls. The folder turns over in 3D, growing as it does, between 1 s and 2 s after it opens.
+ */
+async function expectFolderNeverScrolls(page: Page): Promise<void> {
+  const { alertBox } = await openPrompt(page, "policy-enacted");
+  const seen = await alertBox.evaluate(async (box) => {
+    const body = box.querySelector(".prompt-body")!;
+    const scrolls = new Set<boolean>();
+    const start = performance.now();
+    while (performance.now() - start < 2_500) {
+      scrolls.add(body.scrollHeight > body.clientHeight);
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    }
+    return Array.from(scrolls);
+  });
+  expect(seen, "whether the middle scrolled, frame by frame").toEqual([false]);
+}
+
+// The largest desktop, and the one this first showed at.
 for (const size of [DESKTOP_SIZES[0], DESKTOP_SIZES[2]]) {
-  test(`the policy alert's folder turns over without making its middle scroll (desktop: ${size.width}x${size.height})`, async ({
+  test(`the policy alert's folder turns over without making its middle scroll at ${size.width}x${size.height}`, async ({
     page,
     isMobile,
   }) => {
-    // The largest desktop and the one this first showed at; a phone at its own size. The folder
-    // turns over in 3D, growing as it does, between 1 s and 2 s after the alert opens.
-    if (!isMobile) await page.setViewportSize(size);
-    test.skip(isMobile && size !== DESKTOP_SIZES[0], "a phone has one size");
-    const { alertBox } = await openPrompt(page, "policy-enacted");
-    const seen = await alertBox.evaluate(async (box) => {
-      const body = box.querySelector(".prompt-body")!;
-      const scrolls = new Set<boolean>();
-      const start = performance.now();
-      while (performance.now() - start < 2_500) {
-        scrolls.add(body.scrollHeight - body.clientHeight > 1);
-        await new Promise((resolve) => requestAnimationFrame(resolve));
-      }
-      return Array.from(scrolls);
-    });
-    expect(seen, "whether the middle scrolled, frame by frame").toEqual([false]);
+    test.skip(isMobile, "a desktop size");
+    await page.setViewportSize(size);
+    await expectFolderNeverScrolls(page);
   });
 }
+
+test("the policy alert's folder turns over without making its middle scroll on a phone", async ({ page, isMobile }) => {
+  test.skip(!isMobile, "a phone, at its own size");
+  await expectFolderNeverScrolls(page);
+});
 
 test("the portrait picker's CONFIRM is in view without scrolling", async ({ page, isMobile }, testInfo) => {
   await openFakeGame(page);

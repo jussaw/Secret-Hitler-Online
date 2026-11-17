@@ -1,6 +1,7 @@
 import { render } from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import ButtonPrompt from "./ButtonPrompt";
+import IconSelection from "./IconSelection";
 import NamePrompt from "./NamePrompt";
 import RoleAlert from "./RoleAlert";
 import VetoPrompt from "./VetoPrompt";
@@ -17,6 +18,7 @@ beforeEach(() => {
 
 afterEach(() => {
   expect(console.error).not.toHaveBeenCalled();
+  expect(console.warn).not.toHaveBeenCalled();
   vi.restoreAllMocks();
 });
 
@@ -64,6 +66,18 @@ test("the role alert's role is its title, the card and the rules the middle, and
   expect(middle).toContain("You win if Hitler is successfully elected chancellor");
   expect(container.querySelector(".prompt-body img#role")).not.toBeNull();
   expect(buttons).toEqual(["OKAY"]);
+  expect(leftAlignedTitle).toBe(false);
+});
+
+test("the portrait picker's label and its line stay in the title, its portraits are the middle", () => {
+  const { container } = render(
+    <IconSelection playerToIcon={{ Ann: "p1" }} players={["Ann"]} sendWSCommand={vi.fn()} user="Ann" onConfirm={vi.fn()} />
+  );
+  const { title, middle, buttons, leftAlignedTitle } = parts(container);
+  expect(title).toBe("PLAYER LOOKChoose a look, then press confirm.");
+  expect(middle).toBe("");
+  expect(container.querySelectorAll(".prompt-body #icon").length).toBeGreaterThan(0);
+  expect(buttons).toEqual(["CONFIRM"]);
   expect(leftAlignedTitle).toBe(false);
 });
 

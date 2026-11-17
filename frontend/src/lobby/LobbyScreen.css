@@ -57,7 +57,8 @@
     margin-bottom: auto;
 }
 
-/* The round tracker's card (RoundTracker.css), which the login page's cards share. */
+/* The round tracker's card (RoundTracker.css), which the login page's cards share, and the
+   prompts' box (CustomAlert.css) copies. */
 .lobby-code-card,
 .lobby-status,
 .login-card {

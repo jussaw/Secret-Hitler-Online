@@ -1,6 +1,7 @@
-import { act, render } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import { afterEach, expect, test, vi } from "vitest";
 import PromptLayout from "./PromptLayout";
+import { stubResizeObserver } from "./testResizeObserver";
 
 // PromptLayout draws every prompt's three parts: the title, the middle (which alone scrolls) and
 // the buttons. While the middle scrolls, the prompt takes `prompt-scrolls`, which draws a line
@@ -15,27 +16,6 @@ afterEach(() => {
 function sizes(scrollHeight: number, clientHeight: number) {
   vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(scrollHeight);
   vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(clientHeight);
-}
-
-/** A ResizeObserver whose callback the test runs, recording what it observes. */
-function stubResizeObserver() {
-  const observed: Element[] = [];
-  let resized: () => void = () => undefined;
-  vi.stubGlobal(
-    "ResizeObserver",
-    class {
-      constructor(callback: () => void) {
-        resized = callback;
-      }
-      observe(el: Element) {
-        observed.push(el);
-      }
-      disconnect() {
-        observed.length = 0;
-      }
-    }
-  );
-  return { observed, resize: () => act(() => resized()) };
 }
 
 const layout = (
@@ -67,33 +47,37 @@ test("a prompt whose middle scrolls draws the line above its buttons", () => {
   expect(container.firstElementChild).toHaveClass("prompt-scrolls");
 });
 
-test("a pixel's rounding is not a scroll", () => {
+test("a pixel's overflow is a scroll, as it is to the browser, which draws a scroll bar for it", () => {
   sizes(301, 300);
   const { container } = render(layout);
-  expect(container.firstElementChild).not.toHaveClass("prompt-scrolls");
+  expect(container.firstElementChild).toHaveClass("prompt-scrolls");
 });
 
 test("the line follows the middle as the window or what it holds changes size", () => {
-  const { observed, resize } = stubResizeObserver();
+  const { watching, resize } = stubResizeObserver();
   sizes(300, 300);
   const { container } = render(layout);
   const body = container.querySelector(".prompt-body")!;
   // The middle and what it holds: either can change size without the other.
-  expect(observed).toEqual([body, body.firstElementChild]);
+  expect(watching(body)).toHaveLength(1);
+  expect(watching(body.firstElementChild!)).toHaveLength(1);
   expect(container.firstElementChild).not.toHaveClass("prompt-scrolls");
 
   sizes(900, 300);
-  resize();
+  resize(body.firstElementChild!);
   expect(container.firstElementChild).toHaveClass("prompt-scrolls");
 
   sizes(300, 300);
-  resize();
+  resize(body);
   expect(container.firstElementChild).not.toHaveClass("prompt-scrolls");
 });
 
 test("unmounting stops watching the middle", () => {
-  const { observed } = stubResizeObserver();
-  const { unmount } = render(layout);
+  const { watching } = stubResizeObserver();
+  const { container, unmount } = render(layout);
+  const body = container.querySelector(".prompt-body")!;
+  const content = body.firstElementChild!;
   unmount();
-  expect(observed).toEqual([]);
+  expect(watching(body)).toEqual([]);
+  expect(watching(content)).toEqual([]);
 });

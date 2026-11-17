@@ -57,8 +57,9 @@
     backdrop-filter: blur(5px);
 }
 
-/* The box is a card in the lobby's look (LobbyScreen.css): as tall as the prompt it holds, up to
-   the room the overlay gives it; 80vmin wide on desktop and in tall windows, and on phones the
+/* The box is the lobby's card (LobbyScreen.css, after the round tracker's in RoundTracker.css): its
+   colour, corners and flat shadow. It is as tall as the prompt it holds, up to the room the overlay
+   gives it; 80vmin wide on desktop and in tall windows, and on phones the
    window's width less 16px each side (below). It has no padding of its own, so the line above the
    buttons reaches its edges: each part pads itself by --prompt-pad. A prompt drawn with
    PromptLayout keeps its title and buttons in the box and scrolls only its middle (below); the box
@@ -77,8 +78,8 @@
     overflow-y: auto;
     overscroll-behavior: contain;
     background-color: var(--backgroundDark);
-    border-radius: 12px;
-    box-shadow: 0 6px 0 rgba(0, 0, 0, 0.25);
+    border-radius: 0.6em;
+    box-shadow: 0 0.4vh 0 rgba(0, 0, 0, 0.25);
     text-align: center;
 }
 

@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useRef, useState } from "react";
+import { watchSize } from "./watchSize";
 
 type Props = {
   /** Added to the prompt's own `prompt` class. */
@@ -23,16 +24,10 @@ export default function PromptLayout({ className, title, buttons, children }: Pr
   const content = useRef<HTMLDivElement>(null);
   const [scrolls, setScrolls] = useState(false);
 
+  // The browser's own test for a scroll bar: any overflow, a pixel's included.
   useLayoutEffect(() => {
     const middle = body.current!;
-    // scrollHeight and clientHeight are whole pixels, each rounded on its own.
-    const measure = () => setScrolls(middle.scrollHeight - middle.clientHeight > 1);
-    measure();
-    if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(measure);
-    observer.observe(middle);
-    observer.observe(content.current!);
-    return () => observer.disconnect();
+    return watchSize([middle, content.current!], () => setScrolls(middle.scrollHeight > middle.clientHeight));
   }, []);
 
   const classes = ["prompt", className, scrolls ? "prompt-scrolls" : undefined];

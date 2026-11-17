@@ -1,7 +1,12 @@
 @import '../variables.css';
 
-/* The picker is a prompt like any other (PromptLayout): PLAYER LOOK and CONFIRM stay in place, and
-   its line and the portraits scroll between them. */
+/* The picker is a prompt like any other (PromptLayout): PLAYER LOOK, its line and CONFIRM stay in
+   place, and the portraits scroll between them. The line ends the title, whose last margin
+   CustomAlert.css drops; the grid has none of its own, so the line keeps its own above it. */
+.icon-picker > .prompt-title > p:last-child {
+    margin-bottom: 1em;
+}
+
 #icon-container {
     width: 100%;
 }

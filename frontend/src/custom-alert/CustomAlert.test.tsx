@@ -1,10 +1,12 @@
 import { act, render } from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi, type MockInstance } from "vitest";
 import CustomAlert, { ALERT_FADE_OUT_MS } from "./CustomAlert";
+import { stubResizeObserver } from "./testResizeObserver";
 
-// CustomAlert.css: "appear-custom-alert" fades the overlay in and "disappear-custom-alert" fades
-// it out. Once the fade-out has had its time, #alert is hidden (display: none), so a closed prompt
-// is never drawn and never takes a press, whatever the browser did with its animations.
+// CustomAlert.css: "appear-custom-alert" fades the background and the box in, and
+// "disappear-custom-alert" fades them out (#alert itself, which carries the classes too, fades
+// nothing). Once the fade-out has had its time, #alert is hidden (display: none), so a closed
+// prompt is never drawn and never takes a press, whatever the browser did with its animations.
 const parts = (container: HTMLElement) =>
   ["#alert", "#alert-background", "#alert-box"].map((selector) => container.querySelector(selector)!);
 const classes = (container: HTMLElement) => parts(container).map((el) => el.className);
@@ -91,29 +93,6 @@ test("unmounting during the fade-out leaves no timer behind", () => {
 const heightOf = (height: number) =>
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({ height } as DOMRect);
 
-/** A ResizeObserver whose callbacks the test runs, with what each observes. */
-function stubResizeObserver() {
-  const observers: { callback: () => void; observed: Element[] }[] = [];
-  vi.stubGlobal(
-    "ResizeObserver",
-    class {
-      entry: { callback: () => void; observed: Element[] };
-      constructor(callback: () => void) {
-        this.entry = { callback, observed: [] };
-        observers.push(this.entry);
-      }
-      observe(el: Element) {
-        this.entry.observed.push(el);
-      }
-      disconnect() {
-        this.entry.observed = [];
-      }
-    }
-  );
-  const watching = (el: Element) => observers.filter((o) => o.observed.includes(el));
-  return { watching, resize: (el: Element) => act(() => watching(el).forEach((o) => o.callback())) };
-}
-
 const box = (container: HTMLElement) => container.querySelector<HTMLElement>("#alert-box")!;
 
 test("a prompt the server's OK empties fades out at the height it had", () => {
@@ -141,6 +120,36 @@ test("the held height is the box's last while it was shown, after an image or th
   height.mockReturnValue({ height: 40 } as DOMRect);
   rerender(<CustomAlert show={false} />);
   expect(box(container).style.minHeight).toBe("480px");
+});
+
+test("a prompt shown again measures its own height, not the one held through the last fade-out", () => {
+  // The box as the browser lays it out: as tall as its content, or as its min-height if taller.
+  let content = 420;
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+    return { height: Math.max(content, parseFloat(this.style.minHeight) || 0) } as DOMRect;
+  });
+  const { container, rerender } = render(<CustomAlert show={true}>VOTING</CustomAlert>);
+  content = 40;
+  rerender(<CustomAlert show={false} />);
+  expect(box(container).style.minHeight).toBe("420px");
+
+  content = 200;
+  rerender(<CustomAlert show={true}>ROLE</CustomAlert>);
+  content = 40;
+  rerender(<CustomAlert show={false} />);
+  expect(box(container).style.minHeight).toBe("200px");
+});
+
+test("a header inside a prompt is not the page's", () => {
+  heightOf(46);
+  const { container } = render(
+    <div className="App">
+      <CustomAlert show={true}>
+        <header>A PROMPT'S OWN HEADER</header>
+      </CustomAlert>
+    </div>
+  );
+  expect(headerRoom(container)).toContain("--alert-header: 0px");
 });
 
 test("an overlay that has never been shown holds no height", () => {
