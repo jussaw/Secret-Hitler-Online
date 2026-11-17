@@ -788,8 +788,9 @@ keeps credit to upstream and to the board game's creators.
   JOIN and WATCH, a hint and its error line) and OR START ONE (CREATE LOBBY and its error line),
   then a footer with How to play (the official rules), About this project, Report a bug and the
   credit line the licence asks for. The site header (`src/header/SiteHeader`, Phase 23, with
-  `SiteHeader.css`, and `testClicks.ts`'s `heldBack` for its tests) is the stats pages' too: SECRET-HITLER, then a `nav` "Site" of STATS,
-  GAMES, PLAYERS and PLAY, each a 44px target at every size, the current one `aria-current="page"`
+  `SiteHeader.css`, and `testClicks.ts`'s `heldBack` for its tests) is the stats pages' too:
+  SECRET-HITLER, then a `nav` "Site" of PLAY, STATS, GAMES and PLAYERS (PLAY first, as the user
+  asked), each a 44px target at every size, the current one `aria-current="page"`
   and underlined; one row on desktop and in tall windows, the title over a row of four equal
   columns in the phone-only query. It takes `current`, a `SitePlace` (`stats`, `games`, `players`,
   `play`) or null, and `link`, which draws STATS, GAMES and PLAYERS: a plain `<a>` by default, a
