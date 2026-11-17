@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { outcomeLabel } from "../src/stats/format";
 import { EVENT_FIELDS, parseStatsData, STATS_GAMES_PATH, type Outcome } from "../src/stats/record";
 import { routePath } from "../src/stats/routes";
+import { signedOutMe, stubMe } from "./accounts";
 import { MIN_TARGET, NARROW_PHONE } from "./layout";
 import { settle } from "./lobby";
 import {
@@ -233,6 +234,60 @@ test("the header's links are 44px targets at every size", async ({ page }) => {
     const small = boxes.filter((b) => b.width < MIN_TARGET - 0.01 || b.height < MIN_TARGET - 0.01);
     expect(small, `small header links at ${size.width}x${size.height}`).toEqual([]);
   }
+});
+
+/** The page's header, its title and each of its links, as sizes and offsets from the header's edges. */
+function headerLayout(page: Page) {
+  return page.evaluate(() => {
+    const header = document.querySelector("body header")!;
+    const h = header.getBoundingClientRect();
+    const place = (el: Element) => {
+      const r = el.getBoundingClientRect();
+      return { width: r.width, height: r.height, top: r.top - h.top, left: r.left - h.left, right: h.right - r.right };
+    };
+    return {
+      header: { width: h.width, height: h.height },
+      title: place(header.querySelector(".site-title")!),
+      links: Array.from(header.querySelectorAll("nav a"), (a) => ({ text: a.textContent, ...place(a) })),
+      current: Array.from(header.querySelectorAll('[aria-current="page"]'), (a) => a.textContent),
+    };
+  });
+}
+
+test("the login page has the stats' header at every size", async ({ page, context }) => {
+  test.slow();
+  // A stats page that never scrolls, so its header has the window's whole width, as the login page's.
+  await open(page, "/stats/nowhere", "This page was not found.");
+  const login = await context.newPage();
+  await stubMe(login, signedOutMe({ discord: true }));
+  await login.goto("/");
+  await expect(login.getByRole("link", { name: "SIGN IN WITH DISCORD" })).toBeVisible();
+  await settle(login);
+  await expect(login.locator(".sound-control"), "no sound control on the login page").toHaveCount(0);
+
+  for (const size of statsSizesFor(test.info().project.name, page.viewportSize()!)) {
+    const at = `${size.width}x${size.height}`;
+    await page.setViewportSize(size);
+    await login.setViewportSize(size);
+    const stats = await headerLayout(page);
+    const home = await headerLayout(login);
+    expect(stats.current, `nothing marked on a page that was not found, ${at}`).toEqual([]);
+    expect(home.current, `PLAY marked on the login page, ${at}`).toEqual(["PLAY"]);
+    expect(home.links.map((l) => l.text), at).toEqual(["STATS", "GAMES", "PLAYERS", "PLAY"]);
+    const same = (a: number, b: number, what: string) => expect(a, `${what}, ${at}`).toBeCloseTo(b, 0);
+    same(home.header.width, stats.header.width, "the header's width");
+    same(home.header.height, stats.header.height, "the header's height");
+    for (const key of ["width", "height", "top", "left"] as const) same(home.title[key], stats.title[key], `the title's ${key}`);
+    home.links.forEach((link, i) => {
+      for (const key of ["width", "height", "top", "right"] as const) {
+        same(link[key], stats.links[i][key], `${link.text}'s ${key}`);
+      }
+      expect(link.width, `${link.text}'s width, ${at}`).toBeGreaterThanOrEqual(MIN_TARGET - 0.01);
+      expect(link.height, `${link.text}'s height, ${at}`).toBeGreaterThanOrEqual(MIN_TARGET - 0.01);
+    });
+    expect((await statsPageProblems(login)).sideways, `the login page past the edge, ${at}`).toEqual([]);
+  }
+  await login.close();
 });
 
 test("a twelve-character name stays inside its line at 320px", async ({ page }) => {
