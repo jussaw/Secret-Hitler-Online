@@ -1076,7 +1076,7 @@ Added after Phases 13 to 22B were planned. The stats pages' top bar (SECRET-HITL
 - [x] Lobby: its own header unchanged (sound control and spectator count); only the footer's "Stats" link removed; the victory screen's "See this game" stays
 - [x] The login page and the lobby still fit one screen at every tested size and keep 44px targets on phones (the cards' spacing re-fitted, checked with Linux fonts in the Playwright image)
 - [x] Browser and unit tests updated: the header on each page, PLAY current on the login page, no speaker on the login page, no footer "Stats" link
-- [ ] `CLAUDE.md`, `README.md` (screenshots in `docs/images/` if the login page or lobby look different) and `DEVELOPMENT.md` updated; the pull request shows the login page and the lobby before and after, on desktop and on a phone
+- [x] `CLAUDE.md`, `README.md` (screenshots in `docs/images/` if the login page or lobby look different) and `DEVELOPMENT.md` updated; the pull request shows the login page and the lobby before and after, on desktop and on a phone
 
 **Phase 23 acceptance**
 

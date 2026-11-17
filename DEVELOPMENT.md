@@ -110,7 +110,7 @@ npm run preview       # serve dist/ on port 3000
 
 ### The stats pages
 
-The stats pages are at `/stats`: [`http://localhost:3000/stats`](http://localhost:3000/stats) on the dev server, or `/stats` on the jar's port, where the server answers every path under `/stats` with the page, so a reload or a link to any stats page works. They load as a code chunk of their own, so the game's first download does not grow; after `npm run build`, `npm run first-download` prints each file `dist/index.html` loads with its gzipped size and the total, which a stats phase must leave as it was, within the small margin its plan allows.
+The stats pages are at `/stats`: [`http://localhost:3000/stats`](http://localhost:3000/stats) on the dev server, or `/stats` on the jar's port, where the server answers every path under `/stats` with the page, so a reload or a link to any stats page works. The login page has their header too (`src/header/SiteHeader.tsx`, which the stats pages draw through `StatsHeader`), so a change to it shows on both, and `stats-shell.spec.ts` checks the two match at every size. They load as a code chunk of their own, so the game's first download does not grow; after `npm run build`, `npm run first-download` prints each file `dist/index.html` loads with its gzipped size and the total, which a stats phase must leave as it was, within the small margin its plan allows.
 
 Games are recorded as they finish (or when their lobby times out), so to see one locally, sign in with one test account, create a lobby and start it: four CPU players fill the seats, and once the game ends its record is in `GET /api/stats/games` and on the stats pages after a reload.
 
