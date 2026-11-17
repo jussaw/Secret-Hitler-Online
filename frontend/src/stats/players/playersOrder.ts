@@ -1,5 +1,5 @@
 import { compareNames } from "../counting";
-import { localDayKey } from "../format";
+import { localDayKey, viewerTimeZone } from "../format";
 import type { PlayerListRow } from "../player";
 
 /**
@@ -29,9 +29,9 @@ export function pressHead(sort: PlayersSort, column: PlayersColumn): PlayersSort
   return { column, direction: column === "name" ? "ascending" : "descending" };
 }
 
-/** A row's value in a column, as the column shows it, so a tie the reader sees goes by name; null
- *  for a win rate below its minimum ("— (N)"). */
-function shown(row: PlayerListRow, column: Exclude<PlayersColumn, "name">, timeZone: string): number | string | null {
+/** What a row is sorted by in a column other than the name's: its value as the column shows it,
+ *  so a tie the reader sees goes by name; null for a win rate below its minimum ("— (N)"). */
+function sortKey(row: PlayerListRow, column: Exclude<PlayersColumn, "name">, timeZone: string): number | string | null {
   switch (column) {
     case "games":
       return row.games;
@@ -44,39 +44,40 @@ function shown(row: PlayerListRow, column: Exclude<PlayersColumn, "name">, timeZ
   }
 }
 
-const byNameThenNumber = (a: PlayerListRow, b: PlayerListRow) => compareNames(a.name, b.name) || a.player - b.player;
+const byName = (a: PlayerListRow, b: PlayerListRow) => compareNames(a.name, b.name);
+const byNumber = (a: PlayerListRow, b: PlayerListRow) => a.player - b.player;
 
 /**
  * `rows` in `sort`'s order, a new array. Names compare as `compareNames` does (ignoring case),
  * with a tie to the lower number. Every other column compares what it shows (whole percents, the
- * rounded rating, the local day in `timeZone`), with ties by name, then number, whichever way it
- * runs, and a win rate below its minimum below every rate either way. Provisional players take
- * their place like anyone else.
+ * rounded rating, the local day in `timeZone`, the viewer's by default), with ties by name, then
+ * number, whichever way it runs, and a win rate below its minimum below every rate either way.
+ * Provisional players take their place like anyone else.
  */
-export function sortPlayers(rows: readonly PlayerListRow[], sort: PlayersSort, timeZone: string): PlayerListRow[] {
+export function sortPlayers(
+  rows: readonly PlayerListRow[],
+  sort: PlayersSort,
+  timeZone: string = viewerTimeZone()
+): PlayerListRow[] {
   const sign = sort.direction === "ascending" ? 1 : -1;
   const { column } = sort;
-  if (column === "name") {
-    return [...rows].sort((a, b) => sign * compareNames(a.name, b.name) || a.player - b.player);
-  }
-  const keyed = rows.map((row) => ({ row, key: shown(row, column, timeZone) }));
+  if (column === "name") return [...rows].sort((a, b) => sign * byName(a, b) || byNumber(a, b));
+  const keyed = rows.map((row) => ({ row, key: sortKey(row, column, timeZone) }));
   keyed.sort((a, b) => {
-    if (a.key === null || b.key === null) {
-      return (a.key === null ? 1 : 0) - (b.key === null ? 1 : 0) || byNameThenNumber(a.row, b.row);
-    }
-    const order = a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
-    return sign * order || byNameThenNumber(a.row, b.row);
+    const tie = () => byName(a.row, b.row) || byNumber(a.row, b.row);
+    if (a.key === null || b.key === null) return (a.key === null ? 1 : 0) - (b.key === null ? 1 : 0) || tie();
+    return sign * (a.key < b.key ? -1 : a.key > b.key ? 1 : 0) || tie();
   });
   return keyed.map(({ row }) => row);
 }
 
-/** What a search looks for: what was typed, without spaces at either end, in lower case. */
-const searched = (search: string) => search.trim().toLowerCase();
-
-/** The rows whose name as shown (`Player N` for none) contains `search`, ignoring case and spaces at
- *  either end of it; every row for an empty search. */
+/**
+ * The rows whose name as shown (`Player N` for none) contains `search`, ignoring case and spaces at
+ * either end of it (a phone's keyboard adds one after a word picked from its suggestions); every
+ * row for an empty search.
+ */
 export function searchPlayers(rows: readonly PlayerListRow[], search: string): readonly PlayerListRow[] {
-  const wanted = searched(search);
+  const wanted = search.trim().toLowerCase();
   if (wanted === "") return rows;
   return rows.filter((row) => row.name.toLowerCase().includes(wanted));
 }

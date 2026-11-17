@@ -209,7 +209,7 @@ describe("PlayerPage", () => {
       expect(screen.queryByRole("button", { name: /^Players:/ })).toBeNull();
       // PLAYERS' search box is PLAYERS' alone.
       expect(screen.queryByRole("searchbox")).toBeNull();
-      expect(toggle.closest(".filter-bar")).not.toHaveClass("has-lead");
+      expect(toggle.closest(".filter-bar")).not.toHaveClass("has-before-switch");
       expect(screen.getByText(/^6 games since 2 Oct/)).toBeInTheDocument();
       fireEvent.click(toggle);
       expect(location.pathname).toBe("/players/1");

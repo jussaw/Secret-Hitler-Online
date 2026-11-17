@@ -54,7 +54,7 @@ export function FilterBar({ players, filter, onChange, showPlayers = true, befor
 
   if (!showPlayers) {
     return (
-      <div className={beforeSwitch ? "filter-bar is-switch-only has-lead" : "filter-bar is-switch-only"}>
+      <div className={beforeSwitch ? "filter-bar is-switch-only has-before-switch" : "filter-bar is-switch-only"}>
         {beforeSwitch}
         {cpuSwitch}
       </div>

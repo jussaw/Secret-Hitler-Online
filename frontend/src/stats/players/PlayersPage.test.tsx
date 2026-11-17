@@ -11,15 +11,15 @@ import { SAMPLE_NOW, sampleData, TZ, withRatings } from "./testStats";
 const data = sampleData();
 const statsUnder = (filter: StatsFilter = DEFAULT_FILTER) => buildStats(data, filter);
 /** Ratings: Fay, provisional, highest; Bo and Ed tied at 1560; then Ann, Cy and Di. */
-const withSampleRatings = () =>
-  withRatings(statsUnder(), {
-    1: { rating: 1540, games: 6 },
-    2: { rating: 1560, games: 6 },
-    3: { rating: 1520, games: 6 },
-    4: { rating: 1500, games: 6 },
-    5: { rating: 1560, games: 5 },
-    6: { rating: 1700, games: 1 },
-  });
+const RATINGS = {
+  1: { rating: 1540, games: 6 },
+  2: { rating: 1560, games: 6 },
+  3: { rating: 1520, games: 6 },
+  4: { rating: 1500, games: 6 },
+  5: { rating: 1560, games: 5 },
+  6: { rating: 1700, games: 1 },
+};
+const withSampleRatings = () => withRatings(statsUnder(), RATINGS);
 
 function renderList(stats: StatsContext) {
   return render(<PlayersList stats={stats} now={SAMPLE_NOW} timeZone={TZ} />);
@@ -49,16 +49,7 @@ describe("PlayersList", () => {
   it("opensInNameOrderWithAProvisionalPlayerInTheirPlace", () => {
     // Fay, provisional and rated highest, renamed "cat": A to Z ignoring case puts them third.
     const renamed = { ...data, players: data.players.map((p) => (p.number === 6 ? { ...p, name: "cat" } : p)) };
-    renderList(
-      withRatings(buildStats(renamed, DEFAULT_FILTER), {
-        1: { rating: 1540, games: 6 },
-        2: { rating: 1560, games: 6 },
-        3: { rating: 1520, games: 6 },
-        4: { rating: 1500, games: 6 },
-        5: { rating: 1560, games: 5 },
-        6: { rating: 1700, games: 1 },
-      })
-    );
+    renderList(withRatings(buildStats(renamed, DEFAULT_FILTER), RATINGS));
     expect(shownNames()).toEqual(["Ann", "Bo", "cat", "Cy", "Di", "Ed"]);
     expect(rowOf("cat")).toHaveClass("is-provisional");
     expect(bodyRows().filter((row) => row.classList.contains("is-provisional"))).toHaveLength(1);

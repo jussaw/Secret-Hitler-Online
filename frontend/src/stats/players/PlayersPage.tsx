@@ -27,38 +27,40 @@ import "./PlayersPage.css";
 /** The Players card's line. */
 const DEFINITION = `Every player with a counted game, by name; press a heading to sort by it. Players with fewer than ${PROVISIONAL_GAMES} games are provisional, in italics.`;
 
-/** The table's columns, in order: each one's head's word and the class its head and cells share. */
-const HEADS: readonly [PlayersColumn, string, string][] = [
-  ["name", "Player", "ranked-name"],
-  ["games", "Games", "power-number"],
-  ["winRate", "Win rate", "power-number"],
-  ["rating", "Elo", "power-number"],
-  ["lastPlayed", "Last played", "players-last"],
+/** One of the table's columns: its head's word, the class its head and cells share, and whether
+ *  the head's arrow comes before the word (in a column that stands at the right, so the word lines
+ *  up with the column's values). */
+interface Head {
+  column: PlayersColumn;
+  label: string;
+  className: string;
+  arrowFirst: boolean;
+}
+
+/** The table's columns, in order. */
+const HEADS: readonly Head[] = [
+  { column: "name", label: "Player", className: "ranked-name", arrowFirst: false },
+  { column: "games", label: "Games", className: "power-number", arrowFirst: true },
+  { column: "winRate", label: "Win rate", className: "power-number", arrowFirst: true },
+  { column: "rating", label: "Elo", className: "power-number", arrowFirst: true },
+  { column: "lastPlayed", label: "Last played", className: "players-last", arrowFirst: true },
 ];
 
 /**
  * A column's head: a button that sorts by the column (`pressHead`), with an arrow, both ways and
- * dimmed until it sorts the table, then the way it runs, and `aria-sort` on the sorted one. In a
- * column of numbers, which stand at the right, the arrow comes first, so the word lines up with them.
+ * dimmed until it sorts the table, then the way it runs, and `aria-sort` on the sorted one.
  */
-function SortHead(props: {
-  column: PlayersColumn;
-  label: string;
-  className: string;
-  sort: PlayersSort;
-  onSort: (column: PlayersColumn) => void;
-}): JSX.Element {
-  const { column, label, className, sort, onSort } = props;
-  const direction = sort.column === column ? sort.direction : null;
+function SortHead(props: { head: Head; sort: PlayersSort; onSort: (column: PlayersColumn) => void }): JSX.Element {
+  const { head, sort, onSort } = props;
+  const direction = sort.column === head.column ? sort.direction : null;
   const Arrow = direction === "ascending" ? ArrowUp : direction === "descending" ? ArrowDown : ArrowUpDown;
   const arrow = <Arrow className="players-sort-arrow" aria-hidden="true" />;
-  const atEnd = column !== "name";
   return (
-    <th scope="col" className={className} aria-sort={direction ?? undefined}>
-      <button type="button" className={direction ? "players-sort is-sorted" : "players-sort"} onClick={() => onSort(column)}>
-        {atEnd && arrow}
-        {label}
-        {!atEnd && arrow}
+    <th scope="col" className={head.className} aria-sort={direction ?? undefined}>
+      <button type="button" className={direction ? "players-sort is-sorted" : "players-sort"} onClick={() => onSort(head.column)}>
+        {head.arrowFirst && arrow}
+        {head.label}
+        {!head.arrowFirst && arrow}
       </button>
     </th>
   );
@@ -79,24 +81,25 @@ function SortHead(props: {
 export function PlayersList(props: { stats: StatsContext; now: number; timeZone?: string; search?: string }): JSX.Element {
   const { stats, now, timeZone, search = "" } = props;
   const [sort, setSort] = useState<PlayersSort>(NAME_ORDER);
-  const zone = timeZone ?? viewerTimeZone();
+  // The viewer's zone, looked up once, for the sort and every row's last played.
+  const zone = useMemo(() => timeZone ?? viewerTimeZone(), [timeZone]);
   const rows = useMemo(() => computePlayersList(stats), [stats]);
   const sorted = useMemo(() => sortPlayers(rows, sort, zone), [rows, sort, zone]);
-  const shown = searchPlayers(sorted, search);
-  const empty = rows.length === 0 ? true : shown.length === 0 ? noMatchLine(search) : false;
+  const matching = searchPlayers(sorted, search);
+  const empty = rows.length === 0 ? true : matching.length === 0 ? noMatchLine(search) : false;
   const onSort = (column: PlayersColumn) => setSort(pressHead(sort, column));
   return (
     <StatCard title="Players" definition={DEFINITION} empty={empty}>
       <table className="ranked-table power-ranking players-table">
         <thead>
           <tr>
-            {HEADS.map(([column, label, className]) => (
-              <SortHead key={column} column={column} label={label} className={className} sort={sort} onSort={onSort} />
+            {HEADS.map((head) => (
+              <SortHead key={head.column} head={head} sort={sort} onSort={onSort} />
             ))}
           </tr>
         </thead>
         <tbody>
-          {shown.map((row) => {
+          {matching.map((row) => {
             const last = formatLastPlayed(row.lastPlayed, now, zone);
             return (
               <tr key={row.player} className={row.provisional ? "ranked-unranked is-provisional" : undefined}>
