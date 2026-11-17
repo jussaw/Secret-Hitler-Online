@@ -59,14 +59,16 @@ describe("PlayersList", () => {
     expect(within(card()).getByRole("link", { name: "Ann" })).toHaveAttribute("href", "/stats/players/1");
   });
 
-  it("theFilterApplies", () => {
-    renderList(statsUnder({ players: new Set([1, 2, 3, 4, 5]), cpu: false }));
-    expect(within(card()).queryByRole("link", { name: "Fay" })).toBeNull();
-    expect(cellTexts(rowOf("Ann"))[0]).toBe("5");
+  it("theCpuSwitchCountsCpuGames", () => {
+    renderList(statsUnder({ players: null, cpu: true }));
+    expect(cellTexts(rowOf("Gus"))[0]).toBe("1");
+    expect(cellTexts(rowOf("Ann"))[0]).toBe("7");
   });
 
   it("noCountedGamesIsTheEmptyState", () => {
-    renderList(statsUnder({ players: new Set([7]), cpu: false }));
+    // Only the CPU game and the unfinished one, with the CPU switch off.
+    const uncounted = { players: data.players, games: data.games.filter((g) => g.id === "cpu" || g.id === "unf") };
+    renderList(buildStats(uncounted, DEFAULT_FILTER));
     expect(card()).toHaveTextContent(NO_GAMES);
     expect(within(card()).queryByRole("table")).toBeNull();
   });
@@ -86,15 +88,31 @@ describe("PlayersPage", () => {
     vi.restoreAllMocks();
   });
 
-  it("theFilterAboveTheListMovesTheAddress", async () => {
+  /** The player chooser: the chips' group and, on phones, its folded line. */
+  const playerChooser = () => [screen.queryByRole("group", { name: "Players" }), screen.queryByRole("button", { name: /^Players:/ })];
+
+  it("theCpuSwitchAloneMovesTheAddress", async () => {
     history.replaceState(null, "", "/stats/players");
     render(<StatsApp />);
     const players = await screen.findByRole("region", { name: "Players" });
     expect(within(players).queryByRole("link", { name: "Gus" })).toBeNull();
-    expect(screen.getByRole("group", { name: "Players" })).toBeInTheDocument();
+    expect(playerChooser()).toEqual([null, null]);
     fireEvent.click(screen.getByRole("switch", { name: "Include games with CPU players" }));
     expect(location.pathname).toBe("/stats/players");
-    expect(parseFilter(location.search)).toEqual({ players: null, cpu: true });
+    expect(location.search).toBe("?cpu=1");
     expect(within(screen.getByRole("region", { name: "Players" })).getByRole("link", { name: "Gus" })).toBeInTheDocument();
+  });
+
+  it("aPlayerFilterInTheAddressStillListsEveryPlayer", async () => {
+    history.replaceState(null, "", "/stats/players?players=2,3");
+    render(<StatsApp />);
+    await screen.findByRole("region", { name: "Players" });
+    expect(bodyRows().map((row) => within(row).getByRole("link").textContent).sort()).toEqual(["Ann", "Bo", "Cy", "Di", "Ed", "Fay"]);
+    expect(cellTexts(rowOf("Ann"))[0]).toBe("6");
+    expect(playerChooser()).toEqual([null, null]);
+    // The next change of the switch leaves the ignored player filter out of the address.
+    fireEvent.click(screen.getByRole("switch", { name: "Include games with CPU players" }));
+    expect(location.search).toBe("?cpu=1");
+    expect(parseFilter(location.search)).toEqual({ players: null, cpu: true });
   });
 });

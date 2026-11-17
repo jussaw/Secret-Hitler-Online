@@ -5,7 +5,8 @@ import { settle } from "./lobby";
 import { bigStatsData, checkStatsPage, statsSizesFor, stubStats } from "./stats";
 
 /**
- * PLAYERS and a player's page (Phase 22B): both fit every stats size, a name in GAMES opens its
+ * PLAYERS and a player's page (Phase 22B): both fit every stats size, both have the CPU switch
+ * alone (PLAYERS ignores a player filter in its address), a name in GAMES opens its
  * player's page, "All N games" opens GAMES filtered to the player, and the player page's CPU
  * switch counts the CPU games its header said were left out.
  */
@@ -48,6 +49,15 @@ test("PLAYERS fits every stats size", async ({ page }) => {
     await expect(page.getByRole("region", { name: "Players" }).locator("tbody tr")).toHaveCount(data.players.length);
     await checkEverySize(page);
   }
+});
+
+test("PLAYERS has the CPU switch alone and ignores a player filter", async ({ page }) => {
+  await open(page, `${routePath({ page: "players" })}?players=2,3`);
+  await expect(page.getByRole("region", { name: "Players" }).locator("tbody tr")).toHaveCount(data.players.length);
+  await expect(page.locator(".filter-chip, .filter-summary")).toHaveCount(0);
+  await page.getByRole("switch", { name: "Include games with CPU players" }).click();
+  await expect(page).toHaveURL(/\/stats\/players\?cpu=1$/);
+  await expect(page.getByRole("region", { name: "Players" }).locator("tbody tr")).toHaveCount(data.players.length);
 });
 
 test("a player page fits every stats size", async ({ page }) => {

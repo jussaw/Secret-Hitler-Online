@@ -3,7 +3,7 @@ import { filterSearch } from "../counting";
 import { PROVISIONAL_GAMES } from "../elo";
 import { FilterBar } from "../FilterBar";
 import { formatRating } from "../numbers";
-import { computePlayersList } from "../player";
+import { computePlayersList, withoutPlayerFilter } from "../player";
 import PlayerName from "../PlayerName";
 import "../RankedTable.css";
 import "../tabs/PowerRanking.css";
@@ -17,7 +17,7 @@ import "./PlayersPage.css";
 const DEFINITION = `Every player with a counted game, by Elo. Players with fewer than ${PROVISIONAL_GAMES} games are provisional, in italics at the bottom.`;
 
 /**
- * PLAYERS' card: a row per player with a counted game under the filter, in `computePlayersList`'s
+ * PLAYERS' card: a row per player with a counted game in `stats`, in `computePlayersList`'s
  * order (OVERVIEW's power ranking), with their counted games, win rate, Elo and when they last
  * played, seen at `now` in `timeZone` (the viewer's by default). A provisional row is in italics.
  * It has OVERVIEW's power ranking's look (`RankedTable.css` and `PowerRanking.css`: a header row,
@@ -72,22 +72,26 @@ export function PlayersList(props: { stats: StatsContext; now: number; timeZone?
 }
 
 /**
- * PLAYERS (`/stats/players`): the stats filter, which lives in the address, above the list of
- * every player it counts games for. `now` is the time the page opened.
+ * PLAYERS (`/stats/players`): the CPU switch on its own, as on a player's page, above the list of
+ * every player with a counted game. The list ignores a player filter in the address (the user
+ * found one unnecessary here), and the switch writes only `cpu`, so its next change drops it.
+ * `now` is the time the page opened.
  */
 export default function PlayersPage(_props: PageProps): JSX.Element {
   const stats = useStats();
   const { pathname } = useLocation();
   const [now] = useState(Date.now);
-  if (!stats) return <></>; // the records are on their way (StatsApp shows them once they come)
+  const everyone = useMemo(() => (stats ? withoutPlayerFilter(stats) : null), [stats]);
+  if (!everyone) return <></>; // the records are on their way (StatsApp shows them once they come)
   return (
     <div className="players-page">
       <FilterBar
-        players={stats.data.players}
-        filter={stats.filter}
+        players={everyone.data.players}
+        filter={everyone.filter}
         onChange={(next) => navigate(pathname + filterSearch(next))}
+        showPlayers={false}
       />
-      <PlayersList stats={stats} now={now} />
+      <PlayersList stats={everyone} now={now} />
     </div>
   );
 }
