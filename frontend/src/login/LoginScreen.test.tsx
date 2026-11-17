@@ -67,7 +67,7 @@ test("the header is the site's, with PLAY the page you are on", () => {
   renderLogin();
   const header = screen.getByRole("banner");
   expect(header).toHaveTextContent(/^SECRET-HITLER/);
-  const nav = within(header).getByRole("navigation", { name: "Stats pages" });
+  const nav = within(header).getByRole("navigation", { name: "Site" });
   expect(within(nav).getAllByRole("link").map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
     ["STATS", "/stats"],
     ["GAMES", "/stats/games"],

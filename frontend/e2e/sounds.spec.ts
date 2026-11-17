@@ -258,7 +258,7 @@ test("the control fits every header", async ({ page, isMobile }) => {
   // The login page has the stats pages' header, with no sound control: sounds are the lobby's
   // and the game's.
   await page.goto("/");
-  await expect(page.getByRole("navigation", { name: "Stats pages" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Site" })).toBeVisible();
   await expect(page.locator(".sound-control")).toHaveCount(0);
   const game = await openFakeGame(page);
   await settle(page);

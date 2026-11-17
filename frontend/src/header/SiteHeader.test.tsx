@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import SiteHeader, { type HeaderLinkProps, type SitePlace } from "./SiteHeader";
 import { heldBack } from "./testClicks";
 
-const nav = () => within(screen.getByRole("navigation", { name: "Stats pages" }));
+const nav = () => within(screen.getByRole("navigation", { name: "Site" }));
 const marked = () =>
   nav()
     .getAllByRole("link")
@@ -18,6 +18,11 @@ function DrawnLink(props: HeaderLinkProps) {
 describe("SiteHeader", () => {
   afterEach(() => {
     document.body.innerHTML = "";
+  });
+
+  it("names its navigation Site, on the login page and the stats pages alike", () => {
+    render(<SiteHeader current="play" />);
+    expect(screen.getByRole("navigation")).toHaveAccessibleName("Site");
   });
 
   it("links to the four places", () => {

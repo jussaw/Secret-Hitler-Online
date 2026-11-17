@@ -21,7 +21,7 @@ test.describe("the links in", () => {
     await stubMe(page, signedOutMe({ discord: true }));
     await stubStats(page, data);
     await page.goto("/");
-    const nav = page.getByRole("navigation", { name: "Stats pages" });
+    const nav = page.getByRole("navigation", { name: "Site" });
     await expect(nav.getByRole("link", { name: "PLAY", exact: true })).toHaveAttribute("aria-current", "page");
     await expect(page.getByRole("contentinfo").getByRole("link", { name: "Stats" })).toHaveCount(0);
     const stats = nav.getByRole("link", { name: "STATS", exact: true });
@@ -39,7 +39,7 @@ test.describe("the links in", () => {
     const header = page.locator(".lobby-screen > header");
     await expect(header).toHaveText(/^SECRET-HITLER/);
     await expect(header.locator(".sound-control")).toHaveCount(1);
-    await expect(page.getByRole("navigation", { name: "Stats pages" })).toHaveCount(0);
+    await expect(page.getByRole("navigation", { name: "Site" })).toHaveCount(0);
     await expect(page.locator(".lobby-footer")).toHaveText("About this project · Report a bug");
     await expect(page.getByRole("link", { name: /stats/i })).toHaveCount(0);
   });

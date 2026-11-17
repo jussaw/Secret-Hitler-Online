@@ -219,7 +219,7 @@ test.describe("every page fits every size", () => {
 });
 
 /** The header's nav, on the stats pages and the login page alike. */
-const HEADER_NAV = 'header nav[aria-label="Stats pages"]';
+const HEADER_NAV = 'header nav[aria-label="Site"]';
 
 test("the header's links are 44px targets at every size", async ({ page }) => {
   test.slow();
@@ -331,7 +331,7 @@ test("the header moves between the pages in place", async ({ page }) => {
   desktopOnly();
   await open(page, "/stats", "OVERVIEW");
   await page.evaluate(() => ((window as unknown as { stayed: boolean }).stayed = true));
-  const nav = page.getByRole("navigation", { name: "Stats pages" });
+  const nav = page.getByRole("navigation", { name: "Site" });
   const current = nav.locator('[aria-current="page"]');
 
   for (const [label, path, ready] of [

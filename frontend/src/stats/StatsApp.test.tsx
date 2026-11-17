@@ -33,7 +33,7 @@ function openAt(path: string) {
   return render(<StatsApp />);
 }
 
-const nav = () => within(screen.getByRole("navigation", { name: "Stats pages" }));
+const nav = () => within(screen.getByRole("navigation", { name: "Site" }));
 /** The stats home's tab row, once the games are shown. */
 const overviewTab = () => screen.findByRole("link", { name: "OVERVIEW" });
 /** Moves the page to `path` in place, as a link would (the stats home links to no game). */

@@ -45,7 +45,7 @@ export function SiteHeader({
   return (
     <header className="site-header">
       <span className="site-title">SECRET-HITLER</span>
-      <nav className="site-nav" aria-label="Stats pages">
+      <nav className="site-nav" aria-label="Site">
         {STATS_LINKS.map(({ place, label, href }) => (
           <Link key={place} href={href} className="site-nav-link" aria-current={mark(place)}>
             {label}

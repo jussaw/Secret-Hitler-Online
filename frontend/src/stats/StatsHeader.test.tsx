@@ -6,7 +6,7 @@ import StatsHeader from "./StatsHeader";
 
 function links(route: StatsRoute) {
   render(<StatsHeader route={route} />);
-  return within(screen.getByRole("navigation", { name: "Stats pages" })).getAllByRole("link");
+  return within(screen.getByRole("navigation", { name: "Site" })).getAllByRole("link");
 }
 
 describe("StatsHeader", () => {
