@@ -1,10 +1,13 @@
 @import '../variables.css';
 
+/* The folder turns over in 3D (perspective), and grows by up to a tenth of its height above and
+   below as it does: 4vmin clear of what is around it keeps that inside the prompt's middle, which
+   would otherwise scroll for a moment (PromptLayout). */
 #policy-enacted-container {
     display: flex;
     width: 20vmin;
     height: 26vmin;
-    margin: auto auto;
+    margin: 4vmin auto;
     position: relative;
     perspective: 1000px;
 }

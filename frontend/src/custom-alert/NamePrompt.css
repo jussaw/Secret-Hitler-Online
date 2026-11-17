@@ -3,9 +3,16 @@
   margin: 10px 0 0;
 }
 
+/* The lobby's field label (LobbyScreen.css's .lobby-invite-label): Montserrat in the light grey
+   of the card's text, in the prompt's text size. Its focus border is the lobby's and the login
+   page's (LobbyScreen.css). */
 .name-prompt-field-label {
   display: block;
   margin-bottom: 4px;
+  font-family: var(--textFont);
+  font-size: calc(12px + 1vmin);
+  font-weight: 500;
+  color: var(--textColorOnDark);
 }
 
 /* 16px stops iOS zooming into the field; 44px is the phones' touch target. */

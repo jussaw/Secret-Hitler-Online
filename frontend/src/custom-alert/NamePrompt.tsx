@@ -3,6 +3,7 @@ import { MAX_NAME_LENGTH } from "../constants";
 import { CONTACT_ERROR } from "../lobby/joinError";
 import { normalizeName, typedName } from "../lobby/normalizeName";
 import "./NamePrompt.css";
+import PromptLayout from "./PromptLayout";
 
 type NamePromptProps = {
   title: string;
@@ -59,10 +60,17 @@ export default function NamePrompt({
   };
 
   return (
-    <div>
-      <h2 id="prompt-label" className="left-align">
-        {title}
-      </h2>
+    <PromptLayout
+      title={<h2 id="prompt-label">{title}</h2>}
+      buttons={
+        <div className="name-prompt-buttons">
+          <button onClick={submit} disabled={!canContinue}>
+            {confirmLabel}
+          </button>
+          <button onClick={onSecondary}>{secondaryLabel}</button>
+        </div>
+      }
+    >
       <p id="prompt-header" className="left-align">
         Others see it in lobbies and games. Up to 12 characters.
       </p>
@@ -88,12 +96,6 @@ export default function NamePrompt({
       <p className="prompt-error left-align" role="alert">
         {error}
       </p>
-      <div className="name-prompt-buttons">
-        <button onClick={submit} disabled={!canContinue}>
-          {confirmLabel}
-        </button>
-        <button onClick={onSecondary}>{secondaryLabel}</button>
-      </div>
-    </div>
+    </PromptLayout>
   );
 }

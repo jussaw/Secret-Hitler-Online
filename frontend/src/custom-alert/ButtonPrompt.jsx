@@ -1,8 +1,11 @@
 import React, {Component} from 'react';
 import PropTypes from 'prop-types';
+import PromptLayout from './PromptLayout';
 
 /**
  * A template set of contents for the CustomAlert class that holds a series of selectable options.
+ * It is drawn in PromptLayout's three parts: the label is the title, the header, the children and
+ * the footer are the middle, and the button (or renderButton's buttons) is the foot.
  */
 class ButtonPrompt extends Component {
 
@@ -15,13 +18,15 @@ class ButtonPrompt extends Component {
 
     render() {
         return (
-            <div className={this.props.className}>
-                {this.props.renderLabel(this)}
+            <PromptLayout
+                className={this.props.className}
+                title={this.props.renderLabel(this)}
+                buttons={this.props.renderButton(this)}
+            >
                 {this.props.renderHeader(this)}
                 {this.props.children}
                 {this.props.renderFooter(this)}
-                {this.props.renderButton(this)}
-            </div>
+            </PromptLayout>
         );
     }
 }
@@ -30,7 +35,7 @@ class ButtonPrompt extends Component {
 ButtonPrompt.defaultProps = {
     label: "LABEL GOES HERE",
     renderLabel: (obj) => {
-        return (<h2 id={"prompt-label"} className={"left-align"}>{obj.props.label}</h2>);
+        return (<h2 id={"prompt-label"}>{obj.props.label}</h2>);
     },
 
     headerText: "",

@@ -1,10 +1,12 @@
 import { act, render } from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi, type MockInstance } from "vitest";
 import CustomAlert, { ALERT_FADE_OUT_MS } from "./CustomAlert";
+import { stubResizeObserver } from "./testResizeObserver";
 
-// CustomAlert.css: "appear-custom-alert" fades the overlay in and "disappear-custom-alert" fades
-// it out. Once the fade-out has had its time, #alert is hidden (display: none), so a closed prompt
-// is never drawn and never takes a press, whatever the browser did with its animations.
+// CustomAlert.css: "appear-custom-alert" fades the background and the box in, and
+// "disappear-custom-alert" fades them out (#alert itself, which carries the classes too, fades
+// nothing). Once the fade-out has had its time, #alert is hidden (display: none), so a closed
+// prompt is never drawn and never takes a press, whatever the browser did with its animations.
 const parts = (container: HTMLElement) =>
   ["#alert", "#alert-background", "#alert-box"].map((selector) => container.querySelector(selector)!);
 const classes = (container: HTMLElement) => parts(container).map((el) => el.className);
@@ -21,6 +23,8 @@ afterEach(() => {
   expect(consoleError).not.toHaveBeenCalled();
   consoleError.mockRestore();
   vi.useRealTimers();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 const advance = (ms: number) => act(() => vi.advanceTimersByTime(ms));
@@ -83,4 +87,129 @@ test("unmounting during the fade-out leaves no timer behind", () => {
   rerender(<CustomAlert show={false}>OKAY</CustomAlert>);
   unmount();
   expect(vi.getTimerCount()).toBe(0);
+});
+
+/** Every element's box is `height` px tall, as the browser's layout would make it. */
+const heightOf = (height: number) =>
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({ height } as DOMRect);
+
+const box = (container: HTMLElement) => container.querySelector<HTMLElement>("#alert-box")!;
+
+test("a prompt the server's OK empties fades out at the height it had", () => {
+  const height = heightOf(420);
+  const { container, rerender } = render(<CustomAlert show={true}>VOTING</CustomAlert>);
+  expect(box(container).style.minHeight).toBe("");
+
+  // App empties the box in the same update that closes it.
+  height.mockReturnValue({ height: 40 } as DOMRect);
+  rerender(<CustomAlert show={false} />);
+  expect(box(container).style.minHeight).toBe("420px");
+
+  // Shown again, the box is as tall as what it holds.
+  rerender(<CustomAlert show={true}>ROLE</CustomAlert>);
+  expect(box(container).style.minHeight).toBe("");
+});
+
+test("the held height is the box's last while it was shown, after an image or the window resized it", () => {
+  const { resize } = stubResizeObserver();
+  const height = heightOf(300);
+  const { container, rerender } = render(<CustomAlert show={true}>VOTING</CustomAlert>);
+  height.mockReturnValue({ height: 480 } as DOMRect);
+  resize(box(container));
+
+  height.mockReturnValue({ height: 40 } as DOMRect);
+  rerender(<CustomAlert show={false} />);
+  expect(box(container).style.minHeight).toBe("480px");
+});
+
+test("a prompt shown again measures its own height, not the one held through the last fade-out", () => {
+  // The box as the browser lays it out: as tall as its content, or as its min-height if taller.
+  let content = 420;
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+    return { height: Math.max(content, parseFloat(this.style.minHeight) || 0) } as DOMRect;
+  });
+  const { container, rerender } = render(<CustomAlert show={true}>VOTING</CustomAlert>);
+  content = 40;
+  rerender(<CustomAlert show={false} />);
+  expect(box(container).style.minHeight).toBe("420px");
+
+  content = 200;
+  rerender(<CustomAlert show={true}>ROLE</CustomAlert>);
+  content = 40;
+  rerender(<CustomAlert show={false} />);
+  expect(box(container).style.minHeight).toBe("200px");
+});
+
+test("a header inside a prompt is not the page's", () => {
+  heightOf(46);
+  const { container } = render(
+    <div className="App">
+      <CustomAlert show={true}>
+        <header>A PROMPT'S OWN HEADER</header>
+      </CustomAlert>
+    </div>
+  );
+  expect(headerRoom(container)).toContain("--alert-header: 0px");
+});
+
+test("an overlay that has never been shown holds no height", () => {
+  heightOf(0);
+  const { container } = render(<CustomAlert show={false} />);
+  expect(box(container).style.minHeight).toBe("");
+});
+
+/**
+ * The page beside the overlay, as App draws it: the overlay, then a page with its header. Each page
+ * is a component of its own in App, so a new page brings a new header (the key).
+ */
+function Page({ show, header = "game" }: { show: boolean; header?: string }) {
+  return (
+    <div className="App">
+      <CustomAlert show={show}>OKAY</CustomAlert>
+      <div key={header} className={`${header}-screen`}>
+        <header className={header}>SECRET-HITLER</header>
+      </div>
+    </div>
+  );
+}
+
+const headerRoom = (container: HTMLElement) => overlay(container).getAttribute("style") ?? "";
+
+test("the box keeps clear of the page's header: --alert-header is the header's height", () => {
+  heightOf(46.5);
+  const { container } = render(<Page show={true} />);
+  expect(headerRoom(container)).toContain("--alert-header: 46.5px");
+});
+
+test("--alert-header follows the header as the window resizes it", () => {
+  const { watching, resize } = stubResizeObserver();
+  const height = heightOf(40);
+  const { container } = render(<Page show={true} />);
+  const header = container.querySelector("header")!;
+  expect(watching(header)).toHaveLength(1);
+
+  height.mockReturnValue({ height: 77 } as DOMRect);
+  resize(header);
+  expect(headerRoom(container)).toContain("--alert-header: 77px");
+});
+
+test("a prompt that stays open as the page changes keeps clear of the new page's header", () => {
+  const { watching } = stubResizeObserver();
+  const height = heightOf(77);
+  const { container, rerender } = render(<Page show={true} header="login" />);
+  const loginHeader = container.querySelector("header")!;
+  expect(headerRoom(container)).toContain("--alert-header: 77px");
+
+  // CHOOSE A NAME stays open from the login page to the lobby.
+  height.mockReturnValue({ height: 40 } as DOMRect);
+  rerender(<Page show={true} header="lobby" />);
+  expect(headerRoom(container)).toContain("--alert-header: 40px");
+  expect(watching(loginHeader)).toEqual([]);
+  expect(watching(container.querySelector("header")!)).toHaveLength(1);
+});
+
+test("with no header beside it, the box keeps no room for one", () => {
+  heightOf(46);
+  const { container } = render(<CustomAlert show={true}>OKAY</CustomAlert>);
+  expect(headerRoom(container)).toContain("--alert-header: 0px");
 });

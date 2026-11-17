@@ -86,7 +86,8 @@
     margin-bottom: auto;
 }
 
-/* The round tracker's card (RoundTracker.css), which the login page's cards share. */
+/* The round tracker's card (RoundTracker.css), which the login page's cards share, and the
+   prompts' box (CustomAlert.css) copies. */
 .lobby-code-card,
 .lobby-status,
 .login-card {
@@ -167,8 +168,10 @@
     border-radius: 0.5em;
 }
 
+/* The focus of the lobby's field, the login page's and the name prompt's (NamePrompt.css). */
 .lobby-link-row input:focus,
-.login-card input:focus {
+.login-card input:focus,
+.name-prompt-field input:focus {
     border-color: #f08a5d;
 }
 

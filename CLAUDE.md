@@ -839,7 +839,9 @@ keeps credit to upstream and to the board game's creators.
   only the code" after. A 401 from JOIN, CREATE LOBBY or the name prompt's save says "Sign in to
   play." and asks `/me` again (a session that has ended closes the prompt). CHOOSE A NAME and CHANGE
   NAME are one prompt, `NamePrompt`: its title, "Others see it in lobbies and games. Up to 12
-  characters.", the field, which takes `typedName` (`src/lobby/normalizeName.ts`: runs of whitespace
+  characters.", the field, labelled "Your name" in the lobby's field-label look (`.lobby-invite-label`:
+  Montserrat 500 in `--textColorOnDark`) and marking its focus with the lobby's and the login page's
+  orange border (`LobbyScreen.css`), which takes `typedName` (`src/lobby/normalizeName.ts`: runs of whitespace
   one space, none at the start, twelve characters at most) and saves `normalizeName`'s, then the
   confirm button and the other on one row (`.name-prompt-buttons`, 44px targets on phones): CONTINUE
   and SIGN OUT, or SAVE and CANCEL. The server's message shows under the field and the prompt stays
@@ -988,9 +990,37 @@ keeps credit to upstream and to the board game's creators.
   (its first message), and a press in the lobby with no socket shows the retrying snackbar instead.
   Every close is logged with the time, its code and reason and the page's visibility, without the
   URL's key.
-  Prompts are a fixed overlay whose box scrolls (`CustomAlert.css`), except the portrait picker
-  (`IconSelection`): its box is a column with CONFIRM pinned at the foot, and only the grid of
-  portraits scrolls (`IconSelection.css`, keyed on `ButtonPrompt`'s `className`). `CustomAlert`
+  Prompts are a fixed overlay (`CustomAlert`, issue #74): the page, header included, dimmed with
+  `--alertDim` (`#141414` at 55%) and blurred by 5px (`backdrop-filter`; a browser without it gets
+  the dim alone), the header's speaker above it, and over it the lobby's card (`--backgroundDark`,
+  and the corners, 0.6em, and flat shadow, `0 0.4vh 0`, that `LobbyScreen.css` and
+  `RoundTracker.css` give theirs; `--alertFill` stays the snackbar's, the event bar's and the
+  charts' tooltips'). The card is as tall as its prompt, up to the room between the page's header
+  and the window's bottom, 16px clear of each, and centred in it: the header's height is
+  `--alert-header` on `#alert`, which `CustomAlert` measures from the first `header` beside it
+  (never one inside a prompt), looked for again after every render (a prompt open from the login
+  page to the lobby keeps clear of the new header) and measured again by a `ResizeObserver`
+  (`watchSize`, which the overlay and `PromptLayout` share). It is 80vmin wide on desktop and in
+  tall windows, and the window's width less 16px each side in the phone-only query, a phone held
+  sideways included. Every prompt is drawn in `PromptLayout`'s three parts: `.prompt-title` (its
+  title, centred), `.prompt-body` (the middle, whose text is left-aligned where it carries
+  `.left-align`, as before) and `.prompt-buttons`. A `ButtonPrompt`'s label is its title, its
+  header, children and footer the middle and its button (or `renderButton`'s) the foot;
+  `RoleAlert` and `NamePrompt` use `PromptLayout` themselves; the portrait picker's title holds
+  PLAYER LOOK and its line, so only its grid scrolls (#25); and the victory screen's header image
+  is its title (at most 25vh tall, `#victory-header`). Once the card is as tall as it can be, only
+  the middle scrolls, and while it does (`scrollHeight > clientHeight`, the browser's own test for
+  a scroll bar) the prompt takes `prompt-scrolls` (a `ResizeObserver` on the middle and on what it
+  holds, `.prompt-content`), which draws a thin line over the buttons and a shade above it, as the
+  agreed mockups do, neither taking room; a prompt that fits shows neither, and no scroll bar. The
+  policy alert's folder has 4vmin above and below it, as it grows by up to a tenth of its height
+  while it turns over in 3D, which would otherwise make the middle scroll for a moment. The box
+  scrolls as a whole only in a window too short even for a title and its buttons. As the card is
+  as tall as its prompt, `CustomAlert` holds the height it last had while shown (`useHeldHeight`,
+  measured only once the last hold has let go) through the fade-out, so a prompt the server's OK
+  empties at once fades out at its size. `#alert` itself fades nothing: the background
+  and the box fade on their own, since a fading ancestor would keep the blur from seeing the page
+  (its backdrop root) until the fade ended. `CustomAlert`
   fades the overlay in and out with CSS classes, and once a closed prompt's fade-out has had its
   `ALERT_FADE_OUT_MS` (1 s, which `hideAlertAndFinish` also waits) it sets `hidden` on `#alert`
   (`display: none`). So a closed prompt is never drawn and never takes a press, however the browser
@@ -1090,9 +1120,21 @@ keeps credit to upstream and to the board game's creators.
   (`desktop`) lets the server end a real game's term after 10 s.
   The scripted sockets record what the page sends (`received`).
   `prompts.spec.ts` runs in `desktop` and both phone projects (`phone-360` also at 320x568); it
-  opens every prompt from a scripted game socket (`e2e/fakeGame.ts`), and checks that the portrait
-  picker's label and CONFIRM are in view without scrolling, on a phone held sideways too, while its
-  grid scrolls to the last portrait. `prompt-close.spec.ts` runs in every project: after the role
+  opens every prompt from a scripted game socket (`e2e/fakeGame.ts`), and at every size checks that
+  it has its three parts, that the card is inside the window, 16px clear of the header and of the
+  window's bottom, that its title and its button are in view without scrolling while the box
+  itself never scrolls, and that the line above the buttons shows exactly when the middle scrolls
+  (and, on an upright phone, that the card is the window's width less 32px). A prompt taller than
+  the window (the vote with both warnings at 1280x600 in `desktop` and on a phone held sideways,
+  and the portrait picker, on a phone held sideways too) scrolls its middle to its end without
+  moving its title or its buttons, and the role alert, which fits at 1600x900 and on a phone held
+  either way, shows no line and no overflow (a scroll bar's width cannot be measured, as headless
+  Chromium hides them). The policy alert's middle, sampled every frame while its folder turns
+  over, never scrolls (at 1920x1080 and 1600x900 in `desktop`, and at each phone's size), and a
+  prompt that opens over a scrolled phone page has its title and CONFIRM in view. CHANGE NAME's
+  field label has the lobby's invite label's font, weight and colour, and its focused field the
+  orange border.
+  `prompt-close.spec.ts` runs in every project: after the role
   alert's OKAY, a vote closed by the server's OK, the policy alert (then END TERM, which must take
   the press) and the portrait picker in the lobby, the overlay stops being drawn within the
   fade-out (a screenshot with it against one without), stays gone, and lets presses through to the
