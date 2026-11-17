@@ -1,0 +1,274 @@
+/* A player's page: the CPU switch, the header across the page, then the cards in a grid of
+   columns at least 18em wide (one on phones, three on wide desktops). App.css styles every h1, p,
+   a and table cell's text, so these set their own sizes, alignment and margins, and every grid or
+   flex child has min-width: 0, so a twelve-character name of wide letters wraps inside its column
+   (PlayerName wraps anywhere) instead of widening the page. */
+.player-page {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+}
+
+.player-page > * {
+    min-width: 0;
+}
+
+/* The header: the name and its line, then the trophies. */
+.player-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 14px;
+    min-width: 0;
+}
+
+.player-title > * {
+    min-width: 0;
+}
+
+.stats-screen p.player-summary {
+    font-size: 14px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.player-trophies {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+}
+
+.player-trophies > li {
+    min-width: 0;
+}
+
+.player-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 18em), 1fr));
+    gap: 16px;
+    align-items: start;
+    min-width: 0;
+}
+
+.player-cards > * {
+    min-width: 0;
+}
+
+/* A card's one large value and its note: "1563 #2 · peak 1601", "83% 5 of 6 games won". */
+.stats-screen p.player-big {
+    font-family: var(--textFont);
+    font-weight: 700;
+    font-size: 26px;
+    line-height: 1.2;
+    color: var(--headerTextColor);
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+
+.player-big-note {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--textColorOnDark);
+}
+
+/* A card's lines: the label at the left, the value and its count at the right. */
+.player-facts,
+.player-latest,
+.player-hands {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--textFont);
+    font-size: 14px;
+    line-height: 1.3;
+    color: var(--textColorOnDark);
+}
+
+.player-facts :is(th, td),
+.player-latest td {
+    padding: 4px 6px;
+    vertical-align: middle;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.player-facts tr:first-child :is(th, td),
+.player-latest tr:first-child td {
+    border-top: none;
+}
+
+.player-facts :is(th, td):first-child,
+.player-latest td:first-child {
+    padding-left: 0;
+}
+
+.player-facts :is(th, td):last-child,
+.player-latest td:last-child {
+    padding-right: 0;
+}
+
+.player-facts .player-fact-label {
+    width: 100%;
+    text-align: left;
+    font-weight: 500;
+}
+
+.player-facts .player-fact-value {
+    white-space: nowrap;
+    text-align: right;
+    font-weight: 700;
+    color: var(--headerTextColor);
+    font-variant-numeric: tabular-nums;
+}
+
+.player-facts .player-fact-note {
+    white-space: nowrap;
+    text-align: right;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* People: the label keeps its line, and the name and its count wrap at the right. */
+.player-people .player-fact-label {
+    width: auto;
+    white-space: nowrap;
+}
+
+.player-people .player-fact-value {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.player-person-note {
+    font-weight: 600;
+    color: var(--textColorOnDark);
+    white-space: nowrap;
+}
+
+/* Roles: a bar of the three roles' games in their colours, and the counts under it. */
+.player-split {
+    display: flex;
+    height: 12px;
+    border-radius: 6px;
+    overflow: hidden;
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.player-split-part {
+    flex-basis: 0;
+    min-width: 0;
+}
+
+.player-split-part.is-liberal {
+    background-color: var(--textColorLiberal);
+}
+
+.player-split-part.is-fascist {
+    background-color: var(--textColorFascist);
+}
+
+/* Hitler's games in the game's darker red (its buttons' shadow, and ENDINGS' Hitler elected). */
+.player-split-part.is-hitler {
+    background-color: var(--buttonShadowFill);
+}
+
+.stats-screen p.player-split-legend {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+/* Cards as president: the four hands and how often each was drawn. */
+.player-hands :is(th, td) {
+    padding: 0 4px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.player-hands th {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.player-hands td {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--headerTextColor);
+}
+
+.stats-screen p.player-subhead {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: -4px;
+}
+
+/* Latest games: the date (the game's link), the role, the result, the ending and a CPU tag
+   (GamesPage.css's `.games-row-cpu`, as GAMES tags its rows). */
+.player-latest-date,
+.player-latest-role,
+.player-latest-result {
+    white-space: nowrap;
+}
+
+.player-latest-ending {
+    width: 100%;
+    text-align: right;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+}
+
+.stats-screen a.player-game-link {
+    font-family: var(--textFont);
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--headerTextColor);
+    text-decoration: none;
+}
+
+.stats-screen a.player-game-link:hover {
+    text-decoration: underline;
+}
+
+.stats-screen a.player-game-link:focus-visible {
+    outline: 2px solid var(--headerTextColor);
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+/* The rating history has one line, which the card's title names: no legend. */
+.player-elo .chart-legend {
+    display: none;
+}
+
+/* Touch sizes follow the game's stacked query: People's and Latest games' rows are at least 44px
+   tall, so their links are 44px targets (a name through PlayerName.css, a game's date here). */
+@media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
+    .player-people :is(th, td),
+    .player-latest td {
+        height: 44px;
+        box-sizing: border-box;
+    }
+
+    .stats-screen a.player-game-link {
+        box-sizing: border-box;
+        display: inline-flex;
+        align-items: center;
+        vertical-align: middle;
+        min-height: 44px;
+        min-width: 44px;
+    }
+}
+
+/* Phones (the game's phone-only query): less room between the parts. */
+@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
+    .player-page,
+    .player-cards {
+        gap: 8px;
+    }
+
+    .stats-screen p.player-big {
+        font-size: 22px;
+    }
+}

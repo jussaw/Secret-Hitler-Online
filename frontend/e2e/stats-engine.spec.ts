@@ -35,7 +35,7 @@ const tabRow = (page: Page) => page.getByRole("navigation", { name: "Stats secti
 const summary = (page: Page) => page.locator(".filter-summary");
 const chip = (page: Page, name: string) =>
   page.getByRole("group", { name: "Players", includeHidden: true }).getByRole("button", { name, exact: true, includeHidden: true });
-const cpuSwitch = (page: Page) => page.getByRole("switch", { name: "Include games with CPU players", includeHidden: true });
+const cpuSwitch = (page: Page) => page.getByRole("switch", { name: "Include games with Bots", includeHidden: true });
 
 /** Opens `path` with `data` stubbed and waits for the tab row. */
 async function open(page: Page, data: StatsData, path: string): Promise<void> {
@@ -148,13 +148,13 @@ test("phones fold the filter into one line", async ({ page }) => {
       await expect(page.getByRole("group", { name: "Players" })).toBeHidden();
       await summary(page).click();
       await expect(page.getByRole("group", { name: "Players" })).toBeVisible();
-      await expect(page.getByRole("switch", { name: "Include games with CPU players" })).toBeVisible();
+      await expect(page.getByRole("switch", { name: "Include games with Bots" })).toBeVisible();
       await summary(page).click();
       await expect(page.getByRole("group", { name: "Players" })).toBeHidden();
     } else {
       await expect(summary(page)).toBeHidden();
       await expect(page.getByRole("group", { name: "Players" })).toBeVisible();
-      await expect(page.getByRole("switch", { name: "Include games with CPU players" })).toBeVisible();
+      await expect(page.getByRole("switch", { name: "Include games with Bots" })).toBeVisible();
     }
   }
   if (project === "desktop" || project === "firefox") {

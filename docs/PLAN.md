@@ -57,7 +57,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 21A. ACTIVITY | `phase-21a-activity` | done |
 | 21B. RECORDS | `phase-21b-records` | done |
 | 22A. Trophies and name links | `phase-22a-trophies-links` | done |
-| 22B. Player pages | `phase-22b-player-pages` | planned |
+| 22B. Player pages | `phase-22b-player-pages` | done |
 | 23. One header for the site | `phase-23-site-header` | planned |
 
 ---
@@ -1051,15 +1051,15 @@ Breakdown: [`docs/superpowers/plans/2026-11-15-phase-22b-player-pages.md`](super
 
 Issue #31, its last phase: PLAYERS lists every player with counted games by Elo, and each player gets a page of their numbers and trophies, drawn from Phase 22A's `player.ts`. Starts once 22A has merged.
 
-- [ ] `frontend/src/stats/players/PlayersPage.tsx`: PLAYERS (name, games, win rate, Elo, last played), by Elo, under the stats filter
-- [ ] `frontend/src/stats/players/PlayerPage.tsx`: the player page in the spec's order, with the CPU toggle on its own, trophies, "+N with CPU players, not counted" and "All N games" into GAMES; an unknown player is not found
-- [ ] `frontend/e2e/stats-players.spec.ts`: PLAYERS and a player page fit every tested size, a name in GAMES opens its player page, "All N games" opens GAMES filtered to them, and the CPU switch counts CPU games
-- [ ] `CLAUDE.md`, `README.md` (the stats section as a whole, with screenshots) and `DEVELOPMENT.md` describe the stats; the pull request shows PLAYERS and a player page before and after, on desktop and on a phone
+- [x] `frontend/src/stats/players/PlayersPage.tsx`: PLAYERS (name, games, win rate, Elo, last played), by Elo, under the CPU switch alone (at the user's request, no player filter: a `players` list in the address is ignored)
+- [x] `frontend/src/stats/players/PlayerPage.tsx`: the player page in the spec's order, with the CPU toggle on its own, trophies, "+N with CPU players, not counted" and "All N games" into GAMES; an unknown player is not found
+- [x] `frontend/e2e/stats-players.spec.ts`: PLAYERS and a player page fit every tested size, a name in GAMES opens its player page, "All N games" opens GAMES filtered to them, and the CPU switch counts CPU games
+- [x] `CLAUDE.md`, `README.md` (the stats section as a whole, with screenshots) and `DEVELOPMENT.md` describe the stats; the pull request shows PLAYERS and a player page before and after, on desktop and on a phone
 
 **Phase 22B acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] PR merged into `development`
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] PR merged into `development`
 - [ ] The user browses the stats on the deployed build, on a desktop and on a phone: PLAYERS, their own page and its trophies, a name followed from GAMES, and a game page's Elo change
 - [ ] The user closes issue #31 once every phase (13 to 22B) is merged
 

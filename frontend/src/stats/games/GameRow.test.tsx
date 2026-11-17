@@ -46,7 +46,7 @@ describe("GameRow", () => {
     );
     expect(cpu.querySelector(".games-row-link")).toHaveTextContent("CPU");
     expect(cpu.querySelector(".games-row-link")).toHaveAccessibleName(
-      "Sat 14 Nov 2026, 9:42 PM · Fascists win · Hitler elected · with CPU players"
+      "Sat 14 Nov 2026, 9:42 PM · Fascists win · Hitler elected · with Bots"
     );
     // A CPU seat's name is plain text; a player's is a link to their page.
     const seatLinks = Array.from(cpu.querySelectorAll(".games-row-seats a.player-link"));

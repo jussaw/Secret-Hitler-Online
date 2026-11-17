@@ -13,7 +13,7 @@ const everyone: StatsFilter = { players: null, cpu: false };
 
 const chips = () => within(screen.getByRole("group", { name: "Players" })).getAllByRole("button");
 const chip = (name: string) => within(screen.getByRole("group", { name: "Players" })).getByRole("button", { name });
-const cpuSwitch = () => screen.getByRole("switch", { name: "Include games with CPU players" });
+const cpuSwitch = () => screen.getByRole("switch", { name: "Include games with Bots" });
 
 describe("FilterBar", () => {
   it("aChipPerPlayerAllOnByName", () => {

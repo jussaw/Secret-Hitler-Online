@@ -1,0 +1,49 @@
+/* PLAYERS: the filter above the Players card, in a column. Every child has min-width: 0, so a
+   twelve-character name of wide letters wraps inside its column (PlayerName wraps anywhere)
+   instead of widening the page. */
+.players-page {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+}
+
+.players-page > * {
+    min-width: 0;
+}
+
+/* The table is OVERVIEW's power ranking's (RankedTable.css and PowerRanking.css: the header row,
+   numbers at the right, rows 44px tall where the stacked query matches, provisional rows grey and
+   in italics, tighter on phones), with when they last played as its last column. */
+.players-table .players-last {
+    white-space: nowrap;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* When they last played, under the name: phones only, where it takes the place of its column. */
+.players-last-under {
+    display: none;
+}
+
+/* Phones (the game's phone-only query): less room between the parts, and the last played line
+   under the name in place of its own column, so a twelve-character name keeps the table inside
+   320px. */
+@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
+    .players-page {
+        gap: 8px;
+    }
+
+    .players-table .players-last {
+        display: none;
+    }
+
+    .players-table .players-last-under {
+        display: block;
+        padding-bottom: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        line-height: 1.3;
+        color: var(--textColorOnDark);
+    }
+}

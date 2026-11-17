@@ -364,8 +364,7 @@ keeps credit to upstream and to the board game's creators.
   desktop, the title over a row of four equal columns in the phone-only query) and `StatsApp.css`
   (`.stats-screen`, left-aligned, `.stats-main`, at most 1100px wide, `.stats-card` and
   `.stats-card-title`, the game's card look, and `.stats-link`, a 44px target in the stacked
-  query), and placeholders for later phases to fill: `players/PlayersPage` and
-  `players/PlayerPage` (22B), each "Coming in a later update." until then. App.css still styles
+  query); PLAYERS and a player's page are `players/` (Phase 22B, below). App.css still styles
   the stats pages' `header`, `a`, `p`, `h2` and `div`, and the stats CSS sets what it needs over it.
   `rounds.ts` (Phase 16) turns a record into rounds, `rounds(record)`, which the game page draws
   and every stat phase reads instead of the raw events: one `Round` per round number in the
@@ -447,10 +446,12 @@ keeps credit to upstream and to the board game's creators.
   `.chart-tooltip`, as wide as its text and sliding with the point's share of the plot, so it never
   leaves the chart; `chartParts.tsx` also has `YAxis`, `nearest` and `px`; `axis.ts`'s `niceTicks`;
   `charts.css`; Phase 21's charts share them all),
-  `FilterBar` (a chip per player by name, `aria-pressed`, and the switch "Include games with CPU
-  players", in the lobby's grey, `greyButtons.css`'s `.stats-grey`, which the tabs share;
-  controlled, so the address is the filter's only copy; in the phone-only query one line, "Players:
-  7 of 8 · CPU off", that opens the panel; `showPlayers={false}` shows the switch alone), `TabRow` (a `nav` "Stats sections" of seven `StatsLink`s in the button
+  `FilterBar` (a chip per player by name, `aria-pressed`, and the switch "Include games with
+  Bots", the user's word for games with CPU players, in the lobby's grey, `greyButtons.css`'s
+  `.stats-grey`, which the tabs share; controlled, so the address is the filter's only copy; in
+  the phone-only query one line, "Players: 7 of 8 · CPU off", that opens the panel;
+  `showPlayers={false}` shows the switch alone), `TabRow` (a `nav` "Stats sections" of seven
+  `StatsLink`s in the button
   look carrying the filter, the current one orange and `aria-current="page"`, which the row (never
   the page) scrolls to show, again once the web fonts load; it wraps on desktop and in tall windows and scrolls sideways in one row on phones, 44px targets in
   the stacked query) and `tabs/` (`tabs/tabs.ts`'s `TABS`, the seven tabs in order with their
@@ -697,7 +698,48 @@ keeps credit to upstream and to the board game's creators.
   `computePlayersList(stats)` gives PLAYERS' rows (every player with a counted game under the
   whole filter, in the power ranking's order). `players/testStats.ts` is their test data
   (`sampleData()`, seven players and eight games, `SAMPLE_NOW`, `TZ`, `played`, `term` and
-  `withRatings`), which Phase 22B's tests reuse.
+  `withRatings`), which Phase 22B's tests reuse. PLAYERS (`/stats/players`,
+  `players/PlayersPage`, Phase 22B) is the CPU switch on its own (`FilterBar` with
+  `showPlayers={false}`, as on a player's page: the user found a player filter unnecessary there)
+  over `PlayersList`, the Players card: a row per player with a counted game under the switch,
+  whatever `players` list the address carries (`withoutPlayerFilter`; the switch writes only
+  `cpu`, so its next change drops that list), in `computePlayersList`'s order, with their
+  counted games, win rate (`formatRate`:
+  a whole percent, or `— (N)` below 5 games), rounded Elo and when they last played
+  (`formatLastPlayed`: `today`, `yesterday`, `N days ago`, in local days), in OVERVIEW's power
+  ranking's look (`RankedTable.css` and `tabs/PowerRanking.css`: a header row, a provisional row,
+  `.ranked-unranked.is-provisional`, grey and in italics at the bottom), and `NO_GAMES` when the
+  filter counts no game. In the phone-only query the Last played column gives way to a `played 2
+  days ago` line under the name, so the table fits 320px without a scroll of its own. A player's
+  page (`/stats/players/<n>`, `players/PlayerPage`) is "This player was not found." and All
+  players (`/stats/players`) for a number no player has, decided before any hook
+  (`/stats/players/0` is no player's address: `parseRoute` gives the shell's not-found page);
+  otherwise the CPU switch on its own (`FilterBar` with `showPlayers={false}`: a `players` list
+  in the address is kept for the links out, and ignored) over `PlayerView`, which draws
+  `computePlayer`'s numbers (memoized, with `now` from the page's mount): a header card with the
+  name (an `h1`, not a link), the line `6 games since 2 Oct · +1 with CPU players, not counted ·
+  last played 2 days ago` (`No counted games` with none; the CPU part only while the switch is
+  off and some CPU game was left out) and the trophies (`TrophyBadge`s in a `ul` "Trophies"), then
+  nine `StatCard`s in a grid of `repeat(auto-fill, minmax(min(100%, 18em), 1fr))` (three columns
+  on wide desktops, one on phones): Elo (the rating, `#rank` or provisional, the peak and the
+  history as one `LineChart` line, its legend hidden), Win rate (overall, by role and by seats),
+  Roles (a bar of their roles' games in the Liberal, Fascist and Hitler colours, the expected
+  Liberal share, role luck and the current and longest streaks), Cards as president (hands FFF ·
+  FFL · FLL · LLL, Liberal accuracy, deep cover, FFF as a Liberal), As chancellor (one of each by
+  role, FF as a Liberal, Fascist choices), Votes & powers, People (most played with, best
+  teammate, nemesis and favourite opponent, each a name link and its count), Timing
+  (`formatAverageTime`) and Latest games (their 5 newest records of any kind: the day it started,
+  `LatestGame.startedAt`, as GAMES dates it, linking the game, their role in its colour
+  (`game/text`'s `RoleWord`), won, lost or unfinished, the ending and GAMES' CPU tag; then `All
+  N games ›` to GAMES filtered to them by `gamesFilterSearch`, the `›` after a no-break space
+  and hidden from screen readers). A value that is not there is `tabs/cellText`'s `NO_VALUE` (`—`),
+  and a rate below its minimum shows it and its count. With no counted games every card but
+  Latest games says "No counted games yet." (Latest games too, for a player with no record at
+  all). In the stacked query People's and Latest games' rows are 44px tall, and their links 44px
+  targets. `players/playerText.ts` has the words both pages share: `formatRate`, `formatPoints`
+  (signed points: `+7%`, `−3%`, `0%`), `formatShortDate` (`2 Oct`, with the year when it is not
+  `now`'s, its month as `format.ts` writes it, `Sep` and not en-GB's `Sept`) and
+  `formatLastPlayed`, each date in the zone it is passed, the viewer's by default.
   GAMES (`/stats/games`, `src/stats/games/`) lists
   every recorded game, newest first, under a filter of its own kept in the address:
   `gamesFilter.ts` (`GamesFilter`, `NO_GAMES_FILTER`, `PER_PAGE`, `ENDING_PARAM`,
@@ -710,14 +752,16 @@ keeps credit to upstream and to the board game's creators.
   `pageLinks`, the first and last pages and the current one's neighbours with `null` for a gap,
   and `gamesSummary`, "142 games recorded · 37 match · showing 21–37"), `GameRow` (an
   `li.games-row`: the date and the result, its winners' word in their colour and a `CPU` tag, are
-  its one link, `a.games-row-link`, whose `::after` covers the row; the time and length, the seats
+  its one link, `a.games-row-link`, named for the date, the result and, with CPU players, `· with
+  Bots`, whose `::after` covers the row; the time and length, the seats
   as `PlayerName`s (links of their own since Phase 22A, which `.games-row-seats a` lets take a
   press), above the link's area, and the seat and round counts sit outside it, so no anchor wraps
   a name; a subgrid of the row's columns on desktop, of its first three rows on
   phones) and `GamesPage` (the filter card: Players with a grey chip per chosen player, `Remove
   <name>`, and Add a player; From and To, whose typed day reaches the address once it is a whole
   day, its year from 1000, and typing has paused, or on Enter or leaving the field, so a day typed
-  part by part is one step back; Seats, Ending and CPU players; Clear filters, which keeps the page
+  part by part is one step back; Seats, Ending and Bots (With or without CPU, Without Bots, With
+  Bots); Clear filters, which keeps the page
   size; then the summary line with Games a page, the
   rows, an `ol` with `role="list"`, or "No games match these filters.", and the `Pages` nav, whose
   Previous and Next with nowhere to go are disabled links; unknown player numbers are dropped,
@@ -1113,8 +1157,15 @@ keeps credit to upstream and to the board game's creators.
   a table overlap (`overlappingNameLinks`) and that names in seat lists (GAMES' rows, a game's
   header, ENDINGS' games) are 44px targets; that a name in GAMES' last row opens its player's page
   (not the row's game) at its top; and that a counted game's page shows its Elo line and an
-  unfinished one's none. No `e2e/` file imports `src/constants` or anything that does
-  (`api.ts`, `App`): it
+  unfinished one's none. `stats-players.spec.ts` (Phase 22B) checks PLAYERS (with CPU games and
+  without; with `?players=2,3` it lists every player, shows no player chooser, and its switch
+  leaves only `?cpu=1`), the busiest player's page (with at least one trophy) and an unknown
+  player's page with `checkStatsPage` at every `statsSizesFor` size against `bigStatsData()`;
+  that a name in GAMES opens its player's page at its top; that All N games opens GAMES filtered
+  to the player, every row on its first page naming them; and that the page's CPU switch adds
+  `cpu=1` to the address and counts the CPU games the header's `+N` left out, and that All N
+  games keeps a space before its arrow on phones. No `e2e/` file imports `src/constants` or
+  anything that does (`api.ts`, `App`): it
   reads `window` when it loads, which throws in Playwright's Node process; specs build stats paths
   with `routePath`. Shared helpers are `e2e/lobby.ts`
   (`waitForPlayers`, `joinGuests`, with `pickLooks` false for guests who stay on the default

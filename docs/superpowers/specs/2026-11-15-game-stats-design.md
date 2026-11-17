@@ -147,7 +147,7 @@ Recharts was the alternative: less code per chart, but a dependency to style and
 
 **Games with CPU players.** **Recorded and listed, not counted (picked), with a toggle.** They show
 in game history and on player pages, tagged, and by default count toward no stat. The stats pages'
-"Include games with CPU players" toggle counts them. The alternatives were counting them always, or
+"Include games with Bots" toggle counts them (the user's word for CPU players on the stats pages). The alternatives were counting them always, or
 not recording them.
 
 **Unfinished games.** **Recorded as unfinished (picked):** a game whose lobby times out is saved with
@@ -455,7 +455,7 @@ links:
 
 - **Players:** each player's name as a chip, all on by default. Turning some off keeps only the games
   whose every human seat is a player still on.
-- **Include games with CPU players:** off by default.
+- **Include games with Bots** (games with CPU players): off by default.
 
 On phones they fold into one line ("Players: 7 of 8 · CPU off") that opens a panel.
 
@@ -682,7 +682,7 @@ filter; it has its own, also in the address:
 - **From** and **To:** local dates, inclusive.
 - **Size:** any, or 5 to 10 seats.
 - **Ending:** any, one of the four outcomes, or unfinished.
-- **CPU players:** any, without, or with.
+- **Bots** (CPU players): any, without, or with ("With or without CPU", "Without Bots", "With Bots").
 
 Each row shows the local date and time, the length, the result ("Liberals win · 5 Liberal policies",
 "Fascists win · Hitler elected", "Unfinished after round 6 · 4 L, 3 F"), the seats in turn order

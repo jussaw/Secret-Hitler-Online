@@ -146,7 +146,7 @@ describe("GamesPage", () => {
     expect(address()).toBe("/stats/games?size=7&ending=unfinished");
   });
 
-  it("dates, ending and CPU players", () => {
+  it("dates, ending and Bots", () => {
     open();
     const from = screen.getByLabelText("From");
     const to = screen.getByLabelText("To");
@@ -178,11 +178,11 @@ describe("GamesPage", () => {
     expect(address()).toBe("/stats/games?ending=unfinished");
     expect(rowIds()).toEqual(["g40", "g30", "g20", "g10"]);
 
-    const cpu = screen.getByRole("combobox", { name: "CPU players" });
+    const cpu = screen.getByRole("combobox", { name: "Bots" });
     expect(within(cpu).getAllByRole("option").map((o) => o.textContent)).toEqual([
       "With or without CPU",
-      "Without CPU players",
-      "With CPU players",
+      "Without Bots",
+      "With Bots",
     ]);
     fireEvent.change(cpu, { target: { value: "with" } });
     expect(address()).toBe("/stats/games?ending=unfinished&cpu=with");

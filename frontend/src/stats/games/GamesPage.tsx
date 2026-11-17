@@ -34,11 +34,11 @@ const ENDING_LABEL: Record<Outcome, string> = {
   UNFINISHED: "Unfinished",
 };
 
-/** Each choice's name in the CPU players select. */
+/** Each choice's name in the Bots (CPU players) select. */
 const CPU_LABEL: Record<CpuChoice, string> = {
   any: "With or without CPU",
-  without: "Without CPU players",
-  with: "With CPU players",
+  without: "Without Bots",
+  with: "With Bots",
 };
 
 /** GAMES' address for `filter`. */
@@ -246,7 +246,7 @@ export default function GamesPage({ data }: PageProps): JSX.Element {
           </select>
           <select
             className="games-cpu"
-            aria-label="CPU players"
+            aria-label="Bots"
             value={filter.cpu}
             onChange={(event) => applyFilter({ cpu: event.target.value as CpuChoice })}
           >
