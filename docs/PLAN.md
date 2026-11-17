@@ -58,7 +58,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 21B. RECORDS | `phase-21b-records` | done |
 | 22A. Trophies and name links | `phase-22a-trophies-links` | done |
 | 22B. Player pages | `phase-22b-player-pages` | done |
-| 23. One header for the site | `phase-23-site-header` | in progress |
+| 23. One header for the site | `phase-23-site-header` | done |
 
 ---
 
@@ -1083,7 +1083,7 @@ Added after Phases 13 to 22B were planned. The stats pages' top bar (SECRET-HITL
 **Phase 23 acceptance**
 
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] PR merged into `development`
+- [x] PR merged into `development`
 - [ ] The user opens the deployed build on a desktop and a phone and moves between the login page and the stats with the header
 
 ---
