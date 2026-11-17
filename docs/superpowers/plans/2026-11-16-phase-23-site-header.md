@@ -38,7 +38,11 @@ what players see or use beyond it.
   underlined (the spec's "the current one underlined"), as STATS, GAMES and PLAYERS are on the
   stats pages. `TabRow`'s current look, the orange button face, would vanish against the header:
   `--buttonFill` is `--headerFill`. One component, so one current look.
-- **The nav keeps its name, "Stats pages"**, which the stats' tests and Phase 22B's spec find it by.
+- **The nav is named "Site"** on the login page and the stats pages alike (15A named it "Stats pages").
+  The breakdown first kept the old name; after the review the user chose "Site", which also holds
+  PLAY honestly, and the rename landed on its own (`fix(frontend): name the site header's
+  navigation "Site"`).
+- **PLAY's look:** the user confirmed the underline after the review.
 - **On the login page every header link is a plain `<a>`:** STATS, GAMES and PLAYERS load the stats
   in the same tab (the login page has nothing to keep open, as for the old footer link), and PLAY,
   the current page, loads `/` again. On the stats pages STATS, GAMES and PLAYERS stay `StatsLink`s
@@ -78,7 +82,7 @@ line there without "Stats"). Signed out at 360x740: 38.9 → 15.6px. The header:
   conflicts in those two test files, keep both phases' lines and re-run them; a conflict in any
   other source file: stop and report.
 - **Copy, exactly.** Header: `SECRET-HITLER`; links `STATS` (`/stats`), `GAMES` (`/stats/games`),
-  `PLAYERS` (`/stats/players`), `PLAY` (`/`); nav `aria-label="Stats pages"`. Login footer's first
+  `PLAYERS` (`/stats/players`), `PLAY` (`/`); nav `aria-label="Site"`. Login footer's first
   line: `How to play · About this project · Report a bug`. Lobby footer: `About this project · Report
   a bug`. Every other line of both pages is unchanged.
 - **Download.** The header's paths come from `src/constants`, never from `src/stats/`; the game's
@@ -187,7 +191,7 @@ line there without "Stats"). Signed out at 360x740: 38.9 → 15.6px. The header:
   }): JSX.Element;                                       // default export too
   ```
   Markup as 15A's: `header.site-header` > `span.site-title` `SECRET-HITLER` and `nav.site-nav`
-  `aria-label="Stats pages"` > the four links (`className="site-nav-link"`), PLAY always a plain
+  `aria-label="Site"` > the four links (`className="site-nav-link"`), PLAY always a plain
   `<a href="/">`. It imports `./SiteHeader.css` and the paths from `../constants`, nothing from
   `../stats/`.
 - Produces in `stats/StatsHeader.tsx`: `StatsHeader({ route }: { route: StatsRoute })` as before,
@@ -195,7 +199,7 @@ line there without "Stats"). Signed out at 360x740: 38.9 → 15.6px. The header:
   `games`, `game` → `games`; `players`, `player` → `players`; `notFound` → `null`.
 
 - [ ] **Step 1: Write the failing tests.** `SiteHeader.test.tsx`: `linksToTheFourPlaces` (the
-  banner reads `SECRET-HITLER`; the nav "Stats pages"'s links, as `[text, href]`, are
+  banner reads `SECRET-HITLER`; the nav "Site"'s links, as `[text, href]`, are
   `[["STATS", "/stats"], ["GAMES", "/stats/games"], ["PLAYERS", "/stats/players"], ["PLAY",
   "/"]]`); `marksThePlaceGiven` (for each `SitePlace`, exactly that link has `aria-current="page"`);
   `marksNothingWithoutAPlace` (`current={null}`: none); `drawsItsLinksWithTheLinkGiven` (a `link`
@@ -231,7 +235,7 @@ line there without "Stats"). Signed out at 360x740: 38.9 → 15.6px. The header:
   `.login-screen`, and the comments say the login page shares the page, not the header.
 
 - [ ] **Step 1: Write the failing unit tests** in `LoginScreen.test.tsx`: `theHeaderMarksPlay` (the
-  banner holds `SECRET-HITLER` and the nav "Stats pages" with STATS, GAMES, PLAYERS and PLAY;
+  banner holds `SECRET-HITLER` and the nav "Site" with STATS, GAMES, PLAYERS and PLAY;
   `document.querySelectorAll('[aria-current="page"]')` is PLAY alone); `noSoundControl` (no button
   `Mute sounds`, no `.sound-control`); the footer test becomes "the footer links to the rules, the
   project and its issues": first line `/^How to play · About this project · Report a bug$/`, no link
@@ -240,7 +244,7 @@ line there without "Stats"). Signed out at 360x740: 38.9 → 15.6px. The header:
 - [ ] **Step 3: Implement** as in Interfaces.
 - [ ] **Step 4: Update the browser tests that used the login page's header.**
   `stats-games.spec.ts`: "the login page's Stats link …" becomes "the login page's header opens the
-  stats in the same tab" (`/` signed out; the nav "Stats pages" has PLAY current; its STATS has no
+  stats in the same tab" (`/` signed out; the nav "Site" has PLAY current; its STATS has no
   `target`; a click goes to `routePath({ page: "tab", tab: "overview" })` with STATS current).
   `sounds.spec.ts`: "the control fits every header" checks the lobby and the game (no `login`), and
   first asserts `/` has no `.sound-control`; "mute and volume survive a reload", "hover and keyboard
