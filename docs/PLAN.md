@@ -1080,7 +1080,7 @@ Added after Phases 13 to 22B were planned. The stats pages' top bar (SECRET-HITL
 
 **Phase 23 acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
 - [ ] PR merged into `development`
 - [ ] The user opens the deployed build on a desktop and a phone and moves between the login page and the stats with the header
 
