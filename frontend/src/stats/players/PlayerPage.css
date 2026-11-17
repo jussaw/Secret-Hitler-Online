@@ -170,8 +170,9 @@
     background-color: var(--textColorFascist);
 }
 
+/* Hitler's games in the game's darker red (its buttons' shadow, and ENDINGS' Hitler elected). */
 .player-split-part.is-hitler {
-    background-color: #b4431a;
+    background-color: var(--buttonShadowFill);
 }
 
 .stats-screen p.player-split-legend {
@@ -203,7 +204,8 @@
     margin-bottom: -4px;
 }
 
-/* Latest games: the date (the game's link), the role, the result, the ending and a CPU tag. */
+/* Latest games: the date (the game's link), the role, the result, the ending and a CPU tag
+   (GamesPage.css's `.games-row-cpu`, as GAMES tags its rows). */
 .player-latest-date,
 .player-latest-role,
 .player-latest-result {
@@ -233,18 +235,6 @@
     outline: 2px solid var(--headerTextColor);
     outline-offset: 2px;
     border-radius: 2px;
-}
-
-.player-cpu-tag {
-    display: inline-block;
-    padding: 0 5px;
-    border-radius: 4px;
-    background-color: #6e655e;
-    color: var(--textColorWhite);
-    font-size: 11px;
-    font-weight: 700;
-    line-height: 1.5;
-    white-space: nowrap;
 }
 
 /* The rating history has one line, which the card's title names: no legend. */

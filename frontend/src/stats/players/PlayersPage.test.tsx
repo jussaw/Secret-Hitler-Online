@@ -9,10 +9,10 @@ import { PlayersList } from "./PlayersPage";
 import { SAMPLE_NOW, sampleData, TZ, withRatings } from "./testStats";
 
 const data = sampleData();
-const ctx = (filter: StatsFilter = DEFAULT_FILTER) => buildStats(data, filter);
+const statsUnder = (filter: StatsFilter = DEFAULT_FILTER) => buildStats(data, filter);
 /** The ratings that give PLAYERS' order Bo, Ed, Ann, Cy, Di, Fay. */
-const rated = () =>
-  withRatings(ctx(), {
+const withSampleRatings = () =>
+  withRatings(statsUnder(), {
     1: { rating: 1540, games: 6 },
     2: { rating: 1560, games: 6 },
     3: { rating: 1520, games: 6 },
@@ -21,7 +21,7 @@ const rated = () =>
     6: { rating: 1700, games: 1 },
   });
 
-function list(stats: StatsContext) {
+function renderList(stats: StatsContext) {
   return render(<PlayersList stats={stats} now={SAMPLE_NOW} timeZone={TZ} />);
 }
 
@@ -31,18 +31,18 @@ const bodyRows = () => within(card()).getAllByRole("row").slice(1);
 /** The row of the player named `name`. */
 const rowOf = (name: string) => bodyRows().find((row) => within(row).queryByRole("link", { name }))!;
 /** A row's cells after the player's, as text. */
-const numbers = (row: HTMLElement) => within(row).getAllByRole("cell").slice(1).map((cell) => cell.textContent);
+const cellTexts = (row: HTMLElement) => within(row).getAllByRole("cell").slice(1).map((cell) => cell.textContent);
 
 describe("PlayersList", () => {
   it("sortsByEloWithProvisionalLast", () => {
-    list(rated());
+    renderList(withSampleRatings());
     expect(bodyRows().map((row) => within(row).getByRole("link").textContent)).toEqual(["Bo", "Ed", "Ann", "Cy", "Di", "Fay"]);
     expect(rowOf("Fay")).toHaveClass("is-provisional");
     expect(bodyRows().filter((row) => row.classList.contains("is-provisional"))).toHaveLength(1);
   });
 
   it("showsGamesWinRateEloAndLastPlayed", () => {
-    list(rated());
+    renderList(withSampleRatings());
     expect(within(card()).getAllByRole("columnheader").map((th) => th.textContent)).toEqual([
       "Player",
       "Games",
@@ -50,23 +50,23 @@ describe("PlayersList", () => {
       "Elo",
       "Last played",
     ]);
-    expect(numbers(rowOf("Ann"))).toEqual(["6", "83%", "1540", "2 days ago"]);
-    expect(numbers(rowOf("Fay"))[1]).toBe("— (1)");
+    expect(cellTexts(rowOf("Ann"))).toEqual(["6", "83%", "1540", "2 days ago"]);
+    expect(cellTexts(rowOf("Fay"))[1]).toBe("— (1)");
   });
 
   it("namesLinkToTheirPages", () => {
-    list(rated());
+    renderList(withSampleRatings());
     expect(within(card()).getByRole("link", { name: "Ann" })).toHaveAttribute("href", "/stats/players/1");
   });
 
   it("theFilterApplies", () => {
-    list(ctx({ players: new Set([1, 2, 3, 4, 5]), cpu: false }));
+    renderList(statsUnder({ players: new Set([1, 2, 3, 4, 5]), cpu: false }));
     expect(within(card()).queryByRole("link", { name: "Fay" })).toBeNull();
-    expect(numbers(rowOf("Ann"))[0]).toBe("5");
+    expect(cellTexts(rowOf("Ann"))[0]).toBe("5");
   });
 
   it("noCountedGamesIsTheEmptyState", () => {
-    list(ctx({ players: new Set([7]), cpu: false }));
+    renderList(statsUnder({ players: new Set([7]), cpu: false }));
     expect(card()).toHaveTextContent(NO_GAMES);
     expect(within(card()).queryByRole("table")).toBeNull();
   });

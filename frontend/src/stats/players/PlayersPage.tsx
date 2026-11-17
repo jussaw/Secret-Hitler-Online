@@ -6,6 +6,7 @@ import { formatRating } from "../numbers";
 import { computePlayersList } from "../player";
 import PlayerName from "../PlayerName";
 import "../RankedTable.css";
+import "../tabs/PowerRanking.css";
 import { navigate, useLocation, type PageProps } from "../routes";
 import { StatCard } from "../StatCard";
 import { useStats, type StatsContext } from "../useStats";
@@ -19,27 +20,28 @@ const DEFINITION = `Every player with a counted game, by Elo. Players with fewer
  * PLAYERS' card: a row per player with a counted game under the filter, in `computePlayersList`'s
  * order (OVERVIEW's power ranking), with their counted games, win rate, Elo and when they last
  * played, seen at `now` in `timeZone` (the viewer's by default). A provisional row is in italics.
- * It has `RankedTable`'s look, with rows 44px tall where the stacked query matches; on phones the
- * last played line moves under the name, so the table fits 320px without scrolling.
+ * It has OVERVIEW's power ranking's look (`RankedTable.css` and `PowerRanking.css`: a header row,
+ * rows 44px tall where the stacked query matches); on phones the last played line moves under the
+ * name, so the table fits 320px without scrolling.
  */
 export function PlayersList(props: { stats: StatsContext; now: number; timeZone?: string }): JSX.Element {
   const { stats, now, timeZone } = props;
   const rows = useMemo(() => computePlayersList(stats), [stats]);
   return (
     <StatCard title="Players" definition={DEFINITION} empty={rows.length === 0}>
-      <table className="ranked-table players-table">
+      <table className="ranked-table power-ranking players-table">
         <thead>
           <tr>
             <th scope="col" className="ranked-name">
               Player
             </th>
-            <th scope="col" className="players-number">
+            <th scope="col" className="power-number">
               Games
             </th>
-            <th scope="col" className="players-number">
+            <th scope="col" className="power-number">
               Win rate
             </th>
-            <th scope="col" className="players-number">
+            <th scope="col" className="power-number">
               Elo
             </th>
             <th scope="col" className="players-last">
@@ -56,8 +58,8 @@ export function PlayersList(props: { stats: StatsContext; now: number; timeZone?
                   <PlayerName player={row.player} name={row.name} />
                   <span className="players-last-under">played {last}</span>
                 </td>
-                <td className="players-number">{row.games}</td>
-                <td className="players-number">{formatRate(row.winRate)}</td>
+                <td className="power-number">{row.games}</td>
+                <td className="power-number">{formatRate(row.winRate)}</td>
                 <td className="ranked-value">{formatRating(row.rating)}</td>
                 <td className="players-last">{last}</td>
               </tr>

@@ -1,15 +1,16 @@
 import { localDaysBetween, type Rate } from "../counting";
 import { viewerTimeZone } from "../format";
-import { formatPercent, formatSigned } from "../numbers";
+import { formatSigned } from "../numbers";
+import { NO_VALUE, rateText } from "../tabs/cellText";
 
 /**
  * The words PLAYERS and a player's page share: rates, points, short dates and when someone last
  * played. Every local date takes the time zone, the viewer's by default, so tests pass one.
  */
 
-/** A rate as a whole percent, or below its minimum "—" and its chances: "83%", "— (1)". */
+/** A rate as a whole percent, or below its minimum `NO_VALUE` and its chances: "83%", "— (1)". */
 export function formatRate(rate: Rate): string {
-  return rate.value === null ? `— (${rate.chances})` : formatPercent(rate.value);
+  return rate.value === null ? `${NO_VALUE} (${rate.chances})` : rateText(rate.value);
 }
 
 /** A share as signed percentage points, rounded: "+7%", "−3%", "0%". */
