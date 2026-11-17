@@ -1777,8 +1777,9 @@ class App extends Component<{}, AppState> {
           }
           break;
 
-        // Every viewer gets the power's status line, the president too, so the round tracker lights
-        // EXECUTIVE ACTION for everyone; the president's prompt opens just after it.
+        // The four presidential powers, below: every viewer gets the power's status line, the
+        // president too, so the round tracker lights EXECUTIVE ACTION for everyone, and the
+        // president's prompt opens just after it.
         case STATE_PP_PEEK:
           this.queueSounds(soundNames, "phase");
           queueStatus("Peek: President is previewing the next 3 policies.");

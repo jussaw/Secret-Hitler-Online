@@ -19,7 +19,7 @@ import { makeGameState } from "./game/testGameState";
 import { CONNECT_ERROR, CONTACT_ERROR } from "./lobby/joinError";
 import { RoundStep } from "./game/roundStep";
 import ButtonPrompt from "./custom-alert/ButtonPrompt";
-import { LobbyState, Role, WSCommandType, type GameState, type PolicyType } from "./types";
+import { LobbyState, PolicyType, Role, WSCommandType, type GameState } from "./types";
 import IconSelection from "./custom-alert/IconSelection";
 import NamePrompt from "./custom-alert/NamePrompt";
 import RoleAlert from "./custom-alert/RoleAlert";
@@ -258,10 +258,15 @@ const markedRow = () =>
     .map((row) => row.dataset.player)
     .join(",");
 
-const gameStatePacket = () => ({
-  ...makeGameState(["Ann", "Ben", "Cat", "Dan", "Eve"]),
-  [PARAM_PACKET_TYPE]: PACKET_GAME_STATE,
-});
+/** A game packet for Ann, Ben, Cat, Dan and Eve: makeGameState's with `overrides`, the roles in `roles` known. */
+function fiveSeatPacket(overrides: Partial<GameState> = {}, roles: Record<string, Role> = {}) {
+  const state = makeGameState(["Ann", "Ben", "Cat", "Dan", "Eve"], overrides);
+  for (const [name, role] of Object.entries(roles)) state.players[name].id = role;
+  return { ...state, [PARAM_PACKET_TYPE]: PACKET_GAME_STATE };
+}
+
+/** The game's first packet: Ann presides, and nothing has happened yet. */
+const gameStatePacket = () => fiveSeatPacket();
 
 const lastUrl = () => lastSocket().url;
 const lastSocket = () => FakeSocket.instances[FakeSocket.instances.length - 1];
@@ -1144,14 +1149,11 @@ test("a reconnect that cannot build a socket ends on the login page", async () =
   expect(app.state.joinError).toBe("Disconnected from the lobby.");
 });
 
-const victoryPacket = () => {
-  const names = ["Ann", "Ben", "Cat", "Dan", "Eve"];
-  const state = makeGameState(names, { state: LobbyState.LIBERAL_VICTORY_POLICY });
-  names.forEach((name, i) => {
-    state.players[name].id = i === 0 ? Role.HITLER : i === 1 ? Role.FASCIST : Role.LIBERAL;
-  });
-  return { ...state, [PARAM_PACKET_TYPE]: PACKET_GAME_STATE };
-};
+const victoryPacket = () =>
+  fiveSeatPacket(
+    { state: LobbyState.LIBERAL_VICTORY_POLICY },
+    { Ann: Role.HITLER, Ben: Role.FASCIST, Cat: Role.LIBERAL, Dan: Role.LIBERAL, Eve: Role.LIBERAL }
+  );
 
 test("a portrait CONFIRM's fade does not cut short the next queue's step", async () => {
   vi.useFakeTimers();
@@ -1327,16 +1329,12 @@ test("START GAME on a socket still connecting is sent once it opens", async () =
   });
 });
 
-/** A game packet for Ann, Ben, Cat, Dan and Eve with Ann a liberal; Ben presides unless `overrides` says. */
-const playerGamePacket = (overrides: Partial<GameState> = {}) => {
-  const state = makeGameState(["Ann", "Ben", "Cat", "Dan", "Eve"], {
-    president: "Ben",
-    electionTracker: 1, // not the game's first packet, so no role alert
-    ...overrides,
-  });
-  state.players.Ann.id = Role.LIBERAL;
-  return { ...state, [PARAM_PACKET_TYPE]: PACKET_GAME_STATE };
-};
+/** A later packet of the game, with Ann a liberal; Ben presides unless `overrides` says. */
+const playerGamePacket = (overrides: Partial<GameState> = {}) =>
+  fiveSeatPacket(
+    { president: "Ben", electionTracker: 1, ...overrides }, // not the first packet, so no role alert
+    { Ann: Role.LIBERAL }
+  );
 
 test("a vote opens its prompt at once, with no timed step before it", async () => {
   vi.useFakeTimers();
@@ -1353,9 +1351,6 @@ test("a vote opens its prompt at once, with no timed step before it", async () =
   expect(app.state.statusStep).toBe(RoundStep.ELECTION);
 });
 
-const FASCIST = "FASCIST" as PolicyType;
-const LIBERAL = "LIBERAL" as PolicyType;
-
 test.each([
   [LobbyState.PP_PEEK, "PEEK", "Peek: President is previewing the next 3 policies."],
   [LobbyState.PP_INVESTIGATE, "INVESTIGATE LOYALTY", "Investigation: President is choosing a player to investigate."],
@@ -1371,7 +1366,7 @@ test.each([
   });
   expect(app.state.statusStep).toBe(RoundStep.LEGISLATIVE);
   // The board is as it was, so no policy alert comes first: only the board's 0.5 s step.
-  await deliver(app, playerGamePacket({ ...government, state, peek: [FASCIST, LIBERAL, FASCIST] }));
+  await deliver(app, playerGamePacket({ ...government, state, peek: [PolicyType.FASCIST, PolicyType.LIBERAL, PolicyType.FASCIST] }));
   await act(async () => {
     vi.advanceTimersByTime(600);
   });
