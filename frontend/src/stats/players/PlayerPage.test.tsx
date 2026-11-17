@@ -19,8 +19,8 @@ const data = sampleData();
 const TITLES = ["Elo", "Win rate", "Roles", "Cards as president", "As chancellor", "Votes & powers", "People", "Timing", "Latest games"];
 
 function view(player = 1, filter: StatsFilter = DEFAULT_FILTER, records: StatsData = data) {
-  const numbers = computePlayer(buildStats(records, filter), player, SAMPLE_NOW, TZ);
-  return render(<PlayerView player={numbers} cpu={filter.cpu} now={SAMPLE_NOW} timeZone={TZ} />);
+  const playerStats = computePlayer(buildStats(records, filter), player, SAMPLE_NOW, TZ);
+  return render(<PlayerView player={playerStats} cpu={filter.cpu} now={SAMPLE_NOW} timeZone={TZ} />);
 }
 
 const card = (name: string) => screen.getByRole("region", { name });
@@ -125,11 +125,32 @@ describe("PlayerView", () => {
     expect(within(latest).getAllByRole("link")[0]).toHaveAttribute("href", "/stats/games/cpu");
     expect(within(latest).getByRole("link", { name: /^All 1 game$/ })).toBeInTheDocument();
   });
+
+  it("aPlayerWithOnlyAnUnfinishedGameShowsEmptyCards", () => {
+    const unfinished = played("hal", [2026, 11, 14], [[8, "LIBERAL"], [2, "LIBERAL"], [3, "LIBERAL"], [4, "FASCIST"], [5, "HITLER"]], "UNFINISHED");
+    view(8, DEFAULT_FILTER, { players: [...data.players, { number: 8, name: "Hal" }], games: [...data.games, unfinished] });
+    expect(screen.getByText("No counted games")).toHaveClass("player-summary");
+    const empty = screen.getAllByRole("region").filter((region) => region.textContent!.includes("No counted games yet."));
+    expect(empty.map((region) => region.querySelector("h3")?.textContent)).toEqual(TITLES.slice(0, 8));
+    const latest = card("Latest games");
+    expect(within(latest).getAllByRole("row")).toHaveLength(1);
+    expect(within(latest).getAllByRole("row")[0]).toHaveTextContent("unfinished");
+    expect(within(latest).getAllByRole("link")[0]).toHaveAttribute("href", "/stats/games/hal");
+    expect(within(latest).getByRole("link", { name: /^All 1 game$/ })).toBeInTheDocument();
+  });
+
+  it("aPlayerWithNoRecordsShowsEveryCardEmpty", () => {
+    view(9, DEFAULT_FILTER, { players: [...data.players, { number: 9, name: "Ivy" }], games: data.games });
+    const empty = screen.getAllByRole("region").filter((region) => region.textContent!.includes("No counted games yet."));
+    expect(empty.map((region) => region.querySelector("h3")?.textContent)).toEqual(TITLES);
+    expect(within(card("Latest games")).queryByRole("link")).toBeNull();
+  });
 });
 
 describe("PlayerPage", () => {
   it("anUnknownPlayerIsNotFound", () => {
     for (const number of [99, 0]) {
+      // A route the page is given; the address /stats/players/0 never makes one (theAppsNotFoundPages).
       const { unmount } = render(<PlayerPage data={data} route={{ page: "player", number }} />);
       expect(screen.getByText("This player was not found.")).toBeInTheDocument();
       expect(screen.getByRole("link", { name: "All players" })).toHaveAttribute("href", "/stats/players");
@@ -150,6 +171,34 @@ describe("PlayerPage", () => {
     afterEach(() => {
       vi.unstubAllGlobals();
       vi.restoreAllMocks();
+    });
+
+    it("theAppsNotFoundPages", async () => {
+      history.replaceState(null, "", "/stats/players/99");
+      const { unmount } = render(<StatsApp />);
+      expect(await screen.findByText("This player was not found.")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "All players" })).toHaveAttribute("href", "/stats/players");
+      unmount();
+      // 0 is no player's number, so the address names no page at all.
+      history.replaceState(null, "", "/stats/players/0");
+      render(<StatsApp />);
+      expect(await screen.findByText("This page was not found.")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Go to the stats" })).toHaveAttribute("href", "/stats");
+    });
+
+    it("aPlayerFilterLeavesTheNumbersAlone", async () => {
+      vi.spyOn(Date, "now").mockReturnValue(SAMPLE_NOW);
+      const pageText = async (address: string) => {
+        history.replaceState(null, "", address);
+        const { unmount } = render(<StatsApp />);
+        await screen.findByRole("heading", { level: 1 });
+        const text = screen.getByRole("main").textContent;
+        unmount();
+        return text;
+      };
+      const all = await pageText("/stats/players/1");
+      expect(all).toContain("6 games since 2 Oct");
+      expect(await pageText("/stats/players/1?players=2,3")).toBe(all);
     });
 
     it("theCpuToggleStandsAlone", async () => {

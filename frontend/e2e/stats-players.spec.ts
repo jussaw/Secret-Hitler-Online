@@ -72,6 +72,21 @@ test("a name in GAMES opens its player page", async ({ page }) => {
 test("All N games opens GAMES filtered to the player", async ({ page }) => {
   await open(page, routePath({ page: "player", number: busiest }));
   const all = page.getByRole("region", { name: "Latest games" }).getByRole("link", { name: /^All \d+ games$/ });
+  // As drawn: a space between "games" and the arrow (a 44px link is a flex box, whose items drop a
+  // space at their edges).
+  const gap = await all.evaluate((link) => {
+    const arrow = link.querySelector('[aria-hidden="true"]')!;
+    const walker = document.createTreeWalker(link, NodeFilter.SHOW_TEXT);
+    let words: Text | null = null;
+    for (let node = walker.nextNode(); node && !arrow.contains(node); node = walker.nextNode()) {
+      if ((node.nodeValue ?? "").trim() !== "") words = node as Text;
+    }
+    const range = document.createRange();
+    range.setStart(words!, 0);
+    range.setEnd(words!, words!.nodeValue!.trimEnd().length);
+    return arrow.getBoundingClientRect().left - range.getBoundingClientRect().right;
+  });
+  expect(gap, "the space before the arrow, in px").toBeGreaterThan(2);
   await all.click();
   await expect(page).toHaveURL(new RegExp(`/stats/games\\?players=${busiest}$`));
   const rows = page.locator(".games-row");
