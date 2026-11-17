@@ -1077,6 +1077,7 @@ Added after Phases 13 to 22B were planned. The stats pages' top bar (SECRET-HITL
 - [x] The login page and the lobby still fit one screen at every tested size and keep 44px targets on phones (the cards' spacing re-fitted, checked with Linux fonts in the Playwright image)
 - [x] Browser and unit tests updated: the header on each page, PLAY current on the login page, no speaker on the login page, no footer "Stats" link
 - [x] `CLAUDE.md`, `README.md` (screenshots in `docs/images/` if the login page or lobby look different) and `DEVELOPMENT.md` updated; the pull request shows the login page and the lobby before and after, on desktop and on a phone
+- [ ] GAMES and PLAYERS out of `/stats` (added after the review, at the user's request): `/games` and `/games/<id>`, `/players` and `/players/<n>`, the tabs still under `/stats` and the API still `/api/stats/games`; old `/stats/games…` and `/stats/players…` addresses moved to the new ones with their query; the page and the server's fallback match whole segments, and the dev proxy only `/game`, so the players' socket is never taken for `/games`
 
 **Phase 23 acceptance**
 

@@ -374,6 +374,45 @@ line there without "Stats"). Signed out at 360x740: 38.9 → 15.6px. The header:
 
 ---
 
+### Task 9A: GAMES and PLAYERS out of `/stats` (added after the review)
+
+The user asked for it after the review; built on top of the header work, then rebased onto 22B.
+
+**Files:**
+- Modify: `frontend/src/statsPath.ts` and its test, `src/main.tsx`, `src/stats/routes.ts` and its
+  test, `src/constants/index.ts` and `statsPaths.test.ts`, `frontend/vite.config.ts` (with a new
+  `src/devProxy.test.ts`), `backend/src/main/java/server/SecretHitlerServer.java` and
+  `StatsFallbackTest`, and every test, spec and comment that writes the old paths (22B's too, once
+  merged). These are other phases' files, approved for this change.
+
+**Interfaces:**
+- Paths: GAMES `/games`, a game `/games/<id>`, PLAYERS `/players`, a player `/players/<n>`; tabs
+  and `notFound` as before (`/stats…`); the API stays `/api/stats/games`.
+- `statsPath.ts`: `isStatsPath(pathname)` (whole segments of `/stats`, `/games`, `/players`; never
+  `/game` or `/gamesx`), `movedStatsPath(pathname): string | null` (`/stats/games…` →
+  `/games…`, `/stats/players…` → `/players…`), `followMovedStatsPath()` (`history.replaceState`
+  with the query and hash, called by `main.tsx` before it picks the stats or the game).
+- `SecretHitlerServer`: `PAGE_ROOTS` and `isPagePath(path)`; each root's single-page handler
+  serves `index.html` only for a whole-segment path, else 404 (Javalin's own fallback matches by
+  `startsWith`).
+- `vite.config.ts`: the socket's proxy key is `^/game(\?|$)` (Vite reads a key starting with `^` as
+  a RegExp on the URL), so `/games` stays on the dev server.
+
+- [ ] **Step 1: Failing tests:** `StatsFallbackTest` (the new paths and the old ones answer the
+  page; `/gamesx`, `/statsx`, `/player`, `/game-over` are 404; `/game` is not the page and still
+  upgrades, closed 1002 with no session), `devProxy.test.ts` (`/game` with any query is the socket's
+  entry, with `ws`; `/games…`, `/players…` and `/stats…` match no entry), `statsPath.test.ts`,
+  `routes.test.ts`, and every unit test and spec with an old path.
+- [ ] **Step 2: Implement** as in Interfaces; `stats-games.spec.ts` adds "GAMES' and PLAYERS' old
+  addresses move to their new ones" (query kept, the header's mark right).
+- [ ] **Step 3: Check the dev server by hand:** `BACKEND_URL` at a jar, `/games` answers the page and
+  a socket to `/game` reaches the backend (closed 1002 with no session).
+- [ ] **Step 4: Commit** `feat(backend): answer /games and /players with the page`, `fix(frontend):
+  proxy only the /game socket on the dev server`, `feat(frontend): move games and players out of
+  /stats`, then the docs, ticking the box.
+
+---
+
 ### Task 9: Pull request
 
 - [ ] **Step 1: Push and open the PR.** `git push -u origin phase-23-site-header`; `gh pr create
