@@ -430,9 +430,11 @@ and TypeScript sides of the format are checked against each other.
 
 ### The stats pages: shell and routes (Phase 15A)
 
-`main.tsx` renders the stats when the path starts with `/stats`, and the game otherwise. The stats
-load as their own chunk (`React.lazy`), with no part of `App`. The server answers every path under
-`/stats` with `index.html` (Javalin's single-page fallback); the dev server already does.
+`main.tsx` renders the stats when the path is under `/stats`, `/games` or `/players` (whole
+segments; `/games` and `/players` since Phase 23), and the game otherwise. The stats load as their
+own chunk (`React.lazy`), with no part of `App`. The server answers every path under those three
+with `index.html` (Javalin's single-page fallback, by whole segments, so never the players'
+socket, `/game`); the dev server already does.
 
 | Path | Page |
 |---|---|
