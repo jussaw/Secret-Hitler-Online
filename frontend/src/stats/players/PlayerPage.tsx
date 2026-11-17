@@ -382,7 +382,7 @@ function TimingCard({ player, empty }: { player: PlayerStats; empty?: string }):
 /** A latest game's ending: how it was won, or nothing for an unfinished one. */
 const endingOf = (game: LatestGame) => (game.outcome === "UNFINISHED" ? "" : OUTCOME_LABELS[game.outcome]);
 
-/** Latest games: each linked by its date, their role, the result, the ending; then all of them in GAMES. */
+/** Latest games: each linked by the day it started (as GAMES dates it), their role, the result, the ending; then all of them in GAMES. */
 function LatestGamesCard(props: { player: PlayerStats; now: number; timeZone?: string }): JSX.Element {
   const { player, now, timeZone } = props;
   const all = routePath({ page: "games" }) + gamesFilterSearch({ ...NO_GAMES_FILTER, players: [player.player] });
@@ -398,7 +398,7 @@ function LatestGamesCard(props: { player: PlayerStats; now: number; timeZone?: s
             <tr key={game.id}>
               <td className="player-latest-date">
                 <StatsLink href={routePath({ page: "game", id: game.id })} className="player-game-link">
-                  {formatShortDate(game.endedAt, now, timeZone)}
+                  {formatShortDate(game.startedAt, now, timeZone)}
                 </StatsLink>
               </td>
               <td className="player-latest-role">

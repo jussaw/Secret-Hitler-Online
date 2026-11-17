@@ -40,6 +40,8 @@ export interface PersonLink {
 /** One of a player's latest games, as their page lists it. */
 export interface LatestGame {
   id: string;
+  /** Its start, which dates it, as GAMES does. */
+  startedAt: number;
   endedAt: number;
   /** Their role in it. */
   role: Role;
@@ -190,7 +192,15 @@ export function computePlayer(stats: StatsContext, player: number, now: number, 
     .map((record) => {
       const seat = seatOf(record, player);
       const result = record.outcome === "UNFINISHED" || record.winner === null ? "unfinished" : seatWon(record, seat) ? "won" : "lost";
-      return { id: record.id, endedAt: record.endedAt, role: record.seats[seat].role, result, outcome: record.outcome, cpu: hasCpu(record) };
+      return {
+        id: record.id,
+        startedAt: record.startedAt,
+        endedAt: record.endedAt,
+        role: record.seats[seat].role,
+        result,
+        outcome: record.outcome,
+        cpu: hasCpu(record),
+      };
     });
 
   const trophies = trophiesOf(ctx, all).get(player) ?? [];

@@ -116,6 +116,7 @@ describe("computePlayer", () => {
     expect(latest.map((g) => g.cpu)).toEqual([false, false, true, false, false]);
     expect(latest[0]).toEqual({
       id: "unf",
+      startedAt: game("unf").startedAt,
       endedAt: game("unf").endedAt,
       role: "LIBERAL",
       result: "unfinished",

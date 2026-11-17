@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetStatsDataForTests } from "../api";
 import { DEFAULT_FILTER, parseFilter, type StatsFilter } from "../counting";
+import { formatLocalDate } from "../format";
 import { filterGames, parseGamesFilter } from "../games/gamesFilter";
 import { formatRating } from "../numbers";
 import { computePlayer } from "../player";
@@ -9,15 +10,16 @@ import StatsApp from "../StatsApp";
 import { TROPHIES } from "../trophies";
 import { buildStats } from "../useStats";
 import PlayerPage, { PlayerView } from "./PlayerPage";
-import { SAMPLE_NOW, sampleData, TZ } from "./testStats";
+import type { StatsData } from "../record";
+import { played, SAMPLE_NOW, sampleData, TZ } from "./testStats";
 
 const data = sampleData();
 
 /** The page's titles, in order. */
 const TITLES = ["Elo", "Win rate", "Roles", "Cards as president", "As chancellor", "Votes & powers", "People", "Timing", "Latest games"];
 
-function view(player = 1, filter: StatsFilter = DEFAULT_FILTER) {
-  const numbers = computePlayer(buildStats(data, filter), player, SAMPLE_NOW, TZ);
+function view(player = 1, filter: StatsFilter = DEFAULT_FILTER, records: StatsData = data) {
+  const numbers = computePlayer(buildStats(records, filter), player, SAMPLE_NOW, TZ);
   return render(<PlayerView player={numbers} cpu={filter.cpu} now={SAMPLE_NOW} timeZone={TZ} />);
 }
 
@@ -76,6 +78,20 @@ describe("PlayerView", () => {
     expect(rows.filter((row) => row.textContent!.includes("CPU"))).toHaveLength(1);
     expect(rows[0]).toHaveTextContent("unfinished");
     expect(rows[1]).toHaveTextContent(/Liberal.*won.*Liberal policies/);
+  });
+
+  it("aGamePastMidnightShowsTheDayItStartedAsGamesDoes", () => {
+    // Ann's newest game starts at 23:50 UTC on 14 Nov and ends at 00:30 on the 15th.
+    const late = {
+      ...played("late", [2026, 11, 14], [[1, "LIBERAL"], [2, "LIBERAL"], [3, "LIBERAL"], [4, "FASCIST"], [5, "HITLER"]], "LIBERAL_POLICIES"),
+      startedAt: Date.UTC(2026, 10, 14, 23, 50),
+      endedAt: Date.UTC(2026, 10, 15, 0, 30),
+    };
+    view(1, DEFAULT_FILTER, { players: data.players, games: [...data.games, late] });
+    const first = within(card("Latest games")).getAllByRole("row")[0];
+    expect(within(first).getByRole("link")).toHaveAttribute("href", "/stats/games/late");
+    expect(within(first).getByRole("link")).toHaveTextContent(/^14 Nov$/);
+    expect(formatLocalDate(late.startedAt, TZ)).toContain("14 Nov");
   });
 
   it("allGamesOpensGamesFilteredToThem", () => {
