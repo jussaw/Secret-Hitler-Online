@@ -446,10 +446,12 @@ keeps credit to upstream and to the board game's creators.
   `.chart-tooltip`, as wide as its text and sliding with the point's share of the plot, so it never
   leaves the chart; `chartParts.tsx` also has `YAxis`, `nearest` and `px`; `axis.ts`'s `niceTicks`;
   `charts.css`; Phase 21's charts share them all),
-  `FilterBar` (a chip per player by name, `aria-pressed`, and the switch "Include games with CPU
-  players", in the lobby's grey, `greyButtons.css`'s `.stats-grey`, which the tabs share;
-  controlled, so the address is the filter's only copy; in the phone-only query one line, "Players:
-  7 of 8 · CPU off", that opens the panel; `showPlayers={false}` shows the switch alone), `TabRow` (a `nav` "Stats sections" of seven `StatsLink`s in the button
+  `FilterBar` (a chip per player by name, `aria-pressed`, and the switch "Include games with
+  Bots", the user's word for games with CPU players, in the lobby's grey, `greyButtons.css`'s
+  `.stats-grey`, which the tabs share; controlled, so the address is the filter's only copy; in
+  the phone-only query one line, "Players: 7 of 8 · CPU off", that opens the panel;
+  `showPlayers={false}` shows the switch alone), `TabRow` (a `nav` "Stats sections" of seven
+  `StatsLink`s in the button
   look carrying the filter, the current one orange and `aria-current="page"`, which the row (never
   the page) scrolls to show, again once the web fonts load; it wraps on desktop and in tall windows and scrolls sideways in one row on phones, 44px targets in
   the stacked query) and `tabs/` (`tabs/tabs.ts`'s `TABS`, the seven tabs in order with their
@@ -750,14 +752,16 @@ keeps credit to upstream and to the board game's creators.
   `pageLinks`, the first and last pages and the current one's neighbours with `null` for a gap,
   and `gamesSummary`, "142 games recorded · 37 match · showing 21–37"), `GameRow` (an
   `li.games-row`: the date and the result, its winners' word in their colour and a `CPU` tag, are
-  its one link, `a.games-row-link`, whose `::after` covers the row; the time and length, the seats
+  its one link, `a.games-row-link`, named for the date, the result and, with CPU players, `· with
+  Bots`, whose `::after` covers the row; the time and length, the seats
   as `PlayerName`s (links of their own since Phase 22A, which `.games-row-seats a` lets take a
   press), above the link's area, and the seat and round counts sit outside it, so no anchor wraps
   a name; a subgrid of the row's columns on desktop, of its first three rows on
   phones) and `GamesPage` (the filter card: Players with a grey chip per chosen player, `Remove
   <name>`, and Add a player; From and To, whose typed day reaches the address once it is a whole
   day, its year from 1000, and typing has paused, or on Enter or leaving the field, so a day typed
-  part by part is one step back; Seats, Ending and CPU players; Clear filters, which keeps the page
+  part by part is one step back; Seats, Ending and Bots (With or without CPU, Without Bots, With
+  Bots); Clear filters, which keeps the page
   size; then the summary line with Games a page, the
   rows, an `ol` with `role="list"`, or "No games match these filters.", and the `Pages` nav, whose
   Previous and Next with nowhere to go are disabled links; unknown player numbers are dropped,
