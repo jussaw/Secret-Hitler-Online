@@ -72,12 +72,16 @@ async function columnNumbers(page: Page, column: number): Promise<(number | null
   return texts.map((text) => (text.startsWith("—") ? null : Number(text.replace("%", ""))));
 }
 
-test("PLAYERS' search box stands left of the switch on desktop, above it on phones", async ({ page }) => {
+/** The game's phone-only query, which puts PLAYERS' search box on a line of its own on a phone. */
+const PHONE_ONLY =
+  "((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4)))";
+
+test("PLAYERS' search box stands left of the switch, above it on a phone", async ({ page }) => {
+  test.slow();
   await open(page, routePath({ page: "players" }));
-  const phone = test.info().project.name.startsWith("phone");
-  const sizes = phone ? statsSizesFor(test.info().project.name, page.viewportSize()!) : [{ width: 1600, height: 900 }];
-  for (const size of sizes) {
+  for (const size of statsSizesFor(test.info().project.name, page.viewportSize()!)) {
     await page.setViewportSize(size);
+    const phone = await page.evaluate((query) => matchMedia(query).matches, PHONE_ONLY);
     const box = (await searchBox(page).boundingBox())!;
     const toggle = (await page.getByRole("switch", { name: "Include games with Bots" }).boundingBox())!;
     const bar = (await page.locator(".filter-bar").boundingBox())!;

@@ -26,10 +26,11 @@
     display: none;
 }
 
-/* The search box, left of the switch in the filter bar (FilterBar.css's .has-lead): GAMES' dark
-   field, with Lucide's Search inside it at the left, as tall as the switch's face (6px, a 16.8px
-   line, 6px and its 1px borders: 30.8px, the face's 5px, the line and 5px, and 2px borders). App.css
-   sizes every input for the login page, so this sets its own size. */
+/* The search box, left of the switch in the filter bar (FilterBar.css's .has-before-switch): GAMES'
+   dark field, with Lucide's Search inside it at the left, as tall as the switch's face (6px, a
+   16.8px line, 6px and its 1px borders: 30.8px, the face's 5px, the line and 5px, and 2px
+   borders). App.css sizes every input for the login page, so this sets its own size, and the
+   appearance is reset, since Safari's search field look keeps its own padding and border. */
 .players-search {
     position: relative;
     display: flex;
@@ -49,6 +50,8 @@
 }
 
 .stats-screen .players-search input {
+    -webkit-appearance: none;
+    appearance: none;
     box-sizing: border-box;
     width: 100%;
     min-width: 0;
@@ -65,6 +68,11 @@
     border-radius: 6px;
     color-scheme: dark;
     outline: none;
+}
+
+/* Safari's magnifier inside a search field: the box has Lucide's in its place. */
+.stats-screen .players-search input::-webkit-search-decoration {
+    -webkit-appearance: none;
 }
 
 .stats-screen .players-search input::placeholder {
@@ -125,8 +133,8 @@
 }
 
 /* Wherever the game's stacked query matches, the search box and each head are 44px targets, and
-   the box's text 16px. A head's button fills its column's width; a number's word and arrow stay at
-   the right. */
+   the box's text 16px. A head whose word and arrow are narrower than 44px (Elo) keeps them at the
+   right of its button, as its column's values are. */
 @media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
     .stats-screen .players-search input {
         min-height: 44px;
@@ -151,9 +159,11 @@
         gap: 8px;
     }
 
-    /* The search box takes the bar's whole line, the switch the line below it. */
+    /* The search box stands beside the switch only where it gets 12em (a phone held sideways),
+       and otherwise takes the bar's whole line above it: beside it in a phone's 360px or 412px
+       it would be too narrow for its placeholder. */
     .players-search {
-        flex: 1 1 100%;
+        flex: 1 1 12em;
     }
 
     .players-table .players-last {
