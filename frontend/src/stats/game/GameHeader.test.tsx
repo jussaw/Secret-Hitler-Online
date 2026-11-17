@@ -79,7 +79,7 @@ describe("GameHeader", () => {
   it("seatsLinkToPlayers", () => {
     const data = sampleData();
     const { unmount } = render(<GameHeader record={data.games.find((g) => g.id === "g1")!} />);
-    expect(screen.getByRole("link", { name: "Ann" })).toHaveAttribute("href", "/stats/players/1");
+    expect(screen.getByRole("link", { name: "Ann" })).toHaveAttribute("href", "/players/1");
     unmount();
     const { container } = render(<GameHeader record={data.games.find((g) => g.id === "cpu")!} />);
     const bot = Array.from(container.querySelectorAll(".game-seats .player-name")).find((n) => n.textContent === "Bot 1")!;

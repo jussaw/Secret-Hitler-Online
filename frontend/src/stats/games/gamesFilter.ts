@@ -2,7 +2,7 @@ import { localDayKey, viewerTimeZone } from "../format";
 import { OUTCOMES, type GameRecord, type Outcome } from "../record";
 
 /**
- * GAMES' own filter, kept in the address (`/stats/games?players=1,3&from=…`), so a filtered list
+ * GAMES' own filter, kept in the address (`/games?players=1,3&from=…`), so a filtered list
  * can be shared, reloaded and gone back through. It is not the stats' filter (Phase 17A's): a game
  * matches if any chosen player sat in it.
  *

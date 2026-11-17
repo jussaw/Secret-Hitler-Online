@@ -45,7 +45,7 @@ describe("PlayerName", () => {
   it("linksAPlayerToTheirPage", () => {
     render(<PlayerName player={3} name="Cy" role="LIBERAL" />);
     const link = screen.getByRole("link", { name: "Cy" });
-    expect(link).toHaveAttribute("href", "/stats/players/3");
+    expect(link).toHaveAttribute("href", "/players/3");
     expect(link).toHaveClass("player-link");
     expect(link).toHaveAttribute("data-player", "3");
   });
@@ -67,22 +67,22 @@ describe("PlayerName", () => {
   });
 
   it("carriesTheStatsFilter", () => {
-    for (const path of ["/stats/roles", "/stats/players", "/stats/players/4", "/stats"]) {
+    for (const path of ["/stats/roles", "/players", "/players/4", "/stats"]) {
       history.replaceState(null, "", `${path}?players=1,2&cpu=1`);
       const { unmount } = render(<PlayerName player={3} name="Cy" />);
       const href = screen.getByRole("link", { name: "Cy" }).getAttribute("href")!;
       const url = new URL(href, "http://localhost");
-      expect(url.pathname, path).toBe("/stats/players/3");
+      expect(url.pathname, path).toBe("/players/3");
       expect(parseFilter(url.search), path).toEqual({ players: new Set([1, 2]), cpu: true });
       unmount();
     }
   });
 
   it("carriesNothingFromGames", () => {
-    for (const path of ["/stats/games?players=1", "/stats/games/abc", "/stats/games/abc?players=1&cpu=1"]) {
+    for (const path of ["/games?players=1", "/games/abc", "/games/abc?players=1&cpu=1"]) {
       history.replaceState(null, "", path);
       const { unmount } = render(<PlayerName player={3} name="Cy" />);
-      expect(screen.getByRole("link", { name: "Cy" }), path).toHaveAttribute("href", "/stats/players/3");
+      expect(screen.getByRole("link", { name: "Cy" }), path).toHaveAttribute("href", "/players/3");
       unmount();
     }
   });
@@ -91,7 +91,7 @@ describe("PlayerName", () => {
     render(<PlayerName player={3} name="Cy" />);
     const link = screen.getByRole("link", { name: "Cy" });
     expect(fireEvent.click(link)).toBe(false); // cancelled: moved in place
-    expect(location.pathname).toBe("/stats/players/3");
+    expect(location.pathname).toBe("/players/3");
   });
 
   it("aModifiedClickIsTheBrowsers", () => {
@@ -106,12 +106,12 @@ describe("PlayerName", () => {
 
 describe("playerHref", () => {
   it("adds the stats filter on a tab, PLAYERS or a player page, and nothing elsewhere", () => {
-    expect(playerHref(5, { pathname: "/stats", search: "" })).toBe("/stats/players/5");
-    expect(playerHref(5, { pathname: "/stats/records", search: "?cpu=1" })).toBe("/stats/players/5?cpu=1");
-    expect(playerHref(5, { pathname: "/stats/players", search: "?players=3,1" })).toBe("/stats/players/5?players=1,3");
-    expect(playerHref(5, { pathname: "/stats/players/2", search: "?cpu=1&x=y" })).toBe("/stats/players/5?cpu=1");
-    expect(playerHref(5, { pathname: "/stats/games", search: "?players=1" })).toBe("/stats/players/5");
-    expect(playerHref(5, { pathname: "/stats/games/g1", search: "?cpu=1" })).toBe("/stats/players/5");
-    expect(playerHref(5, { pathname: "/stats/nope", search: "?cpu=1" })).toBe("/stats/players/5");
+    expect(playerHref(5, { pathname: "/stats", search: "" })).toBe("/players/5");
+    expect(playerHref(5, { pathname: "/stats/records", search: "?cpu=1" })).toBe("/players/5?cpu=1");
+    expect(playerHref(5, { pathname: "/players", search: "?players=3,1" })).toBe("/players/5?players=1,3");
+    expect(playerHref(5, { pathname: "/players/2", search: "?cpu=1&x=y" })).toBe("/players/5?cpu=1");
+    expect(playerHref(5, { pathname: "/games", search: "?players=1" })).toBe("/players/5");
+    expect(playerHref(5, { pathname: "/games/g1", search: "?cpu=1" })).toBe("/players/5");
+    expect(playerHref(5, { pathname: "/stats/nope", search: "?cpu=1" })).toBe("/players/5");
   });
 });

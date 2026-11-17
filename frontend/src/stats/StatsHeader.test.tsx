@@ -1,21 +1,22 @@
 import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { heldBack } from "../header/testClicks";
 import type { StatsRoute } from "./routes";
 import StatsHeader from "./StatsHeader";
 
 function links(route: StatsRoute) {
   render(<StatsHeader route={route} />);
-  return within(screen.getByRole("navigation", { name: "Stats pages" })).getAllByRole("link");
+  return within(screen.getByRole("navigation", { name: "Site" })).getAllByRole("link");
 }
 
 describe("StatsHeader", () => {
-  it("links to the four places", () => {
+  it("links to the four places, PLAY first", () => {
     const found = links({ page: "tab", tab: "overview" });
     expect(found.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
-      ["STATS", "/stats"],
-      ["GAMES", "/stats/games"],
-      ["PLAYERS", "/stats/players"],
       ["PLAY", "/"],
+      ["STATS", "/stats"],
+      ["GAMES", "/games"],
+      ["PLAYERS", "/players"],
     ]);
     expect(screen.getByRole("banner")).toHaveTextContent("SECRET-HITLER");
   });
@@ -38,5 +39,24 @@ describe("StatsHeader", () => {
       ).toEqual(current ? [current] : []);
       document.body.innerHTML = "";
     }
+  });
+
+  describe("its links", () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      history.replaceState(null, "", "/");
+    });
+
+    it("move STATS, GAMES and PLAYERS in place, and PLAY loads the game", () => {
+      vi.stubGlobal("scrollTo", vi.fn());
+      history.replaceState(null, "", "/stats");
+      const found = links({ page: "tab", tab: "overview" });
+      const link = (label: string) => found.find((a) => a.textContent === label)!;
+      expect(heldBack(link("GAMES")), "GAMES moves in place").toBe(true);
+      expect(location.pathname).toBe("/games");
+      expect(heldBack(link("PLAYERS")), "PLAYERS moves in place").toBe(true);
+      expect(location.pathname).toBe("/players");
+      expect(heldBack(link("PLAY")), "PLAY is the browser's").toBe(false);
+    });
   });
 });

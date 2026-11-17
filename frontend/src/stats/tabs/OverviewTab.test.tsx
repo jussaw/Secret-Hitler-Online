@@ -46,7 +46,7 @@ describe("OverviewTab", () => {
     ]);
     expect(card("Since last game")).toHaveTextContent("2 days");
     const last = within(card("Last game")).getByRole("link");
-    expect(last).toHaveAttribute("href", "/stats/games/g07");
+    expect(last).toHaveAttribute("href", "/games/g07");
     expect(last.textContent).toMatch(/^Liberals win · 5 Liberal policies/);
     expect(last).toHaveTextContent("Fri 13 Nov 2026, 8:30 PM");
     expect(within(last).getByText("Liberals")).toHaveClass("stats-liberal");
@@ -171,17 +171,17 @@ describe("OverviewTab", () => {
     expect(latest).toHaveTextContent("The ten most recent counted games.");
     const links = within(latest).getAllByRole("link");
     expect(links).toHaveLength(7);
-    expect(links[0]).toHaveAttribute("href", "/stats/games/g07");
+    expect(links[0]).toHaveAttribute("href", "/games/g07");
     expect(links[0].textContent).toMatch(/^Fri 13 Nov 2026, 8:30 PM/);
     expect(links[0]).toHaveTextContent("Liberals win · 5 Liberal policies");
-    expect(links[6]).toHaveAttribute("href", "/stats/games/g01");
+    expect(links[6]).toHaveAttribute("href", "/games/g01");
     expect(names(latest)).toEqual([]);
   });
 
   it("aLinkMovesThePageInPlace", () => {
     tab();
     fireEvent.click(within(card("Latest games")).getAllByRole("link")[1]);
-    expect(window.location.pathname).toBe("/stats/games/g06");
+    expect(window.location.pathname).toBe("/games/g06");
     window.history.replaceState(null, "", "/");
   });
 

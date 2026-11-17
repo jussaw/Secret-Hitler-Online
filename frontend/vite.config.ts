@@ -16,7 +16,9 @@ export default defineConfig({
       "/auth": backend,
       "/me": backend,
       "/api": backend,
-      "/game": { target: backend, ws: true },
+      // The players' socket, and only it: a plain "/game" key is a prefix, which would take
+      // "/games", a stats page, from the dev server too (devProxy.test.ts).
+      "^/game(\\?|$)": { target: backend, ws: true },
     },
   },
   preview: { port: 3000, strictPort: true },

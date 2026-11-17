@@ -2,7 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 import { outcomeLabel } from "../src/stats/format";
 import { EVENT_FIELDS, parseStatsData, STATS_GAMES_PATH, type Outcome } from "../src/stats/record";
 import { routePath } from "../src/stats/routes";
-import { MIN_TARGET, NARROW_PHONE } from "./layout";
+import { signedOutMe, stubMe } from "./accounts";
+import { NARROW_PHONE, smallLinks } from "./layout";
 import { settle } from "./lobby";
 import {
   bigStatsData,
@@ -162,7 +163,7 @@ test.describe("every page fits every size", () => {
 
   test("GAMES", async ({ page }) => {
     test.slow();
-    await open(page, "/stats/games", "400 games recorded · showing 1–20");
+    await open(page, "/games", "400 games recorded · showing 1–20");
     await checkEverySize(page);
   });
 
@@ -174,19 +175,19 @@ test.describe("every page fits every size", () => {
 
   test("an unknown game", async ({ page }) => {
     test.slow();
-    await open(page, "/stats/games/no-such-game", "This game was not found.");
+    await open(page, "/games/no-such-game", "This game was not found.");
     await checkEverySize(page);
   });
 
   test("PLAYERS", async ({ page }) => {
     test.slow();
-    await open(page, "/stats/players", "Win rate");
+    await open(page, "/players", "Win rate");
     await checkEverySize(page);
   });
 
   test("a player's page", async ({ page }) => {
     test.slow();
-    await open(page, "/stats/players/1", "Latest games");
+    await open(page, "/players/1", "Latest games");
     await checkEverySize(page);
   });
 
@@ -217,22 +218,72 @@ test.describe("every page fits every size", () => {
   });
 });
 
+/** The header's nav, on the stats pages and the login page alike. */
+const HEADER_NAV = 'header nav[aria-label="Site"]';
+
 test("the header's links are 44px targets at every size", async ({ page }) => {
   test.slow();
   await open(page, "/stats", "OVERVIEW");
-  const links = page.getByRole("navigation", { name: "Stats pages" }).getByRole("link");
+  await expect(page.locator(`${HEADER_NAV} a`)).toHaveCount(4);
   for (const size of statsSizesFor(test.info().project.name, page.viewportSize()!)) {
     await page.setViewportSize(size);
-    const boxes = await links.evaluateAll((all) =>
-      all.map((a) => {
-        const r = a.getBoundingClientRect();
-        return { text: a.textContent, width: r.width, height: r.height };
-      })
-    );
-    expect(boxes.length).toBe(4);
-    const small = boxes.filter((b) => b.width < MIN_TARGET - 0.01 || b.height < MIN_TARGET - 0.01);
-    expect(small, `small header links at ${size.width}x${size.height}`).toEqual([]);
+    expect(await smallLinks(page, HEADER_NAV), `small header links at ${size.width}x${size.height}`).toEqual([]);
   }
+});
+
+/** The page's header, its title and each of its links, as sizes and offsets from the header's edges. */
+function headerLayout(page: Page) {
+  return page.evaluate(() => {
+    const header = document.querySelector("body header")!;
+    const h = header.getBoundingClientRect();
+    const place = (el: Element) => {
+      const r = el.getBoundingClientRect();
+      return { width: r.width, height: r.height, top: r.top - h.top, left: r.left - h.left, right: h.right - r.right };
+    };
+    return {
+      header: { width: h.width, height: h.height },
+      title: place(header.querySelector(".site-title")!),
+      links: Array.from(header.querySelectorAll("nav a"), (a) => ({ text: a.textContent, ...place(a) })),
+      current: Array.from(header.querySelectorAll('[aria-current="page"]'), (a) => a.textContent),
+    };
+  });
+}
+
+test("the login page has the stats' header at every size", async ({ page, context }) => {
+  test.slow();
+  // A stats page that never scrolls, so its header has the window's whole width, as the login page's.
+  await open(page, "/stats/nowhere", "This page was not found.");
+  const login = await context.newPage();
+  await stubMe(login, signedOutMe({ discord: true }));
+  await login.goto("/");
+  await expect(login.getByRole("link", { name: "SIGN IN WITH DISCORD" })).toBeVisible();
+  await settle(login);
+  await expect(login.locator(".sound-control"), "no sound control on the login page").toHaveCount(0);
+
+  for (const size of statsSizesFor(test.info().project.name, page.viewportSize()!)) {
+    const at = `${size.width}x${size.height}`;
+    await page.setViewportSize(size);
+    await login.setViewportSize(size);
+    const stats = await headerLayout(page);
+    const home = await headerLayout(login);
+    expect(stats.current, `nothing marked on a page that was not found, ${at}`).toEqual([]);
+    expect(home.current, `PLAY marked on the login page, ${at}`).toEqual(["PLAY"]);
+    // PLAY first, then the stats' sections, on both pages.
+    expect(stats.links.map((l) => l.text), `the stats page's links, ${at}`).toEqual(["PLAY", "STATS", "GAMES", "PLAYERS"]);
+    expect(home.links.map((l) => l.text), `the login page's links, ${at}`).toEqual(["PLAY", "STATS", "GAMES", "PLAYERS"]);
+    const same = (a: number, b: number, what: string) => expect(a, `${what}, ${at}`).toBeCloseTo(b, 0);
+    same(home.header.width, stats.header.width, "the header's width");
+    same(home.header.height, stats.header.height, "the header's height");
+    for (const key of ["width", "height", "top", "left"] as const) same(home.title[key], stats.title[key], `the title's ${key}`);
+    home.links.forEach((link, i) => {
+      for (const key of ["width", "height", "top", "right"] as const) {
+        same(link[key], stats.links[i][key], `${link.text}'s ${key}`);
+      }
+    });
+    expect(await smallLinks(login, HEADER_NAV), `small header links on the login page, ${at}`).toEqual([]);
+    expect((await statsPageProblems(login)).sideways, `the login page past the edge, ${at}`).toEqual([]);
+  }
+  await login.close();
 });
 
 test("a twelve-character name stays inside its line at 320px", async ({ page }) => {
@@ -282,12 +333,12 @@ test("the header moves between the pages in place", async ({ page }) => {
   desktopOnly();
   await open(page, "/stats", "OVERVIEW");
   await page.evaluate(() => ((window as unknown as { stayed: boolean }).stayed = true));
-  const nav = page.getByRole("navigation", { name: "Stats pages" });
+  const nav = page.getByRole("navigation", { name: "Site" });
   const current = nav.locator('[aria-current="page"]');
 
   for (const [label, path, ready] of [
-    ["GAMES", "/stats/games", "400 games recorded · showing 1–20"],
-    ["PLAYERS", "/stats/players", "Win rate"],
+    ["GAMES", "/games", "400 games recorded · showing 1–20"],
+    ["PLAYERS", "/players", "Win rate"],
     ["STATS", "/stats", "OVERVIEW"],
   ]) {
     await nav.getByRole("link", { name: label, exact: true }).click();
@@ -329,6 +380,6 @@ test("back, forward, reload and a deep link", async ({ page }) => {
   await expect(heading).toHaveText(outcomeLabel(newest));
   await expect(page).toHaveTitle("Game · Secret Hitler Online");
 
-  await page.goto("/stats/players/1");
+  await page.goto("/players/1");
   await expect(inMain(page, "Latest games")).toBeVisible();
 });

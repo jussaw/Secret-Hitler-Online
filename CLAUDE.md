@@ -33,11 +33,13 @@ keeps credit to upstream and to the board game's creators.
   classpath directory `/public`, which `processResources` fills from `frontend/dist` when it exists;
   CORS is enabled only in debug mode. `createApp()` is `createApp("/public")`; `createApp(frontendDir)`
   serves that classpath directory when it has an `index.html` and then adds Javalin's single-page
-  fallback for `/stats` (`config.spaRoot.addFile`), so a GET of any path starting `/stats` (a prefix
-  match: `/statsx` too) that no route or file answered, whose `Accept` has `text/html` or `*/*` or is
-  empty, gets `index.html`: a reload or a link to any stats page works. Routes always answer first,
-  other paths stay 404, and without a frontend there is no fallback (`StatsFallbackTest`, over the
-  test classpath's `/spa-test`). Playing needs an account, made by signing in with Discord;
+  fallback for the stats pages' roots, `PAGE_ROOTS` (`/stats`, `/games`, `/players`;
+  `config.spaRoot.addHandler`), so a GET of a stats page's path that no route or file answered,
+  whose `Accept` has `text/html` or `*/*` or is empty, gets `index.html`: a reload or a link to any
+  stats page works. Javalin matches a root by its start alone, so the handler checks whole segments
+  itself (`isPagePath`: `/gamesx` and `/statsx` stay 404, and the players' socket, `/game`, is never
+  a page and still upgrades). Routes always answer first, other paths stay 404, and without a
+  frontend there is no fallback (`StatsFallbackTest`, over the test classpath's `/spa-test`). Playing needs an account, made by signing in with Discord;
   watching needs none. `server.accounts` has `Usernames` (the page's name rules, which the server
   applies itself, with the messages both show: `normalize` makes each run of what JavaScript's `\s`
   matches one space and trims, a name has at most 12 UTF-16 code units, `key` lowers it with
@@ -313,12 +315,16 @@ keeps credit to upstream and to the board game's creators.
 - `frontend/`: React 18 and TypeScript 5, built with Vite and tested with Vitest. The entry is
   `src/main.tsx`, with `index.html` at the `frontend/` root, whose description is one plain line
   and which has no preview image, so an invite link previews as that line (`linkPreview.test.ts`).
-  `main.tsx` checks the path once (`isStatsPath`, `src/statsPath.ts`: `/stats` or a path under
-  `/stats/`) and renders either `App`, after starting the sound gesture listener and the clips'
+  `main.tsx` first moves GAMES' and PLAYERS' old addresses to their new ones in place
+  (`followMovedStatsPath`: `/stats/games…` to `/games…` and `/stats/players…` to `/players…`, with
+  the query and hash, by `history.replaceState`), then checks the path once (`isStatsPath`,
+  `src/statsPath.ts`: `/stats`, `/games` or `/players`, or a path under one, by whole segments) and
+  renders either `App`, after starting the sound gesture listener and the clips'
   preload, or the stats pages, `React.lazy`'s `src/stats/StatsApp` in `Suspense`, with neither.
   The stats are a chunk of their own: nothing outside `src/stats/` imports from it but that
   `import()`, and nothing in it imports `App`, the game, lobby or login pages or `SoundManager`
-  (leaf modules such as `src/constants` are fine), so the game's first download holds none of it
+  (leaf modules such as `src/constants` and `src/header/SiteHeader` are fine), so the game's first
+  download holds none of it
   (`npm run first-download` gives its gzipped size). `src/stats/` (issue #31; the interfaces file
   names who fills what): `record.ts` (the record's types, format 1, with `ROLES`, `SIDES` and
   `OUTCOMES` the lists their unions come from, `STATS_GAMES_PATH`,
@@ -334,7 +340,7 @@ keeps credit to upstream and to the board game's creators.
   coloured by role through `stats-liberal`, `stats-fascist` and `stats-hitler`, underlined, which
   any stats page may use for a side's word through `roleClass`, and `data-player`: since Phase 22A
   a player's name is a `StatsLink`, `a.player-name.player-link`, to their page at `playerHref(n,
-  location)`, `/stats/players/<n>` with the address's stats filter (`filterSearch(parseFilter(…))`)
+  location)`, `/players/<n>` with the address's stats filter (`filterSearch(parseFilter(…))`)
   from a tab, PLAYERS or a player page and none from GAMES or a game page, whose address holds
   GAMES' own; a CPU seat's name, and one with `link={false}` (a name inside a sentence or a
   headline: OVERVIEW's At a glance, RIVALS' headlines, ACTIVITY's fastest voter and slowest
@@ -347,7 +353,8 @@ keeps credit to upstream and to the board game's creators.
   which Phase 16 leaves as links) stays inline. No name is ever inside another link,
   a button or a label; `nameLinks.test.tsx` checks that across every page, and that headlines
   stay plain), `routes.ts` (`TabId`, `TAB_IDS`, `StatsRoute`,
-  `PageProps`, `parseRoute`, `routePath`, `navigate`, which pushes one history entry, none for the
+  `PageProps`, `parseRoute`, `routePath`: the tabs under `/stats`, GAMES at `/games` and a game at
+  `/games/<id>`, PLAYERS at `/players` and a player at `/players/<n>`, since Phase 23; `navigate`, which pushes one history entry, none for the
   address the page is at, and scrolls to the top only for a new path, and `useLocation`, which
   follows `navigate` and the back and forward buttons; no router library), `StatsLink` (the one
   in-page link: an `<a href>` whose plain click navigates in place, while a modified or middle
@@ -358,10 +365,10 @@ keeps credit to upstream and to the board game's creators.
   `resetStatsDataForTests`), `StatsApp` (the header and `main.stats-main`: `Loading the games…`
   while they come, `STATS_LOAD_ERROR` if they cannot, else the route's page, or for an address that
   names nothing "This page was not found." with Go to the stats, at once; `document.title` is
-  `<Page> · Secret Hitler Online`; no later phase edits it), `StatsHeader` (SECRET-HITLER, then a
-  `nav` "Stats pages" of STATS, GAMES and PLAYERS, `StatsLink`s, and PLAY, a full load of `/`, the
-  current one `aria-current="page"` and underlined, each a 44px target at every size; one row on
-  desktop, the title over a row of four equal columns in the phone-only query) and `StatsApp.css`
+  `<Page> · Secret Hitler Online`; no later phase edits it), `StatsHeader` (the site header,
+  `src/header/SiteHeader`, which the login page shares, with STATS, GAMES and PLAYERS as
+  `StatsLink`s and the route's place marked: a tab under STATS, a game under GAMES, a player under
+  PLAYERS, nothing on a page that was not found) and `StatsApp.css`
   (`.stats-screen`, left-aligned, `.stats-main`, at most 1100px wide, `.stats-card` and
   `.stats-card-title`, the game's card look, and `.stats-link`, a 44px target in the stacked
   query); PLAYERS and a player's page are `players/` (Phase 22B, below). App.css still styles
@@ -449,7 +456,7 @@ keeps credit to upstream and to the board game's creators.
   `FilterBar` (a chip per player by name, `aria-pressed`, and the switch "Include games with
   Bots", the user's word for games with CPU players, in the lobby's grey, `greyButtons.css`'s
   `.stats-grey`, which the tabs share; controlled, so the address is the filter's only copy; in
-  the phone-only query one line, "Players: 7 of 8 · CPU off", that opens the panel;
+  the phone-only query one line, "Players: 7 of 8 · Bots off", that opens the panel;
   `showPlayers={false}` shows the switch alone), `TabRow` (a `nav` "Stats sections" of seven
   `StatsLink`s in the button
   look carrying the filter, the current one orange and `aria-current="page"`, which the row (never
@@ -625,8 +632,8 @@ keeps credit to upstream and to the board game's creators.
   counts. A power's two sides can differ with CPU seats in, so the lines say whom: "None of these
   players has investigated anyone yet." (INVESTIGATIONS) and "has been investigated" (TIMES
   INVESTIGATED), "has executed anyone" (EXECUTIONS, EXECUTION TARGETS) and "has been executed"
-  (TIMES EXECUTED, FIRST TO GO). INVESTIGATIONS names whom ("4 (3 F, 1 L) · Di 2, Bo 1, CPU 1": most times first, then by
-  name, CPU seats last); its card spans the grid's row, and `VotesTab.css` lets its value wrap in
+  (TIMES EXECUTED, FIRST TO GO). INVESTIGATIONS names whom ("4 (3 F, 1 L) · Di 2, Bo 1, Bots ×1": most times first, then by
+  name, the Bots last, their "×" so the count never reads as a seat's name, "Bot 1"); its card spans the grid's row, and `VotesTab.css` lets its value wrap in
   65% of the table (`.votes-investigations`), the one place it styles a `RankedTable`.
   `votesTestRounds.ts` holds the tests' builders (`term`, `gameOf`, `investigate`, `execute`,
   `eventsOf`, `sum`).
@@ -698,7 +705,7 @@ keeps credit to upstream and to the board game's creators.
   `computePlayersList(stats)` gives PLAYERS' rows (every player with a counted game under the
   whole filter, in the power ranking's order). `players/testStats.ts` is their test data
   (`sampleData()`, seven players and eight games, `SAMPLE_NOW`, `TZ`, `played`, `term` and
-  `withRatings`), which Phase 22B's tests reuse. PLAYERS (`/stats/players`,
+  `withRatings`), which Phase 22B's tests reuse. PLAYERS (`/players`,
   `players/PlayersPage`, Phase 22B) is the CPU switch on its own (`FilterBar` with
   `showPlayers={false}`, as on a player's page: the user found a player filter unnecessary there)
   over `PlayersList`, the Players card: a row per player with a counted game under the switch,
@@ -711,13 +718,13 @@ keeps credit to upstream and to the board game's creators.
   `.ranked-unranked.is-provisional`, grey and in italics at the bottom), and `NO_GAMES` when the
   filter counts no game. In the phone-only query the Last played column gives way to a `played 2
   days ago` line under the name, so the table fits 320px without a scroll of its own. A player's
-  page (`/stats/players/<n>`, `players/PlayerPage`) is "This player was not found." and All
-  players (`/stats/players`) for a number no player has, decided before any hook
-  (`/stats/players/0` is no player's address: `parseRoute` gives the shell's not-found page);
+  page (`/players/<n>`, `players/PlayerPage`) is "This player was not found." and All
+  players (`/players`) for a number no player has, decided before any hook
+  (`/players/0` is no player's address: `parseRoute` gives the shell's not-found page);
   otherwise the CPU switch on its own (`FilterBar` with `showPlayers={false}`: a `players` list
   in the address is kept for the links out, and ignored) over `PlayerView`, which draws
   `computePlayer`'s numbers (memoized, with `now` from the page's mount): a header card with the
-  name (an `h1`, not a link), the line `6 games since 2 Oct · +1 with CPU players, not counted ·
+  name (an `h1`, not a link), the line `6 games since 2 Oct · +1 with Bots, not counted ·
   last played 2 days ago` (`No counted games` with none; the CPU part only while the switch is
   off and some CPU game was left out) and the trophies (`TrophyBadge`s in a `ul` "Trophies"), then
   nine `StatCard`s in a grid of `repeat(auto-fill, minmax(min(100%, 18em), 1fr))` (three columns
@@ -730,7 +737,7 @@ keeps credit to upstream and to the board game's creators.
   teammate, nemesis and favourite opponent, each a name link and its count), Timing
   (`formatAverageTime`) and Latest games (their 5 newest records of any kind: the day it started,
   `LatestGame.startedAt`, as GAMES dates it, linking the game, their role in its colour
-  (`game/text`'s `RoleWord`), won, lost or unfinished, the ending and GAMES' CPU tag; then `All
+  (`game/text`'s `RoleWord`), won, lost or unfinished, the ending and GAMES' Bots tag; then `All
   N games ›` to GAMES filtered to them by `gamesFilterSearch`, the `›` after a no-break space
   and hidden from screen readers). A value that is not there is `tabs/cellText`'s `NO_VALUE` (`—`),
   and a rate below its minimum shows it and its count. With no counted games every card but
@@ -740,7 +747,7 @@ keeps credit to upstream and to the board game's creators.
   (signed points: `+7%`, `−3%`, `0%`), `formatShortDate` (`2 Oct`, with the year when it is not
   `now`'s, its month as `format.ts` writes it, `Sep` and not en-GB's `Sept`) and
   `formatLastPlayed`, each date in the zone it is passed, the viewer's by default.
-  GAMES (`/stats/games`, `src/stats/games/`) lists
+  GAMES (`/games`, `src/stats/games/`) lists
   every recorded game, newest first, under a filter of its own kept in the address:
   `gamesFilter.ts` (`GamesFilter`, `NO_GAMES_FILTER`, `PER_PAGE`, `ENDING_PARAM`,
   `parseGamesFilter`, `gamesFilterSearch`, `isFiltered` and `filterGames`: `players`, numbers in
@@ -751,7 +758,7 @@ keeps credit to upstream and to the board game's creators.
   reading as the default; newest first is by `endedAt`, then `id`), `pages.ts` (`pageCount`,
   `pageLinks`, the first and last pages and the current one's neighbours with `null` for a gap,
   and `gamesSummary`, "142 games recorded · 37 match · showing 21–37"), `GameRow` (an
-  `li.games-row`: the date and the result, its winners' word in their colour and a `CPU` tag, are
+  `li.games-row`: the date and the result, its winners' word in their colour and a `Bots` tag, are
   its one link, `a.games-row-link`, named for the date, the result and, with CPU players, `· with
   Bots`, whose `::after` covers the row; the time and length, the seats
   as `PlayerName`s (links of their own since Phase 22A, which `.games-row-seats a` lets take a
@@ -760,7 +767,7 @@ keeps credit to upstream and to the board game's creators.
   phones) and `GamesPage` (the filter card: Players with a grey chip per chosen player, `Remove
   <name>`, and Add a player; From and To, whose typed day reaches the address once it is a whole
   day, its year from 1000, and typing has paused, or on Enter or leaving the field, so a day typed
-  part by part is one step back; Seats, Ending and Bots (With or without CPU, Without Bots, With
+  part by part is one step back; Seats, Ending and Bots (With or without Bots, Without Bots, With
   Bots); Clear filters, which keeps the page
   size; then the summary line with Games a page, the
   rows, an `ol` with `role="list"`, or "No games match these filters.", and the `Pages` nav, whose
@@ -768,8 +775,9 @@ keeps credit to upstream and to the board game's creators.
   a page past the last shows the last, every control but a page link goes back to page 1, and a
   new page of the same filter scrolls the summary into view). `GamesPage.css` lays the controls in
   two columns in the phone-only query (From and To one each below 360px wide) and makes every
-  control a 44px target with 16px text in the stacked query. The links in: the login page's and
-  the lobby's footers have Stats, and the victory screen, under its message, has "See this game"
+  control a 44px target with 16px text in the stacked query. The links in: the login page's header
+  (the stats pages' own, `SiteHeader`) has STATS, GAMES and PLAYERS, and the victory screen, under
+  its message, has "See this game"
   (`p.victory-game` in `App.tsx`, an `OutLink` to `statsGamePath(gameId)`, a 44px target whose
   margins take back all but its line's height, as Sign out's do); a packet with no `gameId`, from a
   server that does not record games, gets no link.
@@ -781,11 +789,21 @@ keeps credit to upstream and to the board game's creators.
   `testSignIn`, which signs in as a new random test account) and `discordSignInHref`, the link to
   `/auth/discord` with `?lobby=CODE` for a whole code. The page keeps no name of its own: the `name`
   cookie is gone (`lobby` and `spectator` stay), and neither `/check-login` nor `/game` is sent one.
-  The login page is `src/login/LoginScreen` (markup and `LoginScreen.css`): the header, then three
-  cards in the lobby's look, the account card (`AccountCard`), JOIN A GAME (the lobby code, JOIN and
-  WATCH, a hint and its error line) and OR START ONE (CREATE LOBBY and its error line), then a
-  footer with How to play (the official rules), Stats (`/stats`, in the same tab), About this
-  project, Report a bug and the credit line the licence asks for. The account card is blank, at
+  The login page is `src/login/LoginScreen` (markup and `LoginScreen.css`): the site header, then
+  three cards in the lobby's look, the account card (`AccountCard`), JOIN A GAME (the lobby code,
+  JOIN and WATCH, a hint and its error line) and OR START ONE (CREATE LOBBY and its error line),
+  then a footer with How to play (the official rules), About this project, Report a bug and the
+  credit line the licence asks for. The site header (`src/header/SiteHeader`, Phase 23, with
+  `SiteHeader.css`, and `testClicks.ts`'s `heldBack` for its tests) is the stats pages' too:
+  SECRET-HITLER, then a `nav` "Site" of PLAY, STATS, GAMES and PLAYERS (PLAY first, as the user
+  asked), each a 44px target at every size, the current one `aria-current="page"`
+  and underlined; one row on desktop and in tall windows, the title over a row of four equal
+  columns in the phone-only query. It takes `current`, a `SitePlace` (`stats`, `games`, `players`,
+  `play`) or null, and `link`, which draws STATS, GAMES and PLAYERS: a plain `<a>` by default, a
+  full load, so on the login page they open the stats in the same tab, and `StatsLink` on the
+  stats pages. PLAY is always a plain link to `/`, and the login page marks it. The login page has
+  no sound control: sounds are the lobby's and the game's (it still listens for the first gesture
+  and preloads the clips, so the lobby's first sound plays). The account card is blank, at
   the signed-in card's height, until `/me`
   answers (and says `CONTACT_ERROR` if it fails); signed out it is YOUR ACCOUNT, with SIGN IN WITH
   DISCORD (a `.button-link` to `discordSignInHref` of the code field, in the same tab), "Sign in to
@@ -818,12 +836,12 @@ keeps credit to upstream and to the board game's creators.
   four letters at most). In `App`, `loginForm` fills or empties the code field and the error lines
   together. The footer links are in `src/constants`:
   `RULES_URL`, and `ABOUT_URL` and `ISSUES_URL`, which the lobby's footer shares, each an `OutLink`
-  (`src/util/`, a new tab), and `STATS_PATH` (`/stats`), a plain link here and an `OutLink` in the
-  lobby. `src/constants` also has `statsGamePath(id)` (`/stats/games/<id>`, the victory screen's
-  link): the game's pages write the stats' paths out there rather than import `src/stats/routes.ts`,
-  and `statsPaths.test.ts` checks they are the stats' own routes. `GameScreen.css` lists
-  `.login-screen` beside the lobby and the game
-  for the page and its header, and `LobbyScreen.css` lists the login page's selectors beside the
+  (`src/util/`, a new tab). `src/constants` also has the site header's `STATS_PATH` (`/stats`),
+  `STATS_GAME_LIST_PATH` (`/games`) and `STATS_PLAYER_LIST_PATH` (`/players`), and
+  `statsGamePath(id)` (`/games/<id>`, the victory screen's link): the game's pages write the
+  stats' paths out there rather than import `src/stats/routes.ts`, and `statsPaths.test.ts` checks
+  they are the stats' own routes. `GameScreen.css` lists `.login-screen` beside the lobby and the
+  game for the page (its header is `SiteHeader.css`'s), and `LobbyScreen.css` lists the login page's selectors beside the
   lobby's for the cards' look, the fields' focus, the centred column, the grey buttons and the
   footer; `LoginScreen.css` holds the rest. The cards are a column centred both ways on desktop and
   in tall windows, and start at the top on phones (`LoginScreen.css` writes out the phone-only
@@ -871,7 +889,8 @@ keeps credit to upstream and to the board game's creators.
   The lobby is `src/lobby/`, built like the game page and on the same three layouts: `LobbyScreen`
   (markup and `LobbyScreen.css`: the header, the roster column, then a code card with the invite
   link and COPY, a status card kept two lines tall, the buttons by viewer, the note, and a footer
-  with Stats, About this project and Report a bug, each in a new tab, so the lobby stays open),
+  with About this project and Report a bug, each in a new tab, so the lobby stays open; the lobby
+  keeps its own header, `App-header`, with the spectator count and the speaker),
   `LobbyRoster` (a `RosterRow` per player, `Picking a look…`
   for a player on the default portrait, HOST on the host's row), `lobbyStatus` (a pure function from
   the usernames, portraits and viewer to the status line; it names who START GAME waits for and says
@@ -969,9 +988,9 @@ keeps credit to upstream and to the board game's creators.
   waits for; `App` puts each sound into its animation queue just before that animation; and
   `lobbySounds`, `playerJoined` for a name the last lobby packet did not have, but none for a
   rename, a list of the same length with one place changed) and
-  `SoundControl` (the speaker button and volume slider in all three headers, above the prompt
-  overlay, with Lucide icons from `lucide-react`). The clips are in `src/assets/sounds/`, an Ogg
-  Opus and an MP3 per sound, each credited in `docs/SOUND-CREDITS.md`. Spectators are in
+  `SoundControl` (the speaker button and volume slider in the lobby's and the game's headers, above
+  the prompt overlay, with Lucide icons from `lucide-react`; the login page's site header has none).
+  The clips are in `src/assets/sounds/`, an Ogg Opus and an MP3 per sound, each credited in `docs/SOUND-CREDITS.md`. Spectators are in
   `src/spectator/`: `spectatorStatus` (the status lines a spectator gets in place of prompts, naming
   the players) and `SpectatorCount` (Lucide's eye and the number, at the left of the lobby and game
   headers). A spectator's name is `""`, and the `spectator` cookie takes a reload straight back to
@@ -988,8 +1007,8 @@ keeps credit to upstream and to the board game's creators.
   scrolling, in order, with 44px targets, for players and a spectator; at 320x568 it keeps the
   phone layout and only scrolls down, for both, and `phone-360` also checks the login page and the
   lobby there; the login page fits without scrolling in each of `LOGIN_STATES`, with 44px targets
-  (SIGN IN WITH DISCORD, TEST SIGN-IN, CHANGE NAME and Sign out among them), 16px field text and
-  unwrapped button labels; the lobby tests (the lobby fits without scrolling for each of
+  (SIGN IN WITH DISCORD, TEST SIGN-IN, CHANGE NAME and Sign out among them, and the header's links,
+  `smallLinks` in `e2e/layout.ts`), 16px field text and unwrapped button labels; the lobby tests (the lobby fits without scrolling for each of
   `longestLineViewers`' six viewers, each with its note, with 44px targets and 16px field text,
   the roster first, the busy bubble at 320px, and `checkNamePrompt` for CHOOSE A NAME on the login
   page and over the lobby, after which PLAY INSTEAD takes a seat at once, and for CHANGE NAME on the
@@ -997,8 +1016,9 @@ keeps credit to upstream and to the board game's creators.
   row and twelve characters at most); and a phone held sideways gets the phone layout).
   `no-scroll.spec.ts` also has a lobby test, for the same six viewers, each one's buttons checked
   by label (`actionLabels`), a spectator's note by its text, and the buttons 44px targets at every
-  size, and a login page test per state (the cards and the footer in order, 44px targets and 16px
-  field text, and Sign out's box clear of CHANGE NAME's, `accountTargets`), both at
+  size, and a login page test per state (the header, the cards and the footer in order, 44px
+  targets, the header's links among them, and 16px field text, and Sign out's box clear of CHANGE
+  NAME's, `accountTargets`), both at
   `DESKTOP_SIZES`, `SQUARE_DESKTOPS` and the `NARROW_WINDOWS`. The viewers are the host and a guest
   (the four player buttons), a signed-in spectator (PLAY INSTEAD, off in the full lobby) and two
   signed-out ones, on a server with Discord sign-in and one without (`/me` stubbed), all in the
@@ -1009,10 +1029,10 @@ keeps credit to upstream and to the board game's creators.
   (`e2e/lobby.ts`): each state at its fullest from stubbed requests, the longest error under every
   card and, signed in, a twelve-character name and `LONGEST_DISCORD_NAME` (32 m's, Discord's
   widest; "signed in, short Discord name" puts Sign out on the line just under CHANGE NAME). The
-  thinnest fits are the signed-in login page at 800x700, about 6px to spare, and on phones at
-  360x740 on Linux, where the widest Discord username takes three lines and the footer's links
-  two, about 10px, from the phone page's 8px bottom padding (`LoginScreen.css`): an added line
-  fails there first. `lobby-switch.spec.ts` (`desktop`
+  thinnest fits are the signed-in login page at 800x700, about 9px to spare, and on phones at
+  360x740, where the site header takes about 77px and the widest Discord username three lines,
+  about 15px, from the phone page's 8px bottom padding (`LoginScreen.css`; the same in the Linux
+  image): an added line fails there first. `lobby-switch.spec.ts` (`desktop`
   and `phone-360`) plays the seat switch in a real lobby: watching instead and playing instead, a
   full lobby, a taken name (a first sign-in from watching gets CHOOSE A NAME over the lobby, which
   refuses the host's name), the host passing on, reloads, the grace window, and a game started
@@ -1048,7 +1068,8 @@ keeps credit to upstream and to the board game's creators.
   but a colour) as the game page appears (END TERM, the president's countdown chip and the
   header's speaker did in Firefox). `sounds.spec.ts` runs in every
   project: no sound and no `AudioContext` before the first trusted gesture, each sound in step with
-  its animation, and the header control's fit, touch targets, keyboard use and saved settings.
+  its animation, and the header control's fit, touch targets, keyboard use and saved settings, in
+  the lobby and the game (the login page has none).
   `spectator.spec.ts` plays a scripted game to a spectator (no prompt before the victory screen, the
   status lines, the sounds), plays a real game whose spectator frames it scans for secrets
   (`e2e/driveGame.ts` seats raw-socket players; `e2e/secrets.ts` mirrors the backend's list), and
@@ -1107,8 +1128,9 @@ keeps credit to upstream and to the board game's creators.
   text). `stats-shell.spec.ts` checks `bigStatsData` and the page check itself, every shell page at
   every size (the loading and error lines too), a twelve-character name of wide letters inside its
   line at 320px, that the game's first download holds no stats code and fetches the clips while the
-  stats fetch their chunk and no clip, the header moving in place, and back, forward, reload and a
-  deep link. `stats-game.spec.ts` checks the game page at every size against `bigStatsData()` (its
+  stats fetch their chunk and no clip, the header moving in place, the login page's header
+  matching the stats' at every size (its box, the title's and each link's, PLAY marked, no
+  speaker), and back, forward, reload and a deep link. `stats-game.spec.ts` checks the game page at every size against `bigStatsData()` (its
   largest game, ten twelve-character names voting, its first incomplete and first unfinished
   games, and an unknown ID; at every size each line and name inside its card's padding, and on
   phones each round's block at least the window's width less 32px), a round's 6px edge in its
@@ -1124,8 +1146,9 @@ keeps credit to upstream and to the board game's creators.
   is outlined. `stats-overview.spec.ts` checks OVERVIEW at every size against `bigStatsData()`
   two days after its last game (twelve-character leaders, CPU games off and on), that its numbers
   follow the chips, the CPU switch, back and a fresh load, and that a hover or a tap on the rating
-  history shows a game's change, at the right edge of a 320px phone too. `stats-games.spec.ts` follows the login page's Stats link (same tab) and the lobby's
-  (a new tab, the lobby still open) (`desktop`), finds See this game on the victory screen, a 44px
+  history shows a game's change, at the right edge of a 320px phone too. `stats-games.spec.ts` follows the login page's header to the stats (same tab), checks the
+  lobby has no stats link and that GAMES' and PLAYERS' old addresses (`/stats/games…`,
+  `/stats/players…`) move to their new ones with their query (`desktop`), finds See this game on the victory screen, a 44px
   target on phones, checks GAMES at a hundred a page and with every filter set at every size, and
   twelve-character names inside their columns and chips at 320px; on `desktop` it goes through a
   filter, a page, a game and back, forward and reload by the address, and plays a real game of
@@ -1172,14 +1195,16 @@ keeps credit to upstream and to the board game's creators.
   portrait, `joinLobby`, `pickPortrait`, `longestLineLobby`, `longestLineViewers`, `actionLabels`,
   `longestLogin`, `accountTargets`, `lobbyStatusCard`, `waitForPrompt`, `watchLobby`, and
   `codeField`, the login page's one field), `e2e/accounts.ts`, `e2e/layout.ts` (`wrappedLabels` and
-  `smallTargets`, which measure links drawn as buttons, `.button-link`, too, `smallFieldText`,
+  `smallTargets`, which measure links drawn as buttons, `.button-link`, too, `smallLinks` for plain
+  links such as the site header's, `smallFieldText`,
   `MIN_FIELD_TEXT`, and `addPngDecoder` for page functions that read screenshots) and
   `e2e/soundLog.ts`. `App.css` hides
   `overflow-x` on `html` and `body`, so horizontal overflow shows only in `body.scrollWidth`, and
   `body` scrolls vertically by itself (`pageHeight` measures both). The client talks to its own
   origin (`src/constants/serverUrls.ts`; `wss:` on `https:` pages) unless `VITE_SERVER_ADDRESS` is
   set, and the dev server proxies the backend paths (`/check-login`, `/new-lobby`, `/ping`, `/auth`,
-  `/me`, `/api` and `/game`) to `BACKEND_URL` (default `http://localhost:4040`). `VITE_*` variables
+  `/me`, `/api` and the socket, `/game` exactly: its key is `^/game(\?|$)`, as a prefix key would
+  take `/games` too, `devProxy.test.ts`) to `BACKEND_URL` (default `http://localhost:4040`). `VITE_*` variables
   live in `.env.development` (dev server only: `VITE_DEBUG`) and `.env.dev` (`--mode dev`), typed in
   `src/vite-env.d.ts`.
 - `devops/`: host scripts for the database, each self-contained bash (it works copied alone, on

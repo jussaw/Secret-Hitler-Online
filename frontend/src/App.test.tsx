@@ -167,9 +167,11 @@ test("pings the server once when it starts", () => {
   expect(fetch).toHaveBeenCalledWith(expect.stringMatching(/\/ping$/));
 });
 
-test("the login page's banner reads SECRET-HITLER", () => {
+test("the login page's banner reads SECRET-HITLER, in the stats pages' header", () => {
   const { container } = render(<App />);
-  expect(container.querySelector("header")).toHaveTextContent(/^SECRET-HITLER$/);
+  const header = container.querySelector("header.site-header");
+  expect(header?.querySelector(".site-title")).toHaveTextContent(/^SECRET-HITLER$/);
+  expect(header?.querySelector('[aria-current="page"]')).toHaveTextContent(/^PLAY$/);
 });
 
 test("the lobby marks only the first player as HOST", async () => {
@@ -793,7 +795,7 @@ async function watchToVictory(extra: object) {
 test("the victory screen links to its game in a new tab", async () => {
   await watchToVictory({ gameId: "g-1" });
   const link = alertBox().getByRole("link", { name: "See this game" });
-  expect(link).toHaveAttribute("href", "/stats/games/g-1");
+  expect(link).toHaveAttribute("href", "/games/g-1");
   expect(link).toHaveAttribute("target", "_blank");
   expect(link).toHaveAttribute("rel", "noopener noreferrer");
   expect(link.closest("p.victory-game")).not.toBeNull();

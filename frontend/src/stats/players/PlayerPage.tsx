@@ -108,7 +108,7 @@ function summary(player: PlayerStats, cpu: boolean, now: number, timeZone?: stri
   } else {
     parts.push("No counted games");
   }
-  if (!cpu && player.cpuNotCounted > 0) parts.push(`+${player.cpuNotCounted} with CPU players, not counted`);
+  if (!cpu && player.cpuNotCounted > 0) parts.push(`+${player.cpuNotCounted} with Bots, not counted`);
   if (player.games > 0 && player.lastPlayed !== null) parts.push(`last played ${formatLastPlayed(player.lastPlayed, now, timeZone)}`);
   return parts.join(" · ");
 }
@@ -403,7 +403,7 @@ function LatestGamesCard(props: { player: PlayerStats; now: number; timeZone?: s
                 {game.cpu && (
                   <>
                     {" "}
-                    <span className="games-row-cpu">CPU</span>
+                    <span className="games-row-cpu">Bots</span>
                   </>
                 )}
               </td>
@@ -468,7 +468,7 @@ function KnownPlayer({ number }: { number: number }): JSX.Element {
 }
 
 /**
- * One player's page (`/stats/players/<number>`), or a short not-found page for a number no player
+ * One player's page (`/players/<number>`), or a short not-found page for a number no player
  * has, with a way back to PLAYERS.
  */
 export default function PlayerPage({ data, route }: PageProps): JSX.Element {

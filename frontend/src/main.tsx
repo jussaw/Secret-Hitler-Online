@@ -3,13 +3,16 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App";
 import { sounds } from "./sound/SoundManager";
-import { isStatsPath } from "./statsPath";
+import { followMovedStatsPath, isStatsPath } from "./statsPath";
 
 // The stats pages are a chunk of their own, fetched only on a stats path, so the game's first
 // download holds none of them.
 const StatsApp = React.lazy(() => import("./stats/StatsApp"));
 
 const root = createRoot(document.getElementById("root")!);
+
+// GAMES' and PLAYERS' old addresses (/stats/games…, /stats/players…) still reach their pages.
+followMovedStatsPath();
 
 if (isStatsPath(window.location.pathname)) {
   // The stats play no sound: no gesture listener, no clips.

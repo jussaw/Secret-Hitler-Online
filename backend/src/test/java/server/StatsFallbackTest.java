@@ -13,9 +13,10 @@ import org.junit.After;
 import org.junit.Test;
 
 /**
- * Every path under {@code /stats} answers with the page, so a reload or a deep link of a stats
- * address works: Javalin's single-page fallback, served from the test classpath's
- * {@code /spa-test} in place of the built frontend's {@code /public}.
+ * Every path of the stats pages ({@code /stats}, {@code /games} and {@code /players}, each a
+ * whole path segment) answers with the page, so a reload or a deep link of a stats address works:
+ * Javalin's single-page fallback, served from the test classpath's {@code /spa-test} in place of
+ * the built frontend's {@code /public}. The players' socket, {@code /game}, is never one of them.
  */
 public class StatsFallbackTest {
     private Javalin app;
@@ -37,8 +38,10 @@ public class StatsFallbackTest {
     @Test
     public void everyStatsPathAnswersThePage() throws Exception {
         app = SecretHitlerServer.createApp("/spa-test").start(0);
-        for (String path : List.of("/stats", "/stats/", "/stats/games",
-                "/stats/games/7d0c6a3e-2f1b-4c55-9a7e-3b1d2c4e5f60", "/stats/players/3", "/stats/roles")) {
+        for (String path : List.of("/stats", "/stats/", "/stats/roles", "/games", "/games/",
+                "/games/7d0c6a3e-2f1b-4c55-9a7e-3b1d2c4e5f60", "/players", "/players/3",
+                // Addresses from before GAMES and PLAYERS left /stats: the page sends them on.
+                "/stats/games", "/stats/games/7d0c6a3e-2f1b-4c55-9a7e-3b1d2c4e5f60", "/stats/players/3")) {
             HttpResponse<String> response = get(path);
             assertEquals(path + "'s status", 200, response.statusCode());
             String type = response.headers().firstValue("Content-Type").orElse("");
@@ -58,8 +61,22 @@ public class StatsFallbackTest {
     @Test
     public void otherPathsStay404() throws Exception {
         app = SecretHitlerServer.createApp("/spa-test").start(0);
-        assertEquals(404, get("/nope").statusCode());
-        assertEquals(404, get("/game-over").statusCode());
+        // Only whole segments are the stats pages' paths.
+        for (String path : List.of("/nope", "/game-over", "/gamesx", "/games-2", "/playersx", "/player",
+                "/statsx", "/x/games")) {
+            assertEquals(path + "'s status", 404, get(path).statusCode());
+        }
+    }
+
+    @Test
+    public void theGameSocketIsNotAPage() throws Exception {
+        app = SecretHitlerServer.createApp("/spa-test").start(0);
+        HttpResponse<String> response = get("/game");
+        assertEquals("/game's status", 404, response.statusCode());
+        assertTrue("/game's body: " + response.body(), !response.body().contains("spa-test"));
+        // The socket still upgrades: with no session it is opened and then refused, never a page.
+        TestSocket socket = TestSocket.connect(app.port(), "lobby=ABCD");
+        assertEquals(1002, socket.awaitClose().code);
     }
 
     @Test

@@ -16,28 +16,32 @@ const data = bigStatsData();
 const desktopOnly = () => test.skip(test.info().project.name !== "desktop", "one browser is enough");
 
 test.describe("the links in", () => {
-  test("the login page's Stats link opens the stats in the same tab", async ({ page }) => {
+  test("the login page's header opens the stats in the same tab", async ({ page }) => {
     desktopOnly();
     await stubMe(page, signedOutMe({ discord: true }));
     await stubStats(page, data);
     await page.goto("/");
-    const stats = page.getByRole("contentinfo").getByRole("link", { name: "Stats", exact: true });
+    const nav = page.getByRole("navigation", { name: "Site" });
+    await expect(nav.getByRole("link", { name: "PLAY", exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("contentinfo").getByRole("link", { name: "Stats" })).toHaveCount(0);
+    const stats = nav.getByRole("link", { name: "STATS", exact: true });
     await expect(stats).not.toHaveAttribute("target");
     await stats.click();
     await expect(page).toHaveURL(routePath({ page: "tab", tab: "overview" }));
-    const nav = page.getByRole("navigation", { name: "Stats pages" });
     await expect(nav.getByRole("link", { name: "STATS", exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("link", { name: "OVERVIEW" })).toBeVisible();
   });
 
-  test("the lobby's Stats link opens the stats in a new tab", async ({ page }) => {
+  test("the lobby links to the stats only from the victory screen", async ({ page }) => {
     desktopOnly();
     await openFakeGame(page);
-    const popup = page.waitForEvent("popup");
-    await page.locator(".lobby-footer").getByRole("link", { name: "Stats", exact: true }).click();
-    const stats = await popup;
-    await expect(stats).toHaveURL(routePath({ page: "tab", tab: "overview" }));
-    await expect(page.getByRole("button", { name: "LEAVE LOBBY" })).toBeVisible();
-    await expect(page).toHaveURL("/");
+    // The lobby keeps its own header (the title and the speaker), with no stats links.
+    const header = page.locator(".lobby-screen > header");
+    await expect(header).toHaveText(/^SECRET-HITLER/);
+    await expect(header.locator(".sound-control")).toHaveCount(1);
+    await expect(page.getByRole("navigation", { name: "Site" })).toHaveCount(0);
+    await expect(page.locator(".lobby-footer")).toHaveText("About this project · Report a bug");
+    await expect(page.getByRole("link", { name: /stats/i })).toHaveCount(0);
   });
 
   test("See this game sits on the victory screen", async ({ page, isMobile }) => {
@@ -58,6 +62,29 @@ test.describe("the links in", () => {
   });
 });
 
+test("GAMES' and PLAYERS' old addresses move to their new ones", async ({ page }) => {
+  desktopOnly();
+  await stubStats(page, data);
+  const newest = data.games[data.games.length - 1];
+  const nav = page.getByRole("navigation", { name: "Site" });
+  const current = nav.locator('[aria-current="page"]');
+  // Links to these are out there, from victory screens and shared addresses.
+  for (const [from, to, mark] of [
+    ["/stats/games?players=1&per=50", "/games?players=1&per=50", "GAMES"],
+    [`/stats/games/${encodeURIComponent(newest.id)}`, routePath({ page: "game", id: newest.id }), "GAMES"],
+    ["/stats/players", "/players", "PLAYERS"],
+    ["/stats/players/1?cpu=1", "/players/1?cpu=1", "PLAYERS"],
+  ]) {
+    await page.goto(from);
+    await expect(page, from).toHaveURL(to);
+    await expect(current, from).toHaveText(mark);
+  }
+  // The tabs stay under /stats.
+  await page.goto("/stats/roles");
+  await expect(page).toHaveURL("/stats/roles");
+  await expect(current).toHaveText("STATS");
+});
+
 /** Opens `path` with the big response stubbed, waits for the summary line, and settles the page. */
 async function openGames(page: Page, path: string): Promise<void> {
   await stubStats(page, data);
@@ -72,8 +99,8 @@ const rowIds = (page: Page) =>
 
 test.describe("GAMES fits every size", () => {
   for (const [name, path] of [
-    ["a hundred to a page", "/stats/games?per=100"],
-    ["with every filter set", "/stats/games?players=1,2,3&from=2025-10-01&to=2026-12-31&cpu=with"],
+    ["a hundred to a page", "/games?per=100"],
+    ["with every filter set", "/games?players=1,2,3&from=2025-10-01&to=2026-12-31&cpu=with"],
   ]) {
     test(`GAMES, ${name}, fits every size`, async ({ page }) => {
       test.slow();
@@ -93,7 +120,7 @@ test.describe("GAMES fits every size", () => {
 test("twelve-character names stay inside their columns at 320px", async ({ page }) => {
   test.slow();
   await page.setViewportSize(NARROW_PHONE);
-  await openGames(page, "/stats/games?per=100&players=1,2");
+  await openGames(page, "/games?per=100&players=1,2");
   const { rows, chips } = await page.evaluate(() => {
     const box = (el: Element) => {
       const r = el.getBoundingClientRect();
@@ -131,17 +158,17 @@ test("filters and pages through the address", async ({ page }) => {
   desktopOnly();
   const seats = page.getByRole("combobox", { name: "Seats" });
   const next = page.getByRole("navigation", { name: "Pages" }).getByRole("link", { name: "Next ›" });
-  await openGames(page, "/stats/games");
+  await openGames(page, "/games");
 
   await seats.selectOption({ label: "7 seats" });
-  await expect(page).toHaveURL("/stats/games?size=7");
+  await expect(page).toHaveURL("/games?size=7");
   const sevenSeats = data.games.filter((g) => g.seats.length === 7).length;
   await expect(page.locator(".games-summary")).toHaveText(`400 games recorded · ${sevenSeats} match · showing 1–20`);
 
   // A new page brings the summary, and the list under it, back into view.
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   await next.click();
-  await expect(page).toHaveURL("/stats/games?size=7&page=2");
+  await expect(page).toHaveURL("/games?size=7&page=2");
   await expect(page.locator(".games-summary")).toBeInViewport();
   const secondPage = await rowIds(page);
   expect(secondPage.length).toBe(20);
@@ -152,18 +179,18 @@ test("filters and pages through the address", async ({ page }) => {
   await expect(page).toHaveURL(routePath({ page: "game", id: secondPage[0] }));
 
   await page.goBack();
-  await expect(page).toHaveURL("/stats/games?size=7&page=2");
+  await expect(page).toHaveURL("/games?size=7&page=2");
   await expect.poll(() => rowIds(page)).toEqual(secondPage);
   await page.goBack();
-  await expect(page).toHaveURL("/stats/games?size=7");
+  await expect(page).toHaveURL("/games?size=7");
   await page.goBack();
-  await expect(page).toHaveURL("/stats/games");
+  await expect(page).toHaveURL("/games");
   await expect(seats).toHaveValue("");
   await expect(seats.locator("option:checked")).toHaveText("Any size");
   await page.goForward();
-  await expect(page).toHaveURL("/stats/games?size=7");
+  await expect(page).toHaveURL("/games?size=7");
   await page.reload();
-  await expect(page).toHaveURL("/stats/games?size=7");
+  await expect(page).toHaveURL("/games?size=7");
   await expect(seats.locator("option:checked")).toHaveText("7 seats");
 
   // A filter change keeps the scroll position.
@@ -171,12 +198,12 @@ test("filters and pages through the address", async ({ page }) => {
   const scrolled = await page.evaluate(() => window.scrollY);
   expect(scrolled).toBeGreaterThan(0);
   await page.getByRole("combobox", { name: "Add a player" }).selectOption({ label: "WWWWWWWWWW01" });
-  await expect(page).toHaveURL("/stats/games?players=1&size=7");
+  await expect(page).toHaveURL("/games?players=1&size=7");
   await expect(page.getByRole("button", { name: "Remove WWWWWWWWWW01" })).toBeVisible();
   expect(await page.evaluate(() => window.scrollY)).toBe(scrolled);
 
   await page.getByRole("link", { name: "Clear filters" }).click();
-  await expect(page).toHaveURL("/stats/games");
+  await expect(page).toHaveURL("/games");
   await expect(page.getByRole("button", { name: /^Remove / })).toHaveCount(0);
 });
 
@@ -225,13 +252,13 @@ test("a real game shows up in GAMES, and its victory screen opens its page", asy
   }).toPass({ timeout: 30_000 });
 
   const games = await page.context().newPage();
-  await games.goto("/stats/games");
+  await games.goto("/games");
   const add = games.getByRole("combobox", { name: "Add a player" });
   await expect(async () => {
     await games.reload();
     await expect(add.locator("option", { hasText: firstSeat })).toHaveCount(1, { timeout: 2_000 });
   }).toPass({ timeout: 30_000 });
   await add.selectOption({ label: firstSeat });
-  await expect(games).toHaveURL(/\/stats\/games\?players=\d+$/);
+  await expect(games).toHaveURL(/\/games\?players=\d+$/);
   await expect(games.locator(`.games-row-link[href="${routePath({ page: "game", id: id! })}"]`)).toBeVisible();
 });

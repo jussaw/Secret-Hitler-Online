@@ -56,7 +56,7 @@ describe("PlayersList", () => {
 
   it("namesLinkToTheirPages", () => {
     renderList(withSampleRatings());
-    expect(within(card()).getByRole("link", { name: "Ann" })).toHaveAttribute("href", "/stats/players/1");
+    expect(within(card()).getByRole("link", { name: "Ann" })).toHaveAttribute("href", "/players/1");
   });
 
   it("theCpuSwitchCountsCpuGames", () => {
@@ -92,19 +92,19 @@ describe("PlayersPage", () => {
   const playerChooser = () => [screen.queryByRole("group", { name: "Players" }), screen.queryByRole("button", { name: /^Players:/ })];
 
   it("theCpuSwitchAloneMovesTheAddress", async () => {
-    history.replaceState(null, "", "/stats/players");
+    history.replaceState(null, "", "/players");
     render(<StatsApp />);
     const players = await screen.findByRole("region", { name: "Players" });
     expect(within(players).queryByRole("link", { name: "Gus" })).toBeNull();
     expect(playerChooser()).toEqual([null, null]);
     fireEvent.click(screen.getByRole("switch", { name: "Include games with Bots" }));
-    expect(location.pathname).toBe("/stats/players");
+    expect(location.pathname).toBe("/players");
     expect(location.search).toBe("?cpu=1");
     expect(within(screen.getByRole("region", { name: "Players" })).getByRole("link", { name: "Gus" })).toBeInTheDocument();
   });
 
   it("aPlayerFilterInTheAddressStillListsEveryPlayer", async () => {
-    history.replaceState(null, "", "/stats/players?players=2,3");
+    history.replaceState(null, "", "/players?players=2,3");
     render(<StatsApp />);
     await screen.findByRole("region", { name: "Players" });
     expect(bodyRows().map((row) => within(row).getByRole("link").textContent).sort()).toEqual(["Ann", "Bo", "Cy", "Di", "Ed", "Fay"]);

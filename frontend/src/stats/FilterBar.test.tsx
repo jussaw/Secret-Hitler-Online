@@ -75,13 +75,13 @@ describe("FilterBar", () => {
   });
 
   it("thePhoneLine", () => {
-    expect(filterSummary(players, { players: new Set([1, 3]), cpu: false })).toBe("Players: 2 of 3 · CPU off");
-    expect(filterSummary(players, { players: null, cpu: true })).toBe("Players: 3 of 3 · CPU on");
+    expect(filterSummary(players, { players: new Set([1, 3]), cpu: false })).toBe("Players: 2 of 3 · Bots off");
+    expect(filterSummary(players, { players: null, cpu: true })).toBe("Players: 3 of 3 · Bots on");
   });
 
   it("unknownNumbersAreNotCounted", () => {
     // Review Focus 1: a number no player has matches no chip.
-    expect(filterSummary(players, { players: new Set([1, 99]), cpu: false })).toBe("Players: 1 of 3 · CPU off");
+    expect(filterSummary(players, { players: new Set([1, 99]), cpu: false })).toBe("Players: 1 of 3 · Bots off");
     render(<FilterBar players={players} filter={{ players: new Set([1, 99]), cpu: false }} onChange={() => undefined} />);
     expect(chips().filter((c) => c.getAttribute("aria-pressed") === "true").map((c) => c.textContent)).toEqual(["ann"]);
   });
@@ -91,13 +91,13 @@ describe("FilterBar", () => {
     const filter = { players: new Set<number>(), cpu: false };
     render(<FilterBar players={players} filter={filter} onChange={() => undefined} />);
     for (const c of chips()) expect(c).toHaveAttribute("aria-pressed", "false");
-    expect(filterSummary(players, filter)).toBe("Players: 0 of 3 · CPU off");
-    expect(screen.getByRole("button", { name: "Players: 0 of 3 · CPU off" })).toBeInTheDocument();
+    expect(filterSummary(players, filter)).toBe("Players: 0 of 3 · Bots off");
+    expect(screen.getByRole("button", { name: "Players: 0 of 3 · Bots off" })).toBeInTheDocument();
   });
 
   it("theLineOpensThePanel", () => {
     const { container } = render(<FilterBar players={players} filter={everyone} onChange={() => undefined} />);
-    const line = screen.getByRole("button", { name: "Players: 3 of 3 · CPU off" });
+    const line = screen.getByRole("button", { name: "Players: 3 of 3 · Bots off" });
     expect(line).toHaveClass("filter-summary");
     expect(line).toHaveAttribute("aria-expanded", "false");
     const panel = container.querySelector(".filter-panel")!;

@@ -430,23 +430,29 @@ and TypeScript sides of the format are checked against each other.
 
 ### The stats pages: shell and routes (Phase 15A)
 
-`main.tsx` renders the stats when the path starts with `/stats`, and the game otherwise. The stats
-load as their own chunk (`React.lazy`), with no part of `App`. The server answers every path under
-`/stats` with `index.html` (Javalin's single-page fallback); the dev server already does.
+`main.tsx` renders the stats when the path is under `/stats`, `/games` or `/players` (whole
+segments; `/games` and `/players` since Phase 23), and the game otherwise. The stats load as their
+own chunk (`React.lazy`), with no part of `App`. The server answers every path under those three
+with `index.html` (Javalin's single-page fallback, by whole segments, so never the players'
+socket, `/game`); the dev server already does.
 
 | Path | Page |
 |---|---|
 | `/stats` | OVERVIEW |
 | `/stats/roles`, `/stats/votes`, `/stats/rivals`, `/stats/endings`, `/stats/activity`, `/stats/records` | The other tabs |
-| `/stats/games` | GAMES: the list |
-| `/stats/games/<id>` | One game |
-| `/stats/players` | PLAYERS: the list |
-| `/stats/players/<number>` | One player |
+| `/games` | GAMES: the list |
+| `/games/<id>` | One game |
+| `/players` | PLAYERS: the list |
+| `/players/<number>` | One player |
+
+GAMES and PLAYERS were `/stats/games…` and `/stats/players…` until Phase 23 moved them out of
+`/stats`; the page moves an old address to its new one, query and all.
 
 Moving between them changes the address (the History API) without reloading, and the back button
 works. The records are fetched once per visit.
 
-**The header** is the game's: SECRET-HITLER and STATS · GAMES · PLAYERS · PLAY (PLAY goes to `/`),
+**The header** is the game's: SECRET-HITLER and PLAY · STATS · GAMES · PLAYERS (PLAY goes to `/`;
+it came last until Phase 23, which made the header the login page's too and put PLAY first),
 the current one underlined. On phones the links sit in a row under the title, each a 44px target.
 
 **The filter and the CPU toggle** (Phase 17A) sit at the top of every tab and the PLAYERS list, and
@@ -457,7 +463,7 @@ links:
   whose every human seat is a player still on.
 - **Include games with Bots** (games with CPU players): off by default.
 
-On phones they fold into one line ("Players: 7 of 8 · CPU off") that opens a panel.
+On phones they fold into one line ("Players: 7 of 8 · Bots off") that opens a panel.
 
 **The tabs** (Phase 17A: OVERVIEW, ROLES & CARDS, VOTES & POWERS, RIVALS, ENDINGS, ACTIVITY, RECORDS)
 are a row of buttons under the filter; on phones they scroll sideways. Until Phase 17A, `/stats` shows
@@ -471,7 +477,7 @@ under the filter says so ("No games yet with these players.").
 
 - The login page's footer and the lobby's footer get "Stats" beside "About this project". On the
   login page it opens in the same tab; in the lobby, in a new one, so the lobby stays open.
-- The victory screen gets "See this game", which opens `/stats/games/<id>` in a new tab. For it,
+- The victory screen gets "See this game", which opens `/games/<id>` in a new tab. For it,
   every game packet, to players and spectators, carries **`gameId`**: the record's ID. It is not a
   secret.
 
@@ -682,11 +688,11 @@ filter; it has its own, also in the address:
 - **From** and **To:** local dates, inclusive.
 - **Size:** any, or 5 to 10 seats.
 - **Ending:** any, one of the four outcomes, or unfinished.
-- **Bots** (CPU players): any, without, or with ("With or without CPU", "Without Bots", "With Bots").
+- **Bots** (CPU players): any, without, or with ("With or without Bots", "Without Bots", "With Bots").
 
 Each row shows the local date and time, the length, the result ("Liberals win · 5 Liberal policies",
 "Fascists win · Hitler elected", "Unfinished after round 6 · 4 L, 3 F"), the seats in turn order
-coloured by role (Hitler underlined), the seat and round counts, and a CPU tag. A row opens its game
+coloured by role (Hitler underlined), the seat and round counts, and a Bots tag. A row opens its game
 (one link stretched over the row, never an anchor wrapped round the names, which become links of
 their own in Phase 22A).
 
@@ -718,7 +724,7 @@ played, by Elo. It uses the stats filter.
 **The player page** (`player-and-phone.jpg`, left) has the CPU toggle on its own (no player chips)
 and ignores the player filter:
 
-- **Header:** the name, counted games since their first, "+N with CPU players, not counted" when the
+- **Header:** the name, counted games since their first, "+N with Bots, not counted" when the
   toggle is off, when they last played, and their trophies.
 - **Elo:** rating, rank, peak, and their rating history.
 - **Win rate:** overall, as Liberal, as Fascist and as Hitler, and by player count.

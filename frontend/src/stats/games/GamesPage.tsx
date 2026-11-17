@@ -36,7 +36,7 @@ const ENDING_LABEL: Record<Outcome, string> = {
 
 /** Each choice's name in the Bots (CPU players) select. */
 const CPU_LABEL: Record<CpuChoice, string> = {
-  any: "With or without CPU",
+  any: "With or without Bots",
   without: "Without Bots",
   with: "With Bots",
 };
@@ -121,7 +121,7 @@ function DisabledLink({ text }: { text: string }): JSX.Element {
 }
 
 /**
- * GAMES (`/stats/games`): every recorded game, newest first, under its own filter in the address
+ * GAMES (`/games`): every recorded game, newest first, under its own filter in the address
  * (`gamesFilter.ts`), 20, 50 or 100 to a page. Player numbers the response does not have are
  * dropped, and a page past the last shows the last. Every control moves to a new address, back to
  * page 1 for anything but a page link; a new page brings the summary line into view, since

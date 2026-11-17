@@ -340,15 +340,15 @@ describe("LobbyScreen", () => {
 
   it("the footer links", () => {
     renderLobby();
-    const stats = screen.getByRole("link", { name: "Stats" });
+    // The stats are reached from the login page's header and the victory screen, not the lobby.
+    expect(screen.queryByRole("link", { name: /stats/i })).toBeNull();
     const about = screen.getByRole("link", { name: "About this project" });
     const bug = screen.getByRole("link", { name: "Report a bug" });
-    expect(stats).toHaveAttribute("href", "/stats");
     expect(about).toHaveAttribute("href", "https://github.com/jussaw/Secret-Hitler-Online#readme");
     expect(bug).toHaveAttribute("href", "https://github.com/jussaw/Secret-Hitler-Online/issues");
-    expect(document.querySelector(".lobby-footer")).toHaveTextContent(/^Stats · About this project · Report a bug$/);
+    expect(document.querySelector(".lobby-footer")).toHaveTextContent(/^About this project · Report a bug$/);
     // Each in a new tab, so the lobby stays open.
-    for (const link of [stats, about, bug]) {
+    for (const link of [about, bug]) {
       expect(link).toHaveAttribute("target", "_blank");
       expect(link).toHaveAttribute("rel", "noopener noreferrer");
       expect(link.closest(".lobby-footer")).not.toBeNull();

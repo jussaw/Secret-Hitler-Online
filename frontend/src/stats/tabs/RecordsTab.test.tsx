@@ -114,7 +114,7 @@ describe("RecordsTab", () => {
     tab(GAMES_A_TO_D);
     const links = within(card("rating-records")).getAllByRole("link", { name: "See the game" });
     expect(links).toHaveLength(1);
-    expect(links[0].getAttribute("href")).toMatch(/^\/stats\/games\/[abcd]$/);
+    expect(links[0].getAttribute("href")).toMatch(/^\/games\/[abcd]$/);
     fireEvent.click(links[0]);
     expect(window.location.pathname).toBe(links[0].getAttribute("href"));
   });
@@ -187,7 +187,7 @@ describe("RecordsTab", () => {
     expect(ratings.querySelector(".records-upset")).toHaveTextContent(
       /^Biggest upset: Fascists won with a \d+% chance · Di, Ed \+(\d+) · Ann, Bo, Cy −\1$/
     );
-    expect(within(ratings).getByRole("link", { name: "See the game" })).toHaveAttribute("href", "/stats/games/b");
+    expect(within(ratings).getByRole("link", { name: "See the game" })).toHaveAttribute("href", "/games/b");
   });
 
   it("aSideWithNoPeopleIsLeftOut", () => {
@@ -210,7 +210,7 @@ describe("RecordsTab", () => {
     for (const label of ["Hitler Hunter", "Chancellor Hitler"]) {
       const links = within(rowOf(label) as HTMLElement).getAllByRole("link");
       expect(links.map((a) => a.textContent), label).toEqual(["Ann"]);
-      expect(links[0]).toHaveAttribute("href", "/stats/players/1");
+      expect(links[0]).toHaveAttribute("href", "/players/1");
     }
     expect(rowOf("Regular")).toHaveTextContent("No one yet.");
     expect(within(rowOf("Regular") as HTMLElement).queryByRole("link")).toBeNull();

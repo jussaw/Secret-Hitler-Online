@@ -1,11 +1,11 @@
 import type { Me } from "../account/account";
-import { ABOUT_URL, ISSUES_URL, LOBBY_CODE_LENGTH, RULES_URL, STATS_PATH } from "../constants";
+import { ABOUT_URL, ISSUES_URL, LOBBY_CODE_LENGTH, RULES_URL } from "../constants";
+import SiteHeader from "../header/SiteHeader";
 import { normalizeCode } from "../lobby/normalizeCode";
-import SoundControl from "../sound/SoundControl";
 import OutLink from "../util/OutLink";
-// The page and its header are the game's and the lobby's, and the cards, the fields' focus, the
-// centring, the grey buttons and the footer are the lobby's: GameScreen.css and LobbyScreen.css
-// list the login page's selectors beside theirs.
+// The page is the game's and the lobby's, and the cards, the fields' focus, the centring, the grey
+// buttons and the footer are the lobby's: GameScreen.css and LobbyScreen.css list the login page's
+// selectors beside theirs. The header is the stats pages' (SiteHeader).
 import "../game/GameScreen.css";
 import "../lobby/LobbyScreen.css";
 import "./LoginScreen.css";
@@ -37,10 +37,10 @@ const UPSTREAM_URL = "https://github.com/ShrimpCryptid/Secret-Hitler-Online";
 const LICENCE_URL = "https://creativecommons.org/licenses/by-nc-sa/4.0/";
 
 /**
- * The login page: the game's header, then three cards in the lobby's look (the account; a lobby
- * code with JOIN and WATCH; CREATE LOBBY) and a footer with the links and the credit line. JOIN
- * needs a signed-in account with a name and the code, WATCH only the code, CREATE LOBBY only the
- * account with a name. Each card shows its own error line.
+ * The login page: the site header (the stats pages' too, with PLAY marked), then three cards in
+ * the lobby's look (the account; a lobby code with JOIN and WATCH; CREATE LOBBY) and a footer with
+ * the links and the credit line. JOIN needs a signed-in account with a name and the code, WATCH
+ * only the code, CREATE LOBBY only the account with a name. Each card shows its own error line.
  */
 export default function LoginScreen(props: LoginScreenProps) {
   const account = props.account;
@@ -50,10 +50,7 @@ export default function LoginScreen(props: LoginScreenProps) {
 
   return (
     <div className="login-screen">
-      <header className="App-header">
-        SECRET-HITLER
-        <SoundControl />
-      </header>
+      <SiteHeader current="play" />
 
       <div className="login-body">
         <main className="login-cards">
@@ -108,9 +105,6 @@ export default function LoginScreen(props: LoginScreenProps) {
         <footer className="login-footer">
           <p>
             <OutLink href={RULES_URL}>How to play</OutLink>
-            {" · "}
-            {/* The stats in this tab: the login page has nothing to keep open. */}
-            <a href={STATS_PATH}>Stats</a>
             {" · "}
             <OutLink href={ABOUT_URL}>About this project</OutLink>
             {" · "}

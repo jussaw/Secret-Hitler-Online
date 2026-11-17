@@ -16,10 +16,10 @@ export interface FilterBarProps {
 
 const isOn = (filter: StatsFilter, player: number) => filter.players === null || filter.players.has(player);
 
-/** The phone's line: "Players: 7 of 8 · CPU off", counting only numbers some player has. */
+/** The phone's line: "Players: 7 of 8 · Bots off", counting only numbers some player has. */
 export function filterSummary(players: Player[], filter: StatsFilter): string {
   const on = players.filter((player) => isOn(filter, player.number)).length;
-  return `Players: ${on} of ${players.length} · CPU ${filter.cpu ? "on" : "off"}`;
+  return `Players: ${on} of ${players.length} · Bots ${filter.cpu ? "on" : "off"}`;
 }
 
 /**

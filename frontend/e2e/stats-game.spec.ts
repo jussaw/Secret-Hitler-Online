@@ -7,7 +7,7 @@ import { isVictory, openTable, play } from "./driveGame";
 import { settle } from "./lobby";
 import { bigStatsData, checkStatsPage, PHONE_SIZES, statsSizesFor, stubStats } from "./stats";
 
-/** One game's page (`/stats/games/<id>`): its header and a block per round, at every size. */
+/** One game's page (`/games/<id>`): its header and a block per round, at every size. */
 
 const data = bigStatsData();
 /** The game with the most seats, then the most events: ten twelve-character names voting. */

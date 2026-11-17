@@ -172,6 +172,28 @@ export function smallTargets(page: Page, scope: string): Promise<string[]> {
 }
 
 /**
+ * Visible links inside `scope` (plain links, which smallTargets leaves out, such as the site
+ * header's STATS, GAMES, PLAYERS and PLAY) smaller than MIN_TARGET in either direction, as
+ * `"text" WxH`. Throws when `scope` holds no link, so a check that finds none small has measured
+ * something.
+ */
+export function smallLinks(page: Page, scope: string): Promise<string[]> {
+  return page.evaluate(
+    ({ scope, min }) => {
+      const links = Array.from(document.querySelectorAll(`${scope} a`));
+      if (links.length === 0) throw new Error(`no link in ${scope}`);
+      return links.flatMap((a) => {
+        const r = a.getBoundingClientRect();
+        if (r.width === 0 || r.height === 0 || getComputedStyle(a).visibility !== "visible") return [];
+        if (r.width >= min - 0.01 && r.height >= min - 0.01) return [];
+        return [`"${(a.textContent ?? "").trim().slice(0, 20)}" ${Math.round(r.width)}x${Math.round(r.height)}`];
+      });
+    },
+    { scope, min: MIN_TARGET }
+  );
+}
+
+/**
  * Text fields inside `scope` (textareas and the inputs that take typed text, not a range slider or
  * a checkbox) whose text is smaller than MIN_FIELD_TEXT, as `input#id 13px`. Throws when `scope`
  * holds no text field, so a check that finds none small has measured something.

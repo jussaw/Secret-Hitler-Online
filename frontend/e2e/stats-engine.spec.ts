@@ -96,7 +96,7 @@ test("the filter and the CPU toggle change the address", async ({ page }) => {
   await chip(page, "Bo").click();
   await expect(page).toHaveURL(/\/stats\?players=1,3&cpu=1$/);
   await expect(chip(page, "Bo")).toHaveAttribute("aria-pressed", "false");
-  if (await phoneLayout(page)) await expect(summary(page)).toHaveText("Players: 2 of 3 · CPU on");
+  if (await phoneLayout(page)) await expect(summary(page)).toHaveText("Players: 2 of 3 · Bots on");
 
   // Review Focus 3: back follows the address.
   await page.goBack();
@@ -144,7 +144,7 @@ test("phones fold the filter into one line", async ({ page }) => {
     await page.setViewportSize(size);
     if (await phoneLayout(page)) {
       await expect(summary(page)).toBeVisible();
-      await expect(summary(page)).toHaveText(/^Players: \d+ of \d+ · CPU (off|on)$/);
+      await expect(summary(page)).toHaveText(/^Players: \d+ of \d+ · Bots (off|on)$/);
       await expect(page.getByRole("group", { name: "Players" })).toBeHidden();
       await summary(page).click();
       await expect(page.getByRole("group", { name: "Players" })).toBeVisible();

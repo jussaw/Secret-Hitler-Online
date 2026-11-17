@@ -58,7 +58,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 21B. RECORDS | `phase-21b-records` | done |
 | 22A. Trophies and name links | `phase-22a-trophies-links` | done |
 | 22B. Player pages | `phase-22b-player-pages` | done |
-| 23. One header for the site | `phase-23-site-header` | planned |
+| 23. One header for the site | `phase-23-site-header` | done |
 
 ---
 
@@ -1067,19 +1067,23 @@ Issue #31, its last phase: PLAYERS lists every player with counted games by Elo,
 
 ## Phase 23: One header for the site
 
-Added after Phases 13 to 22B were planned. The stats pages' top bar (SECRET-HITLER and STATS · GAMES · PLAYERS · PLAY) becomes the login page's header too, so the stats are reached from the top of the home page instead of a footer link. The lobby keeps its own header. Starts once Phase 22B has merged, when the stats header is final. The step-by-step breakdown is written to `docs/superpowers/plans/` when the phase starts.
+Breakdown: [`docs/superpowers/plans/2026-11-16-phase-23-site-header.md`](superpowers/plans/2026-11-16-phase-23-site-header.md) · Spec: [`docs/superpowers/specs/2026-11-15-game-stats-design.md`](superpowers/specs/2026-11-15-game-stats-design.md), "The header" and "The links in"
 
-- [ ] One shared header component, taken from 15A's `StatsHeader`, used by the stats pages and the login page; the lobby and the game page keep their own headers
-- [ ] Login page: the shared header, with PLAY marked as the current page (`aria-current="page"`, the tab row's current look); the footer's "Stats" link removed; the header's sound control removed (sounds stay in the lobby and the game)
-- [ ] Lobby: its own header unchanged (sound control and spectator count); only the footer's "Stats" link removed; the victory screen's "See this game" stays
-- [ ] The login page and the lobby still fit one screen at every tested size and keep 44px targets on phones (the cards' spacing re-fitted, checked with Linux fonts in the Playwright image)
-- [ ] Browser and unit tests updated: the header on each page, PLAY current on the login page, no speaker on the login page, no footer "Stats" link
-- [ ] `CLAUDE.md`, `README.md` (screenshots in `docs/images/` if the login page or lobby look different) and `DEVELOPMENT.md` updated; the pull request shows the login page and the lobby before and after, on desktop and on a phone
+Added after Phases 13 to 22B were planned. The stats pages' top bar (SECRET-HITLER and STATS · GAMES · PLAYERS · PLAY) becomes the login page's header too, with PLAY moved first (PLAY · STATS · GAMES · PLAYERS, the user's choice after the review), so the stats are reached from the top of the home page instead of a footer link. The lobby keeps its own header. Planned to start once Phase 22B had merged, when the stats header is final; it runs beside 22B instead, since 22B does not touch the header.
+
+- [x] One shared header component, taken from 15A's `StatsHeader`, used by the stats pages and the login page; the lobby and the game page keep their own headers
+- [x] Login page: the shared header, with PLAY marked as the current page (`aria-current="page"`, the tab row's current look); the footer's "Stats" link removed; the header's sound control removed (sounds stay in the lobby and the game)
+- [x] Lobby: its own header unchanged (sound control and spectator count); only the footer's "Stats" link removed; the victory screen's "See this game" stays
+- [x] The login page and the lobby still fit one screen at every tested size and keep 44px targets on phones (the cards' spacing re-fitted, checked with Linux fonts in the Playwright image)
+- [x] Browser and unit tests updated: the header on each page, PLAY current on the login page, no speaker on the login page, no footer "Stats" link
+- [x] `CLAUDE.md`, `README.md` (screenshots in `docs/images/` if the login page or lobby look different) and `DEVELOPMENT.md` updated; the pull request shows the login page and the lobby before and after, on desktop and on a phone
+- [x] GAMES and PLAYERS out of `/stats` (added after the review, at the user's request): `/games` and `/games/<id>`, `/players` and `/players/<n>`, the tabs still under `/stats` and the API still `/api/stats/games`; old `/stats/games…` and `/stats/players…` addresses moved to the new ones with their query; the page and the server's fallback match whole segments, and the dev proxy only `/game`, so the players' socket is never taken for `/games`
+- [x] Every user-facing "CPU" says "Bots" (added after the review, at the user's request): the tabs' folded filter line ("· Bots off"), GAMES' first Bots choice ("With or without Bots"), the "Bots" tag on GAMES rows and a player's latest games, the player page's "+N with Bots, not counted", and VOTES & POWERS' investigations ("Bots ×1", never a seat's name such as "Bot 1"); code, data and addresses (`cpu=`, `hasCpu`) stay
 
 **Phase 23 acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] PR merged into `development`
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] PR merged into `development`
 - [ ] The user opens the deployed build on a desktop and a phone and moves between the login page and the stats with the header
 
 ---

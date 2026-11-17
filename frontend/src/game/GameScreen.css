@@ -3,7 +3,7 @@
 /* The whole game page fits the window: a slim header, then the roster and the table. The lobby
    (LobbyScreen.css) shares the page, its header and the roster column through the selector lists
    here, so the roster stays put when the game starts. The login page (LoginScreen.css) shares the
-   page and its header, so the header stays put from the login page on. */
+   page; its header is the stats pages' (SiteHeader.css). */
 .game-screen,
 .lobby-screen,
 .login-screen {
@@ -14,8 +14,7 @@
 }
 
 .game-screen > header,
-.lobby-screen > header,
-.login-screen > header {
+.lobby-screen > header {
     min-height: 0;
     padding: 0.4vh 0;
     font-size: clamp(18px, 3.4vh, 40px);

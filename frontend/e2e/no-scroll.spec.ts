@@ -13,6 +13,7 @@ import {
   pageHeight,
   rowShift,
   smallFieldText,
+  smallLinks,
   smallTargets,
   trackerReserved,
   withStatus,
@@ -563,10 +564,10 @@ test("the lobby fits every desktop size and narrow window, for the host, a guest
   }
 });
 
-/** The login page's cards and footer, top to bottom, in viewport px. */
+/** The login page's header, cards and footer, top to bottom, in viewport px. */
 function measureLogin(page: Page) {
   return page.evaluate(() =>
-    Array.from(document.querySelectorAll(".login-card, .login-footer"), (el) => {
+    Array.from(document.querySelectorAll(".login-screen > header, .login-card, .login-footer"), (el) => {
       const r = el.getBoundingClientRect();
       return { name: el.className, top: r.top, bottom: r.bottom };
     })
@@ -585,16 +586,19 @@ for (const state of LOGIN_STATES) {
       expect(overflow.scrollWidth, `scrollWidth at ${at}`).toBeLessThanOrEqual(size.width);
       expect(overflow.offscreen, `past the edge at ${at}`).toEqual([]);
       expect(await wrappedLabels(page, ".login-screen"), `wrapped button labels at ${at}`).toEqual([]);
-      // Sign out among them, a 44px target like every control on the page.
-      expect(await smallTargets(page, ".login-body"), `small targets at ${at}`).toEqual([]);
+      // Sign out among them, a 44px target like every control on the page, the header's links too.
+      expect(await smallTargets(page, ".login-screen"), `small targets at ${at}`).toEqual([]);
+      expect(await smallLinks(page, ".login-screen > header nav"), `small header links at ${at}`).toEqual([]);
       if (state.startsWith("signed in")) {
         const { signOut, changeName } = await accountTargets(page);
         expect(overlaps(signOut, changeName), `Sign out's target over CHANGE NAME at ${at}`).toBe(false);
       }
       expect(await smallFieldText(page, ".login-body"), `small text in text fields at ${at}`).toEqual([]);
-      // The account, then joining, then starting a game, then the footer, none over the next.
+      // The header, the account, then joining, then starting a game, then the footer, none over
+      // the next.
       const parts = await measureLogin(page);
       expect(parts.map((part) => part.name), `the parts at ${at}`).toEqual([
+        "site-header",
         "login-card login-account",
         "login-card login-join",
         "login-card login-start",

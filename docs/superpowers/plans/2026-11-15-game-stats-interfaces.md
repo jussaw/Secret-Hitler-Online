@@ -146,7 +146,7 @@ export function playerName(data: StatsData, player: number): string;
     | { page: "players" } | { page: "player"; number: number }
     | { page: "notFound" };
   export function parseRoute(pathname: string): StatsRoute;
-  export function routePath(route: StatsRoute): string;      // "/stats", "/stats/roles", "/stats/games/<id>", …
+  export function routePath(route: StatsRoute): string;      // "/stats", "/stats/roles", "/games/<id>" (since Phase 23), …
   export function navigate(pathAndSearch: string): void;      // History API, no reload
   export function useLocation(): { pathname: string; search: string };
   ```
@@ -160,10 +160,12 @@ export function playerName(data: StatsData, player: number): string;
   GAMES and the ten latest games), `game/GamePage.tsx` (until Phase 16: the game's header line from
   `outcomeLabel` and its seats), `players/PlayersPage.tsx` and `players/PlayerPage.tsx` (until Phase
   22: one `StatCard`-like box saying "Coming in a later update.").
-- `StatsHeader.tsx`: SECRET-HITLER and STATS · GAMES · PLAYERS · PLAY.
+- `StatsHeader.tsx`: SECRET-HITLER and STATS · GAMES · PLAYERS · PLAY. (Since Phase 23 it draws
+  the site header, `src/header/SiteHeader.tsx`, shared with the login page: PLAY · STATS · GAMES ·
+  PLAYERS.)
 - `PlayerName.tsx`: `<PlayerName player={number | null} name={string} role?={Role} />`, the one
   way any page shows a seat's or player's name (coloured by role when given; Hitler underlined).
-  Plain text until Phase 22 makes a non-null `player` a link to `/stats/players/<number>`.
+  Plain text until Phase 22 makes a non-null `player` a link to `/players/<number>` (`/stats/players/<number>` until Phase 23).
 - `format.ts`: `outcomeLabel(record: GameRecord): string` ("Liberals win · 5 Liberal policies",
   "Liberals win · Hitler executed", "Fascists win · 6 Fascist policies", "Fascists win · Hitler
   elected", "Unfinished after round N · L L, F F"), `formatDuration(ms: number): string`

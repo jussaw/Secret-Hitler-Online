@@ -37,7 +37,7 @@ describe("EndingsTab", () => {
   it("links each listed game to its page", () => {
     const close = ended(6, "HITLER_ELECTED", { liberal: 4, fascist: 3 });
     render(<EndingsTab stats={statsOf([close])} />);
-    const href = `/stats/games/${close.id}`;
+    const href = `/games/${close.id}`;
     const link = screen.getByRole("link", { name: `${formatLocalDateTime(close.endedAt)} · Fascists win · Hitler elected · 4 L, 3 F` });
     expect(link).toHaveAttribute("href", href);
     expect(link).toHaveClass("endings-game-link");
@@ -102,10 +102,10 @@ describe("EndingsTab", () => {
     expect(fastest).toHaveTextContent("Fascists win · 6 Fascist policies");
     expect(fastest.querySelector(".endings-seats")).toHaveTextContent("P1, P2, P3, P4, P5");
     expect(fastest.querySelector(".endings-seats .stats-hitler")).toHaveTextContent("P5");
-    expect(within(fastest).getByRole("link", { name: "See this game" })).toHaveAttribute("href", `/stats/games/${fast.id}`);
+    expect(within(fastest).getByRole("link", { name: "See this game" })).toHaveAttribute("href", `/games/${fast.id}`);
     const longest = screen.getByRole("region", { name: "Longest game" });
     expect(longest.querySelector(".endings-headline")).toHaveTextContent("1 h 05 min · 12 rounds");
-    expect(within(longest).getByRole("link", { name: "See this game" })).toHaveAttribute("href", `/stats/games/${slow.id}`);
+    expect(within(longest).getByRole("link", { name: "See this game" })).toHaveAttribute("href", `/games/${slow.id}`);
   });
 
   it("finds the most in one game, each linked", () => {
@@ -118,7 +118,7 @@ describe("EndingsTab", () => {
       `Failed elections: 4 · ${when}`,
       "Vetoes: none yet",
     ]);
-    expect(within(items[0]).getByRole("link", { name: when })).toHaveAttribute("href", `/stats/games/${wild.id}`);
+    expect(within(items[0]).getByRole("link", { name: when })).toHaveAttribute("href", `/games/${wild.id}`);
   });
 
   it("lists the latest close finishes under the count of all", () => {
@@ -128,7 +128,7 @@ describe("EndingsTab", () => {
     expect(within(region).getByText("12 games")).toBeInTheDocument();
     const links = within(region).getAllByRole("link");
     expect(links.map((a) => a.getAttribute("href"))).toEqual(
-      [...close].reverse().slice(0, FINISHES_SHOWN).map((g) => `/stats/games/${g.id}`)
+      [...close].reverse().slice(0, FINISHES_SHOWN).map((g) => `/games/${g.id}`)
     );
     expect(links[0]).toHaveTextContent(`${formatLocalDateTime(close[close.length - 1].endedAt)} · Liberals win · Hitler executed · 3 L, 5 F`);
   });

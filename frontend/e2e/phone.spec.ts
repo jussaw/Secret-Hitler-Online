@@ -7,6 +7,7 @@ import {
   pageHeight,
   rowShift,
   smallFieldText,
+  smallLinks,
   smallTargets,
   trackerReserved,
   withStatus,
@@ -57,6 +58,8 @@ for (const narrow of [false, true]) {
       // SIGN IN WITH DISCORD (a link signed out with Discord), TEST SIGN-IN, CHANGE NAME and Sign
       // out among them.
       expect(await smallTargets(page, "body"), "small touch targets").toEqual([]);
+      // The header's links (the stats pages' header), which smallTargets does not measure.
+      expect(await smallLinks(page, ".login-screen > header nav"), "small header links").toEqual([]);
       const account = page.locator(".login-account");
       const signedIn = state.startsWith("signed in");
       const targets = signedIn
