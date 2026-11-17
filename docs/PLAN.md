@@ -1058,7 +1058,7 @@ Issue #31, its last phase: PLAYERS lists every player with counted games by Elo,
 
 **Phase 22B acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
 - [ ] PR merged into `development`
 - [ ] The user browses the stats on the deployed build, on a desktop and on a phone: PLAYERS, their own page and its trophies, a name followed from GAMES, and a game page's Elo change
 - [ ] The user closes issue #31 once every phase (13 to 22B) is merged
