@@ -2,8 +2,8 @@ package server.util;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.fail;
 import static server.util.LobbyTesting.join;
+import static server.util.LobbyTesting.waitForUserCount;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -87,17 +87,6 @@ public class LobbyGraceWindowTest {
     private static void holdsUntil(long fromMs, long forMs, Runnable check) throws InterruptedException {
         while (System.currentTimeMillis() < fromMs + forMs) {
             check.run();
-            Thread.sleep(10);
-        }
-    }
-
-    /** Waits up to 5 s for the lobby to count {@code count} players. */
-    private static void waitForUserCount(Lobby lobby, int count) throws InterruptedException {
-        long deadline = System.currentTimeMillis() + 5000;
-        while (lobby.getUserCount() != count) {
-            if (System.currentTimeMillis() > deadline) {
-                fail("the lobby still counted " + lobby.getUserCount() + " players after 5 s, not " + count);
-            }
             Thread.sleep(10);
         }
     }

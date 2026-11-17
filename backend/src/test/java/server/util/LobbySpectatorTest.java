@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static server.util.LobbyTesting.join;
+import static server.util.LobbyTesting.strings;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -14,7 +15,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
 import server.GameDriver;
@@ -42,14 +42,6 @@ public class LobbySpectatorTest {
         } catch (IllegalArgumentException expected) {
             // as expected
         }
-    }
-
-    private static List<String> strings(JSONArray array) {
-        List<String> out = new ArrayList<>();
-        for (int i = 0; i < array.length(); i++) {
-            out.add(array.getString(i));
-        }
-        return out;
     }
 
     @Test

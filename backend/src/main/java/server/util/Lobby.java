@@ -80,6 +80,15 @@ public class Lobby implements Serializable {
 
     private Set<CpuPlayer> cpuPlayers;
 
+    // How many CPU players the host asked for (#70), or null for the fewest that make
+    // SecretHitlerGame.MIN_PLAYERS, as the lobby always took: a new lobby's count, and any pick at
+    // the fewest, which so follows the fewest as people come and go. It is the host's aim, kept as
+    // asked: every read moves it into the range for the people in the lobby (botsFor), so a join
+    // takes a bot's seat only when the table would pass MAX_PLAYERS, a leave adds one only when it
+    // would fall below MIN_PLAYERS, and the pick comes back when the people allow it, after a game
+    // too. Transient, so backups are as they were: a lobby restored from one takes the fewest.
+    transient private Integer chosenBots;
+
     // The running game's record (#31): its ID, the clock's time when it started, whether its
     // timeline starts at its start and holds every move, and the timeline itself (TimelineDiff's
     // events, then Lobby's own). They are backed up with the game, and hold JDK types only, so a
@@ -673,6 +682,69 @@ public class Lobby implements Serializable {
     }
 
     /**
+     * Returns whether the account is the lobby's host: the first in join order, who starts the
+     * game and chooses how many bots join it.
+     */
+    synchronized public boolean isHost(String accountId) {
+        return accountId != null && accountId.equals(activeAccounts.peek());
+    }
+
+    /**
+     * The number of CPU players a game started now would seat (#70): the host's choice, kept inside
+     * the range for the people in the lobby, or the fewest that make
+     * {@code SecretHitlerGame.MIN_PLAYERS} before the host has chosen. Bots never fill the lobby
+     * ({@code isFull} counts people only): a person who joins takes a bot's seat.
+     */
+    synchronized public int botCount() {
+        return botsFor(chosenBots, activeAccounts.size());
+    }
+
+    /**
+     * Sets the number of CPU players the next game seats, the host's choice, which the lobby keeps
+     * inside the range ({@code botsFor}). A count at the fewest that make
+     * {@code SecretHitlerGame.MIN_PLAYERS}, or below, is the fewest from then on, whoever comes and
+     * goes, as in a new lobby; any other is kept as asked. Sends nothing: the caller sends the
+     * state.
+     *
+     * @param count the number the host asked for, which may be outside the range.
+     * @throws IllegalStateException if a game is running. Nothing changes.
+     */
+    synchronized public void setBotCount(int count) {
+        if (isInGame()) {
+            throw new IllegalStateException("The number of bots cannot change during a game.");
+        }
+        int people = activeAccounts.size();
+        int bots = botsFor(count, people);
+        chosenBots = bots == botsFor(null, people) ? null : bots;
+    }
+
+    /**
+     * The bots a table of {@code people} seats for the host's {@code choice}: the choice moved
+     * into the range, from the fewest that make {@code SecretHitlerGame.MIN_PLAYERS} to the most
+     * that keep it at {@code SecretHitlerGame.MAX_PLAYERS}, or the fewest for a null choice.
+     */
+    private static int botsFor(Integer choice, int people) {
+        int fewest = Math.max(0, SecretHitlerGame.MIN_PLAYERS - people);
+        int most = Math.max(0, SecretHitlerGame.MAX_PLAYERS - people);
+        return choice == null ? fewest : Math.min(most, Math.max(fewest, choice));
+    }
+
+    /**
+     * The names {@code count} CPU players take: {@code Bot 1}, {@code Bot 2} and so on, skipping
+     * any a seat has already (an account cannot take a CPU player's name, so none should).
+     */
+    private static List<String> botNames(int count, Collection<String> taken) {
+        List<String> names = new ArrayList<>();
+        for (int i = 1; names.size() < count; i++) {
+            String name = "Bot " + i;
+            if (!taken.contains(name)) {
+                names.add(name);
+            }
+        }
+        return names;
+    }
+
+    /**
      * Sends a message to every connected user with the current game state.
      * 
      * @effects a message containing a JSONObject representing the state of the
@@ -790,11 +862,17 @@ public class Lobby implements Serializable {
         send(ctx, message);
     }
 
-    /** The packet sent outside a game: the names of the accounts in the lobby, in join order. */
+    /**
+     * The packet sent outside a game: the names of the accounts in the lobby, in join order, and
+     * the names of the bots a game started now would seat ({@code bots}), so a page never counts
+     * or names them itself.
+     */
     private JSONObject lobbyPacket() {
         JSONObject message = new JSONObject();
         message.put(SecretHitlerServer.PARAM_PACKET_TYPE, SecretHitlerServer.PACKET_LOBBY);
-        message.put("usernames", activeAccounts.stream().map(accountToName::get).toArray());
+        List<String> usernames = activeAccounts.stream().map(accountToName::get).collect(Collectors.toList());
+        message.put("usernames", usernames);
+        message.put(SecretHitlerServer.PARAM_BOTS, botNames(botCount(), usernames));
         return message;
     }
 
@@ -904,6 +982,7 @@ public class Lobby implements Serializable {
         spectators = ConcurrentHashMap.newKeySet();
         accountToRejoinKey = new ConcurrentHashMap<>();
         pendingRemovals = new ConcurrentHashMap<>();
+        chosenBots = null; // the fewest bots again, as in a new lobby
         userTimeoutTimer = new Timer();
         cpuTickTimer = new Timer();
         if (game != null) {
@@ -996,11 +1075,12 @@ public class Lobby implements Serializable {
      * @modifies this
      * @effects creates and stores a new SecretHitlerGame.
      *          Each connected account is seated under its current name, in a
-     *          randomized order, and {@code gameSeats} records the seats. A user inside the
-     *          grace window after a disconnect ({@code PLAYER_TIMEOUT_IN_SEC}) is not seated:
-     *          the lobby drops them at once, as {@code RemoveUserTask} would have, keeping
-     *          their preferred icon. They find the lobby in a game when they return and can
-     *          watch it. A start that throws changes nothing.
+     *          randomized order, and {@code gameSeats} records the seats, beside the bots the
+     *          lobby packet named ({@code botCount}, worked out again for the people seated). A
+     *          user inside the grace window after a disconnect ({@code PLAYER_TIMEOUT_IN_SEC}) is
+     *          not seated: the lobby drops them at once, as {@code RemoveUserTask} would have,
+     *          keeping their preferred icon. They find the lobby in a game when they return and
+     *          can watch it. A start that throws changes nothing.
      */
     synchronized public void startNewGame() {
         if (isInGame()) {
@@ -1045,21 +1125,12 @@ public class Lobby implements Serializable {
             playerNames.add(seatName);
         }
 
-        // Generate CpuPlayers if the lobby size has not been met
-        List<String> cpuNames = new ArrayList<>();
+        // The bots the lobby packet named: the host's choice (or the fewest that make
+        // MIN_PLAYERS), in the range for the people seated.
+        List<String> cpuNames = botNames(botsFor(chosenBots, seated.size()), gameSeats.values());
         cpuPlayers.clear();
-        if (gameSeats.size() < SecretHitlerGame.MIN_PLAYERS) {
-            int numCpuPlayersToGenerate = SecretHitlerGame.MIN_PLAYERS - gameSeats.size();
-            int i = 1;
-            while (numCpuPlayersToGenerate > 0) {
-                String botName = "Bot " + i;
-                if (!gameSeats.containsValue(botName)) {
-                    cpuNames.add(botName);
-                    cpuPlayers.add(new CpuPlayer(botName));
-                    numCpuPlayersToGenerate--;
-                }
-                i++;
-            }
+        for (String botName : cpuNames) {
+            cpuPlayers.add(new CpuPlayer(botName));
         }
 
         // Initialize the new game

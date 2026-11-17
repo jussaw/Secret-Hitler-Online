@@ -84,6 +84,8 @@ public class SecretHitlerServer {
     public static final String PARAM_INVESTIGATION = "investigation";
     public static final String PARAM_SPECTATOR_COUNT = "spectatorCount"; // in every lobby and game packet
     public static final String PARAM_YOU = "you"; // in every player's packet: their name, or their seat's in a game
+    public static final String PARAM_BOTS = "bots"; // in every lobby packet: the names of the bots a game started now seats
+    public static final String PARAM_BOT_COUNT = "count"; // set-bot-count's number
     public static final String FASCIST = "FASCIST";
     public static final String LIBERAL = "LIBERAL";
 
@@ -92,6 +94,7 @@ public class SecretHitlerServer {
     public static final String COMMAND_START_GAME = "start-game";
     public static final String COMMAND_GET_STATE = "get-state";
     public static final String COMMAND_SET_LOBBY_SIZE = "set-lobby-size";
+    public static final String COMMAND_SET_BOT_COUNT = "set-bot-count"; // the host's, in the lobby: params PARAM_BOT_COUNT (int)
     public static final String COMMAND_SELECT_ICON = "select-icon";
     public static final String COMMAND_NOMINATE_CHANCELLOR = "nominate-chancellor";
     public static final String COMMAND_REGISTER_VOTE = "register-vote";
@@ -1549,6 +1552,20 @@ public class SecretHitlerServer {
                     case COMMAND_SELECT_ICON:
                         String iconId = message.getString(PARAM_ICON);
                         lobby.trySetUserIcon(iconId, ctx);
+                        break;
+
+                    case COMMAND_SET_BOT_COUNT: // params: PARAM_BOT_COUNT (int). The lobby keeps it inside the range.
+                        if (!lobby.isHost(accountId)) {
+                            throw new RuntimeException("Only the host chooses how many bots join.");
+                        }
+                        if (lobby.isInGame()) {
+                            // A press sent just after START GAME, before the game reached the page.
+                            logger.info(logMessage + " DROPPED (the game has started)");
+                            sendOKMessage = false;
+                            updateUsers = false;
+                            break;
+                        }
+                        lobby.setBotCount(message.getInt(PARAM_BOT_COUNT));
                         break;
 
                     default: // This is an invalid command.
