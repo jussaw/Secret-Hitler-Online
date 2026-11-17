@@ -239,7 +239,6 @@ test("a held status line from a cleared queue does not cut the next one short", 
   const game = await openFakeWatch(page);
   const [, P, C] = TEN;
   const status = page.locator("#status-bar-text");
-  const eventBar = page.locator("#event-bar.appear-eventbar");
   game.send(spectatorPacket({ president: P }));
   await expect(status).toHaveText(`Waiting for ${P} to nominate a chancellor.`);
 
@@ -269,15 +268,17 @@ test("a held status line from a cleared queue does not cut the next one short", 
   game.send(WATCHED_LOBBY);
   await waitForPlayers(page, TEN.length);
 
-  // The next policy holds its line 3 s, then the board moves (0.5 s) and the power's event bar
+  // The next policy holds its line 3 s, then the board moves (0.5 s) and the power's line
   // shows. The old line's hold ends 1 s in, and must not end this one.
   game.send(
     spectatorPacket({ state: S.PP_INVESTIGATE, president: P, chancellor: C, fascistPolicies: 2, lastPolicy: "FASCIST" })
   );
   await page.clock.runFor(2500);
-  await expect(eventBar, "2.5 s in, the policy line still holds").toHaveCount(0);
+  await expect(status, "2.5 s in, the policy line still holds").toHaveText("A fascist policy was enacted.");
   await page.clock.runFor(1500);
-  await expect(eventBar, "4 s in, the power's event bar shows").toHaveText("PRESIDENTIAL POWER");
+  await expect(status, "4 s in, the power's line shows").toHaveText(
+    `Investigation: ${P} is choosing a player to investigate.`
+  );
 });
 
 test("a spectator joins a running game and never receives a secret", async ({ page, baseURL }, testInfo) => {

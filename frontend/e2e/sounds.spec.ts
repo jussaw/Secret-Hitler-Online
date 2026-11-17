@@ -166,7 +166,8 @@ test("each sound waits for its animation", async ({ page, browserName, isMobile 
     endTermTurn, policy, power, executionTurn, execution, defeat] = log;
   expect(gameStart.alert, "gameStart").toContain("YOU ARE: LIBERAL");
   expect(nominationTurn.alert, "yourTurn to nominate").toContain("NOMINATION");
-  expect(nominate.eventBar, "nominate").toBe("VOTING");
+  expect(nominate.status, "nominate plays with the vote's line").toBe("Waiting for all players to vote.");
+  expect(nominate.alert, "and the vote prompt opens with it").toContain("VOTING");
   expect(voteCast.alert, "voteCast plays while the vote prompt is open").toContain("VOTING");
   expect(voteFailed.status, "voteFailed").toMatch(/Vote failed$/);
   expect(voteFailed.t - closingVote.t, "the tally comes 2 s into the reveal").toBeGreaterThan(1800);
@@ -174,7 +175,10 @@ test("each sound waits for its animation", async ({ page, browserName, isMobile 
   expect(tracker.alert, "trackerAdvance").toContain("LEGISLATURE FAILED");
   expect(endTermTurn.status, "yourTurn to end the term").toBe("Waiting for the president to end their term.");
   expect(policy.alert, "policyFascist").toContain("POLICY ENACTED");
-  expect(power.eventBar, "power").toBe("PRESIDENTIAL POWER");
+  expect(power.status, "power plays with the power's line").toBe(
+    "Execution: President is choosing a player to execute."
+  );
+  expect(power.alert, "and the execution prompt opens with it").toContain("EXECUTION");
   expect(executionTurn.alert, "yourTurn to execute").toContain("EXECUTION");
   expect(execution.alert, "execution").toContain("EXECUTION RESULTS");
   expect(defeat.alert, "defeat").toContain("Liberals successfully executed Hitler!");

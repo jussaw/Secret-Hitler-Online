@@ -19,10 +19,11 @@ import { makeGameState } from "./game/testGameState";
 import { CONNECT_ERROR, CONTACT_ERROR } from "./lobby/joinError";
 import { RoundStep } from "./game/roundStep";
 import ButtonPrompt from "./custom-alert/ButtonPrompt";
-import { LobbyState, Role, WSCommandType } from "./types";
+import { LobbyState, Role, WSCommandType, type GameState, type PolicyType } from "./types";
 import IconSelection from "./custom-alert/IconSelection";
 import NamePrompt from "./custom-alert/NamePrompt";
 import RoleAlert from "./custom-alert/RoleAlert";
+import VotingPrompt from "./custom-alert/VotingPrompt";
 import { defaultPortrait } from "./assets";
 import type { Me } from "./account/account";
 
@@ -1152,31 +1153,29 @@ const victoryPacket = () => {
   return { ...state, [PARAM_PACKET_TYPE]: PACKET_GAME_STATE };
 };
 
-test("a portrait CONFIRM's fade does not cut short the game's first step", async () => {
+test("a portrait CONFIRM's fade does not cut short the next queue's step", async () => {
   vi.useFakeTimers();
   const app = await playerInLobby();
   await deliver(app, { ...lobbyPacket, [PARAM_ICON]: { Ann: defaultPortrait, Ben: "p2" } });
   const picker = app.state.alertContent as React.ReactElement<{ onConfirm: () => void }>;
   expect(picker.type).toBe(IconSelection);
   act(() => picker.props.onConfirm()); // the queue is cleared and the picker fades for a second
-  act(() => app.onClickWatchInstead());
   await act(async () => {
     vi.advanceTimersByTime(300);
   });
-  // The game starts: a spectator gets no role alert, so its first step is the event bar (2.5 s).
-  await deliver(app, gameStatePacket());
-  expect(app.state.showEventBar).toBe(true);
+  // A new queue whose first step is timed and shows no alert: a line held for 2.5 s, then another.
+  act(() => app.queueStatusMessage("held", null, 2500));
+  act(() => app.queueStatusMessage("next", null));
   await act(async () => {
-    vi.advanceTimersByTime(1500); // past the picker's fade
+    vi.advanceTimersByTime(1500); // t = 1.8 s, past the picker's fade
   });
-  expect(app.state.showEventBar).toBe(true);
+  expect(app.state.statusBarText).toBe("held");
   expect(app.allAnimationsFinished).toBe(false);
-  expect(app.state.statusBarText).toBe("---");
   await act(async () => {
-    vi.advanceTimersByTime(1500);
+    vi.advanceTimersByTime(1100); // t = 2.9 s
   });
+  expect(app.state.statusBarText).toBe("next");
   expect(app.allAnimationsFinished).toBe(true);
-  expect(app.state.statusBarText).not.toBe("---");
 });
 
 test("a fade timer from an earlier alert does not blank the victory screen", async () => {
@@ -1328,27 +1327,58 @@ test("START GAME on a socket still connecting is sent once it opens", async () =
   });
 });
 
-test("an event bar cut off by a cleared queue does not finish the next queue's step", async () => {
+/** A game packet for Ann, Ben, Cat, Dan and Eve with Ann a liberal; Ben presides unless `overrides` says. */
+const playerGamePacket = (overrides: Partial<GameState> = {}) => {
+  const state = makeGameState(["Ann", "Ben", "Cat", "Dan", "Eve"], {
+    president: "Ben",
+    electionTracker: 1, // not the game's first packet, so no role alert
+    ...overrides,
+  });
+  state.players.Ann.id = Role.LIBERAL;
+  return { ...state, [PARAM_PACKET_TYPE]: PACKET_GAME_STATE };
+};
+
+test("a vote opens its prompt at once, with no timed step before it", async () => {
   vi.useFakeTimers();
   const app = await playerInLobby();
-  act(() => app.queueEventUpdate("VOTING")); // its finish timer is due at 2.5 s
+  await deliver(app, playerGamePacket());
   await act(async () => {
-    vi.advanceTimersByTime(1000);
+    vi.advanceTimersByTime(5000); // every step of the nomination has run
   });
-  act(() => app.clearAnimationQueue()); // a disconnect sent the page to the login page
-  // A new queue: an event bar due to end at 3.5 s, then a status line.
-  act(() => app.queueEventUpdate("CHANCELLOR NOMINATION"));
-  act(() => app.queueStatusMessage("next", null));
-  await act(async () => {
-    vi.advanceTimersByTime(1600); // t = 2.6 s, past the old timer
-  });
-  expect(app.state.statusBarText).not.toBe("next");
-  expect(app.allAnimationsFinished).toBe(false);
-  await act(async () => {
-    vi.advanceTimersByTime(1000); // t = 3.6 s
-  });
-  expect(app.state.statusBarText).toBe("next");
   expect(app.allAnimationsFinished).toBe(true);
+  await deliver(app, playerGamePacket({ state: LobbyState.CHANCELLOR_VOTING, chancellor: "Cat" }));
+  expect(app.state.showAlert).toBe(true);
+  expect((app.state.alertContent as React.ReactElement).type).toBe(VotingPrompt);
+  expect(app.state.statusBarText).toBe("Waiting for all players to vote.");
+  expect(app.state.statusStep).toBe(RoundStep.ELECTION);
+});
+
+const FASCIST = "FASCIST" as PolicyType;
+const LIBERAL = "LIBERAL" as PolicyType;
+
+test.each([
+  [LobbyState.PP_PEEK, "PEEK", "Peek: President is previewing the next 3 policies."],
+  [LobbyState.PP_INVESTIGATE, "INVESTIGATE LOYALTY", "Investigation: President is choosing a player to investigate."],
+  [LobbyState.PP_EXECUTION, "EXECUTION", "Execution: President is choosing a player to execute."],
+  [LobbyState.PP_ELECTION, "SPECIAL ELECTION", "Special Election: President is choosing the next president."],
+])("the president's %s prompt lights EXECUTIVE ACTION with the power's line", async (state, label, line) => {
+  vi.useFakeTimers();
+  const app = await playerInLobby();
+  const government = { president: "Ann", chancellor: "Ben", fascistPolicies: 3 };
+  await deliver(app, playerGamePacket({ ...government, state: LobbyState.LEGISLATIVE_CHANCELLOR }));
+  await act(async () => {
+    vi.advanceTimersByTime(5000);
+  });
+  expect(app.state.statusStep).toBe(RoundStep.LEGISLATIVE);
+  // The board is as it was, so no policy alert comes first: only the board's 0.5 s step.
+  await deliver(app, playerGamePacket({ ...government, state, peek: [FASCIST, LIBERAL, FASCIST] }));
+  await act(async () => {
+    vi.advanceTimersByTime(600);
+  });
+  expect(app.state.showAlert).toBe(true);
+  expect(document.getElementById("alert-box")!.textContent).toContain(label);
+  expect(app.state.statusStep).toBe(RoundStep.EXECUTIVE);
+  expect(app.state.statusBarText).toBe(line);
 });
 
 test("a vote tally cut off by a cleared queue does not finish the next queue's step", async () => {
@@ -1360,8 +1390,8 @@ test("a vote tally cut off by a cleared queue does not finish the next queue's s
     vi.advanceTimersByTime(5000);
   });
   act(() => app.clearAnimationQueue()); // a disconnect sent the page to the login page
-  // A new queue: an event bar due to end at 7.5 s, then a status line.
-  act(() => app.queueEventUpdate("VOTING"));
+  // A new queue: a line held until 7.5 s, then another.
+  act(() => app.queueStatusMessage("held", null, 2500));
   act(() => app.queueStatusMessage("next", null));
   await act(async () => {
     vi.advanceTimersByTime(2000); // t = 7.0 s, past the old timer
@@ -1383,12 +1413,12 @@ test("a held status line cut off by a cleared queue does not finish the next que
     vi.advanceTimersByTime(1000);
   });
   act(() => app.clearAnimationQueue());
-  act(() => app.queueEventUpdate("VOTING")); // due to end at 3.5 s
+  act(() => app.queueStatusMessage("held again", null, 2500)); // due to end at 3.5 s
   act(() => app.queueStatusMessage("next", null));
   await act(async () => {
     vi.advanceTimersByTime(2400); // t = 3.4 s, past the old timer
   });
-  expect(app.state.statusBarText).not.toBe("next");
+  expect(app.state.statusBarText).toBe("held again");
   await act(async () => {
     vi.advanceTimersByTime(200); // t = 3.6 s
   });

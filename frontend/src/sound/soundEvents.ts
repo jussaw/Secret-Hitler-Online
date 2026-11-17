@@ -5,7 +5,7 @@ import type { SoundName } from "./SoundManager";
  * Which queued animation a sound waits for, so it plays as that animation starts (App.tsx):
  * - now: on arrival, because the queue can be held by the player's own prompt
  * - start: the role reveal; votes: the tally line in showVotes; tracker: the election tracker
- *   alert; policy: the policy-enacted alert; phase: the new phase's event bar or status line;
+ *   alert; policy: the policy-enacted alert; phase: the new phase's status line;
  *   prompt: the local player's prompt (or END TERM's status line); result: the investigation or
  *   execution results; end: the victory prompt
  */

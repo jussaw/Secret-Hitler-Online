@@ -36,10 +36,6 @@
     --selectionSelected: rgba(228, 105, 73, 1.00);
     --selectionNone: rgba(246, 181, 63, 0.00);
 
-    --eventBarIn: 1s;
-    --eventBarOut: 1s;
-    --eventBarOpacity: 0.9;
-
     --statusBarColor: #141414;
 
     --etOffset: 17.6%;

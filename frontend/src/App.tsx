@@ -3,7 +3,6 @@ import "./App.css";
 import "./fonts.css";
 import CustomAlert, { ALERT_FADE_OUT_MS } from "./custom-alert/CustomAlert";
 import RoleAlert from "./custom-alert/RoleAlert";
-import EventBar from "./event-bar/EventBar";
 import GameScreen from "./game/GameScreen";
 import { RoundStep, stepForPolicyLine, stepForState } from "./game/roundStep";
 
@@ -116,8 +115,6 @@ import {
   waitingText,
 } from "./spectator/spectatorStatus";
 
-const EVENT_BAR_FADE_OUT_DURATION = 500;
-
 const DEFAULT_GAME_STATE: GameState = {
   liberalPolicies: 0,
   fascistPolicies: 0,
@@ -219,8 +216,6 @@ type AppState = {
   alertContent: JSX.Element;
   /** The prompt overlay's key: toLoginPage changes it, so the overlay it closes goes at once. */
   alertKey: number;
-  showEventBar: boolean;
-  eventBarMessage: string;
   statusBarText: string;
   /** The round step lit beside the status line; null until a line lights one. */
   statusStep: RoundStep | null;
@@ -259,8 +254,6 @@ const defaultAppState: AppState = {
   showAlert: false,
   alertContent: <div />,
   alertKey: 0,
-  showEventBar: false,
-  eventBarMessage: "",
   statusBarText: "---",
   statusStep: null,
   allAnimationsFinished: true,
@@ -1682,7 +1675,6 @@ class App extends Component<{}, AppState> {
             );
           }
 
-          this.queueEventUpdate("CHANCELLOR NOMINATION");
           queueStatus("Waiting for president to nominate a chancellor.");
 
           if (isPresident) {
@@ -1698,7 +1690,6 @@ class App extends Component<{}, AppState> {
         case STATE_CHANCELLOR_VOTING:
           this.setState({ statusBarText: "" });
           this.queueSounds(soundNames, "phase");
-          this.queueEventUpdate("VOTING");
           queueStatus("Waiting for all players to vote.");
           // Check if the player is dead or has already voted-- if so, do not show the voting prompt.
           if (
@@ -1724,7 +1715,6 @@ class App extends Component<{}, AppState> {
             this.addAnimationToQueue(() => this.showVotes(newState, soundNames));
           }
           this.queueSounds(soundNames, "phase");
-          this.queueEventUpdate("LEGISLATIVE SESSION");
 
           // TODO: Animate cards being pulled from the draw deck for all users.
 
@@ -1787,9 +1777,11 @@ class App extends Component<{}, AppState> {
           }
           break;
 
+        // Every viewer gets the power's status line, the president too, so the round tracker lights
+        // EXECUTIVE ACTION for everyone; the president's prompt opens just after it.
         case STATE_PP_PEEK:
           this.queueSounds(soundNames, "phase");
-          this.queueEventUpdate("PRESIDENTIAL POWER");
+          queueStatus("Peek: President is previewing the next 3 policies.");
           if (isPresident) {
             this.queueSounds(soundNames, "prompt");
             if (!newState.peek) {
@@ -1802,48 +1794,40 @@ class App extends Component<{}, AppState> {
               />,
               true
             );
-          } else {
-            queueStatus("Peek: President is previewing the next 3 policies.");
           }
           break;
 
         case STATE_PP_ELECTION:
           this.queueSounds(soundNames, "phase");
-          this.queueEventUpdate("PRESIDENTIAL POWER");
+          queueStatus("Special Election: President is choosing the next president.");
           if (isPresident) {
             this.queueSounds(soundNames, "prompt");
             this.queueAlert(
               SelectSpecialElectionPrompt(name, newState, this.sendWSCommand)
             );
-          } else {
-            queueStatus("Special Election: President is choosing the next president.");
           }
           break;
 
         case STATE_PP_EXECUTION:
           this.queueSounds(soundNames, "phase");
-          this.queueEventUpdate("PRESIDENTIAL POWER");
+          queueStatus("Execution: President is choosing a player to execute.");
           if (isPresident) {
             this.queueSounds(soundNames, "prompt");
             this.queueAlert(
               SelectExecutionPrompt(name, newState, this.sendWSCommand),
               true
             );
-          } else {
-            queueStatus("Execution: President is choosing a player to execute.");
           }
           break;
 
         case STATE_PP_INVESTIGATE:
           this.queueSounds(soundNames, "phase");
-          this.queueEventUpdate("PRESIDENTIAL POWER");
+          queueStatus("Investigation: President is choosing a player to investigate.");
           if (isPresident) {
             this.queueSounds(soundNames, "prompt");
             this.queueAlert(
               SelectInvestigationPrompt(name, newState, this.sendWSCommand)
             );
-          } else {
-            queueStatus("Investigation: President is choosing a player to investigate.");
           }
           break;
 
@@ -2253,26 +2237,6 @@ class App extends Component<{}, AppState> {
   }
 
   /**
-   * Shows the eventBar for a set period of time.
-   * @param message {String} the message for the Event Bar to be fully visible.
-   * @param duration {Number} the duration (in ms) for the Event Bar to be visible. (default is 3000 ms).
-   * @effects Adds a function to the animation queue that, when called, shows the EventBar with the given message
-   *          for {@code duration} ms, then advances to the next animation when finished.
-   */
-  queueEventUpdate(message: string, duration = 2000) {
-    this.addAnimationToQueue(() => {
-      this.setState({
-        showEventBar: true,
-        eventBarMessage: message,
-      });
-      setTimeout(() => {
-        this.setState({ showEventBar: false });
-      }, duration);
-      this.finishStepAfter(duration + EVENT_BAR_FADE_OUT_DURATION);
-    });
-  }
-
-  /**
    * Adds a CustomAlert to the animation queue.
    * @param content {html} the contents to be shown in the AlertBox.
    * @param closeOnOK {boolean} whether to close the alert when the server responds with an ok message. (default = true)
@@ -2324,11 +2288,6 @@ class App extends Component<{}, AppState> {
   renderGamePage() {
     return (
       <>
-        <EventBar
-          show={this.state.showEventBar}
-          message={this.state.eventBarMessage}
-        />
-
         <GameScreen
           gameState={this.state.gameState}
           user={this.state.name}
