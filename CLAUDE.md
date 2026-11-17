@@ -873,8 +873,9 @@ keeps credit to upstream and to the board game's creators.
   always keeps two lines' height, and `--round-tracker-ems` is the whole card's height in its own
   ems, which the layouts reserve) and `roundStep` (a pure function from the game state and
   `lastState` to the step; `App` queues the step with each status line). The tracker is the only
-  phase cue: no band crosses the screen when the phase changes (#104), and the status line or
-  prompt that follows a phase change comes at once. Every viewer gets each phase's status line,
+  phase cue: no band crosses the screen when the phase changes (#104), so the status line or
+  prompt that follows a phase change no longer waits 2.5 s behind one (a vote's reveal, an alert
+  or the board's move before it still runs first). Every viewer gets each phase's status line,
   the president during a presidential power too, so EXECUTIVE ACTION lights for everyone; the
   president's prompt opens just after it. `TermTimer` is the END
   TERM countdown: an icon and the seconds left, counted down on the page from each packet's
