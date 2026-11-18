@@ -883,7 +883,8 @@ keeps credit to upstream and to the board game's creators.
   each round's `blame`, and `forced`), both memoized per counted games; `byPlayer` never has a key
   for a CPU seat, whose choices credit no one. Four sections (Roles, As president, As chancellor,
   Blame, each an `h2` over `.roles-grid`) hold seventeen `StatCard`s: one number per player through
-  `rankRows` and `RankedTable` (a rate shown as its `rateCellText`), and every split through
+  `rankRows` and `RankedTable` (a rate shown as its `rateCellText`, except Deep cover
+  (president), which shows two shares, "63% · 37%"), and every split through
   `SplitTable`, each cell's `value` the figure its text shows (a rate's `rateCell` and a count's
   `countCell`, and Policies enacted's Liberals, never its Fascists or its total), with the
   group's hand shares
@@ -993,7 +994,8 @@ keeps credit to upstream and to the board game's creators.
   (two on desktop, one on phones), the wide ones across the row; both pick by `pick.ts`'s `firstBy`
   (never by the games' order), and their cells write a rate or `NO_VALUE` with `tabs/cellText.ts`'s
   `rateText` (`formatPercent`, or `NO_VALUE` for none) or `rateCellText`, a `Rate`'s `rateText`,
-  which ROLES & CARDS' and VOTES & POWERS' rate cells and rate cards show too since Phase 27B: the
+  which ROLES & CARDS' and VOTES & POWERS' rate cells and rate cards (all but Deep cover's two
+  shares) show too since Phase 27B: the
   same `wholePercent` as `numbers.ts`' `percentFigure` and `rateFigure`, the figures a column sorts
   by, so a cell sorts by exactly what it says. `tabs/PlayerMatrix.tsx` is the player-by-player table: a
   `table.player-matrix` in a `ScrollRegion` that scrolls sideways inside its card, each row's name
@@ -1033,8 +1035,9 @@ keeps credit to upstream and to the board game's creators.
   column under `countHead`, and `countWords` where the count's nouns are not the head's), and a
   split card (`SplitTable`, by role or by side) lists every player with a chance in any column,
   every cell given and sorting by the figure its text shows (`SplitTable`'s `rateCell` and
-  `countCell`, and VETOES AS PRESIDENT's accepted vetoes, the 2 that "2 of 5" leads with, "0 of
-  0" a 0; `rateFound`, `countFound` and `vetoFound` pair each cell with whether it was a chance);
+  `countCell`, and VETOES AS PRESIDENT's accepted vetoes, `vetoCell`, the 2 that "2 of 5" leads
+  with, "0 of 0" a 0; `rateWithChance`, `countWithChance` and `vetoWithChance` give each cell with
+  whether the player had a chance in its column, a `CellWithChance`);
   a card with no row shows its own line, and every card `NO_GAMES` when no game
   counts. A power's two sides can differ with CPU seats in, so the lines say whom: "None of these
   players has investigated anyone yet." (INVESTIGATIONS) and "has been investigated" (TIMES
