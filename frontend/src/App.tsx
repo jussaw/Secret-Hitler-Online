@@ -19,6 +19,7 @@ import {
   WEBSOCKET,
   PARAM_USERNAMES,
   PARAM_BOTS,
+  PARAM_BOT_SKILL,
   PARAM_STATE,
   STATE_CHANCELLOR_NOMINATION,
   STATE_CHANCELLOR_VOTING,
@@ -85,6 +86,8 @@ import { defaultPortrait } from "./assets";
 import LobbyScreen from "./lobby/LobbyScreen";
 import Cookies from "js-cookie";
 import {
+  botSkillOf,
+  type BotSkill,
   GameState,
   LobbyState,
   Role,
@@ -200,6 +203,8 @@ type AppState = {
   usernames: string[];
   /** The lobby packet's bots: the names of the bots the host's game will seat (#70). */
   bots: string[];
+  /** The lobby packet's botSkill: how well those bots will play (#72). */
+  botSkill: BotSkill;
   icons: { [key: string]: string };
   gameState: GameState;
   /* Stores the last gameState[PARAM_STATE] value to check for changes. */
@@ -241,6 +246,7 @@ const defaultAppState: AppState = {
   spectatorCount: 0,
   usernames: [],
   bots: [],
+  botSkill: "NORMAL",
   icons: {},
   gameState: DEFAULT_GAME_STATE,
   lastState: {},
@@ -365,6 +371,7 @@ class App extends Component<{}, AppState> {
     this.onClickLeaveLobby = this.onClickLeaveLobby.bind(this);
     this.onClickStartGame = this.onClickStartGame.bind(this);
     this.onClickSetBots = this.onClickSetBots.bind(this);
+    this.onClickSetBotSkill = this.onClickSetBotSkill.bind(this);
     this.sendWSCommand = this.sendWSCommand.bind(this);
     this.showSnackBar = this.showSnackBar.bind(this);
     this.onAnimationFinish = this.onAnimationFinish.bind(this);
@@ -554,7 +561,7 @@ class App extends Component<{}, AppState> {
       this.setState({ page: PAGE.LOBBY });
     }
     if (!sameLobby) {
-      this.setState({ usernames: [], bots: [] });
+      this.setState({ usernames: [], bots: [], botSkill: "NORMAL" });
     }
     this.setState({
       name: name,
@@ -812,6 +819,8 @@ class App extends Component<{}, AppState> {
             usernames,
             // The server names the bots the game will seat; a page never counts or names them.
             bots: message[PARAM_BOTS] ?? [],
+            // And how well they will play: NORMAL for a packet without a level it knows.
+            botSkill: botSkillOf(message[PARAM_BOT_SKILL]),
             icons: message[PARAM_ICON],
             spectatorCount: message[PARAM_SPECTATOR_COUNT] ?? 0,
             page: PAGE.LOBBY,
@@ -1407,6 +1416,11 @@ class App extends Component<{}, AppState> {
     this.sendWSCommand({ command: WSCommandType.SET_BOT_COUNT, count });
   }
 
+  /** The host's BOT SKILL row: how well the bots of the next game play. */
+  onClickSetBotSkill(skill: BotSkill) {
+    this.sendWSCommand({ command: WSCommandType.SET_BOT_SKILL, skill });
+  }
+
   onClickLeaveLobby() {
     // A PLAY INSTEAD check answering before the socket's close must not seat the person.
     this.cancelPlayInstead();
@@ -1453,6 +1467,7 @@ class App extends Component<{}, AppState> {
           inviteLink={window.location.origin + "/?lobby=" + this.state.lobby}
           usernames={this.state.usernames}
           bots={this.state.bots}
+          botSkill={this.state.botSkill}
           icons={this.state.icons}
           user={this.state.name}
           spectator={this.state.spectator}
@@ -1470,6 +1485,7 @@ class App extends Component<{}, AppState> {
           }
           onStartGame={this.onClickStartGame}
           onSetBots={this.onClickSetBots}
+          onSetBotSkill={this.onClickSetBotSkill}
           onChangeName={this.onClickChangeName}
           onChangeLook={this.onClickChangeIcon}
           onWatchInstead={this.onClickWatchInstead}

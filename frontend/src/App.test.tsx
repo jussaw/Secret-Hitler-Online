@@ -8,6 +8,7 @@ import {
   PACKET_GAME_STATE,
   PACKET_LOBBY,
   PARAM_BOTS,
+  PARAM_BOT_SKILL,
   PARAM_ICON,
   PARAM_PACKET_TYPE,
   PARAM_USERNAMES,
@@ -216,6 +217,41 @@ test("the lobby shows the server's bots, and the host's stepper asks it for one 
   const socket = app.current!.websocket as unknown as FakeSocket;
   const sent = socket.send.mock.calls.map(([data]) => JSON.parse(data));
   expect(sent[sent.length - 1]).toEqual({ command: "set-bot-count", count: 3, name: "A", lobby: "HBIA" });
+});
+
+test("the lobby shows the server's bot skill, and the host's row asks it for another", async () => {
+  const app = createRef<App>();
+  render(<App ref={app} />);
+  act(() => {
+    app.current!.tryOpenWebSocket("A", "HBIA");
+  });
+  await deliver(app.current!, {
+    [PARAM_PACKET_TYPE]: PACKET_LOBBY,
+    [PARAM_USERNAMES]: ["A", "B", "C"],
+    [PARAM_ICON]: { A: "p1", B: "p2", C: "p3" },
+    [PARAM_BOTS]: ["Bot 1", "Bot 2"],
+    [PARAM_BOT_SKILL]: "EASY",
+  });
+  const group = within(screen.getByRole("group", { name: "Bot skill" }));
+  expect(group.getByRole("button", { name: "EASY" })).toHaveAttribute("aria-pressed", "true");
+  fireEvent.click(group.getByRole("button", { name: "HARD" }));
+  const socket = app.current!.websocket as unknown as FakeSocket;
+  const sent = socket.send.mock.calls.map(([data]) => JSON.parse(data));
+  expect(sent[sent.length - 1]).toEqual({ command: "set-bot-skill", skill: "HARD", name: "A", lobby: "HBIA" });
+});
+
+test("a lobby packet without a known bot skill shows NORMAL", async () => {
+  const app = createRef<App>();
+  const { container } = render(<App ref={app} />);
+  // The page's name, P1, is neither Ann nor Ben: it sees the line, not the host's switch.
+  for (const packet of [
+    lobbyPacket,
+    { ...lobbyPacket, [PARAM_BOT_SKILL]: "EXPERT" },
+    { ...lobbyPacket, [PARAM_BOT_SKILL]: "hard" },
+  ]) {
+    await deliver(app.current!, packet);
+    expect(container.querySelector(".lobby-skill-level")).toHaveTextContent(/^NORMAL$/);
+  }
 });
 
 test("a lobby packet without bots shows none", async () => {

@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { defaultPortrait } from "../assets";
 import { copyText } from "./copyText";
@@ -38,6 +38,7 @@ function lobbyProps(overrides: Partial<LobbyScreenProps> = {}): LobbyScreenProps
     inviteLink: LINK,
     usernames: TEN,
     bots: [],
+    botSkill: "NORMAL",
     icons: icons(TEN),
     user: HOST,
     spectator: false,
@@ -48,6 +49,7 @@ function lobbyProps(overrides: Partial<LobbyScreenProps> = {}): LobbyScreenProps
     spectatorError: "",
     onStartGame: vi.fn(),
     onSetBots: vi.fn(),
+    onSetBotSkill: vi.fn(),
     onChangeName: vi.fn(),
     onChangeLook: vi.fn(),
     onWatchInstead: vi.fn(),
@@ -83,6 +85,13 @@ const bots = (n: number) => Array.from({ length: n }, (_, i) => `Bot ${i + 1}`);
 const stepper = () => screen.queryByRole("group", { name: "Bots" });
 const botRows = () => Array.from(document.querySelectorAll<HTMLElement>(".lobby-players li.roster-row.is-bot"));
 const playerCount = () => document.querySelector(".lobby-player-count")!.textContent;
+/** The host's BOT SKILL row, or null for anyone else. */
+const skillGroup = () => screen.queryByRole("group", { name: "Bot skill" });
+/** The row's buttons' aria-pressed, EASY, NORMAL and HARD in order. */
+const pressed = () =>
+  within(skillGroup()!)
+    .getAllByRole("button")
+    .map((b) => b.getAttribute("aria-pressed"));
 
 describe("LobbyScreen", () => {
   it("the host's buttons", () => {
@@ -92,6 +101,9 @@ describe("LobbyScreen", () => {
       "Fewer bots",
       "More bots",
       "START GAME",
+      "EASY",
+      "NORMAL",
+      "HARD",
       "CHANGE NAME",
       "CHANGE LOOK",
       "WATCH INSTEAD",
@@ -477,6 +489,96 @@ describe("LobbyScreen", () => {
     expect(playerCount()).toBe("10 / 10");
     expect(button("PLAY INSTEAD")).toBeEnabled();
     expect(note()).toBeEmptyDOMElement();
+  });
+
+  it("the host's BOT SKILL row sits under START GAME's row", () => {
+    renderLobby();
+    const controls = document.querySelector(".lobby-host-controls")!;
+    expect(Array.from(controls.children)).toEqual([document.querySelector(".lobby-start-row"), skillGroup()]);
+    expect(skillGroup()).toHaveTextContent(/^BOT SKILL\s*EASY\s*NORMAL\s*HARD$/);
+    expect(pressed()).toEqual(["false", "true", "false"]);
+  });
+
+  it("a press shows the level at once and asks the server for it", () => {
+    const props = renderLobby();
+    fireEvent.click(button("HARD"));
+    expect(pressed()).toEqual(["false", "false", "true"]);
+    expect(vi.mocked(props.onSetBotSkill).mock.calls).toEqual([["HARD"]]);
+  });
+
+  it("the level pressed holds until the next lobby packet", () => {
+    const props = lobbyProps({ usernames: FOUR, icons: icons(FOUR), bots: bots(2) });
+    const { rerender } = render(<LobbyScreen {...props} />);
+    fireEvent.click(button("HARD"));
+    rerender(<LobbyScreen {...props} />);
+    expect(pressed()).toEqual(["false", "false", "true"]);
+    // A packet the server sent before it took the press: the page shows what the server holds.
+    rerender(<LobbyScreen {...props} bots={bots(2)} botSkill="NORMAL" />);
+    expect(pressed()).toEqual(["false", "true", "false"]);
+    rerender(<LobbyScreen {...props} bots={bots(2)} botSkill="HARD" />);
+    expect(pressed()).toEqual(["false", "false", "true"]);
+  });
+
+  it("a second press before the server answers shows the second", () => {
+    const props = renderLobby({ usernames: FOUR, icons: icons(FOUR), bots: bots(2) });
+    fireEvent.click(button("HARD"));
+    fireEvent.click(button("EASY"));
+    expect(vi.mocked(props.onSetBotSkill).mock.calls).toEqual([["HARD"], ["EASY"]]);
+    expect(pressed()).toEqual(["true", "false", "false"]);
+  });
+
+  it("pressing the level shown sends nothing", () => {
+    const props = renderLobby();
+    fireEvent.click(button("NORMAL"));
+    expect(props.onSetBotSkill).not.toHaveBeenCalled();
+    expect(pressed()).toEqual(["false", "true", "false"]);
+  });
+
+  it("the switch stays on with ten people and no bots", () => {
+    renderLobby();
+    for (const level of ["EASY", "NORMAL", "HARD"]) expect(button(level)).toBeEnabled();
+    expect(button("Fewer bots")).toBeDisabled();
+    expect(button("More bots")).toBeDisabled();
+  });
+
+  it("guests and spectators see the level on a line where the host's row is, without buttons", () => {
+    const viewers: Array<() => unknown> = [
+      () => renderLobby({ user: lg(1), botSkill: "HARD" }),
+      () => watching({ botSkill: "HARD" }),
+      () => watching({ botSkill: "HARD", signedIn: false }),
+      () => watching({ botSkill: "HARD", signedIn: false, discord: false }),
+    ];
+    for (const view of viewers) {
+      view();
+      expect(skillGroup()).toBeNull();
+      for (const level of ["EASY", "NORMAL", "HARD"]) {
+        expect(screen.queryByRole("button", { name: level })).toBeNull();
+      }
+      const first = document.querySelector(".lobby-actions")!.firstElementChild!;
+      expect(first).toHaveClass("lobby-skill-line");
+      expect(first).toHaveTextContent(/^BOT SKILL\s*HARD$/);
+      expect(document.querySelector(".lobby-skill-level")).toHaveTextContent(/^HARD$/);
+      cleanup();
+    }
+  });
+
+  it("the level shows in that one place only", () => {
+    for (const user of [HOST, lg(1)]) {
+      renderLobby({ usernames: FOUR, icons: icons(FOUR), bots: bots(2), botSkill: "HARD", user });
+      expect(screen.getAllByText("HARD")).toHaveLength(1);
+      for (const r of rows()) expect(r.textContent).not.toMatch(/easy|normal|hard/i);
+      expect(statusText()).not.toMatch(/easy|normal|hard/i);
+      cleanup();
+    }
+  });
+
+  it("a new host gets the switch, at the level chosen", () => {
+    const props = lobbyProps({ usernames: FOUR, icons: icons(FOUR), botSkill: "HARD", user: lg(1) });
+    const { rerender } = render(<LobbyScreen {...props} />);
+    expect(skillGroup()).toBeNull();
+    rerender(<LobbyScreen {...props} usernames={FOUR.slice(1)} />);
+    expect(skillGroup()).not.toBeNull();
+    expect(pressed()).toEqual(["false", "false", "true"]);
   });
 
   it("the header", () => {
