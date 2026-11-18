@@ -424,6 +424,10 @@ export const STACKED_QUERY = "(max-width: 768px), (aspect-ratio < 5/4), (max-hei
  *   than 1px past either side, unless it is inside a box that scrolls sideways itself (computed
  *   `overflow-x` `auto` or `scroll`, other than `body`, `.stats-screen` and `.stats-main`, which
  *   compute it for a vertical scroller too). That box itself still counts.
+ * - `outsideCards`: every visible `table.ranked-table` in a `.stats-card` that reaches more than
+ *   1px past that card's content box (its box less its border and padding), as `title: [left,
+ *   right] outside [left, right]`, by the card's `h3`. A box that scrolls sideways excuses none:
+ *   a ranked table that makes one scroll is wider than the card's content box.
  * - `smallTargets`, only where the stacked query matches: every visible link, button, select,
  *   input, summary and `[role="button"]` narrower or shorter than MIN_TARGET, but for a link
  *   inline in a sentence of a `p` (never one in a table cell). A checkbox or radio is measured by
@@ -433,7 +437,7 @@ export const STACKED_QUERY = "(max-width: 768px), (aspect-ratio < 5/4), (max-hei
  */
 export function statsPageProblems(
   page: Page
-): Promise<{ sideways: string[]; smallTargets: string[]; smallText: string[] }> {
+): Promise<{ sideways: string[]; outsideCards: string[]; smallTargets: string[]; smallText: string[] }> {
   return page.evaluate(
     ({ stacked, minTarget, minText }) => {
       const describe = (el: Element, extra: string) => {
@@ -465,6 +469,24 @@ export function statsPageProblems(
         const r = el.getBoundingClientRect();
         if ((r.left < -1 || r.right > width + 1) && !insideScroller(el)) {
           sideways.push(describe(el, `[${Math.round(r.left)}, ${Math.round(r.right)}]`));
+        }
+      }
+
+      // A ranked table (#109) past its card's content box (the card less its border and padding),
+      // which the window's edges alone would miss: one that ran over the card's padding, or that
+      // made a scroll region of its own scroll, as its box is then wider than the card's.
+      const outsideCards: string[] = [];
+      for (const table of Array.from(document.querySelectorAll(".stats-card table.ranked-table"))) {
+        if (!shown(table)) continue;
+        const card = table.closest(".stats-card")!;
+        const style = getComputedStyle(card);
+        const edges = card.getBoundingClientRect();
+        const left = edges.left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft);
+        const right = edges.right - parseFloat(style.borderRightWidth) - parseFloat(style.paddingRight);
+        const r = table.getBoundingClientRect();
+        if (r.left < left - 1 || r.right > right + 1) {
+          const title = (card.querySelector("h3")?.textContent ?? "").trim();
+          outsideCards.push(`${title}: [${r.left.toFixed(1)}, ${r.right.toFixed(1)}] outside [${left.toFixed(1)}, ${right.toFixed(1)}]`);
         }
       }
 
@@ -503,7 +525,7 @@ export function statsPageProblems(
           if (px < minText) smallText.push(describe(el, `${px}px`));
         }
       }
-      return { sideways, smallTargets, smallText };
+      return { sideways, outsideCards, smallTargets, smallText };
     },
     { stacked: STACKED_QUERY, minTarget: MIN_TARGET, minText: MIN_FIELD_TEXT }
   );
@@ -511,8 +533,9 @@ export function statsPageProblems(
 
 /**
  * Sets the page to `size`, lets it lay itself out again, and expects `statsPageProblems` to find
- * nothing: no sideways scroll and, where the stacked query matches, 44px targets and 16px field
- * text. Every stats spec checks its pages with it, and writes no sideways check of its own.
+ * nothing: no sideways scroll, no ranked table past its card's content box and, where the stacked
+ * query matches, 44px targets and 16px field text. Every stats spec checks its pages with it, and
+ * writes no sideways check of its own.
  */
 export async function checkStatsPage(page: Page, size: Size): Promise<void> {
   await page.setViewportSize(size);
@@ -521,6 +544,7 @@ export async function checkStatsPage(page: Page, size: Size): Promise<void> {
   const at = `${size.width}x${size.height}`;
   const problems = await statsPageProblems(page);
   expect(problems.sideways, `sideways at ${at}`).toEqual([]);
+  expect(problems.outsideCards, `ranked tables outside their cards at ${at}`).toEqual([]);
   expect(problems.smallTargets, `small targets at ${at}`).toEqual([]);
   expect(problems.smallText, `small field text at ${at}`).toEqual([]);
 }

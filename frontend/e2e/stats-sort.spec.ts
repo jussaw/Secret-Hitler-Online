@@ -1,15 +1,16 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { routePath, type TabId } from "../src/stats/routes";
+import { routePath } from "../src/stats/routes";
 import { NARROW_PHONE } from "./layout";
 import { settle } from "./lobby";
-import { bigStatsData, checkStatsPage, STACKED_QUERY, statsSizesFor, stubStats } from "./stats";
+import { bigStatsData, checkStatsPage, STACKED_QUERY, stubStats } from "./stats";
 
 /**
  * The sortable tables in the browser (#109): a ranked card's heads sort its rows while every rank
  * stays its player's (where the stacked query matches, its count is a line under the name and its
  * count head is gone), the power ranking sorts by Elo, a best week by player, Enter and Space on a
- * focused head sort it with the focus kept there, a sorted card still fits a 320px phone, and every
- * ranked table fits inside its card at every stats size.
+ * focused head sort it with the focus kept there, and a sorted card still fits a 320px phone.
+ * That every ranked table stays inside its card at every stats size is `checkStatsPage`'s, which
+ * every tab's own spec runs.
  */
 
 const data = bigStatsData();
@@ -182,66 +183,4 @@ test("a sorted ranked card still fits", async ({ page }) => {
   await headButton(table, "Win rate").click();
   await expect(head(table, "Win rate")).toHaveAttribute("aria-sort", "descending");
   await checkStatsPage(page, NARROW_PHONE);
-});
-
-/** Every page with ranked tables (`table.ranked-table`): the tabs that have them and PLAYERS, each
- *  with and without CPU games. */
-const RANKED_TABS: TabId[] = ["overview", "roles", "votes", "activity", "records"];
-const RANKED_PAGES: string[] = [...RANKED_TABS.map((tab) => routePath({ page: "tab", tab })), routePath({ page: "players" })].flatMap(
-  (path) => [path, `${path}?cpu=1`]
-);
-
-/**
- * Every shown ranked table on the page that is not inside its nearest card's content box (padding
- * and border taken off), with 1px of slack as `statsPageProblems` allows, as `title: [left, right]
- * outside [left, right]`. A table that sits in a scroll region of its own by design (the power
- * ranking) is measured by its region, which must not scroll either. Also how many it checked.
- */
-function rankedTableProblems(page: Page): Promise<{ checked: number; problems: string[] }> {
-  return page.evaluate(() => {
-    const out: string[] = [];
-    let checked = 0;
-    for (const table of Array.from(document.querySelectorAll("table.ranked-table"))) {
-      const card = table.closest(".stats-card");
-      if (!card || table.getBoundingClientRect().width === 0) continue;
-      checked++;
-      const title = (card.querySelector("h3")?.textContent ?? "?").trim();
-      const region = table.closest(".scroll-region");
-      const box = region ?? table;
-      const style = getComputedStyle(card);
-      const edges = card.getBoundingClientRect();
-      const left = edges.left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft);
-      const right = edges.right - parseFloat(style.borderRightWidth) - parseFloat(style.paddingRight);
-      const r = box.getBoundingClientRect();
-      if (r.left < left - 1 || r.right > right + 1) {
-        out.push(`${title}: [${r.left.toFixed(1)}, ${r.right.toFixed(1)}] outside [${left.toFixed(1)}, ${right.toFixed(1)}]`);
-      }
-      if (region && region.scrollWidth > region.clientWidth) {
-        out.push(`${title}: its region scrolls, ${region.scrollWidth} of ${region.clientWidth}`);
-      }
-    }
-    return { checked, problems: out };
-  });
-}
-
-test("every ranked table fits inside its card at every size", async ({ page }) => {
-  const project = test.info().project.name;
-  test.skip(project !== "desktop" && project !== "firefox" && project !== "phone-360", "every size in the desktops, 320px once");
-  test.slow();
-  // Every stats size in the desktop browsers, and the narrowest phone, emulated, in phone-360.
-  const sizes = project === "phone-360" ? [NARROW_PHONE] : statsSizesFor(project, page.viewportSize()!);
-  const problems: string[] = [];
-  for (const path of RANKED_PAGES) {
-    await page.setViewportSize(sizes[0]);
-    await open(page, path);
-    for (const size of sizes) {
-      await page.setViewportSize(size);
-      await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
-      const found = await rankedTableProblems(page);
-      const at = `${path} at ${size.width}x${size.height}`;
-      expect(found.checked, `ranked tables on ${at}`).toBeGreaterThan(0);
-      problems.push(...found.problems.map((problem) => `${at}: ${problem}`));
-    }
-  }
-  expect(problems, "ranked tables outside their cards").toEqual([]);
 });
