@@ -85,6 +85,7 @@ public class SecretHitlerServer {
     public static final String PARAM_SPECTATOR_COUNT = "spectatorCount"; // in every lobby and game packet
     public static final String PARAM_YOU = "you"; // in every player's packet: their name, or their seat's in a game
     public static final String PARAM_BOTS = "bots"; // in every lobby packet: the names of the bots a game started now seats
+    public static final String PARAM_BOT_SKILL = "botSkill"; // in every lobby packet: the level of the bots a game started now seats
     public static final String PARAM_BOT_COUNT = "count"; // set-bot-count's number
     public static final String FASCIST = "FASCIST";
     public static final String LIBERAL = "LIBERAL";
