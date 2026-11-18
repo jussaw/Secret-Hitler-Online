@@ -20,24 +20,20 @@ import "./PlayersPage.css";
 /** The Players card's line. */
 const DEFINITION = `Every player with a counted game, by name; press a heading to sort by it. Players with fewer than ${PROVISIONAL_GAMES} games are provisional, in italics.`;
 
-/** The table's heads, in order: each one's word, the class its head and cells share, and whether
- *  its column's values stand at the right (`end`: the arrow before the word, so the word lines up
- *  with them). */
-const HEADS: readonly Pick<HeadColumn<PlayerListRow, PlayersColumn>, "key" | "label" | "className" | "end">[] = [
-  { key: "name", label: "Player", className: "ranked-name", end: false },
-  { key: "games", label: "Games", className: "power-number", end: true },
-  { key: "winRate", label: "Win rate", className: "power-number", end: true },
-  { key: "rating", label: "Elo", className: "power-number", end: true },
-  { key: "lastPlayed", label: "Last played", className: "players-last", end: true },
-];
+/** Each column's head, by column (the compiler checks every column has one): its word, the class
+ *  its head and cells share, and whether its values stand at the right (`end`: the arrow before
+ *  the word, so the word lines up with them). */
+const HEADS: Readonly<Record<PlayersColumn, Pick<HeadColumn<PlayerListRow, PlayersColumn>, "label" | "className" | "end">>> = {
+  name: { label: "Player", className: "ranked-name", end: false },
+  games: { label: "Games", className: "power-number", end: true },
+  winRate: { label: "Win rate", className: "power-number", end: true },
+  rating: { label: "Elo", className: "power-number", end: true },
+  lastPlayed: { label: "Last played", className: "players-last", end: true },
+};
 
-/** The table's columns: each head with its sort in `timeZone` (`playersColumns`). */
+/** The table's columns, in `playersColumns`' order, each with its sort in `timeZone` and its head. */
 function playersHeads(timeZone: string): HeadColumn<PlayerListRow, PlayersColumn>[] {
-  const columns = playersColumns(timeZone);
-  return HEADS.map((head) => {
-    const { first, value } = columns.find((column) => column.key === head.key)!;
-    return { ...head, first, value };
-  });
+  return playersColumns(timeZone).map((column) => ({ ...column, ...HEADS[column.key] }));
 }
 
 /**

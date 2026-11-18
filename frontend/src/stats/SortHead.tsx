@@ -17,7 +17,8 @@ export interface HeadColumn<R, K extends string = string> extends SortColumn<R, 
   /** The values stand at the right: the arrow before the words, so the words line up with the
    *  values, and the content at the right of its 44px box. */
   end?: boolean;
-  /** The button's `aria-label`, when the words are a sign ("Rank" for "#"). */
+  /** The head's accessible name, the `aria-label` of its button and its `th`, when the words are a
+   *  sign ("Rank" for "#"). */
   name?: string;
 }
 
