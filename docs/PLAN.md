@@ -1255,7 +1255,7 @@ Issue #109, first part. Its branch holds the spec and both phases' plans.
 - [x] PLAYERS on the shared pieces, with nothing anyone can see or a test can tell changed
 - [x] The 39 `RankedTable` cards sort by `#`, Player, their value and, on the 18 that have one, their count, each row keeping its rank; the power ranking and RECORDS' best weeks and months sort by any column
 - [x] Every stats page still passes `checkStatsPage` at every size in all four projects, a ranked table never scrolls sideways at 320px, checked with Linux fonts too
-- [ ] `CLAUDE.md` and `README.md` updated; the pull request shows the power ranking, OVERVIEW's headline cards, a best week and PLAYERS before and after, on desktop and on a phone
+- [x] `CLAUDE.md` and `README.md` updated; the pull request shows the power ranking, OVERVIEW's headline cards, a best week and PLAYERS before and after, on desktop and on a phone
 
 **Phase 27A acceptance**
 
