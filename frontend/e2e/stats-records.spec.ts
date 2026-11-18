@@ -13,34 +13,51 @@ import { bigStatsData, checkStatsPage, statsSizesFor, stubStats } from "./stats"
 const desktopOnly = () => test.skip(test.info().project.name !== "desktop", "one browser is enough");
 
 /**
- * Opens RECORDS with `data` stubbed and the clock at `at`, by default an hour after its latest
- * game ended (so this month has a player of the month).
+ * Stubs `data` and fixes the clock at `at`, by default an hour after its latest game ended (so
+ * this month has a player of the month).
  */
-async function open(page: Page, data: StatsData = bigStatsData(), at?: number): Promise<void> {
+async function stubAt(page: Page, data: StatsData, at?: number): Promise<void> {
   await stubStats(page, data);
   const latest = data.games.reduce((most, game) => Math.max(most, game.endedAt), 0);
   await page.clock.setFixedTime(at ?? latest + 3_600_000);
-  await page.goto("/stats/records");
+}
+
+/** Goes to `path` (the response already stubbed) and waits for the tab. */
+async function show(page: Page, path = "/stats/records"): Promise<void> {
+  await page.goto(path);
   await expect(page.locator(".records-tab")).toBeVisible();
   await settle(page);
 }
 
+/**
+ * Opens RECORDS with `data` stubbed and the clock at `at`, by default an hour after its latest
+ * game ended (so this month has a player of the month).
+ */
+async function open(page: Page, data: StatsData = bigStatsData(), at?: number): Promise<void> {
+  await stubAt(page, data, at);
+  await show(page);
+}
+
 test("RECORDS fits sideways at every stats size, with 44px targets", async ({ page }) => {
-  test.slow();
-  await open(page);
-  for (const size of statsSizesFor(test.info().project.name, page.viewportSize()!)) {
-    await checkStatsPage(page, size);
-    const at = `${size.width}x${size.height}`;
-    const links = await page.locator("a.records-game-link").evaluateAll((all) =>
-      all.map((a) => {
-        const r = a.getBoundingClientRect();
-        return { width: r.width, height: r.height };
-      })
-    );
-    expect(links.length, `game links at ${at}`).toBeGreaterThanOrEqual(1);
-    for (const link of links) {
-      expect(link.width, `game link width at ${at}`).toBeGreaterThanOrEqual(MIN_TARGET);
-      expect(link.height, `game link height at ${at}`).toBeGreaterThanOrEqual(MIN_TARGET);
+  test.slow(); // the tab at every size, twice
+  await stubAt(page, bigStatsData());
+  // Without CPU games and with them, which make the counts larger.
+  for (const path of ["/stats/records", "/stats/records?cpu=1"]) {
+    await show(page, path);
+    for (const size of statsSizesFor(test.info().project.name, page.viewportSize()!)) {
+      await checkStatsPage(page, size);
+      const at = `${path} at ${size.width}x${size.height}`;
+      const links = await page.locator("a.records-game-link").evaluateAll((all) =>
+        all.map((a) => {
+          const r = a.getBoundingClientRect();
+          return { width: r.width, height: r.height };
+        })
+      );
+      expect(links.length, `game links on ${at}`).toBeGreaterThanOrEqual(1);
+      for (const link of links) {
+        expect(link.width, `game link width on ${at}`).toBeGreaterThanOrEqual(MIN_TARGET);
+        expect(link.height, `game link height on ${at}`).toBeGreaterThanOrEqual(MIN_TARGET);
+      }
     }
   }
 });

@@ -14,14 +14,24 @@ import { bigStatsData, checkStatsPage, statsSizesFor, stubStats } from "./stats"
 const desktopOnly = () => test.skip(test.info().project.name !== "desktop", "one browser is enough");
 const onPhone = () => test.info().project.name.startsWith("phone");
 
-/** Opens ACTIVITY with `data` stubbed and the clock an hour after its latest game ended. */
-async function open(page: Page, data: StatsData = bigStatsData()): Promise<void> {
+/** Stubs `data` and fixes the clock an hour after its latest game ended. */
+async function stubAt(page: Page, data: StatsData): Promise<void> {
   await stubStats(page, data);
   const latest = data.games.reduce((most, game) => Math.max(most, game.endedAt), 0);
   await page.clock.setFixedTime(latest + 3_600_000);
-  await page.goto("/stats/activity");
+}
+
+/** Goes to `path` (the response already stubbed) and waits for the tab. */
+async function show(page: Page, path = "/stats/activity"): Promise<void> {
+  await page.goto(path);
   await expect(page.locator(".activity-tab")).toBeVisible();
   await settle(page);
+}
+
+/** Opens ACTIVITY with `data` stubbed and the clock an hour after its latest game ended. */
+async function open(page: Page, data: StatsData = bigStatsData()): Promise<void> {
+  await stubAt(page, data);
+  await show(page);
 }
 
 /**
@@ -46,14 +56,18 @@ function chartsOutside(page: Page): Promise<string[]> {
 }
 
 test("ACTIVITY fits sideways at every stats size, with 44px targets", async ({ page }) => {
-  test.slow();
-  await open(page);
-  for (const size of statsSizesFor(test.info().project.name, page.viewportSize()!)) {
-    await checkStatsPage(page, size);
-    const at = `${size.width}x${size.height}`;
-    expect(await chartsOutside(page), `charts outside their cards at ${at}`).toEqual([]);
-    expect(await wrappedLabels(page, ".activity-tab"), `wrapped labels at ${at}`).toEqual([]);
-    expect(await page.locator(".activity-tab svg").count(), `charts drawn at ${at}`).toBeGreaterThanOrEqual(6);
+  test.slow(); // the tab at every size, twice
+  await stubAt(page, bigStatsData());
+  // Without CPU games and with them, which make the counts larger.
+  for (const path of ["/stats/activity", "/stats/activity?cpu=1"]) {
+    await show(page, path);
+    for (const size of statsSizesFor(test.info().project.name, page.viewportSize()!)) {
+      await checkStatsPage(page, size);
+      const at = `${path} at ${size.width}x${size.height}`;
+      expect(await chartsOutside(page), `charts outside their cards on ${at}`).toEqual([]);
+      expect(await wrappedLabels(page, ".activity-tab"), `wrapped labels on ${at}`).toEqual([]);
+      expect(await page.locator(".activity-tab svg").count(), `charts drawn on ${at}`).toBeGreaterThanOrEqual(6);
+    }
   }
 });
 
