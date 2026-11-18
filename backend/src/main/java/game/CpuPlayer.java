@@ -691,7 +691,8 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   /**
    * {@link #chanceOfYes} where rule 1 leaves the vote to the scores: the fascist side's vote for
    * Hitler's winning election, the fascist side's mix of its known roles, or the trust curve and
-   * its untrusted vote, each with Hard's rules 6 and 8.
+   * its untrusted vote, each but the first with Hard's rule 6, and the mix and the curve with rule
+   * 8 (a government of two known liberals is never untrusted).
    */
   private float chanceOfYesByScores(SecretHitlerGame game) {
     Identity myId = myPlayerData.getIdentity();
@@ -753,7 +754,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
 
     if (presidentRep < minIndividualRep || chancellorRep < minIndividualRep || combinedRep < minCombinedRep) {
       // This legislation is untrustworthy and should probably not be voted for.
-      return liberalGovernmentPull(game, fascistTrackerPull(game, 0.05f));
+      return fascistTrackerPull(game, 0.05f);
     }
     // Scale probability of voting yes with the reputation of the players.
     // Use a parabolic curve that's more likely to say yes to neutral or
@@ -787,7 +788,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
    * or at another tracker, is as it was.
    */
   private float fascistTrackerPull(SecretHitlerGame game, float chance) {
-    if (!trackerAtTwo(game) || myPlayerData.getIdentity() == Identity.LIBERAL
+    if (!trackerAtTwo(game) || !hardFascistSide()
         || isFascistSide(knownPlayerRoles.get(game.getCurrentPresident()))
         || isFascistSide(knownPlayerRoles.get(game.getCurrentChancellor()))) {
       return chance;
@@ -802,8 +803,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
    * government's and any chance below Hard is as it was.
    */
   private float liberalGovernmentPull(SecretHitlerGame game, float chance) {
-    if (skill != BotSkill.HARD || !isFascistSide(myPlayerData.getIdentity())
-        || knownPlayerRoles.get(game.getCurrentPresident()) != Identity.LIBERAL
+    if (!hardFascistSide() || knownPlayerRoles.get(game.getCurrentPresident()) != Identity.LIBERAL
         || knownPlayerRoles.get(game.getCurrentChancellor()) != Identity.LIBERAL) {
       return chance;
     }
@@ -1228,6 +1228,11 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   /** Whether this CPU runs Hard's rule 1: a Hard CPU dealt Liberal. */
   private boolean hardLiberal() {
     return skill == BotSkill.HARD && myPlayerData.getIdentity() == Identity.LIBERAL;
+  }
+
+  /** Whether this CPU runs rule 6's pull and rule 8: a Hard CPU on the fascist side (a fascist, or Hitler). */
+  private boolean hardFascistSide() {
+    return skill == BotSkill.HARD && isFascistSide(myPlayerData.getIdentity());
   }
 
   /** Whether this CPU runs Hard's rules 7 and 9: a Hard CPU dealt Fascist (Hitler keeps its play). */
