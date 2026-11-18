@@ -151,7 +151,18 @@ Each side can play at its own level, `EASY`, `NORMAL` or `HARD`, written in any 
 ./gradlew botMatches -Pladder
 ```
 
-`Ladder check: PASS` means each side, against Normal opponents, wins clearly more often at each level up: Easy below Normal below Hard, the pooled intervals not overlapping, and at no table size the higher level's interval wholly below the lower's. Each step gets a line saying whether it clears. `Balance check: PASS` means all-Hard games' liberal win rate is within 10 points of all-Normal games'. Hard's rules come in Phases 25B and 25C and are tuned in 25D, so until 25D the Normal < Hard steps and the balance check may fail. A level other than these three, an unknown option, or `-Pladder` with a level stops the run with a one-line message.
+`Ladder check: PASS` means each side, against Normal opponents, wins clearly more often at each level up: Easy below Normal below Hard, the pooled intervals not overlapping, and at no table size the higher level's interval wholly below the lower's. Each step gets a line saying whether it clears, six in all, under `Ladder check:`:
+
+```text
+  Liberal side, Easy < Normal: 21.3% 20.6-22.1% vs 27.5% 26.7-28.3% pooled, clears; sizes inverted: none
+  Liberal side, Normal < Hard: …
+  Liberal side, Easy < Hard: …
+  Fascist side, Easy < Normal: …
+  Fascist side, Normal < Hard: …
+  Fascist side, Easy < Hard: …
+```
+
+Easy < Hard's pooled part follows from the other two; its sizes catch an Easy clearly above Hard at a size where Normal overlaps both. `Balance check: PASS` means all-Hard games' liberal win rate is within 10 points of all-Normal games'. Hard's rules come in Phases 25B and 25C and are tuned in 25D, so until 25D the steps up to Hard and the balance check may fail. A level other than these three, an unknown option, or `-Pladder` with a level stops the run with a one-line message.
 
 A game still running after 2,000 moves, one no bot can move, a bot whose move throws (or makes a move the game's timeline cannot read), or a bot that cannot be made fails the run, with a message naming the table size, both sides' levels and the game's timeline. The games cannot be seeded, so every run differs: the intervals say how far a difference between two runs can be trusted (where two intervals do not overlap, it can be). A change to the bots quotes the run before and after it in its pull request. `./gradlew test` plays only 3 games a size (`BotMatchesTest`).
 
