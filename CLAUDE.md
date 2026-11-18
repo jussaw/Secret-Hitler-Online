@@ -1212,10 +1212,11 @@ keeps credit to upstream and to the board game's creators.
   do not fit, the row wraps and the stepper takes a line of its own above it. Under that row the
   host gets the BOT SKILL row (#72, `BotSkillSwitch`, a `role="group"` "Bot skill": the label, then
   EASY, NORMAL and HARD, each `aria-pressed`, the pressed one in START GAME's orange and the others
-  dark with grey labels, on a darker track, in a card of the stepper's look). A press shows the new
-  level at once and sends `set-bot-skill`, and the row holds that level until the next lobby
-  packet, a new `bots`, answers with the server's level, as the stepper holds its count; a press
-  of the level shown sends nothing. It stays on with no bots to seat (with ten people the stepper
+  dark with grey labels, on a darker track, in a card of the stepper's look, the label's middle
+  the faces' middle). A press shows the new level at once and sends `set-bot-skill`, and the row
+  holds that level until the next lobby packet, a new `bots`, answers with the server's level, as
+  the stepper holds its count (both through `useHeldUntilNextPacket`); a press of the level shown
+  sends nothing. It stays on with no bots to seat (with ten people the stepper
   reads 0 and is off), so the level is ready when someone leaves. START GAME's row and the BOT
   SKILL row share a column, `.lobby-host-controls`, as wide as the wider of the two on desktop and
   in tall windows, which the BOT SKILL row stretches across; on phones it is the column's width,
@@ -1572,7 +1573,8 @@ keeps credit to upstream and to the board game's creators.
   bots too, `botRowMismatches`, `joinGuests`, with `pickLooks` false for guests who stay on the
   default portrait, `joinLobby`, `pickPortrait`, `longestLineLobby`, `longestLineViewers`,
   `actionLabels`, `skillShown` (the level the lobby shows: the host's pressed button or the line's
-  level) and `skillRowLines` (the lines the BOT SKILL row or line takes, by its parts' middles),
+  level) and `skillRowLines` (the lines the BOT SKILL row or line takes, by the middles of its
+  parts' words, as a button's box holds its shadow below its face),
   `longestLogin`, `accountTargets`, `lobbyStatusCard`, `waitForPrompt`, `watchLobby`, and
   `codeField`, the login page's one field), `e2e/accounts.ts`, `e2e/layout.ts` (`wrappedLabels` and
   `smallTargets`, which measure links drawn as buttons, `.button-link`, too, `smallLinks` for plain
