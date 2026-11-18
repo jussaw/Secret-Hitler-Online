@@ -723,8 +723,9 @@ keeps credit to upstream and to the board game's creators.
   sorts by; `formatRating`, and `wholeRating`, the whole number it shows, which an Elo column sorts by;
   `formatDays`; and, each beside the format it mirrors so a column sorts by what its cells show
   (#109), `countFigure`, a count itself, `percentFigure`, a share that may be missing as its whole
-  percent, null for none (Phase 27B: `tabs/cellText.ts`' `rateText` shows it, so a cell's text and
-  its figure come from one rule), and `rateFigure`, a `Rate`'s `percentFigure`, null for one with
+  percent, null for none (Phase 27B: `tabs/cellText.ts`' `rateText` shows the same share through
+  `formatPercent`, and both go through `wholePercent`, so a cell's text and its figure come from
+  one rule), and `rateFigure`, a `Rate`'s `percentFigure`, null for one with
   no value; counts are `format.ts`'s `plural`), `StatCard` (a `section.stats-card`
   region named by its `h3` title, the definition, then the stat, or for `empty` `NO_GAMES`, "No
   games yet with these players.", or `empty`'s own line), `sorting.ts` (#109, Phase 27A: the rules
@@ -788,8 +789,9 @@ keeps credit to upstream and to the board game's creators.
   which sits at the region's left edge with no padding, inside its button (`outline-offset:
   -2px`), where the region, and a split table's held column, would clip it: the power ranking's
   `#` too), `SplitTable` (players down, roles or sides across, in a `ScrollRegion`; its heads a
-  `SortHeadRow` (#109, Phase 27B): Player (`playerColumn`, A to Z) and each column (`end`, most
-  first, by its cells' `value`), opening at `NAME_ORDER` with Player marked; it takes its rows in
+  `SortHeadRow` (#109, Phase 27B): Player (`playerColumn`, A to Z) and each column (a
+  `numberColumn`: `end`, most first, by its cells' `value`), opening at `NAME_ORDER` with Player
+  marked; it takes its rows in
   any order and puts them in name order first, which ties keep under any sort, and a column keyed
   `name`, Player's key, throws; a side's or role's head keeps its colour, sorted, hovered or not,
   drawn on its button (`SplitTable.css`' rules outrank `SortHead.css`'s white, and the `th` has no
@@ -798,7 +800,10 @@ keeps credit to upstream and to the board game's creators.
   (never cut short) with the full name as its title; each cell, a `SplitCell`, its `text`, then
   its `count`, a 0 too, never sorted by, and its `value`, the figure its text shows (the one it
   leads with: "2 of 5" is 2, "2 L · 3 F" is 2), null exactly when the text is "—", which every
-  caller gives; a cell the row lacks shows "—" and is missing, below every value either way; rows
+  caller gives; `rateCell(rate, count)`, a rate's cell (its `rateCellText` and its `rateFigure`,
+  with `count` beside it, its chances unless given), and `countCell(n)`, a count's (the number and
+  its `countFigure`, nothing beside it), the cells ROLES & CARDS' and VOTES & POWERS' tables share,
+  which no caller writes out again; a cell the row lacks shows "—" and is missing, below every value either way; rows
   44px in the stacked query; `testSplitTables.ts`'s `dashesBeforeFigures(container)`, test only,
   presses every split head but Player both ways and lists each "—" above a figure, which ROLES &
   CARDS', VOTES & POWERS' and ACTIVITY's tests run on their pages, so a `value` that does not
@@ -878,9 +883,9 @@ keeps credit to upstream and to the board game's creators.
   each round's `blame`, and `forced`), both memoized per counted games; `byPlayer` never has a key
   for a CPU seat, whose choices credit no one. Four sections (Roles, As president, As chancellor,
   Blame, each an `h2` over `.roles-grid`) hold seventeen `StatCard`s: one number per player through
-  `rankRows` and `RankedTable`, and every split through `SplitTable`, each cell's `value` the
-  figure its text shows (a rate's `rateFigure`, the percent its `rateText` shows, a count's
-  `countFigure`, and Policies enacted's Liberals, never its Fascists or its total), with the
+  `rankRows` and `RankedTable` (a rate shown as its `rateCellText`), and every split through
+  `SplitTable`, each cell's `value` the figure its text shows (a rate's `rateCell` and a count's
+  `countCell`, and Policies enacted's Liberals, never its Fascists or its total), with the
   group's hand shares
   on a line above Hands drawn (`.roles-group`); the four widest cards span the grid
   (`.roles-wide`). A card with games but no rows says its own line (the three win rates by role
@@ -960,7 +965,8 @@ keeps credit to upstream and to the board game's creators.
   sorts by any column under a `SortHeadRow`: Player, A to Z, then Most played with, Nemesis and
   Favourite opponent, each by the count its cell shows (games together, losses, wins), most first,
   a cell with no one ("—") missing, below every count either way; it opens at `NAME_ORDER`, Player
-  marked, `rivals.players`' own order, which ties keep. ENDINGS (`tabs/EndingsTab.tsx`) reads `endings.ts`'s
+  marked, `rivals.players`' own order, which ties keep; its columns and rows read each player's
+  people through `peopleOf`. ENDINGS (`tabs/EndingsTab.tsx`) reads `endings.ts`'s
   `computeEndings(counted)`: games by player count and outcome (a `StackedBarChart` in
   `OUTCOME_COLORS` with `OUTCOME_LABELS`, its bars labelled by the seat count alone, so six fit
   under a phone's chart), the Liberal win rate from 5 games beside `smoothedLiberalRate`, the `p`
@@ -976,16 +982,20 @@ keeps credit to upstream and to the board game's creators.
   when its card empties, sort by any column under a `SortHeadRow` (#109, Phase 27B): Players by
   the table size, 5 first on its first press too (`SEATS_COLUMN`), since both open at
   `SEATS_ORDER`, Players marked, and a press on it from another column gives that order back; and
-  every other column by the figure its cell shows, most first (Games, Liberal wins, Win rate's
-  `rateFigure`, Smoothed's `wholePercent`, Average length's `wholeMinutes` and Average rounds to
-  one decimal), a "—" below every figure either way. Game length's All row is outside the sort,
-  always the last row. Every game link there is a 44px `StatsLink` at
+  every other column (`figureColumn`, a local helper: not `end`) by the figure its cell shows, most
+  first (Games, Liberal wins, Win rate's `rateFigure`, Smoothed's `wholePercent`, and Game length's
+  averages through `averageCell`, one per average, whose text the cell shows and whose figure the
+  column sorts by, `NO_VALUE` and null with no game to average: `lengthCell`, `formatDuration` and
+  `wholeMinutes`, and `roundsCell`, `roundsText` and `roundsFigure`, the rounds to one decimal, so
+  7.25 and 7.33, both "7.3", tie), a "—" below every figure either way. Game length's All row is
+  outside the sort, always the last row. Every game link there is a 44px `StatsLink` at
   every size. Both tabs lay out their cards in `tabs/cardGrid.css`'s columns at least 22em wide
   (two on desktop, one on phones), the wide ones across the row; both pick by `pick.ts`'s `firstBy`
   (never by the games' order), and their cells write a rate or `NO_VALUE` with `tabs/cellText.ts`'s
-  `rateText`, as ROLES & CARDS' and VOTES & POWERS' split rate cells do since Phase 27B: the
-  whole percent of `numbers.ts`' `percentFigure`, the figure a column sorts by, so a cell sorts
-  by exactly what it says. `tabs/PlayerMatrix.tsx` is the player-by-player table: a
+  `rateText` (`formatPercent`, or `NO_VALUE` for none) or `rateCellText`, a `Rate`'s `rateText`,
+  which ROLES & CARDS' and VOTES & POWERS' rate cells and rate cards show too since Phase 27B: the
+  same `wholePercent` as `numbers.ts`' `percentFigure` and `rateFigure`, the figures a column sorts
+  by, so a cell sorts by exactly what it says. `tabs/PlayerMatrix.tsx` is the player-by-player table: a
   `table.player-matrix` in a `ScrollRegion` that scrolls sideways inside its card, each row's name
   held at the left, the diagonal blank, a cell's text with an optional line under it and its title
   on hover, ahead white and bold, behind grey; a long name wraps in its head (6em, and 7em for a
@@ -1019,12 +1029,13 @@ keeps credit to upstream and to the board game's creators.
   above zero (`RankedTable`, through `countTable(entries, value, valueHead)`, with no count
   column), a rate card those with a chance, unranked below `MIN_CHANCES` (`rateTable(entries,
   value, heads)`, `heads` a `RankedHeads` less its `sortValue`, as every rate sorts by
-  `rateFigure`: the rate under `valueHead`, its chances in the count column under `countHead`,
-  and `countWords` where the count's nouns are not the head's), and a split card
-  (`SplitTable`, by role or by side) lists every player with a chance in any column,
-  every cell given and sorting by the figure its text shows (a rate's `rateFigure`, a count's
-  `countFigure`, and VETOES AS PRESIDENT's accepted vetoes, the 2 that "2 of 5" leads with, "0 of
-  0" a 0); a card with no row shows its own line, and every card `NO_GAMES` when no game
+  `rateFigure`: the rate under `valueHead`, shown as its `rateCellText`, its chances in the count
+  column under `countHead`, and `countWords` where the count's nouns are not the head's), and a
+  split card (`SplitTable`, by role or by side) lists every player with a chance in any column,
+  every cell given and sorting by the figure its text shows (`SplitTable`'s `rateCell` and
+  `countCell`, and VETOES AS PRESIDENT's accepted vetoes, the 2 that "2 of 5" leads with, "0 of
+  0" a 0; `rateFound`, `countFound` and `vetoFound` pair each cell with whether it was a chance);
+  a card with no row shows its own line, and every card `NO_GAMES` when no game
   counts. A power's two sides can differ with CPU seats in, so the lines say whom: "None of these
   players has investigated anyone yet." (INVESTIGATIONS) and "has been investigated" (TIMES
   INVESTIGATED), "has executed anyone" (EXECUTIONS, EXECUTION TARGETS) and "has been executed"
@@ -1066,14 +1077,16 @@ keeps credit to upstream and to the board game's creators.
   `RANK_ORDER`, with the period, which does not sort, staying under its name), the player of the
   month (every tied player) and the players of
   the month (`MonthsTable`, in `RankedTable`'s classes: the month over its holders, one a line,
-  and the wins, under `SortHeadRow`'s Month, by its key as a number ("2026-10" is 202610), latest
-  first, and Wins, a `numberColumn`; it opens at `MONTH_ORDER`, Month marked, latest first, and
+  and the wins, under `SortHeadRow`'s Month, by its key itself ("2026-10", fixed width, so its
+  text sorts as the months do), latest first, and Wins, a `numberColumn`; it opens at
+  `MONTH_ORDER`, Month marked, latest first, and
   each month's holders stay under it and do not sort; #109, Phase 27B), the most games in one session
   (up to five lines of games, day and length), and
   the rating records (the highest peak, then the upset, its winners' gain and its losers' loss, a
   side with no person left out, and See the game, `a.records-game-link`, 44px at every size), and
   last (Phase 22A) Trophy holders ("Worked out from the counted games. Most need 8 of them.", the
-  grid's whole width, `NO_GAMES` with no counted game): a `table.trophy-holders`, a row per trophy
+  grid's whole width, `NO_GAMES` with no counted game): a `table.trophy-holders`, which does not
+  sort (#109 leaves it, and a player's page, as they are), a row per trophy
   in `TROPHIES`' order, its `TrophyBadge` over its rule, then its holders by name, comma-separated
   and linked, or "No one yet."; on phones a row's holders take the card's whole width under the
   badge. It is `trophyHolders(computeTrophies(stats, now, timeZone), names)` with the tab's `now`
@@ -1751,7 +1764,11 @@ keeps credit to upstream and to the board game's creators.
   Liberal both ways, its "—" after every figure (`inOrder`), and Player gives its opening order
   back; its Liberal and Hitler heads keep `--textColorLiberal` and `--textColorFascist` (Hitler's
   its underline) before a press, sorted and, on `desktop` and `firefox`, hovered; a held head's
-  focus ring is drawn inside its button (`outline-offset: -2px`, `desktop` and `firefox`); RIVALS'
+  focus ring stays inside its region (`desktop` and `firefox`): its outer edge, the button's box
+  grown by its offset and width, inside its `ScrollRegion`'s box, and drawn inside the button
+  (`outline-offset: -2px`), so without `ScrollRegion.css`'s rule it fails 4px past the left; the
+  Role split's, People's and ENDINGS' cases read their cells' figures through `figures(table,
+  cells, figure)`, `cells` a selector inside `tbody`; RIVALS'
   People sorts by Nemesis's losses both ways; RECORDS' players of the month by Wins, then back to
   the latest month first by Month and round to the earliest; ENDINGS' Game length by Average
   length both ways, All still the last row, and the Liberal win rate by Win rate; and each of those
