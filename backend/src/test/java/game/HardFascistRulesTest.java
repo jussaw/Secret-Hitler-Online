@@ -3,6 +3,7 @@ package game;
 import static org.junit.Assert.assertEquals;
 
 import game.BotScenes.Scene;
+import game.datastructures.Identity;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import org.junit.Test;
@@ -10,9 +11,9 @@ import org.junit.Test;
 /**
  * Phase 25D's extra fascist-side rules (the bot skill design's "Hard's rules", its paragraph on
  * rules for the fascist side beyond the seven), each Hard only, each reading only what a fascist's
- * role shows it. Rule 8, fascists vote down liberal governments: a Hard fascist keeps only
- * {@code 1 -} {@link CpuPlayer#LIBERAL_GOVERNMENT_PULL} of its yes chance for a government whose
- * president and chancellor it knows are liberal. Rule 9, special elections to the side: a Hard
+ * role shows it. Rule 8, fascists vote down liberal governments: a Hard bot on the fascist side
+ * (a fascist, or Hitler) keeps only {@code 1 -} {@link CpuPlayer#LIBERAL_GOVERNMENT_PULL} of its
+ * yes chance for a government whose president and chancellor it knows are liberal. Rule 9, special elections to the side: a Hard
  * fascist president with the special election hands the presidency to a living fascist teammate
  * other than Hitler, with {@link CpuPlayer#SIDE_ELECTION_CHANCE}, when it has one. Each scene is
  * made fresh for each seed, and the amounts are read by name.
@@ -87,16 +88,45 @@ public class HardFascistRulesTest {
         }
     }
 
-    /** Liberals, and Hitler at every size, vote as before. */
     @Test
-    public void liberalsAndHitlerVoteAsNormal() {
-        for (String roles : new String[] {"LLLFH", "LLHLF", "LLHLLFF"}) {
-            assertEquals(roles, chance(BotScenes.vote(roles), BotSkill.NORMAL), chance(BotScenes.vote(roles),
-                    BotSkill.HARD), TOLERANCE);
+    public void liberalsVoteAsNormal() {
+        assertEquals(chance(BotScenes.vote("LLLFH"), BotSkill.NORMAL), chance(BotScenes.vote("LLLFH"), BotSkill.HARD),
+                TOLERANCE);
+    }
+
+    /** Hitler at 5 or 6 knows every role: on two liberals it keeps a share of its trusting yes. */
+    @Test
+    public void hitlerAtFiveVotesDownAGovernmentOfTwoLiberals() {
+        assertEquals("Normal Hitler trusts two known liberals", 1, chance(BotScenes.vote("LLHLF"), BotSkill.NORMAL),
+                TOLERANCE);
+        assertEquals(1 - CpuPlayer.LIBERAL_GOVERNMENT_PULL, chance(BotScenes.vote("LLHLF"), BotSkill.HARD), TOLERANCE);
+        Scene inDanger = BotScenes.vote("LLHLF");
+        BotScenes.board(inDanger.game(), 0, 4);
+        assertEquals("voting as fascists do, one policy from losing", 0.25 * (1 - CpuPlayer.LIBERAL_GOVERNMENT_PULL),
+                chance(inDanger, BotSkill.HARD), TOLERANCE);
+        assertEquals("on its teammate's government", chance(BotScenes.vote("LFHLL"), BotSkill.NORMAL),
+                chance(BotScenes.vote("LFHLL"), BotSkill.HARD), TOLERANCE);
+    }
+
+    /** Hitler at 7 knows no other role, so the rule reads only the liberals its investigations found. */
+    @Test
+    public void hitlerAtSevenPullsOnlyOnLiberalsItKnows() {
+        assertEquals(chance(BotScenes.vote("LLHLLFF"), BotSkill.NORMAL), chance(BotScenes.vote("LLHLLFF"),
+                BotSkill.HARD), TOLERANCE);
+        assertEquals("one known liberal is not enough", hitlerAtSeven(BotSkill.NORMAL, "P0"),
+                hitlerAtSeven(BotSkill.HARD, "P0"), TOLERANCE);
+        assertEquals(hitlerAtSeven(BotSkill.NORMAL, "P0", "P1") * (1 - CpuPlayer.LIBERAL_GOVERNMENT_PULL),
+                hitlerAtSeven(BotSkill.HARD, "P0", "P1"), TOLERANCE);
+    }
+
+    /** P0 nominates P1 at 7 seats; the yes chance of Hitler, P2, once it knows {@code liberals} are liberal. */
+    private static float hitlerAtSeven(BotSkill skill, String... liberals) {
+        Scene scene = BotScenes.vote("LLHLLFF");
+        CpuPlayer hitler = BotScenes.bot(scene, skill, 0);
+        for (String liberal : liberals) {
+            hitler.knownPlayerRoles.put(liberal, Identity.LIBERAL);
         }
-        Scene hitlerInDanger = BotScenes.vote("LLHLF");
-        BotScenes.board(hitlerInDanger.game(), 0, 4);
-        assertEquals("Hitler at 5, voting as fascists do", 0.25, chance(hitlerInDanger, BotSkill.HARD), TOLERANCE);
+        return hitler.chanceOfYes(scene.game());
     }
 
     /** Easy's coin comes before the chance and is not part of it. */

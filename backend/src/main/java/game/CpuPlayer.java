@@ -78,8 +78,10 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
 
   /**
    * Hard's rule 8, fascists vote down liberal governments (Phase 25D, an extra fascist-side rule):
-   * the share of its yes chance a Hard fascist drops for a government whose president and
-   * chancellor it knows are liberal, so fewer such governments pass and more elections fail.
+   * the share of its yes chance a Hard bot on the fascist side (a fascist, or Hitler) drops for a
+   * government whose president and chancellor it knows are liberal, so fewer such governments pass
+   * and more elections fail. Hitler knows them at a table of 5 or 6, and at 7 or more only by
+   * investigating them.
    */
   static final float LIBERAL_GOVERNMENT_PULL = 0.9f;
 
@@ -688,8 +690,8 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
 
   /**
    * {@link #chanceOfYes} where rule 1 leaves the vote to the scores: the fascist side's vote for
-   * Hitler's winning election, the fascist side's mix of its known roles (with Hard's rule 8 for a
-   * fascist), or the trust curve and its untrusted vote, each with Hard's rule 6.
+   * Hitler's winning election, the fascist side's mix of its known roles, or the trust curve and
+   * its untrusted vote, each with Hard's rules 6 and 8.
    */
   private float chanceOfYesByScores(SecretHitlerGame game) {
     Identity myId = myPlayerData.getIdentity();
@@ -751,13 +753,13 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
 
     if (presidentRep < minIndividualRep || chancellorRep < minIndividualRep || combinedRep < minCombinedRep) {
       // This legislation is untrustworthy and should probably not be voted for.
-      return fascistTrackerPull(game, 0.05f);
+      return liberalGovernmentPull(game, fascistTrackerPull(game, 0.05f));
     }
     // Scale probability of voting yes with the reputation of the players.
     // Use a parabolic curve that's more likely to say yes to neutral or
     // unknown values: f(t) = 2t - t^2
     // f(0) = 0, f(0.5) = 0.75, f(1) = 1
-    return fascistTrackerPull(game, liberalTrackerPush(game, 2f * t - (t * t)));
+    return liberalGovernmentPull(game, fascistTrackerPull(game, liberalTrackerPush(game, 2f * t - (t * t))));
   }
 
   /** Whether Hard's rule 6 is in play for this CPU: it is Hard, and two elections have failed. */
@@ -794,12 +796,14 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   }
 
   /**
-   * Hard's rule 8 for a fascist, on its yes chance: for a government whose president and chancellor
-   * it knows are liberal, it keeps only {@code 1 -} {@link #LIBERAL_GOVERNMENT_PULL} of the chance.
-   * Anyone else's chance, any other government's and any chance below Hard is as it was.
+   * Hard's rule 8 for the fascist side (a fascist, or Hitler), on its yes chance, after rule 6's
+   * pull: for a government whose president and chancellor it knows are liberal, it keeps only
+   * {@code 1 -} {@link #LIBERAL_GOVERNMENT_PULL} of the chance. A liberal's chance, any other
+   * government's and any chance below Hard is as it was.
    */
   private float liberalGovernmentPull(SecretHitlerGame game, float chance) {
-    if (!hardFascist() || knownPlayerRoles.get(game.getCurrentPresident()) != Identity.LIBERAL
+    if (skill != BotSkill.HARD || !isFascistSide(myPlayerData.getIdentity())
+        || knownPlayerRoles.get(game.getCurrentPresident()) != Identity.LIBERAL
         || knownPlayerRoles.get(game.getCurrentChancellor()) != Identity.LIBERAL) {
       return chance;
     }
@@ -1226,7 +1230,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     return skill == BotSkill.HARD && myPlayerData.getIdentity() == Identity.LIBERAL;
   }
 
-  /** Whether this CPU runs Hard's rules 7, 8 and 9: a Hard CPU dealt Fascist (Hitler keeps its play). */
+  /** Whether this CPU runs Hard's rules 7 and 9: a Hard CPU dealt Fascist (Hitler keeps its play). */
   private boolean hardFascist() {
     return skill == BotSkill.HARD && myPlayerData.getIdentity() == Identity.FASCIST;
   }

@@ -512,6 +512,15 @@ public class NoPeekingTest {
         actsAlike(() -> BotScenes.vote("LLFLH"), List.of(UNSEEN_CARDS));
     }
 
+    /**
+     * Rule 8 for Hitler at 5, who knows every role: a government of two liberals, unseen cards
+     * swapped. Hitler at 7 knows no role, which {@link #votesByHitlerAtSeven}'s swaps cover.
+     */
+    @Test
+    public void hardRule8HitlerAtFive() {
+        actsAlike(() -> BotScenes.vote("LLHLF"), List.of(UNSEEN_CARDS));
+    }
+
     /** Rule 9: a fascist holds the special election at 7 seats, its teammate alive; unseen cards swapped. */
     @Test
     public void hardRule9SideElections() {
