@@ -17,7 +17,8 @@ import org.junit.Test;
  * fascist policies down is not Hitler; a Hard liberal keeps them, prefers them when it nominates,
  * votes ja for them, and with 3 or more fascist policies votes nein on a chancellor not cleared
  * unless they are trusted, but votes as Normal does where its own investigation found the
- * president or the chancellor fascist. Every amount is read from {@link ClearedPlayers}.
+ * president or the chancellor fascist. As president it votes ja for the chancellor it nominated
+ * (Phase 25D). Every amount is read from {@link ClearedPlayers}.
  */
 public class ClearedPlayersTest {
     private static final int SEEDS = 1_000;
@@ -104,45 +105,63 @@ public class ClearedPlayersTest {
     @Test
     public void aClearedChancellorGetsJa() {
         ClearedPlayers cleared = p1Cleared();
-        assertEquals(Optional.of(true), cleared.vote(p1Nominated(3), -5, Map.of("P2", Identity.LIBERAL)));
-        assertEquals(Optional.of(true), cleared.vote(p1Nominated(3), 0, Map.of()));
+        assertEquals(Optional.of(true), cleared.vote(p1Nominated(3), "P2", -5, Map.of("P2", Identity.LIBERAL)));
+        assertEquals(Optional.of(true), cleared.vote(p1Nominated(3), "P2", 0, Map.of()));
     }
 
     @Test
     public void aKnownFascistGetsNoJaForBeingCleared() {
         ClearedPlayers cleared = p1Cleared();
-        assertEquals(Optional.empty(), cleared.vote(p1Nominated(3), 0, Map.of("P1", Identity.FASCIST)));
-        assertEquals(Optional.empty(), cleared.vote(p1Nominated(3), 0, Map.of("P0", Identity.FASCIST)));
+        assertEquals(Optional.empty(), cleared.vote(p1Nominated(3), "P2", 0, Map.of("P1", Identity.FASCIST)));
+        assertEquals(Optional.empty(), cleared.vote(p1Nominated(3), "P2", 0, Map.of("P0", Identity.FASCIST)));
     }
 
     @Test
     public void aKnownFascistGetsNoNeinFromTheRuleEither() {
         ClearedPlayers cleared = new ClearedPlayers();
-        assertEquals(Optional.empty(), cleared.vote(p1Nominated(3), -5, Map.of("P1", Identity.FASCIST)));
-        assertEquals(Optional.empty(), cleared.vote(p1Nominated(3), -5, Map.of("P0", Identity.FASCIST)));
+        assertEquals(Optional.empty(), cleared.vote(p1Nominated(3), "P2", -5, Map.of("P1", Identity.FASCIST)));
+        assertEquals(Optional.empty(), cleared.vote(p1Nominated(3), "P2", -5, Map.of("P0", Identity.FASCIST)));
     }
 
     @Test
     public void anUnclearedChancellorUnderTheTrustedScoreGetsNein() {
         ClearedPlayers cleared = new ClearedPlayers();
         assertEquals(Optional.of(false),
-                cleared.vote(p1Nominated(3), ClearedPlayers.TRUSTED_SCORE - 1, Map.of("P1", Identity.LIBERAL)));
-        assertEquals(Optional.of(false), cleared.vote(p1Nominated(3), -5, Map.of()));
-        assertEquals(Optional.of(false), cleared.vote(p1Nominated(5), -5, Map.of()));
+                cleared.vote(p1Nominated(3), "P2", ClearedPlayers.TRUSTED_SCORE - 1, Map.of("P1", Identity.LIBERAL)));
+        assertEquals(Optional.of(false), cleared.vote(p1Nominated(3), "P2", -5, Map.of()));
+        assertEquals(Optional.of(false), cleared.vote(p1Nominated(5), "P2", -5, Map.of()));
     }
 
     @Test
     public void fromTheTrustedScoreTheVoteIsNormals() {
         ClearedPlayers cleared = new ClearedPlayers();
-        assertEquals(Optional.empty(), cleared.vote(p1Nominated(3), ClearedPlayers.TRUSTED_SCORE, Map.of()));
-        assertEquals(Optional.empty(), cleared.vote(p1Nominated(3), 5, Map.of()));
+        assertEquals(Optional.empty(), cleared.vote(p1Nominated(3), "P2", ClearedPlayers.TRUSTED_SCORE, Map.of()));
+        assertEquals(Optional.empty(), cleared.vote(p1Nominated(3), "P2", 5, Map.of()));
     }
 
     @Test
     public void beforeThreeFascistPoliciesTheVoteIsNormals() {
         ClearedPlayers cleared = new ClearedPlayers();
-        assertEquals(Optional.empty(), cleared.vote(p1Nominated(2), -5, Map.of()));
-        assertEquals(Optional.empty(), cleared.vote(p1Nominated(0), -5, Map.of()));
+        assertEquals(Optional.empty(), cleared.vote(p1Nominated(2), "P2", -5, Map.of()));
+        assertEquals(Optional.empty(), cleared.vote(p1Nominated(0), "P2", -5, Map.of()));
+    }
+
+    /** P0 nominated P1: as the president, the CPU of P0 votes ja for its own nominee, cleared or not. */
+    @Test
+    public void aPresidentGivesItsOwnNomineeJa() {
+        ClearedPlayers cleared = new ClearedPlayers();
+        assertEquals(Optional.of(true), cleared.vote(p1Nominated(3), "P0", -5, Map.of()));
+        assertEquals(Optional.of(true), cleared.vote(p1Nominated(5), "P0", ClearedPlayers.TRUSTED_SCORE - 1, Map.of()));
+        assertEquals(Optional.of(true), cleared.vote(p1Nominated(0), "P0", -5, Map.of("P1", Identity.LIBERAL)));
+        assertEquals("another voter still says nein", Optional.of(false),
+                cleared.vote(p1Nominated(3), "P2", -5, Map.of()));
+    }
+
+    /** Rule 1's exception holds for the president too: it votes as Normal does on a nominee it found fascist. */
+    @Test
+    public void aPresidentVotesAsNormalOnANomineeItFoundFascist() {
+        assertEquals(Optional.empty(),
+                new ClearedPlayers().vote(p1Nominated(3), "P0", -5, Map.of("P1", Identity.FASCIST)));
     }
 
     @Test
@@ -217,6 +236,29 @@ public class ClearedPlayersTest {
             ja += hard ? 1 : 0;
         }
         assertTrue("Normal's vote is a draw, not always ja: " + ja, 0 < ja && ja < SEEDS);
+    }
+
+    /**
+     * The bot of P2 presides over round 3 of {@code cleared} and P2 nominates P5, who is not cleared,
+     * at a score of {@code score}: the bot's vote on its own nominee.
+     */
+    private static boolean ownNomineeVote(BotSkill skill, long seed, int score) {
+        Played played = BotScenes.cleared("P2", skill, seed);
+        played.bot().playerReputation.put("P5", score);
+        played.then(g -> g.nominateChancellor("P5"));
+        assertTrue(played.bot().act(played.game()));
+        return played.game().getVotes().get("P2");
+    }
+
+    @Test
+    public void aHardLiberalPresidentVotesJaOnItsOwnNominee() {
+        int normalJa = 0;
+        for (long seed = 0; seed < SEEDS; seed++) {
+            assertTrue("seed " + seed, ownNomineeVote(BotSkill.HARD, seed, 0));
+            assertTrue("seed " + seed, ownNomineeVote(BotSkill.HARD, seed, -5));
+            normalJa += ownNomineeVote(BotSkill.NORMAL, seed, -5) ? 1 : 0;
+        }
+        assertTrue("Normal's vote on a distrusted nominee is a draw, mostly nein: " + normalJa, normalJa < SEEDS / 2);
     }
 
     @Test

@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import game.BotScenes.Scene;
+import game.datastructures.Identity;
 import game.datastructures.Policy;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -22,7 +23,7 @@ import org.junit.Test;
  * discarded, how others have voted while the election is open), decides the same and remembers
  * the same, at every level and seed.
  *
- * <p>To cover a new rule (Phases 25B and 25C): add a test inside {@link #everyLevelAndSeed} that
+ * <p>To cover a new rule (as Phases 25B, 25C and 25D did): add a test inside {@link #everyLevelAndSeed} that
  * builds both games with {@link BotScenes}, hides a fact in the second (each pair of
  * {@link #swaps} with {@code swapRoles} for a bot that does not know every role,
  * {@code swapUnseenCards}, or {@link Twins#others(Consumer, Consumer)} for a discard or an open
@@ -262,8 +263,9 @@ public class NoPeekingTest {
 
     /**
      * Rule 1: the bot of P2 votes while P3 and then P4 are elected at 3 fascist policies, then
-     * nominates and votes, with every pair of other seats' roles that keeps P3 and P4 from Hitler
-     * swapped (a rule that cleared a chancellor by their role would tell them apart).
+     * nominates and votes on its own nominee (Phase 25D's ja), with every pair of other seats'
+     * roles that keeps P3 and P4 from Hitler swapped (a rule that cleared a chancellor by their
+     * role would tell them apart).
      */
     @Test
     public void hardRule1ClearedPlayers() {
@@ -501,6 +503,58 @@ public class NoPeekingTest {
     @Test
     public void hardRule7PresidentBluffs() {
         actsAlike(() -> BotScenes.presidentsHand("FLLLH", "FFL"), List.of(UNSEEN_CARDS));
+    }
+
+    // Phase 25D's extra fascist-side rules. A fascist knows every role, so its twin hides a card.
+
+    /** Rule 8: a fascist votes on a government of two liberals; unseen cards swapped. */
+    @Test
+    public void hardRule8VotesDownLiberalGovernments() {
+        actsAlike(() -> BotScenes.vote("LLFLH"), List.of(UNSEEN_CARDS));
+    }
+
+    /**
+     * Rule 8 for Hitler at 5, who knows every role: a government of two liberals, unseen cards
+     * swapped. Hitler at 7 knows no role, which {@link #votesByHitlerAtSeven}'s swaps cover.
+     */
+    @Test
+    public void hardRule8HitlerAtFive() {
+        actsAlike(() -> BotScenes.vote("LLHLF"), List.of(UNSEEN_CARDS));
+    }
+
+    /**
+     * Rule 8 for Hitler at 7 once it has investigated P0 and P1 and found them liberal: it votes on
+     * their government, with the roles of every pair of the other seats, which it does not know,
+     * swapped.
+     */
+    @Test
+    public void hardRule8HitlerAtSevenAfterInvestigating() {
+        Supplier<Scene> scene = () -> {
+            Scene vote = BotScenes.vote("LLHLLFF");
+            vote.game().getPlayer("P0").investigate();
+            vote.game().getPlayer("P1").investigate();
+            return vote;
+        };
+        List<Hidden> unknown = new ArrayList<>();
+        for (Hidden swap : eachSwap("LLHLLFF", "P2")) {
+            if (!swap.name().startsWith("the roles of P0 ") && !swap.name().startsWith("the roles of P1 ")) {
+                unknown.add(swap);
+            }
+        }
+        assertEquals("P3 or P4 with P5 or P6", 4, unknown.size());
+        playsAlike(scene, scene, unknown, twins -> {
+            for (CpuPlayer hitler : List.of(twins.botA(), twins.botB())) {
+                hitler.knownPlayerRoles.put("P0", Identity.LIBERAL);
+                hitler.knownPlayerRoles.put("P1", Identity.LIBERAL);
+            }
+            twins.botActs();
+        });
+    }
+
+    /** Rule 9: a fascist holds the special election at 7 seats, its teammate alive; unseen cards swapped. */
+    @Test
+    public void hardRule9SideElections() {
+        actsAlike(() -> BotScenes.power("FLLLLFH", 3, ""), List.of(UNSEEN_CARDS));
     }
 
     // The test's own checks: that its seeds differ, and that the twins catch what they should.

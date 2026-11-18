@@ -1,6 +1,10 @@
 package game;
 
 import game.datastructures.Identity;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -13,6 +17,8 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import server.stats.CpuGames;
 
 /**
@@ -21,7 +27,8 @@ import server.stats.CpuGames;
  * how the games ended. The bots dealt liberal play at one level and those dealt fascist or Hitler
  * at another ({@code -Pliberals}, {@code -Pfascists}), and {@code -Pladder} plays the pairings
  * {@link LadderCheck} reads. The deck cannot be seeded, so every run differs: the 95% intervals
- * say how far a difference can be trusted.
+ * say how far a difference can be trusted. A ladder report ends with its raw tallies, which
+ * {@code -Ppool} reads back from two reports to judge both runs' games together.
  */
 public final class BotMatches {
     /** Games a table size, unless {@code -Pgames} says otherwise. */
@@ -40,6 +47,19 @@ public final class BotMatches {
     private static final String LIBERALS_OPTION = "--liberals=";
     private static final String FASCISTS_OPTION = "--fascists=";
     private static final String LADDER_OPTION = "--ladder";
+    private static final String POOL_OPTION = "--pool=";
+
+    private static final String POOL_USAGE = "-Ppool takes two ladder reports: -Ppool=<file>,<file>.";
+
+    /** Why {@link #pool} refuses two runs. */
+    private static final String RUNS_DO_NOT_MATCH = "The two runs do not match.";
+
+    /** The tally block's first line: {@code Tallies: 2000 games at each table size}. */
+    private static final Pattern TALLIES_HEADER = Pattern.compile("Tallies: ([0-9]{1,9}) games at each table size");
+
+    /** A tally block's line: the pairing's label, the seats, then each ending's count in {@link #ENDINGS}' order. */
+    private static final Pattern TALLIES_LINE =
+            Pattern.compile("(\\S+) ([0-9]{1,2})" + " ([0-9]{1,9})".repeat(ENDINGS.size()));
 
     private BotMatches() {
     }
@@ -234,7 +254,9 @@ public final class BotMatches {
     /**
      * The ladder run as plain text: a line naming the run, the liberal side's rate and interval for
      * each pairing side by side (a row per table size and {@code All}), the ladder and balance
-     * verdicts, then each pairing's own table. Each line ends in a newline.
+     * verdicts, each pairing's own table, then the tally block {@link #readTallies} reads back:
+     * {@code Tallies: N games at each table size}, then a line per pairing and size, {@code E/N 5}
+     * and each ending's count in {@link #ENDINGS}' order. Each line ends in a newline.
      */
     public static String ladderReport(Map<LadderCheck.Pairing, Results> results) {
         List<List<String>> rows = new ArrayList<>();
@@ -260,7 +282,127 @@ public final class BotMatches {
         for (Results pairing : results.values()) {
             out.append('\n').append(pairing.table());
         }
+        out.append('\n').append(String.format(Locale.ROOT, "Tallies: %d games at each table size",
+                first.gamesPerSize())).append('\n');
+        results.forEach((pairing, run) -> run.bySize().forEach((seats, tally) -> {
+            out.append(pairing.label()).append(' ').append(seats);
+            for (GameState ending : ENDINGS) {
+                out.append(' ').append(tally.count(ending));
+            }
+            out.append('\n');
+        }));
         return out.toString();
+    }
+
+    /**
+     * A ladder report's tally block read back: each pairing's tallies by size, in
+     * {@link LadderCheck#PAIRINGS}' order, each labelled as {@link #label} names it, with the
+     * block's games a size. Blank lines are skipped.
+     *
+     * @throws IllegalArgumentException {@code No tally block in the report.} without one; naming
+     *                                  the first line of the block it cannot read: not a known
+     *                                  pairing, a size from 5 to 10 and four counts, counts that do
+     *                                  not add up to the block's games, or a pairing's size a second
+     *                                  time; or
+     *                                  naming the first pairing and size from 5 to 10 it lacks.
+     */
+    static Map<LadderCheck.Pairing, Results> readTallies(List<String> reportLines) {
+        int start = -1;
+        int gamesPerSize = 0;
+        for (int i = 0; i < reportLines.size() && start < 0; i++) {
+            Matcher header = TALLIES_HEADER.matcher(reportLines.get(i));
+            if (header.matches()) {
+                start = i + 1;
+                gamesPerSize = Integer.parseInt(header.group(1));
+            }
+        }
+        if (start < 0) {
+            throw new IllegalArgumentException("No tally block in the report.");
+        }
+        Map<String, LadderCheck.Pairing> byLabel = new LinkedHashMap<>();
+        Map<LadderCheck.Pairing, SortedMap<Integer, Tally>> read = new LinkedHashMap<>();
+        for (LadderCheck.Pairing pairing : LadderCheck.PAIRINGS) {
+            byLabel.put(pairing.label(), pairing);
+        }
+        for (String line : reportLines.subList(start, reportLines.size())) {
+            if (line.isBlank()) {
+                continue;
+            }
+            Matcher cells = TALLIES_LINE.matcher(line);
+            LadderCheck.Pairing pairing = cells.matches() ? byLabel.get(cells.group(1)) : null;
+            if (pairing == null) {
+                throw unreadable(line);
+            }
+            int seats = Integer.parseInt(cells.group(2));
+            Tally tally = new Tally();
+            for (int i = 0; i < ENDINGS.size(); i++) {
+                for (int count = Integer.parseInt(cells.group(3 + i)); count > 0; count--) {
+                    tally.add(ENDINGS.get(i));
+                }
+            }
+            SortedMap<Integer, Tally> bySize = read.computeIfAbsent(pairing, p -> new TreeMap<>());
+            if (tally.games() != gamesPerSize || bySize.containsKey(seats) || seats < SecretHitlerGame.MIN_PLAYERS
+                    || seats > SecretHitlerGame.MAX_PLAYERS) {
+                throw unreadable(line);
+            }
+            bySize.put(seats, tally);
+        }
+        Map<LadderCheck.Pairing, Results> results = new LinkedHashMap<>();
+        for (LadderCheck.Pairing pairing : LadderCheck.PAIRINGS) {
+            SortedMap<Integer, Tally> bySize = read.getOrDefault(pairing, new TreeMap<>());
+            for (int seats = SecretHitlerGame.MIN_PLAYERS; seats <= SecretHitlerGame.MAX_PLAYERS; seats++) {
+                if (!bySize.containsKey(seats)) {
+                    throw new IllegalArgumentException(
+                            "The tally block has no line for " + pairing.label() + " " + seats + ".");
+                }
+            }
+            results.put(pairing, new Results(label(pairing.liberals(), pairing.fascists()), gamesPerSize,
+                    Collections.unmodifiableSortedMap(bySize)));
+        }
+        return results;
+    }
+
+    private static IllegalArgumentException unreadable(String line) {
+        return new IllegalArgumentException("Cannot read the tally line \"" + line + "\".");
+    }
+
+    /**
+     * Two runs' games together: each pairing's tallies at each size added ({@link Tally#pooled}),
+     * in {@code a}'s order, labelled as {@link #label} names it then {@code , pooled}, with the two
+     * runs' games a size summed.
+     *
+     * @throws IllegalArgumentException {@code The two runs do not match.} unless both have the same
+     *                                  pairings and, for each, the same sizes; and when every
+     *                                  tally is the same in both (one run's report given twice,
+     *                                  which would count its games twice).
+     */
+    static Map<LadderCheck.Pairing, Results> pool(Map<LadderCheck.Pairing, Results> a,
+            Map<LadderCheck.Pairing, Results> b) {
+        if (!a.keySet().equals(b.keySet())) {
+            throw new IllegalArgumentException(RUNS_DO_NOT_MATCH);
+        }
+        Map<LadderCheck.Pairing, Results> pooled = new LinkedHashMap<>();
+        boolean same = true;
+        for (Map.Entry<LadderCheck.Pairing, Results> entry : a.entrySet()) {
+            LadderCheck.Pairing pairing = entry.getKey();
+            Results first = entry.getValue();
+            Results second = b.get(pairing);
+            if (!first.bySize().keySet().equals(second.bySize().keySet())) {
+                throw new IllegalArgumentException(RUNS_DO_NOT_MATCH);
+            }
+            SortedMap<Integer, Tally> bySize = new TreeMap<>();
+            for (Map.Entry<Integer, Tally> size : first.bySize().entrySet()) {
+                Tally other = second.bySize().get(size.getKey());
+                same &= size.getValue().counts.equals(other.counts);
+                bySize.put(size.getKey(), Tally.pooled(List.of(size.getValue(), other)));
+            }
+            pooled.put(pairing, new Results(label(pairing.liberals(), pairing.fascists()) + ", pooled",
+                    first.gamesPerSize() + second.gamesPerSize(), Collections.unmodifiableSortedMap(bySize)));
+        }
+        if (same) {
+            throw new IllegalArgumentException("The two reports hold the same games: pool two separate runs.");
+        }
+        return pooled;
     }
 
     /** A row of the side-by-side table: its name, then each pairing's liberal rate in {@code tallyOf} its results. */
@@ -304,14 +446,16 @@ public final class BotMatches {
      * @param liberals the level of the bots dealt liberal.
      * @param fascists the level of the bots dealt fascist or Hitler.
      * @param ladder   whether to play the ladder's pairings instead of one.
+     * @param pool     two ladder reports whose tallies to pool instead of playing, or none.
      */
-    public record Options(int games, BotSkill liberals, BotSkill fascists, boolean ladder) {
+    public record Options(int games, BotSkill liberals, BotSkill fascists, boolean ladder, List<String> pool) {
 
         /**
          * Reads the arguments {@code build.gradle} passes: {@code --games=N} (N a whole number of at
          * least 1, {@link #DEFAULT_GAMES} without it), {@code --liberals=LEVEL} and
          * {@code --fascists=LEVEL} (a level's name in any case, {@code NORMAL} without it) and
-         * {@code --ladder}, which plays its own pairings and so takes no level.
+         * {@code --ladder}, which plays its own pairings and so takes no level; or
+         * {@code --pool=<file>,<file>} alone, two ladder reports to pool, which plays nothing.
          *
          * @throws IllegalArgumentException for any other argument, saying what was wrong.
          */
@@ -321,8 +465,15 @@ public final class BotMatches {
             BotSkill fascists = BotSkill.NORMAL;
             boolean levelGiven = false;
             boolean ladder = false;
+            List<String> pool = List.of();
             for (String arg : args) {
-                if (arg.startsWith(GAMES_OPTION)) {
+                if (arg.startsWith(POOL_OPTION)) {
+                    String[] files = arg.substring(POOL_OPTION.length()).split(",", -1);
+                    if (args.length != 1 || files.length != 2 || files[0].isEmpty() || files[1].isEmpty()) {
+                        throw new IllegalArgumentException(POOL_USAGE);
+                    }
+                    pool = List.of(files[0], files[1]);
+                } else if (arg.startsWith(GAMES_OPTION)) {
                     games = wholeNumber(arg.substring(GAMES_OPTION.length()));
                 } else if (arg.startsWith(LIBERALS_OPTION)) {
                     liberals = level(arg.substring(LIBERALS_OPTION.length()));
@@ -334,14 +485,14 @@ public final class BotMatches {
                     ladder = true;
                 } else {
                     throw new IllegalArgumentException("Unknown option \"" + arg + "\". botMatches takes -Pgames=N, "
-                            + "-Pliberals=LEVEL, -Pfascists=LEVEL and -Pladder.");
+                            + "-Pliberals=LEVEL, -Pfascists=LEVEL, -Pladder and -Ppool=<file>,<file>.");
                 }
             }
             if (ladder && levelGiven) {
                 throw new IllegalArgumentException(
                         "-Pladder plays its own pairings: leave out -Pliberals and -Pfascists.");
             }
-            return new Options(games, liberals, fascists, ladder);
+            return new Options(games, liberals, fascists, ladder, pool);
         }
 
         private static BotSkill level(String value) {
@@ -367,13 +518,19 @@ public final class BotMatches {
     }
 
     /**
-     * Plays the run and prints its table, or with {@code --ladder} the ladder's report; a refused
-     * option prints why and exits with status 2.
+     * Plays the run and prints its table, or with {@code --ladder} the ladder's report, or with
+     * {@code --pool} the ladder's report of two reports' games together; a refused option, or a
+     * report it cannot read or pool, prints why and exits with status 2.
      */
     public static void main(String[] args) {
         Options options;
         try {
             options = Options.parse(args);
+            if (!options.pool().isEmpty()) {
+                System.out.print(ladderReport(pool(readReport(options.pool().get(0)),
+                        readReport(options.pool().get(1)))));
+                return;
+            }
         } catch (IllegalArgumentException e) {
             System.err.println(e.getMessage());
             System.exit(2);
@@ -383,6 +540,19 @@ public final class BotMatches {
             System.out.print(ladderReport(ladder(options.games())));
         } else {
             System.out.print(playAt(options.games(), options.liberals(), options.fascists()).table());
+        }
+    }
+
+    /** The tallies of the ladder report in {@code file}, read back. */
+    private static Map<LadderCheck.Pairing, Results> readReport(String file) {
+        try {
+            return readTallies(Files.readAllLines(Path.of(file)));
+        } catch (NoSuchFileException e) {
+            throw new IllegalArgumentException("Cannot read the ladder report " + file + ": there is no such file.", e);
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Cannot read the ladder report " + file + ": " + e.getMessage(), e);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(file + ": " + e.getMessage(), e);
         }
     }
 }

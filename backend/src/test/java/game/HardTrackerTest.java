@@ -85,10 +85,12 @@ public class HardTrackerTest {
         assertEquals(0, chance(played), 0);
     }
 
+    /** Rule 8's pull applies too, as to every government of two players a fascist knows are liberal. */
     @Test
     public void theFascistSidePullsBackFromALiberalGovernmentAtTwo() {
         Played played = atTwo("LLLFH", "P3", BotSkill.HARD, "P0");
-        assertEquals(0.6 * (1 - CpuPlayer.FASCIST_TRACKER_PULL), chance(played), TOLERANCE);
+        assertEquals(0.6 * (1 - CpuPlayer.FASCIST_TRACKER_PULL) * (1 - CpuPlayer.LIBERAL_GOVERNMENT_PULL),
+                chance(played), TOLERANCE);
     }
 
     @Test
@@ -104,10 +106,12 @@ public class HardTrackerTest {
         assertEquals(0.75 * (1 - CpuPlayer.FASCIST_TRACKER_PULL), chance(played), TOLERANCE);
     }
 
+    /** The fascist's chance keeps rule 8's pull, which every government of two known liberals gets. */
     @Test
     public void oneFailedElectionChangesNothing() {
         assertEquals(0.75, chance(afterFailures("LLFLH", 0, 1, "P3", BotSkill.HARD, "P0")), TOLERANCE);
-        assertEquals(0.6, chance(afterFailures("LLLFH", 0, 1, "P3", BotSkill.HARD, "P0")), TOLERANCE);
+        assertEquals(0.6 * (1 - CpuPlayer.LIBERAL_GOVERNMENT_PULL),
+                chance(afterFailures("LLLFH", 0, 1, "P3", BotSkill.HARD, "P0")), TOLERANCE);
     }
 
     @Test

@@ -12,8 +12,8 @@ import java.util.List;
 final class ChancellorHand {
     /**
      * How far two fascist cards lower the president, before rule 5 scales it by the chance the
-     * card the president discarded was liberal. A {@code double}, so Phase 25D can tune it in
-     * fractions.
+     * card the president discarded was liberal. A {@code double}, so it tunes in fractions
+     * (Phase 25D kept it at 2.0).
      */
     static final double FF_DROP = 2.0;
 

@@ -12,10 +12,11 @@ import java.util.Set;
 
 /**
  * Hard's rule 1 (issue #72, the bot skill design's "Cleared players"): the players a Hard liberal
- * CPU has seen proved not to be Hitler. Electing Hitler chancellor with 3 or more fascist policies
- * down ends the game, so a chancellor seen in a legislative session at 3 or more (where the
- * election has passed and nothing has been enacted since) is not Hitler. It reads only what every
- * seat sees: the state, the board and the chancellor.
+ * CPU has seen proved not to be Hitler, and the vote the rule gives it (as president, ja for its
+ * own nominee). Electing Hitler chancellor with 3 or more fascist policies down ends the game, so
+ * a chancellor seen in a legislative session at 3 or more (where the election has passed and
+ * nothing has been enacted since) is not Hitler. It reads only what every seat sees: the state,
+ * the board and the chancellor.
  */
 final class ClearedPlayers implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -68,21 +69,23 @@ final class ClearedPlayers implements Serializable {
     }
 
     /**
-     * The rule's vote on the open election, or empty where the CPU votes as Normal does: ja for a
-     * cleared chancellor; with 3 or more fascist policies down, nein for a chancellor not cleared
-     * whose score is under {@link #TRUSTED_SCORE}; and empty otherwise, and always where
-     * {@code known} (what the CPU's role and its investigations told it) has the president or the
-     * chancellor on the fascist side, as a ja there would hand the fascists a policy.
+     * The rule's vote on the open election, or empty where the CPU votes as Normal does: ja for the
+     * chancellor the CPU nominated as president (Phase 25D: a nein on its own nominee failed its own
+     * government); ja for a cleared chancellor; with 3 or more fascist policies down, nein for a
+     * chancellor not cleared whose score is under {@link #TRUSTED_SCORE}; and empty otherwise, and
+     * always where {@code known} (what the CPU's role and its investigations told it) has the
+     * president or the chancellor on the fascist side, as a ja there would hand the fascists a policy.
      *
+     * @param self            the CPU's own name.
      * @param chancellorScore the chancellor's score, with what the CPU knows of their role.
      */
-    Optional<Boolean> vote(SecretHitlerGame game, int chancellorScore, Map<String, Identity> known) {
+    Optional<Boolean> vote(SecretHitlerGame game, String self, int chancellorScore, Map<String, Identity> known) {
         String chancellor = game.getCurrentChancellor();
         if (CpuPlayer.isFascistSide(known.get(game.getCurrentPresident()))
                 || CpuPlayer.isFascistSide(known.get(chancellor))) {
             return Optional.empty();
         }
-        if (contains(chancellor)) {
+        if (self.equals(game.getCurrentPresident()) || contains(chancellor)) {
             return Optional.of(true);
         }
         if (game.getNumFascistPolicies() >= HITLER_ELECTION_POLICIES && chancellorScore < TRUSTED_SCORE) {

@@ -197,7 +197,9 @@ way extra fascist-side rules cannot help (its plan gives the exact stop conditio
    is not Hitler. A Hard liberal bot keeps that list, prefers those players when it nominates, votes
    yes for a government whose chancellor is on it, and with 3 or more fascist policies votes no on a
    chancellor who is not on it unless that player's score is +3 or more. Where its own investigation
-   found the president or the chancellor fascist, it votes as Normal does.
+   found the president or the chancellor fascist, it votes as Normal does. As president it votes
+   yes on the chancellor it nominated (Phase 25D, the user's "Let 25D decide": a no there failed its
+   own government and skewed the self-play run by table size).
 2. **The chancellor's hand.** A bot learns nothing from the two cards a president hands it today
    (`handleLegislativeChancellor`). A Hard liberal bot as chancellor lowers the president's score
    for two fascist cards and raises it for two liberal cards, the drop scaled by the deck's odds
