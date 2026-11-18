@@ -3,9 +3,9 @@ package game;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import game.BotScenes.Played;
 import game.BotScenes.Scene;
 import game.datastructures.Policy;
-import java.util.ArrayList;
 import java.util.List;
 import org.junit.Test;
 
@@ -17,11 +17,7 @@ import org.junit.Test;
 public class ChancellorHandTest {
 
     private static List<Policy> hand(String cards) {
-        List<Policy> hand = new ArrayList<>();
-        for (char letter : cards.toCharArray()) {
-            hand.add(new Policy(letter == 'F' ? Policy.Type.FASCIST : Policy.Type.LIBERAL));
-        }
-        return hand;
+        return BotScenes.policies(cards);
     }
 
     @Test
@@ -98,17 +94,14 @@ public class ChancellorHandTest {
     @Test
     public void theHandIsReadOncePerSession() {
         Scene scene = BotScenes.chancellorsHand("LLLFH", "FF", "F", 5);
-        SecretHitlerGame game = scene.game();
-        CpuPlayer bot = BotScenes.bot(scene, BotSkill.HARD, 0);
-        bot.update(game);
-        assertTrue(bot.act(game));
-        assertEquals("the bot vetoes", GameState.LEGISLATIVE_PRESIDENT_VETO, game.getState());
-        bot.update(game);
-        game.presidentialVeto(false);
-        bot.update(game);
-        bot.update(game);
-        assertTrue(bot.act(game));
-        assertEquals(GameState.FASCIST_VICTORY_POLICY, game.getState());
-        assertEquals(-ChancellorHand.FF_DROP, (int) bot.playerReputation.get("P0"));
+        Played played = new Played(scene.game(), BotScenes.bot(scene, BotSkill.HARD, 0));
+        played.updateAgain();
+        played.botActs();
+        assertEquals("the bot vetoes", GameState.LEGISLATIVE_PRESIDENT_VETO, played.game().getState());
+        played.then(g -> g.presidentialVeto(false));
+        played.updateAgain();
+        played.botActs();
+        assertEquals(GameState.FASCIST_VICTORY_POLICY, played.game().getState());
+        assertEquals(-ChancellorHand.FF_DROP, (int) played.bot().playerReputation.get("P0"));
     }
 }

@@ -44,6 +44,14 @@ final class BotScenes {
         }
 
         /**
+         * The bot updates again with no move between, as it does on every lobby tick and command
+         * that leaves the game as it was: what it remembers must not count a state twice.
+         */
+        void updateAgain() {
+            bot.update(game);
+        }
+
+        /**
          * The bot acts, then updates.
          *
          * @throws IllegalStateException if the bot did not act.
@@ -207,6 +215,15 @@ final class BotScenes {
         voteAll(game, true);
     }
 
+    /** Cards written as letters ({@code F} and {@code L}), in order. */
+    static List<Policy> policies(String cards) {
+        List<Policy> policies = new ArrayList<>();
+        for (char letter : cards.toCharArray()) {
+            policies.add(new Policy(type(letter)));
+        }
+        return policies;
+    }
+
     /** The draw pile, top first, as letters (for the scenes' own tests). */
     static String drawPile(SecretHitlerGame game) {
         Deck draw = draw(game);
@@ -340,9 +357,7 @@ final class BotScenes {
      * chancellor) may not be nominated.
      */
     static Played cleared(String botSeat, BotSkill skill, long seed) {
-        SecretHitlerGame game = game("FLLFLLH");
-        board(game, 3, 0);
-        drawTop(game, "LLLLLL");
+        SecretHitlerGame game = clearedStart();
         Played played = new Played(game, bot(game, botSeat, skill, seed));
         for (String chancellor : List.of("P3", "P4")) {
             played.then(g -> g.nominateChancellor(chancellor));
@@ -362,9 +377,7 @@ final class BotScenes {
      * twice). It waits at round 2, P1 to nominate.
      */
     static Played peeked(String roles, String peek, BotSkill skill, long seed) {
-        SecretHitlerGame game = game(roles);
-        board(game, 2, 0);
-        drawTop(game, "FFF" + peek);
+        SecretHitlerGame game = peekStart(roles, peek);
         Played played = new Played(game, bot(game, "P0", skill, seed));
         played.then(g -> g.nominateChancellor("P1"));
         played.then(g -> voteAll(g, true));
@@ -373,6 +386,22 @@ final class BotScenes {
         played.botActs();
         played.botActs();
         return played;
+    }
+
+    /** {@link #cleared}'s game before its first move: {@code FLLFLLH}, 3 fascist policies, {@code LLLLLL} on top. */
+    static SecretHitlerGame clearedStart() {
+        SecretHitlerGame game = game("FLLFLLH");
+        board(game, 3, 0);
+        drawTop(game, "LLLLLL");
+        return game;
+    }
+
+    /** {@link #peeked}'s game before its first move: 2 fascist policies, {@code FFF} then {@code peek} on top. */
+    static SecretHitlerGame peekStart(String roles, String peek) {
+        SecretHitlerGame game = game(roles);
+        board(game, 2, 0);
+        drawTop(game, "FFF" + peek);
+        return game;
     }
 
     private static Object field(SecretHitlerGame game, String name) {

@@ -9,6 +9,7 @@ import static org.junit.Assert.fail;
 import game.BotScenes.Played;
 import game.BotScenes.Scene;
 import game.datastructures.Policy;
+import java.lang.reflect.Field;
 import java.util.List;
 import org.apache.commons.lang3.SerializationUtils;
 import org.junit.Test;
@@ -101,5 +102,29 @@ public class CpuPlayerSkillTest {
         assertEquals(GameState.FASCIST_VICTORY_POLICY, copy.game().getState());
         assertEquals("the hand read before the backup is not read again",
                 Integer.valueOf(-ChancellorHand.FF_DROP), copy.bot().playerReputation.get("P0"));
+    }
+
+    /**
+     * A Hard bot written before rules 1 and 4 had fields: its stream holds no {@code
+     * clearedPlayers} or {@code peekMemory}, which Java leaves null (as nulling them here does)
+     * and {@code readObject} fills, so the bot reads back with nothing remembered and plays on.
+     */
+    @Test
+    public void aHardBotFromBeforeTheRulesStartsWithNothingRemembered() throws ReflectiveOperationException {
+        Played played = BotScenes.cleared("P5", BotSkill.HARD, 0);
+        for (String name : List.of("clearedPlayers", "peekMemory")) {
+            Field field = CpuPlayer.class.getDeclaredField(name);
+            field.setAccessible(true);
+            field.set(played.bot(), null);
+        }
+        Played copy = backedUp(played);
+        assertTrue(copy.bot().clearedPlayers().names().isEmpty());
+        assertTrue(copy.bot().peekMemory().cards().isEmpty());
+
+        copy.then(g -> g.nominateChancellor("P3"));
+        assertTrue("the copy acted", copy.bot().act(copy.game()));
+        copy.then(g -> BotScenes.voteAll(g, true));
+        assertEquals("the copy clears again from what it sees", List.of("P3"),
+                List.copyOf(copy.bot().clearedPlayers().names()));
     }
 }

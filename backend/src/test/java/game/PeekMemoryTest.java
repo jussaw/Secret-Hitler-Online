@@ -5,7 +5,6 @@ import static org.junit.Assert.assertTrue;
 
 import game.BotScenes.Played;
 import game.datastructures.Policy;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -57,14 +56,6 @@ public class PeekMemoryTest {
             change.put(seat, -PeekMemory.DROP);
         }
         return change;
-    }
-
-    private static List<Policy> cards(Policy.Type... types) {
-        List<Policy> cards = new ArrayList<>();
-        for (Policy.Type type : types) {
-            cards.add(new Policy(type));
-        }
-        return cards;
     }
 
     @Test
@@ -137,7 +128,7 @@ public class PeekMemoryTest {
     public void aSessionThatDidNotDrawThePeekForgetsIt() {
         SecretHitlerGame game = BotScenes.peeked("LLLFH", "LFF", BotSkill.NORMAL, 0).game();
         PeekMemory memory = new PeekMemory();
-        memory.saw(cards(L, F, F), game.getDrawSize());
+        memory.saw(BotScenes.policies("LFF"), game.getDrawSize());
         for (String chancellor : List.of("P2", "P3", "P4")) {
             game.nominateChancellor(chancellor);
             BotScenes.voteAll(game, false);
@@ -161,7 +152,7 @@ public class PeekMemoryTest {
         BotScenes.board(game, 5, 0);
         BotScenes.drawTop(game, "LFF");
         PeekMemory memory = new PeekMemory();
-        memory.saw(cards(L, F, F), game.getDrawSize());
+        memory.saw(BotScenes.policies("LFF"), game.getDrawSize());
         game.nominateChancellor("P1");
         BotScenes.voteAll(game, true);
         assertEquals(List.of(), memory.observe(game, "P2"));
@@ -178,8 +169,8 @@ public class PeekMemoryTest {
     @Test
     public void itBlamesOnce() {
         Consumer<Played> moves = roundTwo(0, 0).andThen(played -> {
-            played.then(g -> { });
-            played.then(g -> { });
+            played.updateAgain();
+            played.updateAgain();
             played.then(g -> g.executePlayer("P3"));
             played.then(SecretHitlerGame::endPresidentialTerm);
             assertEquals("P2", played.game().getCurrentPresident());
@@ -197,9 +188,9 @@ public class PeekMemoryTest {
             Played played = BotScenes.peeked("LLLFH", "LFF", BotSkill.NORMAL, 0);
             SecretHitlerGame game = played.game();
             PeekMemory memory = new PeekMemory();
-            memory.saw(cards(L, F, F), game.getDrawSize());
+            memory.saw(BotScenes.policies("LFF"), game.getDrawSize());
             PeekMemory onlooker = new PeekMemory();
-            onlooker.saw(cards(L, F, F), game.getDrawSize());
+            onlooker.saw(BotScenes.policies("LFF"), game.getDrawSize());
             game.nominateChancellor("P2");
             BotScenes.voteAll(game, true);
             assertEquals(List.of(), memory.observe(game, self));

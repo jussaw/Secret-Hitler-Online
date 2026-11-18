@@ -98,39 +98,15 @@ public class NoPeekingTest {
     }
 
     /**
-     * For each hidden fact: both games from their builders, the fact hidden in the second, and the
-     * bot acting once in each.
+     * For each hidden fact: both games from their builders, the fact hidden in the second, and
+     * {@code play} driving the twins (a Hard rule that remembers what it saw plays a longer scene).
      */
-    private static void actsAlike(Supplier<Scene> first, Supplier<Scene> second, List<Hidden> hidden) {
+    private static void playsAlike(Supplier<Scene> first, Supplier<Scene> second, List<Hidden> hidden,
+            Consumer<Twins> play) {
         everyLevelAndSeed((skill, seed) -> {
             for (Hidden fact : hidden) {
                 Scene a = first.get();
                 Scene b = second.get();
-                fact.hide().accept(b.game());
-                try {
-                    Twins.of(a, b, skill, seed).botActs();
-                } catch (AssertionError e) {
-                    throw new AssertionError("with " + fact.name() + ": " + e.getMessage(), e);
-                }
-            }
-        });
-    }
-
-    private static void actsAlike(Supplier<Scene> scene, List<Hidden> hidden) {
-        actsAlike(scene, scene, hidden);
-    }
-
-    /**
-     * For each hidden fact: both games from {@code game}, the fact hidden in the second, the bot of
-     * seat {@code bot} made in each, and {@code play} driving the twins through a longer scene (a
-     * Hard rule that remembers what it saw).
-     */
-    private static void playsAlike(Supplier<SecretHitlerGame> game, String bot, List<Hidden> hidden,
-            Consumer<Twins> play) {
-        everyLevelAndSeed((skill, seed) -> {
-            for (Hidden fact : hidden) {
-                Scene a = new Scene(game.get(), bot);
-                Scene b = new Scene(game.get(), bot);
                 fact.hide().accept(b.game());
                 try {
                     play.accept(Twins.of(a, b, skill, seed));
@@ -139,6 +115,15 @@ public class NoPeekingTest {
                 }
             }
         });
+    }
+
+    /** {@link #playsAlike} with the bot acting once in each game. */
+    private static void actsAlike(Supplier<Scene> first, Supplier<Scene> second, List<Hidden> hidden) {
+        playsAlike(first, second, hidden, Twins::botActs);
+    }
+
+    private static void actsAlike(Supplier<Scene> scene, List<Hidden> hidden) {
+        actsAlike(scene, scene, hidden);
     }
 
     @Test
@@ -261,14 +246,6 @@ public class NoPeekingTest {
     // Hard's rules (Phase 25B). Each runs at every level, so Easy and Normal are checked on the
     // same scenes.
 
-    /** {@code FLLFLLH} with 3 fascist policies down and {@code LLLLLL} on top, as {@code BotScenes.cleared}. */
-    private static SecretHitlerGame clearedGame() {
-        SecretHitlerGame game = BotScenes.game("FLLFLLH");
-        BotScenes.board(game, 3, 0);
-        BotScenes.drawTop(game, "LLLLLL");
-        return game;
-    }
-
     /**
      * The president nominates {@code chancellor}; the bot votes; the others vote ja; the president
      * discards the first card, the chancellor enacts the first and the president ends the term.
@@ -289,7 +266,8 @@ public class NoPeekingTest {
      */
     @Test
     public void hardRule1ClearedPlayers() {
-        playsAlike(NoPeekingTest::clearedGame, "P2", eachSwap("FLLFLLH", "P2", "P3", "P4"), twins -> {
+        Supplier<Scene> scene = () -> new Scene(BotScenes.clearedStart(), "P2");
+        playsAlike(scene, scene, eachSwap("FLLFLLH", "P2", "P3", "P4"), twins -> {
             electedWhileTheBotVotes(twins, "P3");
             electedWhileTheBotVotes(twins, "P4");
             twins.botActs();
@@ -319,14 +297,6 @@ public class NoPeekingTest {
                 () -> BotScenes.chancellorsHand("LHLLLFF", "FF", "F", 0), with(eachSwap("LHLLLFF", "P1"), NOTHING));
     }
 
-    /** {@code LLLFH} with 2 fascist policies down and {@code FFF} then {@code LFF} on top, as {@code BotScenes.peeked}. */
-    private static SecretHitlerGame peekGame() {
-        SecretHitlerGame game = BotScenes.game("LLLFH");
-        BotScenes.board(game, 2, 0);
-        BotScenes.drawTop(game, "FFFLFF");
-        return game;
-    }
-
     /**
      * Rule 4: the bot of P0 elects P1, peeks at LFF and ends its term; P1 elects P2 while the bot
      * votes, and the two games' governments enact a fascist policy differently (P1 discards the
@@ -343,7 +313,8 @@ public class NoPeekingTest {
                 BotScenes.swapUnseenCards(g, 6);
             }));
         }
-        playsAlike(NoPeekingTest::peekGame, "P0", hidden, twins -> {
+        Supplier<Scene> scene = () -> new Scene(BotScenes.peekStart("LLLFH", "LFF"), "P0");
+        playsAlike(scene, scene, hidden, twins -> {
             twins.others(g -> g.nominateChancellor("P1"));
             twins.others(g -> BotScenes.voteAll(g, true));
             twins.botActs();
