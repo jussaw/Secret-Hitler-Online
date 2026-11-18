@@ -289,8 +289,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   private int getPlayerReputationWithIdentity(String playerName) {
     int reputation = playerReputation.get(playerName);
     if (knownPlayerRoles.containsKey(playerName)) {
-      Identity id = knownPlayerRoles.get(playerName);
-      if (id == Identity.FASCIST || id == Identity.HITLER) {
+      if (isFascistSide(knownPlayerRoles.get(playerName))) {
         reputation = -1 * MAX_REPUTATION;
       } else {
         reputation = MAX_REPUTATION;
@@ -491,12 +490,9 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
         // Check if our president is a known fascist/hitler. If so, we can pull
         // off a veto with them.
         String president = game.getCurrentPresident();
-        if (knownPlayerRoles.containsKey(president)) {
-          Identity presidentId = knownPlayerRoles.get(president);
-          if (presidentId == Identity.HITLER || presidentId == Identity.FASCIST) {
-            game.chancellorVeto();
-            return true;
-          }
+        if (isFascistSide(knownPlayerRoles.get(president))) {
+          game.chancellorVeto();
+          return true;
         }
       }
       // Otherwise, enact one of them because the order doesn't matter
@@ -633,17 +629,19 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
    * investigated).
    */
   private List<Player> executionTargets(SecretHitlerGame game) {
-    Identity myId = myPlayerData.getIdentity();
-    boolean fascistSide = myId == Identity.FASCIST || myId == Identity.HITLER;
     List<Player> targets = new ArrayList<>();
     for (Player player : removeDeadPlayersAndSelf(game.getPlayerList())) {
-      Identity known = knownPlayerRoles.get(player.getUsername());
-      if (fascistSide && (known == Identity.FASCIST || known == Identity.HITLER)) {
+      if (myPlayerData.isFascist() && isFascistSide(knownPlayerRoles.get(player.getUsername()))) {
         continue; // a known teammate
       }
       targets.add(player);
     }
     return targets;
+  }
+
+  /** Whether a known role is on the fascist side (a fascist or Hitler); false for null. */
+  private static boolean isFascistSide(Identity role) {
+    return role == Identity.FASCIST || role == Identity.HITLER;
   }
 
   private boolean handlePostLegislative(SecretHitlerGame game) {
