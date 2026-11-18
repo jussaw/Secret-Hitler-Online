@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 
 import game.datastructures.Identity;
@@ -54,11 +55,33 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   public final String myName;
   public Player myPlayerData;
 
+  /**
+   * How well this CPU plays. Not final: a CPU read from a backup made before
+   * levels has none, and {@code readObject} makes it {@code NORMAL}.
+   */
+  private BotSkill skill;
+
+  /** A Normal CPU player. */
   public CpuPlayer(String name) {
+    this(name, BotSkill.NORMAL);
+  }
+
+  /**
+   * A CPU player at the given level.
+   *
+   * @throws NullPointerException if {@code skill} is null.
+   */
+  public CpuPlayer(String name, BotSkill skill) {
     this.myName = name;
+    this.skill = Objects.requireNonNull(skill, "skill");
     playerReputation = new HashMap<>();
     knownPlayerRoles = new HashMap<>();
     random = new Random();
+  }
+
+  /** How well this CPU plays. */
+  public BotSkill skill() {
+    return skill;
   }
 
   /**
@@ -790,6 +813,9 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
     in.defaultReadObject();
     random = new Random();
+    if (skill == null) { // backed up before bots had levels
+      skill = BotSkill.NORMAL;
+    }
   }
 
 } // end CpuPlayer

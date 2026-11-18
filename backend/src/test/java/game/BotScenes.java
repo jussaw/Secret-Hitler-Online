@@ -202,11 +202,32 @@ final class BotScenes {
         return z ^ (z >>> 31);
     }
 
-    /** The scene's bot, as the game makes it, its random source seeded from {@code mix(seed)}. */
+    /**
+     * The scene's bot as the lobby makes it ({@code new CpuPlayer(name)}), its random source seeded
+     * from {@code mix(seed)}, and initialized. The Normal baseline goes through this one.
+     */
     static CpuPlayer bot(Scene scene, long seed) {
         CpuPlayer bot = new CpuPlayer(scene.bot());
         bot.useRandom(new Random(mix(seed)));
         bot.initialize(scene.game());
+        return bot;
+    }
+
+    /** The scene's bot at {@code skill}, its random source seeded from {@code mix(seed)}, and initialized. */
+    static CpuPlayer bot(Scene scene, BotSkill skill, long seed) {
+        return bot(scene.game(), scene.bot(), skill, seed);
+    }
+
+    /** The bot of seat {@code name} at {@code skill}, seeded from {@code mix(seed)}, and initialized. */
+    static CpuPlayer bot(SecretHitlerGame game, String name, BotSkill skill, long seed) {
+        return bot(game, name, skill, new Random(mix(seed)));
+    }
+
+    /** The bot of seat {@code name} at {@code skill}, drawing from {@code random}, and initialized. */
+    static CpuPlayer bot(SecretHitlerGame game, String name, BotSkill skill, Random random) {
+        CpuPlayer bot = new CpuPlayer(name, skill);
+        bot.useRandom(random);
+        bot.initialize(game);
         return bot;
     }
 

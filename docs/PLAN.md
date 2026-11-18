@@ -1129,7 +1129,7 @@ Breakdown: [`docs/superpowers/plans/2026-11-17-phase-25a-bot-levels.md`](superpo
 
 Issue #72, part 3's start. Backend only; changes nothing on screen. Starts once 24 has merged.
 
-- [ ] `game.BotSkill` (Easy, Normal, Hard); `CpuPlayer(String name, BotSkill skill)` and `skill()`; a bot from an older backup plays Normal
+- [x] `game.BotSkill` (Easy, Normal, Hard); `CpuPlayer(String name, BotSkill skill)` and `skill()`; a bot from an older backup plays Normal
 - [ ] Easy makes a random legal move at `EASY_MISTAKE_CHANCE` of its decisions, never one that throws the game for its own side
 - [ ] `EASY_MISTAKE_CHANCE` is set from the self-play run, one notch above the lowest that keeps Easy clearly below Normal
 - [ ] The no-peeking test: a bot decides the same in two games its seat cannot tell apart, for each level and each decision kind, with seeds mixed, open votes hidden until the election closes, and every pair of other seats swapped
