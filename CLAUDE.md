@@ -238,15 +238,16 @@ keeps credit to upstream and to the board game's creators.
   seat sees, gated in `CpuPlayer` by who runs it: `hardLiberal()` (Hard and dealt Liberal) runs
   rule 1, and `readsTheGame(game)` (Hard and not knowing every role, `knowsEveryRole`, which
   `initialize` asks too: a liberal, or Hitler at 7 or more) runs rule 2 and rule 4's blame. Rule 1,
-  `ClearedPlayers`: a chancellor seen in `LEGISLATIVE_PRESIDENT`, `LEGISLATIVE_CHANCELLOR` or
-  `LEGISLATIVE_PRESIDENT_VETO` with 3 or more fascist policies down is cleared (not Hitler, or the
+  `ClearedPlayers`: a chancellor seen in a legislative session (`CpuPlayer.inLegislativeSession`:
+  `LEGISLATIVE_PRESIDENT`, `LEGISLATIVE_CHANCELLOR` or `LEGISLATIVE_PRESIDENT_VETO`, which rule 4
+  shares) with 3 or more fascist policies down is cleared (not Hitler, or the
   election would have ended the game), kept in the order cleared (`names()`); nominating, a cleared
   seat's weight is multiplied by `NOMINATION_WEIGHT` (the liberal branch's `factor`, through a
   private overload of `chooseRandomPlayerWeighted`; the public one passes 1, so no Normal pick
   changes); voting, `vote(game, chancellorScore, known)` is ja for a cleared chancellor and, with 3
   or more down, nein for one not cleared below `TRUSTED_SCORE`, and leaves the vote to Normal
   otherwise, and always when the bot's own investigation found the president or the chancellor on
-  the fascist side. Rule 2, `ChancellorHand.presidentChange(hand, drop)`: as chancellor, two
+  the fascist side (`CpuPlayer.isFascistSide`). Rule 2, `ChancellorHand.presidentChange(hand, drop)`: as chancellor, two
   fascist cards lower the president by `chancellorHandDrop(game)` (`FF_DROP`; the one place 25C
   scales the drop by the deck's odds) and two liberal ones raise them by `LL_RISE`, read once a
   round (`handReadRound`), so the choice after a refused veto reads nothing again. Rule 4,
@@ -255,26 +256,31 @@ keeps credit to upstream and to the board game's creators.
   smaller, and any other size (a chaos policy came first) forgets them; when that session ends, a
   reader that sat in neither office lowers both members by `PeekMemory.DROP` if they enacted a
   fascist policy (not an accepted veto) and the cards held a liberal, and the cards are forgotten
-  either way. The amounts are `int`s (`NOMINATION_WEIGHT` 3, `TRUSTED_SCORE` 3, `FF_DROP` 2,
-  `LL_RISE` 2, `DROP` 2), and every test reads them by name, so 25D can retune them without
-  editing a test. `clearedPlayers` and `peekMemory` (each class pins `serialVersionUID` 1) and
-  `handReadRound` are `CpuPlayer` fields that `initialize` resets and `readObject` fills for an
-  older backup (`clearedPlayers()` and `peekMemory()` are package-private for the tests).
+  either way. The amounts are `NOMINATION_WEIGHT` 3 (a `double`, a weight) and the `int`s
+  `TRUSTED_SCORE` 3, `FF_DROP` 2, `LL_RISE` 2 and `DROP` 2, and every test reads them by name, so
+  25D can retune them without editing a test. `clearedPlayers`, `peekMemory` (each class pins
+  `serialVersionUID` 1) and `handReadRound` are `CpuPlayer` fields that `initialize` resets; an
+  older backup has none of them, and `readObject` fills the first two with empty ones while
+  `handReadRound` reads 0 (`clearedPlayers()` and `peekMemory()` are package-private for the
+  tests).
   `ClearedPlayersTest`, `ChancellorHandTest` and `PeekMemoryTest` hold the rules, alone and through
   `CpuPlayer` (`PeekMemoryTest` compares a Hard bot's scores with a Normal bot's in the same
   scene), and `CpuPlayerSkillTest.aHardBotKeepsWhatItRemembersThroughABackup` and
   `aHardChancellorReadsItsHandOnceThroughABackup` copy a game and its bot together, as a lobby
-  backup does. The bot tests build their games with
+  backup does, and `aHardBotFromBeforeTheRulesStartsWithNothingRemembered` reads back a Hard bot
+  whose stream lacks the two fields. The bot tests build their games with
   `BotScenes` (test source): seats `P0`, `P1`, … in seat order, every one a bot, dealt the roles a
   string names (`game("LLLFH")`), the draw pile in one fixed order, and `board`, `drawTop`,
   `swapRoles`, `swapUnseenCards`, `voteAll` and `elect` (by reflection on `SecretHitlerGame`'s
   private `board` and `draw` only); builders that stop at each decision (`nomination`, `vote`,
   `presidentsHand`, `chancellorsHand`, `vetoAnswer`, `power`); `Played(game, bot)`, a game whose
-  bot was made before its first move and is updated after every one (`then(move)`, `botActs()`),
-  with the Hard rules' builders `cleared(botSeat, skill, seed)` (`FLLFLLH` at 3 fascist policies:
-  P3 and P4 elected in turn, waiting for P2's nomination) and `peeked(roles, peek, skill, seed)`
-  (P0 elects P1, enacts the third fascist policy and peeks at `peek`, waiting for P1's
-  nomination); and `bot(…, skill, seed)`, seeded
+  bot was made before its first move and is updated after every one (`then(move)`, `botActs()`,
+  and `updateAgain()` for a tick with no move), with the Hard rules' builders `cleared(botSeat,
+  skill, seed)` (`FLLFLLH` at 3 fascist policies: P3 and P4 elected in turn, waiting for P2's
+  nomination) and `peeked(roles, peek, skill, seed)` (P0 elects P1, enacts the third fascist
+  policy and peeks at `peek`, waiting for P1's nomination), whose games before their first move
+  are `clearedStart()` and `peekStart(roles, peek)`; `policies("LFF")`, cards from letters; and
+  `bot(…, skill, seed)`, seeded
   from `mix(seed)`, SplitMix64's finalizer, since consecutive seeds give `java.util.Random` almost
   the same first draw (`BotScenesTest.mixedSeedsLookRandom`). `Decision.of` writes a move as a line
   (`nominate P3`, `pass FL`, `accept veto`, …). `NoPeekingTest` holds the spec's rule that a bot
@@ -286,7 +292,7 @@ keeps credit to upstream and to the board game's creators.
   decide alike, serialize alike and draw as many random numbers, but for the party of a seat just
   investigated; it covers every decision kind at every level for seeds 0 to 199, and each Hard rule
   adds its scene inside `everyLevelAndSeed` (25B's: `hardRule1ClearedPlayers`, a longer scene
-  driven through `playsAlike`; `hardRule2TwoFascistCards`, `hardRule2TwoLiberalCards` and
+  driven through `playsAlike`, which `actsAlike`'s one act goes through too; `hardRule2TwoFascistCards`, `hardRule2TwoLiberalCards` and
   `hardRule2HitlerAtSeven`; and `hardRule4Peek`, which also swaps the cards under the six the bot
   saw and has the next government enact its fascist policy from different discards). `botMatches -Pliberals=LEVEL
   -Pfascists=LEVEL` (any case, Normal by default) plays the bots dealt liberal at one level and
