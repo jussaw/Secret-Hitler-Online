@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { formatDuration, formatLocalDateTime, outcomeLabel, plural } from "../format";
 import { sampleData } from "../players/testStats";
-import { makeRecord } from "../testRecords";
+import { asFormatTwo, makeRecord } from "../testRecords";
 import { gameEloChange } from "./gameElo";
 import GameHeader from "./GameHeader";
 import { fiveSeatGame } from "./sampleGames";
@@ -44,6 +44,18 @@ describe("GameHeader", () => {
 
     const { container: one } = render(<GameHeader record={makeRecord({ rounds: 1 })} />);
     expect(one.querySelector("p.game-facts")!.textContent).toContain(" · 1 round · ");
+  });
+
+  it("names the bots' level for a game with bots", () => {
+    const facts = (record: Parameters<typeof GameHeader>[0]["record"]) => {
+      const { container, unmount } = render(<GameHeader record={record} />);
+      const text = container.querySelector("p.game-facts")!.textContent!;
+      unmount();
+      return text;
+    };
+    expect(facts(asFormatTwo(fiveSeatGame([]), "HARD"))).toMatch(/ · board 5 L, 2 F · Hard bots$/);
+    expect(facts(fiveSeatGame([]))).toMatch(/ · board 5 L, 2 F$/);
+    expect(facts(makeRecord())).not.toMatch(/bots/i);
   });
 
   it("the seats in turn order with their roles", () => {

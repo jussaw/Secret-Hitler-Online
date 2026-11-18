@@ -240,6 +240,8 @@
 /* The CPU tag: a small grey badge after the result. */
 .games-row-cpu {
     display: inline-block;
+    /* One badge: "Normal bots" wraps as a whole, never between its words. */
+    white-space: nowrap;
     padding: 0 5px;
     border-radius: 4px;
     background-color: #6e655e;

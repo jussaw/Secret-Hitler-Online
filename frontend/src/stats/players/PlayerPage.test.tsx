@@ -11,6 +11,7 @@ import { TROPHIES } from "../trophies";
 import { buildStats } from "../useStats";
 import PlayerPage, { PlayerView } from "./PlayerPage";
 import type { StatsData } from "../record";
+import { asFormatTwo } from "../testRecords";
 import { played, SAMPLE_NOW, sampleData, TZ } from "./testStats";
 
 const data = sampleData();
@@ -78,6 +79,20 @@ describe("PlayerView", () => {
     expect(rows.filter((row) => row.textContent!.includes("Bots"))).toHaveLength(1);
     expect(rows[0]).toHaveTextContent("unfinished");
     expect(rows[1]).toHaveTextContent(/Liberal.*won.*Liberal policies/);
+  });
+
+  it("latestGamesNameTheirBotsLevel", () => {
+    const seats: [number | null, "LIBERAL" | "FASCIST" | "HITLER"][] = [[1, "LIBERAL"], [2, "LIBERAL"], [null, "LIBERAL"], [null, "FASCIST"], [null, "HITLER"]];
+    // An hour after "unf", Ann's newest game.
+    const base = played("hard", [2026, 11, 14], seats, "LIBERAL_POLICIES");
+    const hard = asFormatTwo({ ...base, startedAt: base.startedAt + 3_600_000, endedAt: base.endedAt + 3_600_000 }, "HARD");
+    view(1, DEFAULT_FILTER, { players: data.players, games: [...data.games, hard] });
+    const rows = within(card("Latest games")).getAllByRole("row");
+    expect(within(rows[0]).getByRole("link")).toHaveAttribute("href", "/games/hard");
+    const tagOf = (id: string) =>
+      rows.find((row) => within(row).getByRole("link").getAttribute("href") === `/games/${id}`)!.querySelector(".games-row-cpu");
+    expect(tagOf("hard")).toHaveTextContent(/^Hard bots$/);
+    expect(tagOf("cpu")).toHaveTextContent(/^Bots$/);
   });
 
   it("aGamePastMidnightShowsTheDayItStartedAsGamesDoes", () => {

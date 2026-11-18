@@ -1,14 +1,15 @@
 import { useId } from "react";
 import type { GameElo } from "../elo";
-import { formatDuration, formatLocalDateTime, outcomeLabel, plural, sideWord } from "../format";
+import { botsLabel, formatDuration, formatLocalDateTime, outcomeLabel, plural, sideWord } from "../format";
 import { formatSigned } from "../numbers";
 import PlayerName, { roleClass } from "../PlayerName";
-import type { GameRecord } from "../record";
+import { botSkillOf, type GameRecord } from "../record";
 import { RoleWord } from "./text";
 
 /**
  * A game page's header card: the result, its first word in the winners' colour; the start, the
- * length, the rounds and the final board; the game's Elo change when it counted under the default
+ * length, the rounds and the final board, then the bots' level for a game with bots whose record
+ * keeps one ("Hard bots"; nothing for a format 1 record); the game's Elo change when it counted under the default
  * filter (`elo`, from `gameElo.ts`); and the seats in turn order, coloured by role, Hitler's
  * marked, each player's name a link to their page.
  */
@@ -17,11 +18,13 @@ export function GameHeader({ record, elo }: { record: GameRecord; elo?: GameElo 
   // The result starts with the winners' word (outcomeLabel), which takes their colour.
   const label = outcomeLabel(record);
   const winners = record.winner ? sideWord(record.winner) : null;
+  const level = record.hasCpu ? botSkillOf(record) : null;
   const facts = [
     formatLocalDateTime(record.startedAt),
     formatDuration(record.endedAt - record.startedAt),
     plural(record.rounds, "round"),
     `board ${record.liberalPolicies} L, ${record.fascistPolicies} F`,
+    ...(level === null ? [] : [botsLabel(level)]),
   ].join(" · ");
   return (
     <header className="stats-card game-header">

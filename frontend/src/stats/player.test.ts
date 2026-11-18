@@ -3,9 +3,10 @@ import { DEFAULT_FILTER } from "./counting";
 import fixture from "./fixtures/recorded-games.json";
 import { computeOverview } from "./overview";
 import { computePlayer, computePlayersList, withoutPlayerFilter, type PlayerStats } from "./player";
-import { SAMPLE_NOW, sampleData, TZ, withRatings } from "./players/testStats";
-import { parseStatsData } from "./record";
+import { played, SAMPLE_NOW, sampleData, TZ, withRatings } from "./players/testStats";
+import { parseStatsData, type GameRecord } from "./record";
 import { computeRivals } from "./rivals";
+import { asFormatTwo } from "./testRecords";
 import { buildStats } from "./useStats";
 
 const data = sampleData();
@@ -122,7 +123,22 @@ describe("computePlayer", () => {
       result: "unfinished",
       outcome: "UNFINISHED",
       cpu: false,
+      botSkill: null,
     });
+  });
+
+  it("latestGamesCarryTheirBotsLevel", () => {
+    // An hour after "unf", Ann's newest game until now.
+    const base = played("hard", [2026, 11, 14], [[1, "LIBERAL"], [2, "LIBERAL"], [null, "LIBERAL"], [null, "FASCIST"], [null, "HITLER"]], "LIBERAL_POLICIES");
+    const newest = { ...base, startedAt: base.startedAt + 3_600_000, endedAt: base.endedAt + 3_600_000 };
+    const latestOf = (record: GameRecord) =>
+      computePlayer(buildStats({ players: data.players, games: [...data.games, record] }, DEFAULT_FILTER), 1, SAMPLE_NOW)
+        .latest[0];
+    const hard = latestOf(asFormatTwo(newest, "HARD"));
+    expect(hard.id).toBe("hard");
+    expect(hard.cpu).toBe(true);
+    expect(hard.botSkill).toBe("HARD");
+    expect(latestOf(newest).botSkill).toBeNull();
   });
 
   it("annsTrophies", () => {

@@ -4,7 +4,7 @@ import { filterSearch, MIN_GAMES, type Rate } from "../counting";
 import { PROVISIONAL_GAMES } from "../elo";
 import { OUTCOME_LABELS } from "../endings";
 import { FilterBar } from "../FilterBar";
-import { plural } from "../format";
+import { botsLabel, plural } from "../format";
 import { RoleWord } from "../game/text";
 import { gamesFilterSearch, NO_GAMES_FILTER } from "../games/gamesFilter";
 import "../games/GamesPage.css";
@@ -375,7 +375,10 @@ function TimingCard({ player }: { player: PlayerStats }): JSX.Element {
 /** A latest game's ending: how it was won, or nothing for an unfinished one. */
 const endingOf = (game: LatestGame) => (game.outcome === "UNFINISHED" ? "" : OUTCOME_LABELS[game.outcome]);
 
-/** Latest games: each linked by the day it started (as GAMES dates it), their role, the result, the ending; then all of them in GAMES. */
+/**
+ * Latest games: each linked by the day it started (as GAMES dates it), their role, the result, the
+ * ending and GAMES' tag of its bots' level; then all of them in GAMES.
+ */
 function LatestGamesCard(props: { player: PlayerStats; now: number; timeZone?: string }): JSX.Element {
   const { player, now, timeZone } = props;
   const allGamesHref = routePath({ page: "games" }) + gamesFilterSearch({ ...NO_GAMES_FILTER, players: [player.player] });
@@ -403,7 +406,7 @@ function LatestGamesCard(props: { player: PlayerStats; now: number; timeZone?: s
                 {game.cpu && (
                   <>
                     {" "}
-                    <span className="games-row-cpu">Bots</span>
+                    <span className="games-row-cpu">{botsLabel(game.botSkill)}</span>
                   </>
                 )}
               </td>
