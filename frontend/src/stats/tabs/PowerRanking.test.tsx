@@ -133,4 +133,13 @@ describe("PowerRanking", () => {
     press("Games");
     expect(columnHead("Games")).toHaveAttribute("aria-sort", "descending");
   });
+
+  it("theLastChangeComparesRounded", () => {
+    // Ann's −0.3 and Bo's 0.4 both show 0: a tie, which keeps the rows' own order (Ann first) under
+    // Last descending, where the raw changes would put Bo first.
+    render(<PowerRanking rows={[settled(1, 1, 1600, -0.3), settled(2, 2, 1550, 0.4), settled(3, 3, 1520, 5)]} names={names} />);
+    press("Last");
+    expect(columnHead("Last")).toHaveAttribute("aria-sort", "descending");
+    expect(cells().map((row) => `${row[1]} ${row[3]}`)).toEqual(["Cy +5", "Ann 0", "Bo 0"]);
+  });
 });
