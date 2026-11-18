@@ -195,6 +195,13 @@ export default function LobbyScreen(props: LobbyScreenProps) {
     props.onCopied(await copyText(props.inviteLink, linkField.current));
   };
 
+  // Everyone's last button: a player's in the second pair, a spectator's beside their first.
+  const leave = (
+    <button type="button" onClick={props.onLeave}>
+      LEAVE LOBBY
+    </button>
+  );
+
   return (
     <div className="lobby-screen">
       <header className="App-header">
@@ -266,20 +273,26 @@ export default function LobbyScreen(props: LobbyScreenProps) {
             ) : (
               <BotSkillLine skill={props.botSkill} />
             )}
-            {/* A player's four make two rows of two on phones (lobby-player-buttons). */}
+            {/* A player's four come in two pairs, so they are one row or two rows of two, never
+                three and one (lobby-player-buttons, LobbyScreen.css). */}
             <div className={spectator ? "lobby-secondary" : "lobby-secondary lobby-player-buttons"}>
               {!spectator ? (
                 <>
-                  <button type="button" onClick={props.onChangeName}>
-                    CHANGE NAME
-                  </button>
-                  <button type="button" onClick={props.onChangeLook}>
-                    CHANGE LOOK
-                  </button>
-                  <button type="button" onClick={props.onWatchInstead}>
-                    <Eye className="lobby-button-icon lobby-switch-icon" aria-hidden="true" />
-                    WATCH INSTEAD
-                  </button>
+                  <div className="lobby-button-pair">
+                    <button type="button" onClick={props.onChangeName}>
+                      CHANGE NAME
+                    </button>
+                    <button type="button" onClick={props.onChangeLook}>
+                      CHANGE LOOK
+                    </button>
+                  </div>
+                  <div className="lobby-button-pair">
+                    <button type="button" onClick={props.onWatchInstead}>
+                      <Eye className="lobby-button-icon lobby-switch-icon" aria-hidden="true" />
+                      WATCH INSTEAD
+                    </button>
+                    {leave}
+                  </div>
                 </>
               ) : props.signedIn ? (
                 <button type="button" disabled={full} onClick={props.onPlayInstead}>
@@ -295,9 +308,7 @@ export default function LobbyScreen(props: LobbyScreenProps) {
                   SIGN IN TO PLAY
                 </button>
               )}
-              <button type="button" onClick={props.onLeave}>
-                LEAVE LOBBY
-              </button>
+              {spectator && leave}
             </div>
           </div>
 

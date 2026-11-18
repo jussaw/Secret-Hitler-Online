@@ -25,6 +25,7 @@ import {
   botRowMismatches,
   longestLineViewers,
   longestLogin,
+  playerButtonRows,
   settle,
   skillRowLines,
   skillShown,
@@ -155,6 +156,10 @@ for (const narrow of [false, true]) {
           expect(await botRowMismatches(viewerPage), `the ${viewer}'s bot rows`).toEqual([]);
           // The host's BOT SKILL row, or everyone else's line, is one line (#72).
           expect(await skillRowLines(viewerPage), `the ${viewer}'s bot skill row's lines`).toBe(1);
+          // A player's four buttons are two rows of two on phones.
+          if (buttons.includes("WATCH INSTEAD")) {
+            expect((await playerButtonRows(viewerPage)).rows, `the ${viewer}'s player buttons' rows`).toEqual([2, 2]);
+          }
           expect(
             await smallFieldText(viewerPage, ".lobby-screen"),
             `small text in the ${viewer}'s text fields`

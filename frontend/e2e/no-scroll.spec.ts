@@ -28,6 +28,7 @@ import {
   lobbyStatusCard,
   botRowMismatches,
   longestLineViewers,
+  playerButtonRows,
   skillRowLines,
   skillShown,
   longestLogin,
@@ -495,9 +496,10 @@ function measureLobby(page: Page) {
 
 /**
  * Every lobby check at one window size. Windows 5:4 or wider put the roster in the column at the
- * left; narrower ones put it across the top, and are touch screens.
+ * left; narrower ones put it across the top, and are touch screens. `player` is whether the viewer
+ * has a player's four buttons.
  */
-async function checkLobby(page: Page, size: Size, viewer: string, players: number, bots: number) {
+async function checkLobby(page: Page, size: Size, viewer: string, players: number, bots: number, player: boolean) {
   await page.setViewportSize(size);
   const at = `${size.width}x${size.height} for the ${viewer}`;
 
@@ -521,6 +523,13 @@ async function checkLobby(page: Page, size: Size, viewer: string, players: numbe
   expect(await smallTargets(page, ".lobby-actions"), `small buttons at ${at}`).toEqual([]);
   // The host's BOT SKILL row, or everyone else's line, is one line (#72).
   expect(await skillRowLines(page), `the bot skill row's lines at ${at}`).toBe(1);
+  // A player's four buttons are one row where they fit the column at their own widths, and two
+  // rows of two where they do not: never three and one.
+  if (player) {
+    const { rows, room } = await playerButtonRows(page);
+    const expected = room >= 0 ? [4] : [2, 2];
+    expect(rows, `the player buttons' rows at ${at}, with ${room}px to spare for one`).toEqual(expected);
+  }
   // Twelve-character names fit whole, as they do in the game.
   for (const name of lobby.names) {
     expect(name.scrollWidth, `"${name.text}" is cut off at ${at}`).toBeLessThanOrEqual(name.clientWidth + 1);
@@ -560,7 +569,7 @@ test("the lobby fits every desktop size and narrow window, for the host, a guest
         expect(await skillShown(viewerPage), `the ${viewer}'s bot skill`).toBe(skill);
         await settle(viewerPage);
         for (const size of [...DESKTOP_SIZES, ...SQUARE_DESKTOPS, ...NARROW_WINDOWS]) {
-          await checkLobby(viewerPage, size, viewer, players, bots);
+          await checkLobby(viewerPage, size, viewer, players, bots, buttons.includes("WATCH INSTEAD"));
         }
         // The note measured is the one meant.
         if (note !== undefined) await expect(viewerPage.locator("#lobby-note")).toHaveText(note);

@@ -419,6 +419,42 @@ export async function actionLabels(page: Page): Promise<string[]> {
 }
 
 /**
+ * A player's four buttons under the status line (CHANGE NAME, CHANGE LOOK, WATCH INSTEAD and LEAVE
+ * LOBBY, `.lobby-player-buttons`): how many stand on each line, top to bottom (buttons whose tops
+ * are within 2px share a line), and `room`, how many px the row's column leaves beside them in one
+ * line at their own widths (each its max-content width, with the row's column gap between them),
+ * negative when they do not fit. Throws for a page without them (a spectator's).
+ */
+export function playerButtonRows(page: Page): Promise<{ rows: number[]; room: number }> {
+  return page.evaluate(() => {
+    const row = document.querySelector<HTMLElement>(".lobby-player-buttons");
+    if (!row) throw new Error("the page has no player buttons");
+    const buttons = Array.from(row.querySelectorAll<HTMLElement>("button"));
+    if (buttons.length !== 4) throw new Error(`${buttons.length} player buttons`);
+    const lines: number[] = [];
+    let lastTop = -Infinity;
+    for (const top of buttons.map((b) => b.getBoundingClientRect().top).sort((a, b) => a - b)) {
+      if (top - lastTop > 2) lines.push(0);
+      lines[lines.length - 1] += 1;
+      lastTop = top;
+    }
+    // Each button's own width, measured with nothing stretching or squeezing it, then put back.
+    const styles = buttons.map((b) => b.getAttribute("style"));
+    for (const b of buttons) b.setAttribute("style", "flex: none; width: max-content;");
+    const widths = buttons.map((b) => b.getBoundingClientRect().width);
+    buttons.forEach((b, i) => {
+      const style = styles[i];
+      if (style === null) b.removeAttribute("style");
+      else b.setAttribute("style", style);
+    });
+    const gap = parseFloat(getComputedStyle(row).columnGap);
+    const column = document.querySelector(".lobby-actions")!.getBoundingClientRect().width;
+    const room = column - widths.reduce((sum, w) => sum + w, 0) - 3 * gap;
+    return { rows: lines, room: Math.round(room * 10) / 10 };
+  });
+}
+
+/**
  * The level the lobby shows (#72): the pressed button of the group "Bot skill" (the host's), or the
  * line's `.lobby-skill-level`; "" for neither.
  */
