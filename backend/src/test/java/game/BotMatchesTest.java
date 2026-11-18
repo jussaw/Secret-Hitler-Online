@@ -23,6 +23,8 @@ import org.junit.Test;
  */
 public class BotMatchesTest {
     private static final double CLOSE = 0.0001;
+    private static final LadderCheck.Pairing EN = new LadderCheck.Pairing(BotSkill.EASY, BotSkill.NORMAL);
+    private static final LadderCheck.Pairing HH = new LadderCheck.Pairing(BotSkill.HARD, BotSkill.HARD);
 
     /** What {@code call} threw, or null if it returned. */
     private static Throwable thrown(Runnable call) {
@@ -323,24 +325,24 @@ public class BotMatchesTest {
         }
     }
 
-    /** Each pairing's tallies by size, every size from 5 to 10, built from {@code counts} (one array a size). */
-    private static Map<LadderCheck.Pairing, BotMatches.Results> run(int gamesPerSize, int[][] counts,
+    /**
+     * A hand-built run: each of {@code pairings} with the same tallies, every size from 5 to 10,
+     * {@code endings} holding each size's four ending counts in {@code ENDINGS}' order.
+     */
+    private static Map<LadderCheck.Pairing, BotMatches.Results> handBuiltRun(int gamesPerSize, int[][] endings,
             LadderCheck.Pairing... pairings) {
         Map<LadderCheck.Pairing, BotMatches.Results> results = new LinkedHashMap<>();
         for (LadderCheck.Pairing pairing : pairings) {
             SortedMap<Integer, BotMatches.Tally> bySize = new TreeMap<>();
             for (int seats = 5; seats <= 10; seats++) {
-                int[] c = counts[seats - 5];
-                bySize.put(seats, tallyOf(c[0], c[1], c[2], c[3]));
+                int[] counts = endings[seats - 5];
+                bySize.put(seats, tallyOf(counts[0], counts[1], counts[2], counts[3]));
             }
             results.put(pairing, new BotMatches.Results(
                     BotMatches.label(pairing.liberals(), pairing.fascists()), gamesPerSize, bySize));
         }
         return results;
     }
-
-    private static final LadderCheck.Pairing EN = new LadderCheck.Pairing(BotSkill.EASY, BotSkill.NORMAL);
-    private static final LadderCheck.Pairing HH = new LadderCheck.Pairing(BotSkill.HARD, BotSkill.HARD);
 
     @Test
     public void aReportsTalliesReadBack() {
@@ -381,8 +383,8 @@ public class BotMatchesTest {
     public void poolingAddsTheTallies() {
         int[][] first = {{1, 2, 3, 4}, {5, 0, 5, 0}, {0, 0, 0, 10}, {10, 0, 0, 0}, {2, 2, 3, 3}, {4, 1, 4, 1}};
         int[][] second = {{4, 3, 2, 1}, {0, 5, 0, 5}, {10, 0, 0, 0}, {1, 2, 3, 4}, {3, 3, 2, 2}, {1, 4, 1, 4}};
-        Map<LadderCheck.Pairing, BotMatches.Results> a = run(10, first, EN, HH);
-        Map<LadderCheck.Pairing, BotMatches.Results> b = run(10, second, EN, HH);
+        Map<LadderCheck.Pairing, BotMatches.Results> a = handBuiltRun(10, first, EN, HH);
+        Map<LadderCheck.Pairing, BotMatches.Results> b = handBuiltRun(10, second, EN, HH);
 
         Map<LadderCheck.Pairing, BotMatches.Results> pooled = BotMatches.pool(a, b);
 
@@ -405,9 +407,9 @@ public class BotMatchesTest {
     @Test
     public void poolRefusesRunsThatDoNotMatch() {
         int[][] counts = {{1, 0, 0, 0}, {1, 0, 0, 0}, {1, 0, 0, 0}, {1, 0, 0, 0}, {1, 0, 0, 0}, {1, 0, 0, 0}};
-        Map<LadderCheck.Pairing, BotMatches.Results> both = run(1, counts, EN, HH);
-        Map<LadderCheck.Pairing, BotMatches.Results> one = run(1, counts, EN);
-        Map<LadderCheck.Pairing, BotMatches.Results> shortOfASize = run(1, counts, EN, HH);
+        Map<LadderCheck.Pairing, BotMatches.Results> both = handBuiltRun(1, counts, EN, HH);
+        Map<LadderCheck.Pairing, BotMatches.Results> one = handBuiltRun(1, counts, EN);
+        Map<LadderCheck.Pairing, BotMatches.Results> shortOfASize = handBuiltRun(1, counts, EN, HH);
         SortedMap<Integer, BotMatches.Tally> fewer = new TreeMap<>(shortOfASize.get(HH).bySize());
         fewer.remove(10);
         shortOfASize.put(HH, new BotMatches.Results("Short", 1, fewer));

@@ -51,6 +51,9 @@ public final class BotMatches {
 
     private static final String POOL_USAGE = "-Ppool takes two ladder reports: -Ppool=<file>,<file>.";
 
+    /** Why {@link #pool} refuses two runs. */
+    private static final String RUNS_DO_NOT_MATCH = "The two runs do not match.";
+
     /** The tally block's first line: {@code Tallies: 2000 games at each table size}. */
     private static final Pattern TALLIES_HEADER = Pattern.compile("Tallies: ([0-9]{1,9}) games at each table size");
 
@@ -367,7 +370,7 @@ public final class BotMatches {
     static Map<LadderCheck.Pairing, Results> pool(Map<LadderCheck.Pairing, Results> a,
             Map<LadderCheck.Pairing, Results> b) {
         if (!a.keySet().equals(b.keySet())) {
-            throw new IllegalArgumentException("The two runs do not match.");
+            throw new IllegalArgumentException(RUNS_DO_NOT_MATCH);
         }
         Map<LadderCheck.Pairing, Results> pooled = new LinkedHashMap<>();
         for (Map.Entry<LadderCheck.Pairing, Results> entry : a.entrySet()) {
@@ -375,7 +378,7 @@ public final class BotMatches {
             Results first = entry.getValue();
             Results second = b.get(pairing);
             if (!first.bySize().keySet().equals(second.bySize().keySet())) {
-                throw new IllegalArgumentException("The two runs do not match.");
+                throw new IllegalArgumentException(RUNS_DO_NOT_MATCH);
             }
             SortedMap<Integer, Tally> bySize = new TreeMap<>();
             first.bySize().forEach((seats, tally) ->
