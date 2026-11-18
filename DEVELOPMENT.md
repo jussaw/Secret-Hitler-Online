@@ -122,7 +122,7 @@ The browser tests check the stats pages' layouts without playing games: they stu
 
 ### The stats pages' fixture
 
-`frontend/src/stats/fixtures/recorded-games.json` is what `GET /api/stats/games` would serve for 62 or more games played by CPU players, recorded as if twelve accounts held the seats. The stats pages' tests read it, and `RecordedGamesFixtureTest` checks it against the record's format, so the Java and TypeScript sides agree. After a change to the format, remake it from `backend/` and commit it with the change:
+`frontend/src/stats/fixtures/recorded-games.json` is what `GET /api/stats/games` would serve for 62 or more games played by CPU players, recorded as if twelve accounts held the seats, its games with bot seats labelled Easy, Normal and Hard bots in turn (labels only: every bot in it plays Normal). The stats pages' tests read it, and `RecordedGamesFixtureTest` checks it against the record's format, so the Java and TypeScript sides agree. After a change to the format, remake it from `backend/` and commit it with the change:
 
 ```bash
 ./gradlew recordedGamesFixture

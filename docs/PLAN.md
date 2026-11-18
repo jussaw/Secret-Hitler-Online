@@ -1225,7 +1225,7 @@ Issue #72's records, decided in the design. Starts once 25A has merged; merges a
 - [x] Records are format 2 with `botSkill` after `hasCpu` (a level's name, or null without bots); format 1 records stay as stored and are still served and read
 - [x] The contract fixture is made again with levels in turn, and `RecordFormat` and the replay checks know both formats
 - [x] GAMES rows and a player's latest games say "Easy bots", "Normal bots" or "Hard bots" ("Bots" for format 1), and a game's page names the level
-- [ ] The game stats design's record table and `CLAUDE.md` updated; the pull request shows a GAMES row and a game page before and after, on desktop and on a phone
+- [x] The game stats design's record table and `CLAUDE.md` updated; the pull request shows a GAMES row and a game page before and after, on desktop and on a phone
 
 **Phase 26B acceptance**
 
