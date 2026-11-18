@@ -1114,7 +1114,7 @@ Issue #72, parts 1 and 2. Backend only; changes nothing on screen.
 - [x] A fascist bot or Hitler never executes a known teammate; investigation and execution pick only among allowed players, with no re-pick loop
 - [x] `game.CpuTurn.step` is the one bot step, used by `Lobby`, `CpuGames` and the self-play run
 - [x] `./gradlew botMatches` prints win rates with 95% intervals and each ending's share, per table size 5 to 10 and pooled, and fails a game past 2,000 moves; `BotMatchesTest` keeps `./gradlew test` fast
-- [ ] `CLAUDE.md` and `DEVELOPMENT.md` updated; the pull request quotes `botMatches` before and after the fixes
+- [x] `CLAUDE.md` and `DEVELOPMENT.md` updated; the pull request quotes `botMatches` before and after the fixes
 
 **Phase 24 acceptance**
 

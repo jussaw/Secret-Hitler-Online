@@ -130,6 +130,16 @@ The browser tests check the stats pages' layouts without playing games: they stu
 
 The games cannot be seeded, so every run writes a different file.
 
+### The bots' self-play run
+
+`./gradlew botMatches` (from `backend/`, with Java 17) plays games with a bot in every seat, straight on the game with no server and no waits, 2,000 at each table size from 5 to 10, and prints a table: a row per size and `All` (every size pooled), each with the games played, how often the liberal side won with its 95% interval, and the share of each ending (5 liberal policies, Hitler shot, 6 fascist policies, Hitler elected). For a quicker run, give another count:
+
+```bash
+./gradlew botMatches -Pgames=500
+```
+
+A game still running after 2,000 moves, one no bot can move, or a bot whose move throws fails the run, with a message naming the table size and the bots and the game's timeline. The games cannot be seeded, so every run differs: the intervals say how far a difference between two runs can be trusted (where two intervals do not overlap, the difference is real). A change to the bots quotes the run before and after it in its pull request. `./gradlew test` plays only 3 games a size (`BotMatchesTest`).
+
 ### Browser tests
 
 The Playwright tests build the frontend and the jar, serve them on port 4545 and drive the whole app in desktop Chrome, Firefox and two emulated phones. They turn on the test sign-in themselves (`TEST_SIGN_IN=true` in `playwright.config.ts`'s `webServer.env`) and sign every player in through it. They need Java 17 active for the Gradle wrapper, and network access, because the web fonts come from Google Fonts and a test fails when they do not load. From `frontend/`:
