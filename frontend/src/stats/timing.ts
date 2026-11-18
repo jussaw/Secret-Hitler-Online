@@ -217,12 +217,13 @@ export function fastestVoter(timing: TimingStats, names: Map<number, string>): n
 /**
  * The tenths of a second `formatAverageTime(ms)` shows, what a column of average times sorts by:
  * at least 1 ("0.1 s") under a minute, and from a minute the whole seconds `formatDecisionTime`
- * shows, ten tenths each. So "59.9 s" (599) stays below "1 min 00 s" (600), and two times that
- * both show "1 min 05 s" are a tie (650).
+ * shows, ten tenths each (`formatDecisionTime`'s floor of 1 s never bites there, at 59,950 ms or
+ * more). So "59.9 s" (599) stays below "1 min 00 s" (600), and two times that both show
+ * "1 min 05 s" are a tie (650).
  */
 export function averageTimeTenths(ms: number): number {
   const tenths = Math.max(1, Math.round(ms / 100));
-  return tenths < 600 ? tenths : 10 * Math.max(1, Math.round(ms / 1000));
+  return tenths < 600 ? tenths : 10 * Math.round(ms / 1000);
 }
 
 /** An average time: one decimal under a minute ("4.2 s", at least "0.1 s"), else as one decision's. */
