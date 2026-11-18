@@ -607,13 +607,36 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
       game.registerVote(myName, anyOf(List.of(true, false)));
       return true;
     }
-    if (hardLiberal()) { // Hard's rule 1, unless it leaves the vote to Normal's
-      Optional<Boolean> cleared = clearedPlayers.vote(game,
-          getPlayerReputationWithIdentity(game.getCurrentChancellor()), knownPlayerRoles);
-      if (cleared.isPresent()) {
-        game.registerVote(myName, cleared.get());
-        return true;
-      }
+    Optional<Boolean> cleared = clearedVote(game);
+    if (cleared.isPresent()) { // Hard's rule 1 decides, with no draw
+      game.registerVote(myName, cleared.get());
+      return true;
+    }
+    voteWithProbability(game, chanceOfYes(game));
+    return true;
+  }
+
+  /**
+   * Hard's rule 1's vote on the open election, or empty where it leaves the vote to Normal's (and
+   * always below Hard, or for a CPU not dealt Liberal).
+   */
+  private Optional<Boolean> clearedVote(SecretHitlerGame game) {
+    if (!hardLiberal()) {
+      return Optional.empty();
+    }
+    return clearedPlayers.vote(game, getPlayerReputationWithIdentity(game.getCurrentChancellor()), knownPlayerRoles);
+  }
+
+  /**
+   * The chance this CPU votes yes on the open election, as each voting path works it out: rule 1's
+   * ja as 1 and its nein as 0 (a Hard liberal), then the fascist side's vote for Hitler's winning
+   * election, the fascist side's mix of its known roles, or the trust curve and its untrusted vote.
+   * Easy's coin comes before it and is not part of it.
+   */
+  float chanceOfYes(SecretHitlerGame game) {
+    Optional<Boolean> cleared = clearedVote(game);
+    if (cleared.isPresent()) {
+      return cleared.get() ? 1f : 0f;
     }
 
     Identity myId = myPlayerData.getIdentity();
@@ -641,8 +664,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     // Fascists should vote for win condition almost always
     if (myPlayerData.isFascist() && canHitlerWinByElection(game)
         && game.getPlayer(chancellor).isHitler()) {
-      voteWithProbability(game, 0.99f);
-      return true;
+      return 0.99f;
     }
 
     // Fascist voting behavior (+hitler if fascists are in danger)
@@ -659,9 +681,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
         fascistVoteProbability = 0.9f;
         liberalVoteProbability = 0.25f;
       }
-      float voteProbability = t * liberalVoteProbability + (1f - t) * fascistVoteProbability;
-      voteWithProbability(game, voteProbability);
-      return true;
+      return t * liberalVoteProbability + (1f - t) * fascistVoteProbability;
     }
 
     // DEFAULT voting behavior for liberals + hitler:
@@ -677,16 +697,13 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
 
     if (presidentRep < minIndividualRep || chancellorRep < minIndividualRep || combinedRep < minCombinedRep) {
       // This legislation is untrustworthy and should probably not be voted for.
-      voteWithProbability(game, 0.05f);
-    } else {
-      // Scale probability of voting yes with the reputation of the players.
-      // Use a parabolic curve that's more likely to say yes to neutral or
-      // unknown values: f(t) = 2t - t^2
-      // f(0) = 0, f(0.5) = 0.75, f(1) = 1
-      float voteProbability = 2f * t - (t * t);
-      voteWithProbability(game, voteProbability);
+      return 0.05f;
     }
-    return true;
+    // Scale probability of voting yes with the reputation of the players.
+    // Use a parabolic curve that's more likely to say yes to neutral or
+    // unknown values: f(t) = 2t - t^2
+    // f(0) = 0, f(0.5) = 0.75, f(1) = 1
+    return 2f * t - (t * t);
   }
 
   /**
