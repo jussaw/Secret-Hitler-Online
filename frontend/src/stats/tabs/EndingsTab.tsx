@@ -9,13 +9,16 @@ import {
   outcomeBars,
   type GameCount,
   type LengthStats,
+  type SizeEndings,
 } from "../endings";
-import { formatDuration, formatLocalDateTime, outcomeLabel, plural } from "../format";
-import { formatPercent } from "../numbers";
+import { formatDuration, formatLocalDateTime, outcomeLabel, plural, wholeMinutes } from "../format";
+import { formatPercent, rateFigure, wholePercent } from "../numbers";
 import PlayerName from "../PlayerName";
 import type { GameRecord } from "../record";
 import { routePath } from "../routes";
 import { ScrollRegion } from "../ScrollRegion";
+import { SortHeadRow, useTableSort, type HeadColumn } from "../SortHead";
+import type { TableSort } from "../sorting";
 import { StatCard } from "../StatCard";
 import StatsLink from "../StatsLink";
 import type { StatsContext } from "../useStats";
@@ -96,6 +99,106 @@ function LengthCells({ length }: { length: LengthStats }): JSX.Element {
   );
 }
 
+/** The Liberal win rate table's columns. */
+type WinRateColumn = "seats" | "games" | "liberalWins" | "rate" | "smoothed";
+
+/** The Game length table's columns. */
+type LengthColumn = "seats" | "games" | "length" | "rounds";
+
+/** The order both tables open in: by Players, 5 first. */
+const SEATS_ORDER: TableSort<"seats"> = Object.freeze({ column: "seats", direction: "ascending" });
+
+/** Both tables' Players column: a table size, 5 first on its first press too, since it is the
+ *  column the tables' own order follows, so a press on it from another column gives that back. */
+const SEATS_COLUMN: HeadColumn<SizeEndings, "seats"> = {
+  key: "seats",
+  label: "Players",
+  first: "ascending",
+  value: (size) => size.seats,
+};
+
+/** The Liberal win rate table's columns, in order: Players, then each by the figure its cell
+ *  shows, most first, the "—" of a rate below its minimum below every rate either way. Their values
+ *  stand at the left, so no column is `end`. */
+const WIN_RATE_COLUMNS: readonly HeadColumn<SizeEndings, WinRateColumn>[] = [
+  SEATS_COLUMN,
+  { key: "games", label: "Games", first: "descending", value: (size) => size.games },
+  { key: "liberalWins", label: "Liberal wins", first: "descending", value: (size) => size.liberalWins },
+  { key: "rate", label: "Win rate", first: "descending", value: (size) => rateFigure(size.liberalRate) },
+  { key: "smoothed", label: "Smoothed", first: "descending", value: (size) => wholePercent(size.smoothedLiberalRate) },
+];
+
+/** The Game length table's columns, in order: Players, then each by the figure its cell shows
+ *  (`LengthCells`), most first, a "—" below every figure either way. No column is `end`. */
+const LENGTH_COLUMNS: readonly HeadColumn<SizeEndings, LengthColumn>[] = [
+  SEATS_COLUMN,
+  { key: "games", label: "Games", first: "descending", value: (size) => size.length.games },
+  {
+    key: "length",
+    label: "Average length",
+    first: "descending",
+    value: ({ length }) => (length.averageMs === null ? null : wholeMinutes(length.averageMs)),
+  },
+  {
+    key: "rounds",
+    label: "Average rounds",
+    first: "descending",
+    value: ({ length }) => (length.averageRounds === null ? null : Number(length.averageRounds.toFixed(1))),
+  },
+];
+
+/**
+ * The Liberal win rate by player count: a row per size. Each head sorts by its column
+ * (`SortHeadRow`, #109): it opens by Players, 5 first, Players marked. A component of its own, so
+ * its sort goes when its card empties.
+ */
+function WinRateTable({ sizes }: { sizes: SizeEndings[] }): JSX.Element {
+  const { rows, sort, press } = useTableSort(sizes, WIN_RATE_COLUMNS, SEATS_ORDER);
+  return (
+    <table className="player-matrix">
+      <SortHeadRow columns={WIN_RATE_COLUMNS} sort={sort} onSort={press} />
+      <tbody>
+        {rows.map((size) => (
+          <tr key={size.seats}>
+            <th scope="row">{size.seats}</th>
+            <td>{size.games}</td>
+            <td>{size.liberalWins}</td>
+            <td>{rateText(size.liberalRate.value)}</td>
+            <td>{formatPercent(size.smoothedLiberalRate)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+/**
+ * Game length: a row per size, then All, every size's games together. Each head sorts the sizes
+ * by its column (`SortHeadRow`, #109), opening by Players, 5 first, Players marked; the All row is
+ * outside the sort, always the last row. A component of its own, so its sort goes when its card
+ * empties.
+ */
+function LengthTable({ sizes, all }: { sizes: SizeEndings[]; all: LengthStats }): JSX.Element {
+  const { rows, sort, press } = useTableSort(sizes, LENGTH_COLUMNS, SEATS_ORDER);
+  return (
+    <table className="player-matrix">
+      <SortHeadRow columns={LENGTH_COLUMNS} sort={sort} onSort={press} />
+      <tbody>
+        {rows.map((size) => (
+          <tr key={size.seats}>
+            <th scope="row">{size.seats}</th>
+            <LengthCells length={size.length} />
+          </tr>
+        ))}
+        <tr className="endings-all">
+          <th scope="row">All</th>
+          <LengthCells length={all} />
+        </tr>
+      </tbody>
+    </table>
+  );
+}
+
 /**
  * ENDINGS: how counted games end (`endings.ts`): the outcomes by player count, the Liberal win
  * rate beside the smoothed rate the Elo handicap uses, game length, the fastest win and the
@@ -128,54 +231,12 @@ export function EndingsTab({ stats }: { stats: StatsContext }): JSX.Element {
         empty={none}
       >
         <ScrollRegion label="Liberal win rate by player count table">
-          <table className="player-matrix">
-            <thead>
-              <tr>
-                <th scope="col">Players</th>
-                <th scope="col">Games</th>
-                <th scope="col">Liberal wins</th>
-                <th scope="col">Win rate</th>
-                <th scope="col">Smoothed</th>
-              </tr>
-            </thead>
-            <tbody>
-              {endings.bySize.map((size) => (
-                <tr key={size.seats}>
-                  <th scope="row">{size.seats}</th>
-                  <td>{size.games}</td>
-                  <td>{size.liberalWins}</td>
-                  <td>{rateText(size.liberalRate.value)}</td>
-                  <td>{formatPercent(size.smoothedLiberalRate)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <WinRateTable sizes={endings.bySize} />
         </ScrollRegion>
       </StatCard>
       <StatCard title="Game length" definition="From start to end, over games recorded from their start." empty={noLength}>
         <ScrollRegion label="Game length table">
-          <table className="player-matrix">
-            <thead>
-              <tr>
-                <th scope="col">Players</th>
-                <th scope="col">Games</th>
-                <th scope="col">Average length</th>
-                <th scope="col">Average rounds</th>
-              </tr>
-            </thead>
-            <tbody>
-              {endings.bySize.map((size) => (
-                <tr key={size.seats}>
-                  <th scope="row">{size.seats}</th>
-                  <LengthCells length={size.length} />
-                </tr>
-              ))}
-              <tr className="endings-all">
-                <th scope="row">All</th>
-                <LengthCells length={endings.length} />
-              </tr>
-            </tbody>
-          </table>
+          <LengthTable sizes={endings.bySize} all={endings.length} />
         </ScrollRegion>
       </StatCard>
       <StatCard title="Fastest win" definition="The shortest game recorded from its start." empty={noLength}>

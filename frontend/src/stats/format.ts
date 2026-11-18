@@ -59,9 +59,15 @@ export function formatLocalDateTime(ms: number, timeZone: string = viewerTimeZon
   return `${formatLocalDate(ms, timeZone)}, ${formatLocalTime(ms, timeZone)}`;
 }
 
-/** A length in whole minutes, rounded: "38 min", or from an hour "1 h 05 min". */
+/** A length in whole minutes, rounded: 89 999 ms is 1, 90 000 is 2. What a column of lengths sorts
+ *  by (#109) and `formatDuration` shows. */
+export function wholeMinutes(ms: number): number {
+  return Math.round(ms / 60_000);
+}
+
+/** A length in whole minutes (`wholeMinutes`): "38 min", or from an hour "1 h 05 min". */
 export function formatDuration(ms: number): string {
-  const minutes = Math.round(ms / 60_000);
+  const minutes = wholeMinutes(ms);
   if (minutes < 60) return `${minutes} min`;
   return `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, "0")} min`;
 }
