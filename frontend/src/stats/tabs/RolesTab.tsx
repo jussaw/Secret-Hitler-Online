@@ -4,7 +4,7 @@ import { MIN_CHANCES, MIN_GAMES, rankRows, rate, type Rate } from "../counting";
 import { plural } from "../format";
 import { ROLE_WORDS } from "../game/text";
 import { countFigure, formatPercent, formatSigned, rateFigure, wholePercent } from "../numbers";
-import { RankedTable, type RankedTableProps } from "../RankedTable";
+import { RankedTable, type RankedHeads } from "../RankedTable";
 import { ROLES, type Role } from "../record";
 import { byRole, computeRoles, TABLE_SIZES, type RoleStats } from "../roles";
 import { SplitTable, type SplitCell, type SplitColumn } from "../SplitTable";
@@ -62,9 +62,6 @@ interface CardSpec {
   body: ReactNode;
 }
 
-/** A ranked table's heads: the value's, what it sorts by, and the count's (no count column without it). */
-type Heads<T> = Pick<RankedTableProps<T>, "valueHead" | "sortValue" | "countHead">;
-
 /** The card's ranked table of one value per player, for `rows` with a count above zero. */
 function ranked<T>(
   names: Map<number, string>,
@@ -72,7 +69,7 @@ function ranked<T>(
   compare: (a: T, b: T) => number,
   format: (value: T) => string,
   min: number,
-  heads: Heads<T>
+  heads: RankedHeads<T>
 ): { rows: number; body: ReactNode } {
   const shown = rows.filter((row) => row.count > 0);
   return {

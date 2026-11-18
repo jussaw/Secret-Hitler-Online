@@ -6,11 +6,9 @@ import { numberColumn, playerColumn, rankColumn, SortHeadRow, useTableSort, type
 import { RANK_ORDER } from "./sorting";
 import "./RankedTable.css";
 
-export interface RankedTableProps<T> {
-  /** In rank order, as `rankRows` gives them. */
-  rows: Row<T>[];
-  format: (value: T) => string;
-  names: Map<number, string>;
+/** A ranked table's heads and what they sort by, which travel together: a card passes them as one
+ *  object, and `RankedTable` takes them flat among its props. */
+export interface RankedHeads<T> {
   /** The value column's head. */
   valueHead: string;
   /** A ranked row's sort figure, the number its shown value says (`numbers.ts`' `countFigure`,
@@ -18,6 +16,13 @@ export interface RankedTableProps<T> {
   sortValue: (value: T) => number | null;
   /** The count column's head; no count column without it. */
   countHead?: string;
+}
+
+export interface RankedTableProps<T> extends RankedHeads<T> {
+  /** In rank order, as `rankRows` gives them. */
+  rows: Row<T>[];
+  format: (value: T) => string;
+  names: Map<number, string>;
   /** The value stands at the right (the default); INVESTIGATIONS' left-aligned text passes false. */
   valueEnd?: boolean;
 }
@@ -34,13 +39,13 @@ export function countNouns(countHead: string): [string, string] {
 type RankedColumn = "rank" | "name" | "value" | "count";
 
 /** The table's columns, in order: `#`, Player, the value and, with `countHead`, the count. */
-function rankedColumns<T>(
-  names: Map<number, string>,
-  valueHead: string,
-  sortValue: (value: T) => number | null,
-  countHead: string | undefined,
-  valueEnd: boolean
-): HeadColumn<Row<T>, RankedColumn>[] {
+function rankedColumns<T>({
+  names,
+  valueHead,
+  sortValue,
+  countHead,
+  valueEnd,
+}: RankedHeads<T> & { names: Map<number, string>; valueEnd: boolean }): HeadColumn<Row<T>, RankedColumn>[] {
   /** A ranked row's figure under the value; an unranked row has none, so it goes last either way. */
   const value = (row: Row<T>) => (row.rank === null ? null : sortValue(row.value));
   const columns: HeadColumn<Row<T>, RankedColumn>[] = [
@@ -76,7 +81,7 @@ export function RankedTable<T>({
   valueEnd = true,
 }: RankedTableProps<T>): JSX.Element {
   const columns = useMemo(
-    () => rankedColumns(names, valueHead, sortValue, countHead, valueEnd),
+    () => rankedColumns({ names, valueHead, sortValue, countHead, valueEnd }),
     [names, valueHead, sortValue, countHead, valueEnd]
   );
   const { rows: sorted, sort, press } = useTableSort(rows, columns, RANK_ORDER);

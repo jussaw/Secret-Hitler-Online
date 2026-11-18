@@ -2,7 +2,7 @@ import { useId, useMemo } from "react";
 import { compareNames, MIN_CHANCES, nameOf, rankRows, type Rate } from "../counting";
 import { countFigure, formatPercent, rateFigure } from "../numbers";
 import { computePowers, type PlayerPowers, type VetoAnswers } from "../powers";
-import { RankedTable } from "../RankedTable";
+import { RankedTable, type RankedHeads } from "../RankedTable";
 import type { Role, Side } from "../record";
 import { SplitTable, type SplitCell, type SplitColumn } from "../SplitTable";
 import { StatCard } from "../StatCard";
@@ -58,6 +58,9 @@ function byRate(a: Rate, b: Rate): number {
   return (b.value ?? -1) - (a.value ?? -1);
 }
 
+/** A rate card's heads: every rate sorts by its whole percent (`rateFigure`). */
+type RateHeads = Omit<RankedHeads<Rate>, "sortValue">;
+
 /** INVESTIGATIONS' sort figure: the number its line starts with. */
 const investigationsFigure = (p: PlayerPowers) => p.investigations;
 
@@ -85,8 +88,8 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
   };
 
   /** Players ranked by a rate, from `MIN_CHANCES` chances; only players with a chance. The rate is
-   *  under `valueHead`, its chances under `countHead`. */
-  const rateTable = <T,>(entries: Entries<T>, value: (entry: T) => Rate, valueHead: string, countHead: string) => {
+   *  under `heads.valueHead`, sorted by its whole percent, and its chances under `heads.countHead`. */
+  const rateTable = <T,>(entries: Entries<T>, value: (entry: T) => Rate, heads: RateHeads) => {
     const rows = entries
       .map(([player, entry]) => ({ player, value: value(entry), count: value(entry).chances }))
       .filter((row) => row.count > 0);
@@ -96,9 +99,8 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
         rows={rankRows(rows, byRate, names, MIN_CHANCES)}
         format={(r) => formatPercent(r.value!)}
         names={names}
-        valueHead={valueHead}
         sortValue={rateFigure}
-        countHead={countHead}
+        {...heads}
       />
     );
   };
@@ -177,13 +179,13 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
       title: "NOMINATIONS PASSED",
       definition: "As president, the share of their nominations the vote passed.",
       line: noNominations,
-      table: rateTable(votes, (v) => v.presidentPassed, "Passed", "Nominations"),
+      table: rateTable(votes, (v) => v.presidentPassed, { valueHead: "Passed", countHead: "Nominations" }),
     },
     {
       title: "ELECTED AS CHANCELLOR",
       definition: "As a nominated chancellor, the share of their elections that passed.",
       line: noNominations,
-      table: rateTable(votes, (v) => v.chancellorPassed, "Elected", "Elections"),
+      table: rateTable(votes, (v) => v.chancellorPassed, { valueHead: "Elected", countHead: "Elections" }),
     },
     {
       title: "PICKING A TEAMMATE",
@@ -202,13 +204,13 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
       definition:
         "As a Liberal, the share of votes that were right: Ja on a government with no one from the Fascist side, Nein on one with someone from it.",
       line: noVotes,
-      table: rateTable(votes, (v) => v.liberalAccuracy, "Accuracy", "Votes"),
+      table: rateTable(votes, (v) => v.liberalAccuracy, { valueHead: "Accuracy", countHead: "Votes" }),
     },
     {
       title: "FASCIST LOYALTY",
       definition: "On the Fascist side, the share of Ja votes on governments with a teammate in them, not counting themselves.",
       line: "No votes on a teammate's government yet with these players.",
-      table: rateTable(votes, (v) => v.fascistLoyalty, "Loyalty", "Votes"),
+      table: rateTable(votes, (v) => v.fascistLoyalty, { valueHead: "Loyalty", countHead: "Votes" }),
     },
     {
       title: "VOTED HITLER IN",
@@ -254,13 +256,13 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
       title: "LIBERAL FINDS",
       definition: "As a Liberal, the share of their investigations that found someone from the Fascist side.",
       line: "No investigations by a Liberal yet with these players.",
-      table: rateTable(powers, (p) => p.liberalFinds, "Finds", "Checks"),
+      table: rateTable(powers, (p) => p.liberalFinds, { valueHead: "Finds", countHead: "Checks" }),
     },
     {
       title: "CHECKING A TEAMMATE",
       definition: "On the Fascist side, the share of their investigations that looked at a teammate.",
       line: "No investigations by the Fascist side yet with these players.",
-      table: rateTable(powers, (p) => p.teammateChecks, "Teammate", "Checks"),
+      table: rateTable(powers, (p) => p.teammateChecks, { valueHead: "Teammate", countHead: "Checks" }),
     },
     {
       title: "TIMES INVESTIGATED",
@@ -314,7 +316,7 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
       title: "SPECIAL ELECTION PICKS",
       definition: "The share of their special elections that made a teammate president.",
       line: noSpecial,
-      table: rateTable(powers, (p) => p.specialTeammate, "Teammate", "Elections"),
+      table: rateTable(powers, (p) => p.specialTeammate, { valueHead: "Teammate", countHead: "Elections" }),
     },
     {
       title: "VETOES AS PRESIDENT",
