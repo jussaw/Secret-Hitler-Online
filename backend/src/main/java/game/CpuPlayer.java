@@ -87,6 +87,13 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
    */
   private int handReadRound;
 
+  /**
+   * Hard's rule 4: the peek this CPU holds until the next government's session ends (none below
+   * Hard). A CPU read from a backup made before the rule has none, and {@code readObject} makes an
+   * empty one.
+   */
+  private PeekMemory peekMemory;
+
   /** A Normal CPU player. */
   public CpuPlayer(String name) {
     this(name, BotSkill.NORMAL);
@@ -103,6 +110,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     playerReputation = new HashMap<>();
     knownPlayerRoles = new HashMap<>();
     clearedPlayers = new ClearedPlayers();
+    peekMemory = new PeekMemory();
     random = new Random();
   }
 
@@ -122,6 +130,11 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   /** Hard's rule 1: the players this CPU has seen proved not to be Hitler (none unless it is a Hard liberal). */
   ClearedPlayers clearedPlayers() {
     return clearedPlayers;
+  }
+
+  /** Hard's rule 4: the peek this CPU holds (none unless it is Hard). */
+  PeekMemory peekMemory() {
+    return peekMemory;
   }
 
   public void initialize(SecretHitlerGame game) {
@@ -168,6 +181,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     // What a Hard CPU remembers belongs to one game.
     clearedPlayers = new ClearedPlayers();
     handReadRound = 0;
+    peekMemory = new PeekMemory();
 
   } // end initialize()
 
@@ -186,6 +200,15 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   public void update(SecretHitlerGame game) {
     if (hardLiberal()) {
       clearedPlayers.observe(game);
+    }
+    if (skill == BotSkill.HARD) {
+      // Hard's rule 4: every Hard CPU follows its peek to its end; one that reads the game blames.
+      List<String> blamed = peekMemory.observe(game, myName);
+      if (readsTheGame(game)) {
+        for (String name : blamed) {
+          updateReputation(name, -PeekMemory.DROP);
+        }
+      }
     }
     if (game.getRound() > lastUpdatedRound && game.getState() == GameState.POST_LEGISLATIVE) {
       Policy.Type lastPolicy = game.getLastEnactedPolicy();
@@ -674,8 +697,10 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     if (!game.getCurrentPresident().equals(myName)) {
       return false;
     }
-    // Currently does nothing for peek results
-    game.getPeek();
+    List<Policy> peek = game.getPeek();
+    if (skill == BotSkill.HARD) { // Hard's rule 4: keep the cards (thrown away below Hard)
+      peekMemory.saw(peek, game.getDrawSize());
+    }
     game.endPeek();
     return true;
   }
@@ -977,6 +1002,9 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     }
     if (clearedPlayers == null) { // backed up before Hard's rule 1
       clearedPlayers = new ClearedPlayers();
+    }
+    if (peekMemory == null) { // backed up before Hard's rule 4
+      peekMemory = new PeekMemory();
     }
   }
 

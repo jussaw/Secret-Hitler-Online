@@ -228,4 +228,18 @@ public class BotScenesTest {
         assertEquals(3, game.getNumFascistPolicies());
         assertEquals(2, game.getNumLiberalPolicies());
     }
+
+    @Test
+    public void peekedWaitsForP1sNominationOnceTheBotHasPeeked() {
+        Played played = BotScenes.peeked("LLLFH", "LFF", BotSkill.NORMAL, 0);
+        SecretHitlerGame game = played.game();
+        assertRoles(game, "LLLFH");
+        assertEquals("P0", played.bot().myName);
+        assertEquals(GameState.CHANCELLOR_NOMINATION, game.getState());
+        assertEquals(2, game.getRound());
+        assertEquals("P1", game.getCurrentPresident());
+        assertEquals(3, game.getNumFascistPolicies());
+        assertEquals("LFF", BotScenes.drawPile(game).substring(0, 3));
+        assertEquals(12, game.getDrawSize());
+    }
 }

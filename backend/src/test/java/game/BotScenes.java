@@ -42,6 +42,18 @@ final class BotScenes {
             move.accept(game);
             bot.update(game);
         }
+
+        /**
+         * The bot acts, then updates.
+         *
+         * @throws IllegalStateException if the bot did not act.
+         */
+        void botActs() {
+            if (!bot.act(game)) {
+                throw new IllegalStateException(bot.myName + " had nothing to do in " + game.getState() + ".");
+            }
+            bot.update(game);
+        }
     }
 
     /** The role a letter names: {@code L}, {@code F} or {@code H}. */
@@ -339,6 +351,27 @@ final class BotScenes {
             played.then(g -> g.chancellorEnactPolicy(0));
             played.then(SecretHitlerGame::endPresidentialTerm);
         }
+        return played;
+    }
+
+    /**
+     * Hard's rule 4: {@code roles} with 2 fascist policies down and {@code FFF} then {@code peek} on
+     * top, the bot P0 made first and updated after every move. P0 elects P1 (the scene nominates and
+     * votes for the bot's seat too), the bot discards (it acts, so it remembers what it passed), P1
+     * enacts the third fascist policy, and the bot peeks at {@code peek} and ends its term (acting
+     * twice). It waits at round 2, P1 to nominate.
+     */
+    static Played peeked(String roles, String peek, BotSkill skill, long seed) {
+        SecretHitlerGame game = game(roles);
+        board(game, 2, 0);
+        drawTop(game, "FFF" + peek);
+        Played played = new Played(game, bot(game, "P0", skill, seed));
+        played.then(g -> g.nominateChancellor("P1"));
+        played.then(g -> voteAll(g, true));
+        played.botActs();
+        played.then(g -> g.chancellorEnactPolicy(0));
+        played.botActs();
+        played.botActs();
         return played;
     }
 

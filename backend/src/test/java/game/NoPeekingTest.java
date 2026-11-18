@@ -319,6 +319,49 @@ public class NoPeekingTest {
                 () -> BotScenes.chancellorsHand("LHLLLFF", "FF", "F", 0), with(eachSwap("LHLLLFF", "P1"), NOTHING));
     }
 
+    /** {@code LLLFH} with 2 fascist policies down and {@code FFF} then {@code LFF} on top, as {@code BotScenes.peeked}. */
+    private static SecretHitlerGame peekGame() {
+        SecretHitlerGame game = BotScenes.game("LLLFH");
+        BotScenes.board(game, 2, 0);
+        BotScenes.drawTop(game, "FFFLFF");
+        return game;
+    }
+
+    /**
+     * Rule 4: the bot of P0 elects P1, peeks at LFF and ends its term; P1 elects P2 while the bot
+     * votes, and the two games' governments enact a fascist policy differently (P1 discards the
+     * liberal card in the first and a fascist one in the second); P1 executes P2, and the bot votes
+     * on P3's nomination of P1. Every pair of other seats' roles that keeps P2 from Hitler is
+     * swapped, and with it the cards under the six the bot saw.
+     */
+    @Test
+    public void hardRule4Peek() {
+        List<Hidden> hidden = new ArrayList<>();
+        for (Hidden swap : eachSwap("LLLFH", "P0", "P2")) {
+            hidden.add(new Hidden(swap.name() + " and the cards under the peek swapped", g -> {
+                swap.hide().accept(g);
+                BotScenes.swapUnseenCards(g, 6);
+            }));
+        }
+        playsAlike(NoPeekingTest::peekGame, "P0", hidden, twins -> {
+            twins.others(g -> g.nominateChancellor("P1"));
+            twins.others(g -> BotScenes.voteAll(g, true));
+            twins.botActs();
+            twins.others(g -> g.chancellorEnactPolicy(0));
+            twins.botActs();
+            twins.botActs();
+            twins.others(g -> g.nominateChancellor("P2"));
+            twins.botActs();
+            twins.others(g -> BotScenes.voteAll(g, true));
+            twins.others(g -> g.presidentDiscardPolicy(0), g -> g.presidentDiscardPolicy(1));
+            twins.others(g -> g.chancellorEnactPolicy(0), g -> g.chancellorEnactPolicy(1));
+            twins.others(g -> g.executePlayer("P2"));
+            twins.others(SecretHitlerGame::endPresidentialTerm);
+            twins.others(g -> g.nominateChancellor("P1"));
+            twins.botActs();
+        });
+    }
+
     // The test's own checks: that its seeds differ, and that the twins catch what they should.
 
     /** Normal always passes FL from FFL as a liberal; Easy passes FF for some of the seeds. */

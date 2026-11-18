@@ -1151,7 +1151,7 @@ Issue #72, part 3. Backend only; changes nothing on screen. Starts once 25A has 
 
 - [x] Hard's rule 1 (cleared players), with its own tests and in the no-peeking test
 - [x] Hard's rule 2 (the chancellor's hand), with its own tests and in the no-peeking test
-- [ ] Hard's rule 4 (the peek), with its own tests and in the no-peeking test
+- [x] Hard's rule 4 (the peek), with its own tests and in the no-peeking test
 - [ ] A Hard bot's memory survives a backup, and `-Pladder` shows Hard not below Normal
 - [ ] `CLAUDE.md` updated; the pull request quotes `botMatches -Pladder` before and after
 
