@@ -253,8 +253,8 @@ export async function longestLineLobby(
 
 /**
  * One viewer of a lobby layout test: who it is, its page, the people and the bots its lobby has,
- * the buttons it gets (actionLabels) and, for a spectator, the note under them (#lobby-note, ""
- * for none).
+ * the buttons it gets (actionLabels), the bots' level it sees (skillShown) and, for a spectator,
+ * the note under its buttons (#lobby-note, "" for none).
  */
 export type LobbyViewer = {
   viewer: string;
@@ -262,18 +262,23 @@ export type LobbyViewer = {
   players: number;
   bots: number;
   buttons: string[];
+  skill: "NORMAL" | "HARD";
   note?: string;
 };
 
 const PLAYER_BUTTONS = ["CHANGE NAME", "CHANGE LOOK", "WATCH INSTEAD", "LEAVE LOBBY"];
-/** The host's: the bot stepper's two buttons, by their names, then START GAME and a player's four. */
-const HOST_BUTTONS = ["Fewer bots", "More bots", "START GAME", ...PLAYER_BUTTONS];
+/**
+ * The host's: the bot stepper's two buttons, by their names, START GAME, the BOT SKILL row's three
+ * (#72) and a player's four.
+ */
+const HOST_BUTTONS = ["Fewer bots", "More bots", "START GAME", "EASY", "NORMAL", "HARD", ...PLAYER_BUTTONS];
 const FULL_NOTE = "The lobby is full (10 / 10). You can play when a seat frees up.";
 
 /**
  * Ten seats with a bot among them (#70), and a signed-in spectator's longest note: `host` creates
  * the lobby as uniqueName("Host Player") and picks a look, eight raw guests stay on the default
- * portrait, still picking, and the host's stepper adds the one bot nine people leave room for.
+ * portrait, still picking, the host's stepper adds the one bot nine people leave room for, and the
+ * host's BOT SKILL row chooses HARD (#72), which the spectator, watching after it, sees.
  * The host reads the longest line a player gets ("Waiting for <the first guest> and 7 others to
  * pick a look."), and `page`, a signed-in spectator, the longest a spectator gets, then presses
  * PLAY INSTEAD against a /check-login that never answers: CONTACT_ERROR, the longest note, in a
@@ -288,12 +293,17 @@ async function failedPlayInstead(baseURL: string, host: Page, page: Page): Promi
     await host.getByRole("button", { name: "More bots" }).click();
     await expect(host.locator(".lobby-player-count")).toHaveText("10 / 10");
     await expect(host.getByRole("button", { name: "More bots" })).toBeDisabled();
+    const hard = host.getByRole("group", { name: "Bot skill" }).getByRole("button", { name: "HARD" });
+    await hard.click();
+    await expect(hard).toHaveAttribute("aria-pressed", "true");
     const playerLine = `Waiting for ${guests[0].name} and 7 others to pick a look.`;
     await expect(host.locator("#lobby-status-text")).toHaveText(playerLine);
     await signInPage(page, uniqueName("Watcher"));
     await watchLobby(page, lobby);
     await waitForPlayers(page, 9);
     await expect(page.locator(".lobby-players li.roster-row.is-bot")).toHaveCount(1);
+    // The server's level, sent to a spectator who came after the press.
+    await expect(page.locator(".lobby-skill-level")).toHaveText("HARD");
     await expect(page.locator("#lobby-status-text")).toHaveText(`You are watching. ${playerLine}`);
     await page.route("**/check-login?**", (route) => route.abort());
     await page.getByRole("button", { name: "PLAY INSTEAD" }).click();
@@ -342,14 +352,16 @@ export async function longestLineViewers(
   return {
     sockets,
     viewers: [
-      { viewer: "host", page: host, players: 10, bots: 0, buttons: HOST_BUTTONS },
-      { viewer: "guest", page: guest, players: 10, bots: 0, buttons: PLAYER_BUTTONS },
+      // NORMAL, the longest level's word, is the line every viewer but the second lobby's has.
+      { viewer: "host", page: host, players: 10, bots: 0, buttons: HOST_BUTTONS, skill: "NORMAL" },
+      { viewer: "guest", page: guest, players: 10, bots: 0, buttons: PLAYER_BUTTONS, skill: "NORMAL" },
       {
         viewer: "signed-in spectator",
         page: signedIn,
         players: 10,
         bots: 0,
         buttons: ["PLAY INSTEAD", "LEAVE LOBBY"],
+        skill: "NORMAL",
         note: FULL_NOTE,
       },
       {
@@ -358,6 +370,7 @@ export async function longestLineViewers(
         players: 10,
         bots: 0,
         buttons: ["SIGN IN TO PLAY", "LEAVE LOBBY"],
+        skill: "NORMAL",
         note: FULL_NOTE,
       },
       {
@@ -366,15 +379,24 @@ export async function longestLineViewers(
         players: 10,
         bots: 0,
         buttons: ["SIGN IN TO PLAY", "LEAVE LOBBY"],
+        skill: "NORMAL",
         note: "Sign-in is not set up on this server.",
       },
-      { viewer: "host of nine and a bot", page: botHost, players: 9, bots: 1, buttons: HOST_BUTTONS },
+      {
+        viewer: "host of nine and a bot",
+        page: botHost,
+        players: 9,
+        bots: 1,
+        buttons: HOST_BUTTONS,
+        skill: "HARD",
+      },
       {
         viewer: "signed-in spectator whose PLAY INSTEAD failed",
         page: failed,
         players: 9,
         bots: 1,
         buttons: ["PLAY INSTEAD", "LEAVE LOBBY"],
+        skill: "HARD",
         note: CONTACT_ERROR,
       },
     ],
@@ -383,7 +405,8 @@ export async function longestLineViewers(
 
 /**
  * The labels of the lobby's buttons under its status line (links in a button's look among them),
- * or the accessible name of one that shows only an icon (the bot stepper's).
+ * or the accessible name of one that shows only an icon (the bot stepper's). The host's BOT SKILL
+ * row (#72) adds EASY, NORMAL and HARD after START GAME.
  */
 export async function actionLabels(page: Page): Promise<string[]> {
   return page
@@ -392,6 +415,43 @@ export async function actionLabels(page: Page): Promise<string[]> {
     .evaluateAll((buttons) =>
       buttons.map((b) => (b as HTMLElement).innerText.trim() || (b.getAttribute("aria-label") ?? ""))
     );
+}
+
+/**
+ * The level the lobby shows (#72): the pressed button of the group "Bot skill" (the host's), or the
+ * line's `.lobby-skill-level`; "" for neither.
+ */
+export function skillShown(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const pressed = document.querySelector('[role="group"][aria-label="Bot skill"] button[aria-pressed="true"]');
+    const level = document.querySelector(".lobby-skill-level");
+    return (pressed ?? level)?.textContent?.trim() ?? "";
+  });
+}
+
+/**
+ * How many lines the host's row (its label and three buttons) or another viewer's line (its
+ * label and level) takes: parts whose vertical centres are within 2px share a line. 0 for neither.
+ */
+export function skillRowLines(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    const parts = document.querySelectorAll(
+      ".lobby-skill .lobby-skill-label, .lobby-skill .lobby-skill-option, .lobby-skill-line .lobby-skill-label, .lobby-skill-line .lobby-skill-level"
+    );
+    const centres = Array.from(parts, (part) => {
+      const r = part.getBoundingClientRect();
+      return (r.top + r.bottom) / 2;
+    }).sort((a, b) => a - b);
+    let lines = 0;
+    let first = -Infinity;
+    for (const centre of centres) {
+      if (centre - first > 2) {
+        lines += 1;
+        first = centre;
+      }
+    }
+    return lines;
+  });
 }
 
 /**

@@ -28,6 +28,8 @@ import {
   lobbyStatusCard,
   botRowMismatches,
   longestLineViewers,
+  skillRowLines,
+  skillShown,
   longestLogin,
   settle,
   startGame,
@@ -517,6 +519,8 @@ async function checkLobby(page: Page, size: Size, viewer: string, players: numbe
   expect(await wrappedLabels(page, ".lobby-screen"), `wrapped button labels at ${at}`).toEqual([]);
   // The buttons under the status line are 44px targets at every size.
   expect(await smallTargets(page, ".lobby-actions"), `small buttons at ${at}`).toEqual([]);
+  // The host's BOT SKILL row, or everyone else's line, is one line (#72).
+  expect(await skillRowLines(page), `the bot skill row's lines at ${at}`).toBe(1);
   // Twelve-character names fit whole, as they do in the game.
   for (const name of lobby.names) {
     expect(name.scrollWidth, `"${name.text}" is cut off at ${at}`).toBeLessThanOrEqual(name.clientWidth + 1);
@@ -551,8 +555,9 @@ test("the lobby fits every desktop size and narrow window, for the host, a guest
       failed,
     });
     try {
-      for (const { viewer, page: viewerPage, players, bots, buttons, note } of viewers) {
+      for (const { viewer, page: viewerPage, players, bots, buttons, skill, note } of viewers) {
         expect(await actionLabels(viewerPage), `the ${viewer}'s buttons`).toEqual(buttons);
+        expect(await skillShown(viewerPage), `the ${viewer}'s bot skill`).toBe(skill);
         await settle(viewerPage);
         for (const size of [...DESKTOP_SIZES, ...SQUARE_DESKTOPS, ...NARROW_WINDOWS]) {
           await checkLobby(viewerPage, size, viewer, players, bots);
