@@ -6,9 +6,14 @@ import { plural } from "./format";
  * This module imports only `format.ts`, so the browser tests can use it.
  */
 
+/** A share as a whole percent: 0.625 is 63. What a percent column sorts by and `formatPercent` shows. */
+export function wholePercent(value: number): number {
+  return Math.round(value * 100);
+}
+
 /** A share as a whole percent: 0.625 is "63%". */
 export function formatPercent(value: number): string {
-  return `${Math.round(value * 100)}%`;
+  return `${wholePercent(value)}%`;
 }
 
 /**

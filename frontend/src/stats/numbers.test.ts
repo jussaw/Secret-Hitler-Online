@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as numbers from "./numbers";
-import { formatDays, formatPercent, formatRating, formatSigned } from "./numbers";
+import { formatDays, formatPercent, formatRating, formatSigned, wholePercent } from "./numbers";
 
 describe("formatPercent", () => {
   it("rounds to a whole percent", () => {
@@ -8,6 +8,14 @@ describe("formatPercent", () => {
     expect(formatPercent(1)).toBe("100%");
     expect(formatPercent(0)).toBe("0%");
     expect(formatPercent(1 / 3)).toBe("33%");
+  });
+});
+
+describe("wholePercent", () => {
+  it("is the whole percent formatPercent shows", () => {
+    expect(wholePercent(0.625)).toBe(63);
+    expect(wholePercent(0.5249)).toBe(52);
+    expect(formatPercent(0.625)).toBe("63%");
   });
 });
 
@@ -44,6 +52,6 @@ describe("formatDays", () => {
 
 describe("the module", () => {
   it("leaves plural to format.ts and has no formatChange", () => {
-    expect(Object.keys(numbers).sort()).toEqual(["formatDays", "formatPercent", "formatRating", "formatSigned"]);
+    expect(Object.keys(numbers).sort()).toEqual(["formatDays", "formatPercent", "formatRating", "formatSigned", "wholePercent"]);
   });
 });
