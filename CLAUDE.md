@@ -401,11 +401,11 @@ keeps credit to upstream and to the board game's creators.
   report, playing nothing. A change to the bots is accepted on a full run that passes (`Ladder
   check: PASS`, `Balance target: PASS`), one confirmation on the same code, and the two pooled,
   whose ladder and balance checks must pass; a fix after review that touches `game/` is accepted
-  again. Phase 25D's acceptance (runs 4 and 4c pooled, 4,000 games a size; its log, every run
+  again. Phase 25D's acceptance (runs 5 and 5c pooled, 4,000 games a size; its log, every run
   and the explorations, is `docs/pr/phase-25d-ladder-balance/tuning-log.md`): liberal win rates
-  E/N 21.7%, N/N 27.9%, H/N 40.4%, N/E 32.1%, N/H 21.4%, E/E 25.1%, H/H 22.9%, so each side rises
-  Easy, Normal, Hard (the liberals 21.7, 27.9, 40.4%; the fascists 67.9, 72.1, 78.6%), no size
-  inverted, and all-Hard is 5.0 points from all-Normal. `BotMatchesTest` plays all nine pairings at 3 games a size and reads
+  E/N 21.2%, N/N 28.4%, H/N 39.8%, N/E 31.9%, N/H 21.6%, E/E 24.8%, H/H 23.3%, so each side rises
+  Easy, Normal, Hard (the liberals 21.2, 28.4, 39.8%; the fascists 68.1, 71.6, 78.4%), no size
+  inverted, and all-Hard is 5.1 points from all-Normal. `BotMatchesTest` plays all nine pairings at 3 games a size and reads
   a report's tallies back and pools them, and `LadderCheckTest` reads verdicts from tallies made by
   hand. A player's `/game`
   query may carry `rejoinKey`, a random key the page keeps for its lifetime (sent to no client and
