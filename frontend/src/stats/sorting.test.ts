@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NAME_ORDER, RANK_ORDER, nextSort, sortRows, type SortColumn, type TableSort } from "./sorting";
+import { NAME_ORDER, RANK_ORDER, columnFor, nextSort, sortRows, type SortColumn, type TableSort } from "./sorting";
 
 interface Row {
   id: string;
@@ -104,6 +104,12 @@ describe("sorting", () => {
   it("anUnknownColumnThrows", () => {
     const rows = [row("a", "Ann")];
     expect(() => sortRows(rows, columns, { column: "nope" as Key, direction: "ascending" })).toThrow('No column "nope"');
+  });
+
+  it("columnForFindsAColumnByItsKey", () => {
+    expect(columnFor(columns, "games")).toBe(columns[1]);
+    expect(columnFor(columns, "name")).toBe(columns[0]);
+    expect(() => columnFor(columns, "nope" as Key)).toThrow('No column "nope"');
   });
 
   it("leavesItsInputAlone", () => {

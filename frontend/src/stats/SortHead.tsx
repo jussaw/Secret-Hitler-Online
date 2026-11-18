@@ -1,6 +1,6 @@
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { useMemo, useState } from "react";
-import { nextSort, sortRows, type SortColumn, type TableSort } from "./sorting";
+import { columnFor, nextSort, sortRows, type SortColumn, type TableSort } from "./sorting";
 import "./SortHead.css";
 
 /**
@@ -74,7 +74,7 @@ export function SortHeadRow<K extends string>(props: {
  * A table's sort, kept in its state from `opening` (never the address, nor stored), and `rows` in
  * that order (`sortRows`, so ties keep the order `rows` came in). `press` is a press on a column's
  * head (`nextSort`). New rows are sorted the same way, so a table keeps its column and direction
- * while a filter changes its rows. Throws for a key no column has.
+ * while a filter changes its rows. Throws for a key no column has (`columnFor`).
  */
 export function useTableSort<R, K extends string>(
   rows: readonly R[],
@@ -84,8 +84,7 @@ export function useTableSort<R, K extends string>(
   const [sort, setSort] = useState<TableSort<K>>(opening);
   const sorted = useMemo(() => sortRows(rows, columns, sort), [rows, columns, sort]);
   const press = (key: K) => {
-    const column = columns.find((c) => c.key === key);
-    if (column === undefined) throw new Error(`No column "${key}"`);
+    const column = columnFor(columns, key);
     setSort((current) => nextSort(current, column));
   };
   return { rows: sorted, sort, press };

@@ -45,6 +45,14 @@ export function nextSort<K extends string>(
   return { column: column.key, direction: column.first };
 }
 
+/** The entry of `columns` whose key is `key`, the one way a table finds a column by its key. Throws
+ *  for a key no entry has. */
+export function columnFor<C extends { key: string }>(columns: readonly C[], key: C["key"]): C {
+  const column = columns.find((c) => c.key === key);
+  if (column === undefined) throw new Error(`No column "${key}"`);
+  return column;
+}
+
 function compareValues(a: number | string, b: number | string): number {
   if (typeof a === "number" && typeof b === "number") return a < b ? -1 : a > b ? 1 : 0;
   return compareNames(String(a), String(b));
@@ -54,15 +62,15 @@ function compareValues(a: number | string, b: number | string): number {
  * `rows` in `sort`'s order, a new array. A column sorts by its `value`, numbers numerically and
  * strings as `compareNames` does. A missing value (null) goes below every value either way, and
  * equal values, the missing ones too, keep the order `rows` came in whichever way the sort runs, so
- * a table gives its rows in its own order. Throws for a column no entry of `columns` has.
+ * a table gives its rows in its own order. Throws for a column no entry of `columns` has
+ * (`columnFor`).
  */
 export function sortRows<R, K extends string>(
   rows: readonly R[],
   columns: readonly SortColumn<R, K>[],
   sort: TableSort<K>
 ): R[] {
-  const column = columns.find((c) => c.key === sort.column);
-  if (column === undefined) throw new Error(`No column "${sort.column}"`);
+  const column = columnFor(columns, sort.column);
   const sign = sort.direction === "ascending" ? 1 : -1;
   const keyed = rows.map((row, index) => ({ row, index, value: column.value(row) }));
   keyed.sort((a, b) => {
