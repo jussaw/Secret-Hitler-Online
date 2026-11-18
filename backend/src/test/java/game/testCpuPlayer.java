@@ -8,6 +8,9 @@ import org.junit.rules.Timeout;
 import static junit.framework.TestCase.*;
 import static org.junit.Assert.assertNotEquals;
 
+import java.io.ObjectStreamClass;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -35,6 +38,22 @@ public class testCpuPlayer {
       }
     }
     return null;
+  }
+
+  /**
+   * Backups hold CPU players, so the class keeps the UID Java computed for it
+   * before it was pinned (the value both backup fixtures' CPU players carry).
+   */
+  @Test
+  public void cpuPlayerPinsItsSerialVersionUid() throws NoSuchFieldException {
+    Field field = CpuPlayer.class.getDeclaredField("serialVersionUID");
+    int modifiers = field.getModifiers();
+    assertTrue(Modifier.isPrivate(modifiers));
+    assertTrue(Modifier.isStatic(modifiers));
+    assertTrue(Modifier.isFinal(modifiers));
+    assertEquals(long.class, field.getType());
+    assertEquals(2392054316009854878L,
+        ObjectStreamClass.lookup(CpuPlayer.class).getSerialVersionUID());
   }
 
   @Test

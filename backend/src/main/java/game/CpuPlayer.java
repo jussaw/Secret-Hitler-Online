@@ -18,6 +18,14 @@ import game.datastructures.Policy;
 
 public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
 
+  /**
+   * The value Java computed for this class before it was pinned, which the CPU
+   * players in older backups carry. Pinned so the class's methods may change;
+   * a field added later comes back empty from an older backup and is filled in
+   * {@code readObject}, as {@code random} is.
+   */
+  private static final long serialVersionUID = 2392054316009854878L;
+
   private static int MAX_REPUTATION = 5;
 
   private List<Policy.Type> chancellorChoices;
