@@ -48,10 +48,12 @@ The spec settles what players see; these settle what it leaves to the build.
   packet's fields are.
 - **A test-only view of the seated bots:** `Lobby.seatedBotSkills()`, package-private, so the lobby
   tests can see each seated bot's level; nothing else reads it.
-- **The label shortens to SKILL** (at widths under 360px only) only if the Linux image's 320x568 run
-  puts the host's row on two lines (Task 5).
+- **The label shortens to SKILL** only at a phone width (360x740, 412x915, 320x568) where the full
+  label still puts the host's row on two lines once its spacing is tuned (Task 5, Step 4's ladder).
 - **Screenshots:** a lobby of four people and two bots (the mockup's), seen by the host and a guest;
   in the "after" shots the host has chosen HARD, so the guest's line shows the host's choice.
+- **The pull request's title says `feat(frontend)`** though half the change is the backend's: it
+  matches #102's, the bot count it extends.
 
 ## Global Constraints
 
@@ -62,7 +64,8 @@ The spec settles what players see; these settle what it leaves to the build.
   `Lobby.setBotSkill(BotSkill)`, `set-bot-skill`, `skill`, `botSkill`. From Phase 25A (consumed,
   never edited): `game.BotSkill` (`EASY`, `NORMAL`, `HARD`), `CpuPlayer(String name, BotSkill
   skill)` and `CpuPlayer.skill()`.
-- **Copy, exactly:** the host's label `BOT SKILL` (`SKILL` under 360px only if Task 5 needs it),
+- **Copy, exactly:** the host's label `BOT SKILL` (`SKILL` at a phone width only where Task 5's
+  ladder needs it),
   the buttons `EASY`, `NORMAL`, `HARD`, the group's name `Bot skill`; the others' line `BOT SKILL`
   then the level's name in white. The roster's bot rows and the status line are unchanged (the level
   shows in this one place only). No new art: words, no icons.
@@ -73,11 +76,12 @@ The spec settles what players see; these settle what it leaves to the build.
 - **Fit (spec, Constraints and "Fit"):** with ten players and the longest status, for the host, a
   guest and every spectator viewer `longestLineViewers` covers, the lobby fits one screen at
   `DESKTOP_SIZES`, `SQUARE_DESKTOPS`, the `NARROW_WINDOWS`, 360x740 and 412x915, with 44px targets on
-  phones, checked with CI's Linux fonts too; at 320x568 it may scroll down, never sideways. Only
-  the new row's own spacing may be tuned to fit. **If any of those sizes still fails for any
-  viewer, stop and ask** (report each viewer, size and overflow in px); the fallback, a prompt
+  phones, checked with CI's Linux fonts too; at 320x568 it may scroll down, never sideways. The
+  host's row is one line at every tested size. Only the new row's own spacing may be tuned to fit,
+  by Task 5, Step 4's ladder, which ends in **stop and ask** (each failing viewer and size, the
+  row's needed and available widths and the page's spare height in px); the fallback, a prompt
   (option D), is never built without the user's word.
-- **Never touch:** `backend/src/main/java/game/` (`CpuPlayer.java` is 25B's, `BotSkill.java`
+- **Never touch:** `backend/src/main/java/game/` (`CpuPlayer.java` is 25B's, then 25C's and 25D's, `BotSkill.java`
   25A's), `backend/src/test/java/game/`, `server/stats/`, `frontend/src/stats/` and
   `Lobby.handOverGame` (26B's), and `docs/superpowers/specs/`. A change one of them seems to need:
   stop and ask.
@@ -93,9 +97,13 @@ The spec settles what players see; these settle what it leaves to the build.
   `readme`, `development`, `plan`), each test in the commit with its code, files staged by name
   (`frontend/e2e/pr-shots.spec.ts` stays untracked until Task 6 deletes it). A box of Phase 26A in
   `docs/PLAN.md` is ticked in the commit that finishes its work.
-- **Merge order:** the pull request merges only after Phase 25B's. 26B edits `Lobby.java`
-  (`handOverGame`), `CLAUDE.md` and `README.md` at the same time: whichever merges later rebases and
-  keeps both sides.
+- **Merge order is fixed: 25D, then 26A, then 26B.** 26A merges as soon as 25D is in and its
+  rebased CI is green. The builder's own work ends at the pull request open with CI green (Task 8,
+  Step 2); the rebase after 25D and the merge (Task 8, Steps 3 and 4) are the manager's to trigger,
+  by resuming the builder or doing them itself. On a rebase, keep both sides of a conflict in
+  `docs/PLAN.md` (each phase its own Progress row and boxes), `DEVELOPMENT.md`, `CLAUDE.md`,
+  `README.md` and `Lobby.java` (26B's `handOverGame` and `gameBotSkill()`); any other conflict:
+  stop and report.
 - **Public repo:** nothing about the home server in code, docs, commits or the pull request.
 
 ## Review Focus
@@ -127,12 +135,20 @@ The spec settles what players see; these settle what it leaves to the build.
 - Create (never committed): `frontend/e2e/pr-shots.spec.ts`
 - Create: `docs/pr/phase-26a-lobby-bot-skill/before-{host,guest}-{1600x900,412x915}.png`
 
-- [ ] **Step 1: Check the start.** `origin/development` has Phase 25A:
+- [ ] **Step 1: Make the worktree.** `git fetch origin`, then
+  `git -C <parent> worktree add <parent>/.claude/worktrees/phase-26a-lobby-bot-skill -b
+  phase-26a-lobby-bot-skill origin/development`, where `<parent>` is the session's own worktree
+  when the session runs inside `.claude/worktrees/`, and otherwise the main checkout (the first line
+  of `git worktree list`), as `.claude/skills/implement-issue/SKILL.md`, step 2, says; then work in
+  that worktree (EnterWorktree with its path) and run `cd frontend && npm ci`.
+- [ ] **Step 2: Check the start.** The branch has this plan,
+  `docs/superpowers/plans/2026-11-17-phase-26a-lobby-bot-skill.md` (the docs pull request merges
+  before any builder starts). `origin/development` has Phase 25A:
   `backend/src/main/java/game/BotSkill.java` declares `EASY`, `NORMAL`, `HARD`, and `CpuPlayer` has
   `public CpuPlayer(String name, BotSkill skill)` and `public BotSkill skill()`. `docs/PLAN.md` has
-  "Phase 26A: Bot skill in the lobby" with its four boxes. If 25A's names differ from these, stop
-  and ask.
-- [ ] **Step 2: Write `frontend/e2e/pr-shots.spec.ts`.** It starts with
+  "Phase 26A: Bot skill in the lobby" with its four boxes. If the plan is missing or 25A's names
+  differ from these, stop and ask.
+- [ ] **Step 3: Write `frontend/e2e/pr-shots.spec.ts`.** It starts with
   `test.skip(!process.env.PR_SHOTS)` and a `const PREFIX = "before"`. One test, in `desktop` at
   1600x900 and in `phone-412` at 412x915 (`test.info().project.name`; skip other projects): the host
   (`page`) `createLobby(page, uniqueName("Host Player"))`; a guest page (`browser.newPage()`, same
@@ -142,12 +158,13 @@ The spec settles what players see; these settle what it leaves to the build.
   in the group "Bot skill" and the guest's `.lobby-skill-level` reads `HARD`; then `settle` both and save window-sized shots to this
   worktree's `docs/pr/phase-26a-lobby-bot-skill/${PREFIX}-host-${W}x${H}.png` and
   `${PREFIX}-guest-${W}x${H}.png` (an absolute path). Close the raw guests and the guest page.
-- [ ] **Step 3: Take the shots** before any code changes:
+- [ ] **Step 4: Take the shots** before any code changes:
   `cd frontend && PR_SHOTS=1 E2E_PORT=4626 npx playwright test e2e/pr-shots.spec.ts
   --project=desktop --project=phone-412`. Expected: 2 passed, four PNGs showing #70's lobby (the
   stepper beside START GAME, no BOT SKILL row).
-- [ ] **Step 4: Commit** `docs(plan): start phase 26a` (the Progress row), then `docs(docs): add
-  phase 26a's before screenshots` (the four PNGs only). The spec stays uncommitted for Task 6.
+- [ ] **Step 5: Commit** `docs(plan): start phase 26a` (the Progress row), then `docs(docs): add
+  phase 26a's before screenshots` (the four PNGs only). `frontend/e2e/pr-shots.spec.ts` stays
+  untracked and uncommitted until Task 6 deletes it.
 
 ---
 
@@ -173,6 +190,8 @@ The spec settles what players see; these settle what it leaves to the build.
   synchronized Map<String, BotSkill> seatedBotSkills(); // package-private, for tests: the running
       // game's bots, seat name to level, in name order (a TreeMap); empty outside a game
   ```
+  The three methods go together right after `setBotCount` (before `botsFor`), never near
+  `handOverGame`, where 26B adds its `gameBotSkill()`.
   In `SecretHitlerServer`: `public static final String PARAM_BOT_SKILL = "botSkill"; // in every
   lobby packet: the level of the bots a game started now seats`. `lobbyPacket()` puts it as
   `chosenSkill.name()`, after `PARAM_BOTS`. `startNewGame`
@@ -288,7 +307,10 @@ The spec settles what players see; these settle what it leaves to the build.
   // WSCommandType.SET_BOT_SKILL = "set-bot-skill" (comment: the host chooses how well the bots play, #72)
   // ServerRequestPayload gains { command: WSCommandType.SET_BOT_SKILL; skill: BotSkill }
   ```
-  and the `WSCommand` doc comment gains `@param {BotSkill} skill`.
+  and the `WSCommand` doc comment gains `@param {BotSkill} skill`. A comment on `BotSkill` says why
+  it is not the stats' own `BotSkill` (`src/stats/record.ts`, 26B's): the stats chunk imports
+  nothing from the game's code, and `record.ts` imports nothing at all, so the two stay apart on
+  purpose.
 - Produces in `constants/index.ts`, after `PARAM_BOTS`: `export const PARAM_BOT_SKILL = "botSkill";`
   (doc: the lobby packet's level of the bots a game started now seats, #72).
 - `LobbyScreenProps` gains `botSkill: BotSkill` ("The level the bots play at, as the lobby packet
@@ -320,7 +342,8 @@ The spec settles what players see; these settle what it leaves to the build.
   (header font, 1.15em, 0.06em spacing, `#b9ab9f`), `white-space: nowrap`.
   `.lobby-skill-options`: the three side by side on a darker track. `.lobby-main .lobby-skill-option`:
   `min-width: 44px; min-height: calc(44px + var(--button-depth))` at every size, `white-space:
-  nowrap`; not pressed, a dark face and shadow with a `#b9ab9f` label and a lighter dark face on
+  nowrap`, `font-size: 1.3em` (the lobby's buttons') and `1.15em` (`.lobby-bots-word`'s, its floor)
+  in the phone-only block; not pressed, a dark face and shadow with a `#b9ab9f` label and a lighter dark face on
   hover and focus; `[aria-pressed="true"]`, App.css's orange face and white label.
   `.lobby-skill-line`: centred, `margin: 0`, its level `.lobby-skill-level` in the header font and
   `#ffffff`. Phone-only block: `.lobby-skill` across the column with the label at the left and the
@@ -372,7 +395,7 @@ The spec settles what players see; these settle what it leaves to the build.
 - [ ] **Step 4: Run** `npm test -- --run && npm run build`. Expected: PASS; the build type-checks
   the browser tests too (`e2e/lobby.ts` is unchanged so far, and its host button list is Task 5's).
 - [ ] **Step 5: Look at it** before committing: set `pr-shots.spec.ts`'s `PREFIX` to `"check"`, run
-  Task 1's Step 3 command, and compare the four `check-*.png` with `option-a-states.png`: the
+  Task 1's Step 4 command, and compare the four `check-*.png` with `option-a-states.png`: the
   host's row under START GAME's row and as wide as it at 1600x900, across the column at 412px, HARD
   orange; the guest's line in the same place. Fix what differs, then delete the `check-*.png`.
 - [ ] **Step 6: Commit** `feat(frontend): let the host choose how well the bots play`, ticking
@@ -384,7 +407,7 @@ The spec settles what players see; these settle what it leaves to the build.
 
 **Files:**
 - Modify: `frontend/e2e/lobby.ts`, `frontend/e2e/no-scroll.spec.ts`, `frontend/e2e/phone.spec.ts`,
-  `docs/PLAN.md`, and `frontend/src/lobby/LobbyScreen.css` (and, only for the 320px label,
+  `docs/PLAN.md`, and `frontend/src/lobby/LobbyScreen.css` (and, only for the shortened label,
   `LobbyScreen.tsx`) if a check fails
 
 **Interfaces:**
@@ -424,14 +447,23 @@ The spec settles what players see; these settle what it leaves to the build.
   "require('./frontend/package.json').devDependencies['@playwright/test']")-noble" bash -c "npm ci
   && npx playwright test --config playwright.linux.config.ts --project=firefox --project=phone-360
   --project=phone-412 e2e/no-scroll.spec.ts e2e/phone.spec.ts"`. Expected: PASS. Stop the jar.
-- [ ] **Step 4: If a check fails,** tune only the new row and line in `LobbyScreen.css` (their
-  padding, gaps, the options' horizontal padding and font size, never below the 44px faces), rebuild
-  and re-run Steps 2 and 3. If the host's row takes two lines at 320x568 in the Linux image, and
-  only then, shorten its label: in `BotSkillSwitch` the label becomes `<span
-  className="lobby-skill-bot">BOT </span>SKILL`, and the phone-only block hides
-  `.lobby-skill-bot` under `(max-width: 359px)`; the Vitest label regex still matches above 360px,
-  and the line keeps `BOT SKILL`. If any size of Global Constraints, "Fit", still fails for any
-  viewer: **stop and ask**, with each failing viewer, size and how many px it overflows.
+- [ ] **Step 4: If a check fails, climb this ladder,** rebuilding and re-running Steps 2 and 3
+  after each rung, and stopping at the first that passes:
+  - (a) Tune only the new row's and line's own spacing in `LobbyScreen.css`: the options'
+    horizontal padding, the gaps, the letter-spacing. Never the options' font below
+    `.lobby-bots-word`'s size (1.15em), and never their faces below 44px tall.
+  - (b) At a phone width (360x740, 412x915 or 320x568) where the host's row still takes two lines
+    with the full label, and only there, shorten the label to SKILL. In `BotSkillSwitch` the label
+    becomes `<span className="lobby-skill-bot">BOT </span>SKILL`. The phone-only block hides
+    `.lobby-skill-bot` under a `max-width` just above the widest phone width that needs it: 359px
+    when only 320x568 does, 411px when 360x740 does too, and the whole phone-only block when
+    412x915 does. jsdom applies no CSS, so the Vitest label regex still matches, and the others'
+    line keeps `BOT SKILL`.
+  - (c) If the host's row is still two lines at any tested size, or the lobby no longer fits one
+    screen for some viewer (Global Constraints, "Fit"): **stop and ask**. Report each failing
+    viewer and size, the row's needed and available widths (the label's and the three options'
+    widths plus the gaps, against the row's box), and the page's spare height
+    (`size.height − pageHeight`) in px. Change nothing else in the lobby.
 - [ ] **Step 5: Run the other lobby specs** on macOS: `E2E_PORT=4626 npm run e2e --
   e2e/lobby-switch.spec.ts e2e/accounts.spec.ts e2e/button-press.spec.ts e2e/sounds.spec.ts
   --project=desktop --project=phone-360`. Expected: PASS.
@@ -448,7 +480,7 @@ The spec settles what players see; these settle what it leaves to the build.
 - Create: `docs/pr/phase-26a-lobby-bot-skill/after-{host,guest}-{1600x900,412x915}.png`
 - Delete: `frontend/e2e/pr-shots.spec.ts` (never committed)
 
-- [ ] **Step 1: Take the "after" shots:** `PREFIX` becomes `"after"`; run Task 1's Step 3 command.
+- [ ] **Step 1: Take the "after" shots:** `PREFIX` becomes `"after"`; run Task 1's Step 4 command.
   Expected: 2 passed; the host's BOT SKILL row with HARD orange under START GAME's row, the
   guest's line `BOT SKILL HARD` in the same place. Delete the spec.
 - [ ] **Step 2: `CLAUDE.md`.** Layout, backend part: after the `set-bot-count` passage, the host's
@@ -513,17 +545,18 @@ The spec settles what players see; these settle what it leaves to the build.
   "Part of #72" (never a closing keyword: the user closes #72 after 26B). Read it back with `gh pr
   view --json body`.
 - [ ] **Step 2: Bring CI to green,** fixing on the branch until every job passes (`gh pr checks
-  <n> --repo jussaw/Secret-Hitler-Online --watch --interval 30`).
-- [ ] **Step 3: Wait for Phase 25B.** Its pull request (branch `phase-25b-hard-bots`) must be
-  merged first. Then `git fetch origin`, `git rebase origin/development` (keep both sides in
-  `CLAUDE.md`, `README.md` and `Lobby.java`, 26B's `handOverGame` included if it is in), re-run
-  Task 7, Step 3, `git push --force-with-lease`, and re-pin the body's screenshot links to the new
-  head (`gh pr edit <n> --repo jussaw/Secret-Hitler-Online --body-file …`). Watch CI to green again.
-  If Phase 26B is in `development` by then, add `aGameStartedAtHardRecordsHard` to
-  `LobbyRecordingTest` (`lobby.setBotSkill(BotSkill.HARD)` before `startNewGame()`,
-  `stepCpusToTheEnd`, the record says `HARD`) in a commit of its own, as 26B's plan does when 26A is
-  in first, so whichever merges second checks the level from the lobby through to the record.
-- [ ] **Step 4: Merge (the manager session, once 25B has merged and CI is green: the user gave a standing OK for these five phase pull requests).** Each part is skipped when
+  <n> --repo jussaw/Secret-Hitler-Online --watch --interval 30`). **The builder's work ends here:**
+  it hands back the pull request's number, its head sha, and the body's Review and Tests lists. It
+  does not wait for Phase 25D.
+- [ ] **Step 3 (manager-triggered, once Phase 25D's pull request has merged): rebase.** The
+  manager resumes the builder for this, or does it itself. `git fetch origin`, `git rebase
+  origin/development`, keeping both sides of a conflict in `docs/PLAN.md` (each phase its own
+  Progress row and boxes), `DEVELOPMENT.md`, `CLAUDE.md`, `README.md` and `Lobby.java`; any other
+  conflict: stop and report. Re-run the tests the conflicts touch, `git push --force-with-lease`,
+  re-pin the body's screenshot links to the new head (`gh pr edit <n> --repo
+  jussaw/Secret-Hitler-Online --body-file …`), and watch CI to green again.
+- [ ] **Step 4 (manager-triggered): merge,** as soon as 25D is in and the rebased CI is green (the
+  user gave a standing OK for these phase pull requests of #72). 26B merges after this one. Each part is skipped when
   already done: commit `docs(plan): tick phase 26a's merge` (the "PR merged into `development`" box
   and the Progress row "done"), push and wait for green; then `gh pr merge <n> --repo
   jussaw/Secret-Hitler-Online --squash --admin --match-head-commit <head sha> --subject

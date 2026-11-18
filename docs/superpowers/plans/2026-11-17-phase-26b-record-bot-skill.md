@@ -31,9 +31,13 @@ records, `GameRecord`, `GameStore`, `StatsRoutes`, the contract fixture, `record
 The spec settles what players see. These settle what it leaves to the build.
 
 - **The record's level is a `game.BotSkill`** (25A's enum), written by its name. `GameRecord`'s
-  constructor refuses a level without a bot seat and a bot seat without a level
+  canonical constructor refuses a level without a bot seat and a bot seat without a level
   (`IllegalArgumentException`), so format 2's rule ("the level's name when any seat was a bot, and
-  `null` when none was") cannot be broken by a caller.
+  `null` when none was") cannot be broken by a caller. `GameRecord.of`, the lobby's one way in,
+  never throws for it: it gives `NORMAL` when a seat is a bot's and the level passed is null, and
+  null when no seat is a bot's whatever was passed, so nothing the recorder does stops a game or
+  loses its record (CLAUDE.md: "nothing the recorder does stops a game"); the lobby tests pin the
+  real level, so such a mismatch, which only a bug could make, does not go unseen.
 - **The level comes from the bots, not the lobby.** `handOverGame` reads `cpuPlayers`, the running
   game's bots, through a private `gameBotSkill()`: null with none, else the first's in name order
   (`startNewGame` makes every bot of a game at one level, so the first's is every one's; mixed
@@ -45,7 +49,18 @@ The spec settles what players see. These settle what it leaves to the build.
   read as `null`" is `botSkillOf(record)`: the record's level for format 2, null for format 1
   whatever it holds. `botSkill` is an optional key in the type, absent from format 1. A format 2
   record must have the key: missing, or any value but null and the three names (`"hard"` included),
-  is refused.
+  is refused, and so is one whose level disagrees with `hasCpu` (null in a game with bots, or a
+  level in a game without), the server's own rule, each named by its field path as any malformed
+  field is.
+- **Test records stay format 1.** `makeRecord`, and every builder on it (`fiveSeatGame`,
+  `testGames.ts`'s `game`, `players/testStats.ts`'s `played`, …), keeps making format 1 records with
+  no `botSkill` key, as every record stored before this phase is. So an existing test's game with
+  bots stays one the server could have written, and its "Bots" stays honest. New tests make format 2
+  with `asFormatTwo(record, skill)`.
+- **The stats keep their own `BotSkill`.** `record.ts`'s `BotSkill` and `BOT_SKILLS` are separate
+  from the lobby's in `src/types/commands.ts` (26A's): `record.ts` imports nothing, so the browser
+  tests can use it, and the stats chunk imports nothing from the game's code. A comment beside them
+  says so.
 - **The words.** `botsLabel(skill)`: `"Easy bots"`, `"Normal bots"`, `"Hard bots"`, and `"Bots"`
   for no level (a format 1 record). A GAMES row's tag and a player's latest games' tag show it for
   any game with bots; a GAMES row's link name ends `· with Hard bots` (`· with Bots` for format 1).
@@ -68,7 +83,9 @@ The spec settles what players see. These settle what it leaves to the build.
   started game's bots with bots of that level (by reflection on `Lobby`'s private `cpuPlayers`, the
   one test helper that reaches inside `Lobby`), standing in for the host's choice. So the tests hold
   whether or not 26A has merged, and a new lobby's bots record `NORMAL` either way (before 26A the
-  lobby makes `new CpuPlayer(name)`; after it, a new lobby's level is Normal).
+  lobby makes `new CpuPlayer(name)`; after it, a new lobby's level is Normal). The merge order is
+  fixed, 25D, then 26A, then 26B, so the last rebase, onto 26A, adds the test through the host's
+  own `setBotSkill` (Task 9, Step 4).
 - **Historical breakdowns stay as written:** `docs/superpowers/plans/2026-11-15-*.md` (the
   interfaces file's `format: 1` included) describe what those phases built.
 
@@ -86,7 +103,8 @@ The spec settles what players see. These settle what it leaves to the build.
   a stored record; `GET /api/stats/games` serves each record's JSON as stored.
 - **Copy, exactly:** `Easy bots`, `Normal bots`, `Hard bots`, `Bots`; link names
   `… · with Hard bots` and `… · with Bots`; header `… · Hard bots`; errors `Unsupported game record
-  format: N` and `Malformed games response: games[i].botSkill is not a bot skill or null: <value>`.
+  format: N`, `Malformed games response: games[i].botSkill is not a bot skill or null: <value>` and
+  `Malformed games response: games[i].botSkill does not match hasCpu: <value>`.
 - **Files this phase owns** (the spec's file owners): `backend/src/main/java/server/stats/`,
   `backend/src/test/java/server/stats/`, `frontend/src/stats/`, and in `Lobby.java` only
   `handOverGame` and the private `gameBotSkill()` beside it. It also edits these tests:
@@ -94,10 +112,15 @@ The spec settles what players see. These settle what it leaves to the build.
   (two new tests, placed after `aGameFromBeforeTheRecorderIsIncomplete`), and `frontend/e2e/stats.ts`,
   `recorder.spec.ts`, `stats-shell.spec.ts`, `stats-games.spec.ts`, `stats-game.spec.ts`.
 - **Never touch** (other phases' while they run): `backend/src/main/java/game/` (`CpuPlayer.java`
-  and the bot tests are 25B's), `Lobby`'s fields, commands and `startNewGame`, `SecretHitlerServer`,
-  `frontend/src/lobby/`, `App.tsx`, `src/types/commands.ts` (26A's). A rebase that conflicts in
-  `Lobby.java`, `CLAUDE.md` or `README.md`: keep both sides and re-run the tests of both; a conflict
-  in any other file: stop and report.
+  and the bot tests are the 25B to 25D phases'), `Lobby`'s fields, commands, packet, `readObject`, `startNewGame` and
+  test-only `seatedBotSkills()`, `SecretHitlerServer`, `frontend/src/lobby/`, `App.tsx`,
+  `src/types/commands.ts` (26A's). `gameBotSkill()` (this phase's, private) is not 26A's
+  `seatedBotSkills()`: never rename either toward the other.
+- **Rebase conflicts:** keep both sides in `docs/PLAN.md` (each phase keeps its own Progress row and
+  boxes), `DEVELOPMENT.md`, `CLAUDE.md`, `README.md` and `Lobby.java` (26A's field, command, packet,
+  `readObject`, `startNewGame` and `seatedBotSkills()` beside this phase's `handOverGame` and
+  `gameBotSkill()`), then re-run the tests those files touch; a conflict in any other file: stop
+  and report.
 - **Download:** the game's first download (`npm run first-download`) is unchanged: nothing outside
   `src/stats/` imports what this phase adds.
 - **ES2020** in code and tests; **no `e2e/` file imports `src/constants`** or anything that does.
@@ -111,7 +134,9 @@ The spec settles what players see. These settle what it leaves to the build.
   load, a 5px scroll in `stats-games.spec.ts`, `GameRecorderTest.aFailingDatabaseLosesNoRecord`.
   Check a failure on `development` before calling it one.
 - **Branch and commits:** worktree and branch `phase-26b-record-bot-skill`, off `origin/development`
-  once 25A has merged; it merges only after 25B. Conventional Commits with a scope (`backend`,
+  once 25A has merged. The merge order is fixed: 25D, then 26A, then 26B. The builder's work ends
+  with the pull request open and CI green (Task 9, Step 2); the rebases and the merge after it are
+  the manager's to trigger (Task 9, Steps 3 to 5). Conventional Commits with a scope (`backend`,
   `frontend`, `docs`, `claude`, `readme`, `development`, `plan`), lowercase imperative, at most 72
   characters; each test in the commit with its code; each `docs/PLAN.md` box ticked in the commit
   of its work.
@@ -135,8 +160,9 @@ The spec settles what players see. These settle what it leaves to the build.
    sideways. Task 5 (`white-space: nowrap`), Task 6 (`checkStatsPage` at 320x568 in `phone-360`,
    in the Linux image).
 5. **A response the page must not guess at:** a newer format (3), a level in the wrong case
-   (`"hard"`), or a format 2 record without `botSkill`: the page shows its load error instead of
-   misreading. Task 2 (`refuses another format`, `refuses a bad level`).
+   (`"hard"`), a format 2 record without `botSkill`, or one whose level disagrees with `hasCpu`:
+   the page shows its load error instead of misreading. Task 2 (`refuses another format`,
+   `refuses a bad level`, `refuses a level that disagrees with hasCpu`).
 
 ---
 
@@ -154,7 +180,7 @@ The spec settles what players see. These settle what it leaves to the build.
   `HARD`; `CpuPlayer` has `CpuPlayer(String name, BotSkill skill)` and `BotSkill skill()`;
   `Lobby.java` still keeps the game's bots in a field `cpuPlayers`; `docs/PLAN.md` has "Phase 26B:
   Bot skill in the records" with four boxes and three acceptance boxes, and this file is on the
-  branch. Note whether 25B and 26A have merged (`git log origin/development --oneline`).
+  branch. Note whether 25D and 26A have merged (`git log origin/development --oneline`).
 - [ ] **Step 2: Commit** `docs(plan): start phase 26b` (the Progress row "in progress").
 - [ ] **Step 3: Write `pr-shots.spec.ts`** in the scratchpad: `test.skip(!process.env.PR_SHOTS)`;
   `PREFIX = process.env.PR_SHOTS` (`before` or `after`); `OUT` the absolute path of this worktree's
@@ -193,32 +219,44 @@ The spec settles what players see. These settle what it leaves to the build.
   /** The level of the record's bots: null for a game without bots, and for every format 1 record. */
   export function botSkillOf(record: GameRecord): BotSkill | null;
   ```
+  Beside `BOT_SKILLS` and `BotSkill`, a comment says why they are not the lobby's (from
+  `src/types/commands.ts`): `record.ts` imports nothing, so the browser tests can use it, and the
+  stats chunk imports nothing from the game's code.
   `parseStatsData` accepts `format` 1 or 2 and throws `Unsupported game record format: <format>`
   for any other, before any other check of that record; for format 2 it checks `botSkill` right
-  after `hasCpu` (null or one of `BOT_SKILLS`, else `games[i].botSkill is not a bot skill or null`
-  with the value found); format 1's `botSkill` is not read. It still returns its input unchanged.
-- Produces in `testRecords.ts`: `makeRecord` defaults to `format: 2` and `botSkill: null` (right
-  after `hasCpu`); `asFormatOne(record: GameRecord): GameRecord`, a copy as a format 1 record is
-  stored (`format` 1, no `botSkill` key).
+  after `hasCpu`: null or one of `BOT_SKILLS` (else `games[i].botSkill is not a bot skill or null`
+  with the value found), then that it is a level exactly when `hasCpu` is true (else
+  `games[i].botSkill does not match hasCpu` with the value found); format 1's `botSkill` is not
+  read. It still returns its input unchanged.
+- Produces in `testRecords.ts`: `makeRecord` stays as it is, format 1 with no `botSkill` key (as
+  every record stored before this phase); `asFormatTwo(record: GameRecord, skill: BotSkill | null):
+  GameRecord`, a copy in format 2 with `botSkill` right after `hasCpu`. It checks nothing, so the
+  refusal tests build bad records with it.
 
 - [ ] **Step 1: Write the failing tests** in `record.test.ts`:
   - `refuses another format` (replaces the test of format 2): format `3` throws
     `/Unsupported game record format: 3/`, format `0` throws `/Unsupported game record format: 0/`.
-  - `reads format 1, which has no level`: `makeData([asFormatOne(makeRecord({ hasCpu: true, seats:
-    makeSeats([...], [1, 2, null, 4, null]) }))])` parses, `parseStatsData(data)` is `data` (the
-    same object), `"botSkill" in data.games[0]` is false, `botSkillOf(data.games[0])` is null.
-  - `reads format 2 with each level or none`: for each of `null, "EASY", "NORMAL", "HARD"`, a
-    format 2 record with that `botSkill` parses and `botSkillOf` gives it back.
-  - `refuses a bad level`: format 2 with `botSkill` `"EXPERT"` throws
+  Below, `bots` is `makeRecord({ hasCpu: true, seats: makeSeats([...], [1, 2, null, 4, null]) })`
+  and `none` is `makeRecord()`.
+  - `reads format 1, which has no level`: `makeData([bots])` parses, `parseStatsData(data)` is
+    `data` (the same object), `"botSkill" in data.games[0]` is false, `botSkillOf(data.games[0])`
+    is null.
+  - `reads format 2 with each level or none`: `asFormatTwo(bots, skill)` for each of `"EASY"`,
+    `"NORMAL"`, `"HARD"`, and `asFormatTwo(none, null)`, parse, and `botSkillOf` gives the level
+    back (null for `none`).
+  - `refuses a bad level`: `asFormatTwo(bots, …)` with `botSkill` `"EXPERT"` throws
     `Malformed games response: games[0].botSkill is not a bot skill or null: "EXPERT"`; `"hard"`
     throws; a format 2 record with the key deleted throws `/games\[0\]\.botSkill/`.
-  - `reads a response holding both formats`: a format 1 record with bots then a format 2 one at
-    `HARD` parse; `botSkillOf` gives `[null, "HARD"]`.
-  - `the builders make valid data` also expects `makeRecord().format` 2 and `.botSkill` null.
+  - `refuses a level that disagrees with hasCpu`: `asFormatTwo(none, "HARD")` throws `Malformed
+    games response: games[0].botSkill does not match hasCpu: "HARD"`, and `asFormatTwo(bots, null)`
+    throws `… games[0].botSkill does not match hasCpu: null`.
+  - `reads a response holding both formats`: `bots` then `asFormatTwo(bots, "HARD")` parse;
+    `botSkillOf` gives `[null, "HARD"]`.
   In `api.test.ts`, `rejects a failed or malformed answer` sets the fixture copy's `format` to 3 and
-  expects `Unsupported game record format: 3`.
+  expects `Unsupported game record format: 3`. (`the builders make valid data` is unchanged and
+  keeps passing: `makeRecord` is still format 1.)
 - [ ] **Step 2: Run** `cd frontend && npm test -- --run src/stats/record.test.ts
-  src/stats/api.test.ts`. Expected: FAIL (`botSkillOf` and `asFormatOne` missing; format 3 not
+  src/stats/api.test.ts`. Expected: FAIL (`botSkillOf` and `asFormatTwo` missing; format 3 not
   named; format 2 refused).
 - [ ] **Step 3: Implement** the Interfaces above, and update `record.ts`'s header comment and
   `parseStatsData`'s `@throws` for both formats.
@@ -254,6 +292,7 @@ The spec settles what players see. These settle what it leaves to the build.
   public static GameRecord of(String id, long startedAt, long endedAt, String outcome, boolean complete,
           SecretHitlerGame game, Map<String, String> seatAccounts, BotSkill botSkill,
           List<? extends Map<String, Object>> events)   // botSkill: the level the game's bots share, or null
+  // of never throws for the level: NORMAL when a seat is a CPU's and botSkill is null, null when no seat is
   ```
   `toJson` puts `"botSkill"` (the level's `name()`, or null) right after `"hasCpu"` and `FORMAT` in
   `"format"`.
@@ -267,8 +306,10 @@ The spec settles what players see. These settle what it leaves to the build.
   public static List<String> recordKeys(int format); // IllegalArgumentException for any format but 1 and 2
   ```
 - Produces in `TestRecords`: `record(String id, long endedAt, String outcome, List<GameRecord.Seat>
-  seats, BotSkill botSkill)`; the four-argument `record` gives `NORMAL` when a seat is a CPU's and
-  null otherwise; `driven` gives `NORMAL` when a seat has no account, else null.
+  seats, BotSkill botSkill)` (through the canonical constructor, so a mismatch throws); the
+  four-argument `record` gives `NORMAL` when a seat is a CPU's and null otherwise;
+  `driven(String id, Map<String, String> seatAccounts, BotSkill botSkill)` (through `of`), and the
+  two-argument `driven` is `driven(id, seatAccounts, BotSkill.NORMAL)`.
 - Produces in `RecordedGames`: `public static void seatBotsAt(Lobby lobby, BotSkill skill)`: under
   the lobby's lock, replaces each bot of the running game (`cpuPlayers`, read by reflection) with
   `new CpuPlayer(bot.myName, skill)` initialized on `lobby.game()`; a reflection failure is an
@@ -284,7 +325,9 @@ The spec settles what players see. These settle what it leaves to the build.
     (`TestRecords.seats("acct-1", …, "acct-5")`, each numbered, and null: the key is there, its value
     null, `hasCpu` false); `botSeatsNeedALevel` and
     `aLevelNeedsBotSeats` (`@Test(expected = IllegalArgumentException.class)`: CPU seats with null;
-    five human seats with `HARD`); `theFormatKnowsBothKeyLists` (`recordKeys(1)` is
+    five human seats with `HARD`, both through the constructor); `ofNeverRefusesALevel`
+    (`TestRecords.driven("g", ANN_AND_BOB, null).botSkill()` is `NORMAL`, and `driven` with all five
+    seats' accounts and `BotSkill.HARD` gives null); `theFormatKnowsBothKeyLists` (`recordKeys(1)` is
     `FORMAT_1_KEYS` with no `botSkill`; `recordKeys(2)` is `RECORD_KEYS`, with `botSkill` at
     `indexOf("hasCpu") + 1` and otherwise equal to format 1's; `recordKeys(3)` throws); and
     `theFormatsLevelsAreBotSkillsNames` (`BOT_SKILLS` equals the names of `BotSkill.values()` in
@@ -319,7 +362,8 @@ The spec settles what players see. These settle what it leaves to the build.
     `record!.format` 2 and `record!.botSkill` null (seven people, no bots).
 - [ ] **Step 2: Run** `cd backend && ./gradlew test --tests 'server.stats.*' --tests
   'server.util.LobbyRecordingTest' --tests 'server.DatabaseBackupTest'`. Expected: FAIL to compile
-  (`botSkill()`, `seatBotsAt`, the five-argument `record`, `recordKeys`).
+  (`botSkill()`, `seatBotsAt`, the five-argument `record`, the three-argument `driven`,
+  `recordKeys`).
 - [ ] **Step 3: Implement** the Interfaces above. Update the comments that name format 1 as the
   current one: `GameRecord`'s class comment and `toJson`'s, `RecordFormat`'s ("formats 1 and 2"),
   `GameRecordJsonTest`'s, `RecordedGamesFixtureTest`'s, `TimelineDiff`'s (its events are both
@@ -374,7 +418,7 @@ The spec settles what players see. These settle what it leaves to the build.
   `players/PlayerPage.test.tsx`, `game/GameHeader.test.tsx`
 
 **Interfaces:**
-- Consumes: Task 2's `BotSkill`, `botSkillOf`, `asFormatOne`.
+- Consumes: Task 2's `BotSkill`, `botSkillOf`, `asFormatTwo`.
 - Produces in `format.ts`: `botsLabel(skill: BotSkill | null): string` (`"Easy bots"`, `"Normal
   bots"`, `"Hard bots"`, `"Bots"` for null).
 - Produces in `player.ts`: `LatestGame.botSkill: BotSkill | null` (after `cpu`: its bots' level,
@@ -389,23 +433,26 @@ The spec settles what players see. These settle what it leaves to the build.
 - [ ] **Step 1: Write the failing tests.**
   - `format.test.ts`: `botsLabel` gives `"Bots"`, `"Easy bots"`, `"Normal bots"`, `"Hard bots"` for
     `null`, `EASY`, `NORMAL`, `HARD`.
-  - `GameRow.test.tsx`: `tags a game with Bots and reads an unfinished one` builds its bots game
-    with `asFormatOne(…)` (tag `/^Bots$/`, link `… · Hitler elected · with Bots`, unchanged); new
-    `tags a game with its bots' level`: for each level, the same game in format 2 has the tag
-    `^Easy bots$`, `^Normal bots$` or `^Hard bots$`, and at `HARD` its link is named `Sat 14 Nov
-    2026, 9:42 PM · Fascists win · Hitler elected · with Hard bots`.
+  - `GameRow.test.tsx`: new `tags a game with its bots' level`: for each level,
+    `asFormatTwo(<the bots game of "tags a game with Bots…">, skill)` has the tag `^Easy bots$`,
+    `^Normal bots$` or `^Hard bots$`, and at `HARD` its link is named `Sat 14 Nov 2026, 9:42 PM ·
+    Fascists win · Hitler elected · with Hard bots`.
   - `GameHeader.test.tsx`: new `names the bots' level for a game with bots`:
-    `fiveSeatGame([], { botSkill: "HARD" })`'s `p.game-facts` ends ` · board 5 L, 2 F · Hard bots`;
-    `asFormatOne(fiveSeatGame([]))`'s ends ` · board 5 L, 2 F`; `makeRecord()`'s has no `bots`.
+    `asFormatTwo(fiveSeatGame([]), "HARD")`'s `p.game-facts` ends ` · board 5 L, 2 F · Hard bots`;
+    `fiveSeatGame([])`'s (format 1) ends ` · board 5 L, 2 F`; `makeRecord()`'s has no `bots`.
   - `player.test.ts`: `annsLatestGames`' `toEqual` of `latest[0]` adds `botSkill: null`; new
-    `latestGamesCarryTheirBotsLevel` (a newest game of Ann's with bots at `HARD` gives `HARD`, the
-    same game as `asFormatOne` gives null).
+    `latestGamesCarryTheirBotsLevel` (a newest game of Ann's with bots, `asFormatTwo(played(…),
+    "HARD")`, gives `HARD`; the same game left in format 1 gives null).
   - `PlayerPage.test.tsx`: new `latestGamesNameTheirBotsLevel`: `view(1, DEFAULT_FILTER, …)` with
-    the sample data plus a newest game of Ann's with bots at `HARD` and an older one in format 1;
-    their rows' `.games-row-cpu` read `/^Hard bots$/` and `/^Bots$/`. (`latestGamesLinkToTheirGames`
-    stays: a record with no level says "Bots".)
+    the sample data plus a newest game of Ann's with bots, `asFormatTwo(…, "HARD")`, and an older
+    one in format 1; their rows' `.games-row-cpu` read `/^Hard bots$/` and `/^Bots$/`.
+  - **Regression guards, not failing-first tests** (they pass before and after this task; do not
+    hunt for a red in them): `GameRow.test.tsx`'s `tags a game with Bots and reads an unfinished
+    one` and `PlayerPage.test.tsx`'s `latestGamesLinkToTheirGames` stay exactly as they are. Their
+    games are format 1 (`makeRecord`, `played`), so they must still say "Bots" and `· with Bots`.
 - [ ] **Step 2: Run** `npm test -- --run src/stats/format.test.ts src/stats/games
-  src/stats/player.test.ts src/stats/players src/stats/game`. Expected: FAIL.
+  src/stats/player.test.ts src/stats/players src/stats/game`. Expected: the new tests and
+  `annsLatestGames` FAIL; the two regression guards pass.
 - [ ] **Step 3: Implement** the Interfaces above.
 - [ ] **Step 4: Run** `npm test -- --run && npm run build`. Expected: PASS.
 - [ ] **Step 5: Commit** `feat(frontend): name the bots' level on the stats pages`, ticking the
@@ -469,14 +516,15 @@ The spec settles what players see. These settle what it leaves to the build.
   bots", "Hard bots"; "Bots" for a format 1 record), and the game page's header the level of a
   game with bots. "PLAYERS and the player page": latest games carry the same tag.
 - [ ] **Step 3: `CLAUDE.md`**, in its game records and stats sections only: `GameRecord` (its
-  `botSkill`, null exactly when no seat is a bot's); `handOverGame` (the level from the running
-  game's bots, `seatedBotSkill`, never the lobby's choice); `GameStore` (`toJson`'s format 2 with
+  `botSkill`, null exactly when no seat is a bot's, which the constructor enforces, and `of`, which
+  never throws for it); `handOverGame` (the level from the running game's bots, `gameBotSkill()`,
+  never the lobby's choice); `GameStore` (`toJson`'s format 2 with
   `botSkill` after `hasCpu`; a record saved earlier stays format 1 and is served as stored); the
   contract fixture (its games with bot seats labelled Easy, Normal and Hard in turn, `(k / 6) % 3`,
   labels only); `RecordFormat` (both formats: `FORMAT_1_KEYS`, `RECORD_KEYS`, `recordKeys`,
-  `BOT_SKILLS`); `RecordedGames.seatBotsAt`; `record.ts` (formats 1 and 2, `BOT_SKILLS`,
-  `botSkillOf`, the format error); `testRecords.ts` (`makeRecord` format 2 with no bots,
-  `asFormatOne`); `format.ts` (`botsLabel`); GAMES' `GameRow` (the tag, its words, the link name,
+  `BOT_SKILLS`); `RecordedGames.seatBotsAt`; `record.ts` (formats 1 and 2, `BOT_SKILLS` and why
+  they are the stats' own, `botSkillOf`, the format error, a format 2 level that must agree with
+  `hasCpu`); `testRecords.ts` (`makeRecord` still format 1, `asFormatTwo`); `format.ts` (`botsLabel`); GAMES' `GameRow` (the tag, its words, the link name,
   `white-space: nowrap`); `PlayerPage`'s Latest games (the tag of the level); `GameHeader` (the
   level after the board); `bigStatsData()` (formats by number, levels by sixes); `recorder.spec.ts`
   (format 2, `botSkill` null); and the three specs' new checks.
@@ -520,15 +568,28 @@ The spec settles what players see. These settle what it leaves to the build.
   Changes (server, page); Decisions (this plan's); Known limits (the level of a game recorded
   before this phase was never kept, so it says "Bots" for good; a rollback to a build before this
   phase serves format 2 records that its page refuses, so the stats show their load error until
-  this build is back; the fixture's levels are labels); Review; Tests (with counts). "Part of #72",
-  never a closing keyword. Read it back (`gh pr view --json body`).
-- [ ] **Step 2: Bring CI to green,** fixing on the branch and pushing until every job passes. When
-  `development` moves (25B and 26A merge while this is open), rebase, keep both sides of
-  `Lobby.java`, `CLAUDE.md` and `README.md`, re-run the backend tests, the unit tests and the
-  stats specs, push with `--force-with-lease` and re-pin the links. If 26A is in `development` by
-  then, add `aGameStartedAtHardRecordsHard` to `LobbyRecordingTest` (`lobby.setBotSkill(BotSkill.HARD)`
-  before `startNewGame()`, `stepCpusToTheEnd`, the record says `HARD`) in a commit of its own.
-- [ ] **Step 3: Merge (the manager session), only once 25B has merged and CI is green: the user gave a standing OK for these five phase pull requests.**
+  this build is back; a stats page left open across the deploy keeps the old script, which shows
+  its load error for format 2 records until the page is reloaded; the fixture's levels are labels);
+  Review; Tests (with counts). "Part of #72", never a closing keyword. Read it back (`gh pr view
+  --json body`).
+- [ ] **Step 2: Bring CI to green,** fixing on the branch and pushing until every job passes. **The
+  builder's work ends here:** it hands back the PR's number, its head sha, and the PR's Review and
+  Tests lists. It does not wait for another phase.
+- [ ] **Step 3 (manager-triggered, after 25D merges): rebase onto it.** The manager resumes the
+  builder or does it itself: `git fetch origin`, `git rebase origin/development`, conflicts as
+  Global Constraints says (keep both sides in `docs/PLAN.md`, `DEVELOPMENT.md`, `CLAUDE.md`,
+  `README.md` and `Lobby.java`; any other: stop and report), re-run the tests the conflicts touch
+  (and `./gradlew test`, since 25D changed the bots), push with `--force-with-lease`, re-pin the
+  screenshot links in the PR body to the new head, and bring CI to green again.
+- [ ] **Step 4 (manager-triggered, after 26A merges): rebase onto it and add the cross-check.** The
+  same rebase as Step 3, keeping 26A's `Lobby` field, command, packet, `readObject`, `startNewGame`
+  and `seatedBotSkills()` beside this phase's `handOverGame` and `gameBotSkill()`. Then add
+  `aGameStartedAtHardRecordsHard` to `LobbyRecordingTest`: a new lobby,
+  `lobby.setBotSkill(BotSkill.HARD)` before `startNewGame()`, `stepCpusToTheEnd(lobby)`, and the
+  record's `botSkill()` is `HARD`. Commit it alone, `test(backend): check a game started at hard
+  records hard`, run `./gradlew test`, push with `--force-with-lease`, re-pin the links, and bring
+  CI to green again.
+- [ ] **Step 5 (manager-triggered): merge, only once 25D and 26A have merged and CI is green: the user gave a standing OK for these phase pull requests of #72.**
   Each part is skipped when already done: if the "PR merged into `development`" box is not ticked
   on the branch, commit `docs(plan): tick phase 26b's merge` (the box and the Progress row "done"),
   push and wait for green; if `gh pr view <n> --repo jussaw/Secret-Hitler-Online --json state` is
@@ -550,11 +611,12 @@ The spec settles what players see. These settle what it leaves to the build.
   table and `CLAUDE.md` (Task 7); the spec's Tests "26B": `GameRecordJsonTest`, `GameStoreTest`,
   `RecordFormat` and `RecordedGamesFixtureTest`, the lobby test, Vitest for `parseStatsData` and
   each tag (Tasks 2 to 5). The spec's Acceptance line "GAMES then lists it with 'Hard bots'" is
-  built when both 26A and 26B are in (Task 9, Step 2, and the user's game).
+  checked once 26A is in (Task 9, Step 4's `aGameStartedAtHardRecordsHard`, and the user's game).
 - **Anti-goals:** backups still load and their bots read Normal
   (`aBotFromABackupBeforeLevelsIsRecordedNormal`); no protocol change; no lobby fit at stake (the
   lobby is untouched).
 - **Names:** `BotSkill`, `CpuPlayer(String, BotSkill)`, `skill()`, `botSkill`, `FORMAT = 2` as the
-  spec's table; nothing named `Lobby.botSkill()` or `setBotSkill`; `botSkillOf`, `botsLabel`,
-  `asFormatOne`, `seatBotsAt`, `seatedBotSkill`, `recordKeys`, `FORMAT_1_KEYS` and `BOT_SKILLS` used
-  the same way in every task.
+  spec's table; nothing named `Lobby.botSkill()` or `setBotSkill` (26A's, used only in Task 9, Step
+  4); `botSkillOf`, `botsLabel`, `asFormatTwo`, `seatBotsAt`, `gameBotSkill()` (never 26A's
+  test-only `seatedBotSkills()`), `recordKeys`, `FORMAT_1_KEYS` and `BOT_SKILLS` used the same way
+  in every task.

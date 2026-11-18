@@ -186,7 +186,7 @@ already plays liberal policies to look clean, and keeps its play.
 Scores stay from −5 to +5 but may carry fractions where a rule scales an amount (rule 5).
 
 The fascist side gets fewer rules, so it may fail the checks (below). If the ladder check fails on
-the fascist side, or the balance check fails with all-Hard liberals too far ahead, Phase 25B may add
+the fascist side, or the balance check fails with all-Hard liberals too far ahead, Phase 25D may add
 rules for the fascist side beyond these seven, each keeping the no-peeking rule, with its own test,
 and listed in its pull request. It stops to ask if a check still fails after that, or fails in a
 way extra fascist-side rules cannot help (its plan gives the exact stop conditions).
@@ -194,7 +194,8 @@ way extra fascist-side rules cannot help (its plan gives the exact stop conditio
 1. **Cleared players.** A chancellor elected after 3 fascist policies, when the game does not end,
    is not Hitler. A Hard liberal bot keeps that list, prefers those players when it nominates, votes
    yes for a government whose chancellor is on it, and with 3 or more fascist policies votes no on a
-   chancellor who is not on it unless that player's score is +3 or more.
+   chancellor who is not on it unless that player's score is +3 or more. Where its own investigation
+   found the president or the chancellor fascist, it votes as Normal does.
 2. **The chancellor's hand.** A bot learns nothing from the two cards a president hands it today
    (`handleLegislativeChancellor`). A Hard liberal bot as chancellor lowers the president's score
    for two fascist cards and raises it for two liberal cards, the drop scaled by the deck's odds
@@ -206,7 +207,7 @@ way extra fascist-side rules cannot help (its plan gives the exact stop conditio
 4. **The peek.** A Hard bot president that peeks keeps the three cards it saw (thrown away today,
    `handlePresidentialPowerPeek`). If it is liberal and those cards held a liberal, and the next
    government draws them (no reshuffle between) and enacts a fascist policy, it lowers both
-   members' scores.
+   members' scores, as an onlooker only (not when it sits in that government).
 5. **Deck odds.** An onlooker's −1 for a fascist policy is weak evidence when the deck is mostly
    fascist. A Hard bot scales it by how unlikely an all-fascist hand was, worked out from the 17-card
    deck (6 liberal, 11 fascist), the policies on the board and the piles' sizes
@@ -270,15 +271,15 @@ bot phase's pull request quotes before and after.
 **The ladder check.** For each side, its win rate pooled over sizes 5 to 10 must rise with its level
 against Normal opponents: Easy below Normal below Hard, the two rates' 95% intervals not
 overlapping at each step. Per size, a higher level's rate must not be lower with the intervals not
-overlapping. Phase 25B's pull request shows
+overlapping. Phase 25D's pull request shows
 the full table. If Hard's fascist side cannot clear Normal by the margin, even with the extra
-fascist-side rules allowed above, Phase 25B says so and why, and stops to ask, rather than shipping a
+fascist-side rules allowed above, Phase 25D says so and why, and stops to ask, rather than shipping a
 weaker check.
 
 **The balance check.** A real lobby gives every bot one level, so `-Pladder` also plays all-Easy,
 all-Normal and all-Hard games. The user's target: pooled over sizes 5 to 10, the liberal win rate in
 all-Hard games stays within 10 percentage points of the all-Normal rate, so a person dealt either
-side in a Hard lobby has about the chance they would have in a Normal one. Phase 25B tunes toward
+side in a Hard lobby has about the chance they would have in a Normal one. Phase 25D tunes toward
 both checks and reports both. If they pull against each other (the ladder needs a rule that tips
 all-Hard games past the band), it stops and asks.
 
@@ -318,9 +319,11 @@ level shows in this one place only: the roster's bot rows and the status line st
 
 **Fit.** The new line is about 50px on a phone. The lobby must still fit one screen as the
 Constraints say, for the host, a guest and every spectator viewer `longestLineViewers` covers, with
-ten players. If BOT SKILL and its three buttons do not fit one line at 320px with Linux fonts, the
-label may shorten to SKILL at that width. If the lobby no longer fits at 360x740 or 412x915 for some
-viewer, Phase 26A stops and asks before falling back to option D.
+ten players. If BOT SKILL and its three buttons do not fit one line at a phone width (360x740,
+412x915 or 320x568) with Linux fonts, after the row's own spacing is tightened, the label may
+shorten to SKILL at that width. If the row still takes two lines at any tested size, or the lobby
+no longer fits one screen at any tested size for some viewer, Phase 26A stops and asks, with the
+widths and heights it measured, before falling back to option D.
 
 ### The records (Phase 26B)
 
@@ -345,7 +348,8 @@ a format 1 record. The tag keeps its look; its 320px fit is checked by the stats
 
 ### Names the phases share
 
-25B, 26A and 26B run at the same time once 25A has merged, so these names are fixed here:
+25B, 25C and 25D (one after the other), 26A and 26B run at the same time once 25A has merged, so these names
+are fixed here:
 
 | Name | Where | Made in |
 |---|---|---|
@@ -359,7 +363,7 @@ a format 1 record. The tag keeps its look; its 320px fit is checked by the stats
 | `set-bot-skill`, `skill`, `botSkill` | `SecretHitlerServer` constants, `frontend/src/types/commands.ts` | 26A |
 | Record key `botSkill`, `GameRecord.FORMAT = 2` | `GameRecord`, `frontend/src/stats/record.ts` | 26B |
 
-File owners while they run: 25B owns `CpuPlayer.java` and the bot tests; 26A owns `LobbyScreen.*`,
+File owners while they run: 25B, 25C and 25D in turn own `CpuPlayer.java` and the bot tests; 26A owns `LobbyScreen.*`,
 `App.tsx`'s lobby state, `SecretHitlerServer`'s command, and `Lobby`'s field, command and
 `startNewGame`; 26B owns `server/stats/`, `frontend/src/stats/` and `Lobby.handOverGame`. `CLAUDE.md`
 and `README.md` are edited by each in its own section, and the later to merge rebases.
@@ -369,16 +373,19 @@ and `README.md` are edited by each in its own section, and the later to merge re
 | Phase | What | Needs |
 |---|---|---|
 | 24. Bot fixes and self-play | Pin `CpuPlayer`'s `serialVersionUID`; the weighted pick, teammate executions and re-pick loops fixed; the shared bot step; `botMatches` with today's bots | — |
-| 25A. Bot skill levels | `BotSkill`; a bot's level; Easy's mistakes; per-side levels in `botMatches`; the no-peeking test; Hard's rules 1, 2 and 4 | 24 |
-| 25B. Hard bots | Hard's rules 3, 5, 6 and 7; tuning until the ladder check passes | 25A |
-| 26A. Bot skill in the lobby | The lobby's level, `set-bot-skill`, `botSkill`, the BOT SKILL row and the guests' line | 25A to build, 25B to merge |
-| 26B. Bot skill in the records | Format 2 with `botSkill`, the readers, the fixture and the stats pages' tags | 25A to build, 25B to merge |
+| 25A. Bot skill levels | `BotSkill`; a bot's level; Easy's mistakes, tuned; per-side levels and the checks in `botMatches`; the no-peeking test | 24 |
+| 25B. Hard's first rules | Hard's rules 1, 2 and 4, each in the no-peeking test; Hard not below Normal | 25A |
+| 25C. Hard's other rules | Hard's rules 3, 5, 6 and 7, each in the no-peeking test, with rule 2 scaled by rule 5 | 25B |
+| 25D. Ladder and balance | Tuning the amounts (and any extra fascist-side rules) until the ladder and balance checks pass | 25C |
+| 26A. Bot skill in the lobby | The lobby's level, `set-bot-skill`, `botSkill`, the BOT SKILL row and the guests' line | 25A to build, 25D to merge |
+| 26B. Bot skill in the records | Format 2 with `botSkill`, the readers, the fixture and the stats pages' tags | 25A to build, 25D to merge |
 
-26A and 26B are built alongside 25B but merge after it. Every merge into `development` publishes
-the image the home server pulls, so HARD reaches players, and records start saying "Hard bots",
-only once Hard has passed the ladder check.
+26A and 26B are built alongside 25B to 25D but merge after 25D, in the order 25D, 26A, 26B. Every merge
+into `development` publishes the image the home server pulls, so HARD reaches players, and records
+start saying "Hard bots", only once Hard has passed the ladder check. 26B, merging last, adds the
+test that a game started at Hard in a lobby is recorded as Hard.
 
-24, 25A and 25B each change what bots do, so each quotes `botMatches` before and after. 24, 25A and 25B
+24 and 25A to 25D each change what bots do, so each quotes `botMatches` before and after. 24 and 25A to 25D
 change nothing on screen; 26A and 26B show before-and-after screenshots at a desktop and a phone
 size (`CLAUDE.md`, Workflow).
 
@@ -391,10 +398,15 @@ size (`CLAUDE.md`, Workflow).
   step (`RandomGamesReplayTest` and the lobby's CPU tests still pass unchanged). The fast self-play
   test. `DatabaseBackupTest` still loads older backups with the pinned UID.
 - **25A:** a test per Easy decision kind (a random legal move happens at about the set rate, and
-  never an illegal one); a test per Hard rule; the no-peeking test; a bot restored from a pre-level
-  backup plays `NORMAL`; the fast self-play test at every pairing of levels.
-- **25B:** a test per Hard rule (and per extra fascist-side rule, if any); the ladder and balance
-  checks' output in the pull request.
+  never an illegal one); the no-peeking test, with seeds mixed so each seed's draws differ, open
+  votes hidden until the election closes, and every pair of other seats swapped; a bot restored
+  from a pre-level backup plays `NORMAL`; the fast self-play test at every pairing of levels.
+- **25B:** a test per Hard rule (1, 2 and 4), each also in the no-peeking test; a Hard bot's memory
+  through a backup; Hard not below Normal in `-Pladder`.
+- **25C:** a test per Hard rule (3, 5, 6 and 7), each also in the no-peeking test; deck odds through
+  a reshuffle.
+- **25D:** a test per extra fascist-side rule, if any; the ladder and balance checks' output in the
+  pull request, from two confirming runs pooled.
 - **26A:** backend tests beside `LobbyStartTest` and `BotCountServerTest`: the command (host only,
   known levels only, dropped during a game), the packet field for players and spectators, a start at
   each level seats bots of that level, the level kept after a game and back to Normal after a restore.
@@ -411,14 +423,14 @@ size (`CLAUDE.md`, Workflow).
 ## Docs
 
 Each phase updates `CLAUDE.md` for what it changed: the bots and their levels and the self-play run
-(24 to 25B, including the line that `CpuPlayer` pins no `serialVersionUID`, which 24 changes), the
+(24 to 25D, including the line that `CpuPlayer` pins no `serialVersionUID`, which 24 changes), the
 lobby and the protocol line under Constraints (26A: one command and one field), and the record's
 format (26B). `README.md`'s list of what the fork adds gains bot levels (26A). `DEVELOPMENT.md`
 gains `./gradlew botMatches` (24). The game stats design's record table gains `botSkill` (26B).
 
 ## Acceptance
 
-- `botMatches -Pladder` shows the ladder and the balance band (Phase 25B), and every level finishes
+- `botMatches -Pladder` shows the ladder and the balance band (Phase 25D), and every level finishes
   every game it plays.
 - The no-peeking test passes for every level and every Hard rule.
 - In a lobby, the host sets each level and a guest and a spectator see it; a game started at Hard

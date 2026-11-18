@@ -447,6 +447,8 @@ task botMatches(type: JavaExec) {
     the seven others is investigated at least once.
 - [ ] **Step 2: Run** `./gradlew test --tests 'game.testCpuPlayer'`. Expected: the two teammate
   tests and the investigation test FAIL (the last by its 10 s limit); the Hitler-at-7 test passes.
+  The failing investigation test leaves its daemon thread spinning until the test JVM exits;
+  that is expected and ends once Step 3 lands.
 - [ ] **Step 3: Implement** as in Interfaces.
 - [ ] **Step 4: Run** `./gradlew test`. Expected: PASS.
 - [ ] **Step 5: Take the "after" table:** `./gradlew -q botMatches | tee
@@ -520,8 +522,8 @@ task botMatches(type: JavaExec) {
   - What the phase does (the pin, the step, the run, the three fixes).
   - "This PR changes nothing on screen." in place of the screenshot table.
   - `botMatches` before (the bots as on `development`) and after, each its file verbatim in a code
-    block with its run time, and under them a line for each row whose liberal rate moved beyond
-    both intervals.
+    block with its run time, and under them a line for each row whose liberal rate moved with the
+    two 95% intervals not overlapping.
   - Decisions (this plan's).
   - Review (each finding and what was done).
   - Tests (the counts).
@@ -533,7 +535,7 @@ task botMatches(type: JavaExec) {
   passes. If `development` moves while it is open, rebase (keep both sides of `CLAUDE.md` and
   `docs/PLAN.md`), run `./gradlew test`, and push with `--force-with-lease`. The phase's work ends
   here, with the PR open and green.
-- [ ] **Step 3: Merge (the manager session, once CI is green: the user gave a standing OK for these five phase pull requests).** Each part is
+- [ ] **Step 3: Merge (the manager session, once CI is green: the user gave a standing OK for these phase pull requests of #72).** Each part is
   skipped when already done, so the step can be resumed:
   - If the "PR merged into `development`" box is not ticked on the branch, commit `docs(plan):
     tick phase 24's merge` (that box and the Progress row "done"), push, and wait for green.
