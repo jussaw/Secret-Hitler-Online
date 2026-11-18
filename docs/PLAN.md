@@ -59,6 +59,11 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 22A. Trophies and name links | `phase-22a-trophies-links` | done |
 | 22B. Player pages | `phase-22b-player-pages` | done |
 | 23. One header for the site | `phase-23-site-header` | done |
+| 24. Bot fixes and self-play | `phase-24-bot-fixes` | planned |
+| 25A. Bot skill levels | `phase-25a-bot-levels` | planned |
+| 25B. Hard bots | `phase-25b-hard-bots` | planned |
+| 26A. Bot skill in the lobby | `phase-26a-lobby-bot-skill` | planned |
+| 26B. Bot skill in the records | `phase-26b-record-bot-skill` | planned |
 
 ---
 
@@ -1085,6 +1090,111 @@ Added after Phases 13 to 22B were planned. The stats pages' top bar (SECRET-HITL
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
 - [x] PR merged into `development`
 - [ ] The user opens the deployed build on a desktop and a phone and moves between the login page and the stats with the header
+
+---
+
+## Phases 24 to 26B: Bot skill
+
+Spec: [`docs/superpowers/specs/2026-11-17-bot-skill-design.md`](superpowers/specs/2026-11-17-bot-skill-design.md), whose "Names the phases share" pins the names and file owners the phases share
+
+Issue #72: fix the bots, measure them with a self-play run, give them three levels (Easy, Normal and Hard) and let the host choose the level in the lobby, and keep each game's level in its record. Five phases, each its own branch and pull request, each built by one subagent from its breakdown; a manager session runs them. They run in three waves: **24**; **25A**; **25B, 26A and 26B** at the same time, with 26A and 26B merged only after 25B, so Hard reaches players, and records start saying "Hard bots", once it has passed the ladder and balance checks.
+
+---
+
+## Phase 24: Bot fixes and self-play
+
+Breakdown: [`docs/superpowers/plans/2026-11-17-phase-24-bot-fixes.md`](superpowers/plans/2026-11-17-phase-24-bot-fixes.md) · Spec: [`docs/superpowers/specs/2026-11-17-bot-skill-design.md`](superpowers/specs/2026-11-17-bot-skill-design.md), "The bug fixes every level gets", "One bot step" and "The self-play run"
+
+Issue #72, parts 1 and 2. Backend only; changes nothing on screen.
+
+- [ ] `CpuPlayer` pins its `serialVersionUID` at the value Java computed before any change (`2392054316009854878L`), and older backups still load
+- [ ] The weighted pick draws in proportion to the weights (#72's cases within a tolerance); a weight of 0 is never picked unless all are, then the pick is uniform
+- [ ] A fascist bot or Hitler never executes a known teammate; investigation and execution pick only among allowed players, with no re-pick loop
+- [ ] `game.CpuTurn.step` is the one bot step, used by `Lobby`, `CpuGames` and the self-play run
+- [ ] `./gradlew botMatches` prints win rates with 95% intervals and each ending's share, per table size 5 to 10 and pooled, and fails a game past 2,000 moves; `BotMatchesTest` keeps `./gradlew test` fast
+- [ ] `CLAUDE.md` and `DEVELOPMENT.md` updated; the pull request quotes `botMatches` before and after the fixes
+
+**Phase 24 acceptance**
+
+- [ ] Backend tests pass
+- [ ] PR merged into `development`
+
+---
+
+## Phase 25A: Bot skill levels
+
+Breakdown: [`docs/superpowers/plans/2026-11-17-phase-25a-bot-levels.md`](superpowers/plans/2026-11-17-phase-25a-bot-levels.md) · Spec: [`docs/superpowers/specs/2026-11-17-bot-skill-design.md`](superpowers/specs/2026-11-17-bot-skill-design.md), "Levels", "The self-play run" and "The no-peeking test"
+
+Issue #72, part 3's first half. Backend only; changes nothing on screen. Starts once 24 has merged.
+
+- [ ] `game.BotSkill` (Easy, Normal, Hard); `CpuPlayer(String name, BotSkill skill)` and `skill()`; a bot from an older backup plays Normal
+- [ ] Easy makes a random legal move at `EASY_MISTAKE_CHANCE` of its decisions, never one that throws the game for its own side; the value is set from the self-play run
+- [ ] Hard's rules 1 (cleared players), 2 (the chancellor's hand) and 4 (the peek), each with its own tests
+- [ ] The no-peeking test: a bot decides the same in two games its seat cannot tell apart, for each level, each decision kind and each Hard rule so far
+- [ ] `botMatches` takes `-Pliberals`, `-Pfascists` and `-Pladder` (the ladder and balance pairings side by side), and `BotMatchesTest` plays every pairing
+- [ ] `CLAUDE.md` and `DEVELOPMENT.md` updated; the pull request quotes `botMatches -Pladder` before and after
+
+**Phase 25A acceptance**
+
+- [ ] Backend tests pass
+- [ ] PR merged into `development`
+
+---
+
+## Phase 25B: Hard bots
+
+Breakdown: [`docs/superpowers/plans/2026-11-17-phase-25b-hard-bots.md`](superpowers/plans/2026-11-17-phase-25b-hard-bots.md) · Spec: [`docs/superpowers/specs/2026-11-17-bot-skill-design.md`](superpowers/specs/2026-11-17-bot-skill-design.md), "Hard's rules" and "The self-play run"
+
+Issue #72, part 3's second half. Backend only; changes nothing on screen. Starts once 25A has merged, beside 26A and 26B, and merges before them.
+
+- [ ] Hard's rules 3 (votes), 5 (deck odds, which also scales rule 2), 6 (the election tracker) and 7 (fascists bluff), each with its own tests and in the no-peeking test
+- [ ] The ladder check passes: each side's pooled win rate rises Easy, Normal, Hard against Normal opponents, each step beyond both 95% intervals, and no size lower beyond them
+- [ ] The balance check passes: the pooled liberal win rate of all-Hard games is within 10 points of all-Normal's
+- [ ] Any extra fascist-side rule the checks needed keeps the no-peeking rule, has its own tests and is listed in the pull request
+- [ ] `CLAUDE.md` updated; the pull request quotes the full `botMatches -Pladder` table before and after
+
+**Phase 25B acceptance**
+
+- [ ] Backend tests pass
+- [ ] PR merged into `development`
+
+---
+
+## Phase 26A: Bot skill in the lobby
+
+Breakdown: [`docs/superpowers/plans/2026-11-17-phase-26a-lobby-bot-skill.md`](superpowers/plans/2026-11-17-phase-26a-lobby-bot-skill.md) · Spec: [`docs/superpowers/specs/2026-11-17-bot-skill-design.md`](superpowers/specs/2026-11-17-bot-skill-design.md), "The lobby (Phase 26A)"
+
+Issue #72, part 4. Starts once 25A has merged; merges after 25B.
+
+- [ ] `Lobby` keeps the host's level (Normal in a new lobby, kept after a game, Normal after a restore) and seats bots at it; `set-bot-skill` (host only, known levels, dropped during a game); every lobby packet carries `botSkill`
+- [ ] The host's BOT SKILL row under START GAME's row (EASY, NORMAL, HARD), on even with no bots to seat; guests and spectators see the level on a line in the same place
+- [ ] The lobby still fits one screen for every viewer at every tested size, with 44px targets on phones, checked with Linux fonts too
+- [ ] `CLAUDE.md` (the lobby and the protocol line) and `README.md` updated; the pull request shows the lobby before and after, on desktop and on a phone
+
+**Phase 26A acceptance**
+
+- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [ ] PR merged into `development`
+- [ ] The user plays a game against Hard bots on the deployed build, with a guest who sees the level
+
+---
+
+## Phase 26B: Bot skill in the records
+
+Breakdown: [`docs/superpowers/plans/2026-11-17-phase-26b-record-bot-skill.md`](superpowers/plans/2026-11-17-phase-26b-record-bot-skill.md) · Spec: [`docs/superpowers/specs/2026-11-17-bot-skill-design.md`](superpowers/specs/2026-11-17-bot-skill-design.md), "The records (Phase 26B)"
+
+Issue #72's records, decided in the design. Starts once 25A has merged; merges after 25B.
+
+- [ ] Records are format 2 with `botSkill` after `hasCpu` (a level's name, or null without bots); format 1 records stay as stored and are still served and read
+- [ ] The contract fixture is made again with levels in turn, and `RecordFormat` and the replay checks know both formats
+- [ ] GAMES rows and a player's latest games say "Easy bots", "Normal bots" or "Hard bots" ("Bots" for format 1), and a game's page names the level
+- [ ] The game stats design's record table and `CLAUDE.md` updated; the pull request shows a GAMES row and a game page before and after, on desktop and on a phone
+
+**Phase 26B acceptance**
+
+- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [ ] PR merged into `development`
+- [ ] The user closes issue #72 once every phase (24 to 26B) is merged
 
 ---
 
