@@ -31,9 +31,12 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
 
   /**
    * The share of an Easy CPU's decisions that are a random legal move instead
-   * of Normal's.
+   * of Normal's. Set from {@code botMatches -Pladder}: one 0.05 notch above
+   * 0.10, the lowest value at which each side's Easy bots still won clearly
+   * less often than Normal ones against Normal opponents, so the ladder is not
+   * marginal by design.
    */
-  public static final double EASY_MISTAKE_CHANCE = 0.25;
+  public static final double EASY_MISTAKE_CHANCE = 0.15;
 
   /** The chancellor's veto among its moves, beside the indices of its two cards. */
   private static final int VETO = -1;
