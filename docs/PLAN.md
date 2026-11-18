@@ -1251,10 +1251,10 @@ Breakdown: [`docs/superpowers/plans/2026-11-18-phase-27a-sortable-tables.md`](su
 
 Issue #109, first part. Its branch holds the spec and both phases' plans.
 
-- [ ] The shared sort rules (`sorting.ts`) and heads (`SortHead.tsx`): a press sorts, a second turns it round, missing values last either way, ties in the table's own order, each table opening as it does today with its opening head marked
-- [ ] PLAYERS on the shared pieces, with nothing anyone can see or a test can tell changed
-- [ ] The 39 `RankedTable` cards sort by `#`, Player, their value and, on the 18 that have one, their count, each row keeping its rank; the power ranking and RECORDS' best weeks and months sort by any column
-- [ ] Every stats page still passes `checkStatsPage` at every size in all four projects, a ranked table never scrolls sideways at 320px, checked with Linux fonts too
+- [x] The shared sort rules (`sorting.ts`) and heads (`SortHead.tsx`): a press sorts, a second turns it round, missing values last either way, ties in the table's own order, each table opening as it does today with its opening head marked
+- [x] PLAYERS on the shared pieces, with nothing anyone can see or a test can tell changed
+- [x] The 39 `RankedTable` cards sort by `#`, Player, their value and, on the 18 that have one, their count, each row keeping its rank; the power ranking and RECORDS' best weeks and months sort by any column
+- [x] Every stats page still passes `checkStatsPage` at every size in all four projects, a ranked table never scrolls sideways at 320px, checked with Linux fonts too
 - [ ] `CLAUDE.md` and `README.md` updated; the pull request shows the power ranking, OVERVIEW's headline cards, a best week and PLAYERS before and after, on desktop and on a phone
 
 **Phase 27A acceptance**
