@@ -306,17 +306,19 @@ does not survive losing that host.
 ### The record
 
 A record is one JSON object, the same in the database, in the response the stats read and in the
-page's types. Format 1:
+page's types. Its formats: 1, and 2 since Phase 26B, which adds `botSkill` after `hasCpu`. A record
+keeps the format it was saved in, so a database holds both, and the page reads both:
 
 | Field | Meaning |
 |---|---|
 | `id` | The game's ID: a random UUID made when the game starts |
-| `format` | `1` |
+| `format` | `1` or `2` (2 since Phase 26B; a record keeps the format it was saved in) |
 | `startedAt`, `endedAt` | Epoch milliseconds (UTC) |
 | `outcome` | `LIBERAL_POLICIES`, `HITLER_EXECUTED`, `FASCIST_POLICIES`, `HITLER_ELECTED` or `UNFINISHED` |
 | `winner` | `LIBERAL`, `FASCIST`, or `null` when unfinished |
 | `complete` | `false` when the timeline does not start at the game's start (see Restored games) |
 | `hasCpu` | Whether any seat was a CPU player |
+| `botSkill` | Format 2: `EASY`, `NORMAL` or `HARD`, the level of the game's bots (every bot of a game shares one), or `null` when no seat was a bot. Format 1 has no such key, read as `null` |
 | `liberalPolicies`, `fascistPolicies` | The board at the end |
 | `rounds` | The last round number |
 | `seats` | In turn order (a seat's index is its number in `events`): `player` (the player number, `null` for a CPU player), `name` (the name at the time), `cpu`, `role` (`LIBERAL`, `FASCIST` or `HITLER`), `alive` (at the end) |
@@ -692,12 +694,15 @@ filter; it has its own, also in the address:
 
 Each row shows the local date and time, the length, the result ("Liberals win · 5 Liberal policies",
 "Fascists win · Hitler elected", "Unfinished after round 6 · 4 L, 3 F"), the seats in turn order
-coloured by role (Hitler underlined), the seat and round counts, and a Bots tag. A row opens its game
+coloured by role (Hitler underlined), the seat and round counts, and a tag of the bots' level for a
+game with bots ("Easy bots", "Normal bots" or "Hard bots"; "Bots" for a format 1 record, recorded
+before levels were kept). A row opens its game
 (one link stretched over the row, never an anchor wrapped round the names, which become links of
 their own in Phase 22A).
 
 **The game page** (`games.jpg`, right) has a header with the result, date and time, length, rounds,
-the final board, and the seats in turn order with their roles; from Phase 22A also the Elo change of
+the final board, the bots' level for a game with bots whose record keeps one ("Hard bots"; nothing
+for a format 1 record), and the seats in turn order with their roles; from Phase 22A also the Elo change of
 the game when it counted under the default filter (Elo arrives in Phase 17A, beside this page's
 phase). Then each round, in order, a block edged in the colour of the
 policy it enacted (grey for none):
@@ -737,7 +742,8 @@ and ignores the player filter:
   executions, survival.
 - **People:** most played with, best teammate, nemesis, favourite opponent.
 - **Timing:** their average decision times.
-- **Latest games**, linked, and "All N games", which opens GAMES filtered to them.
+- **Latest games**, linked, each game with bots carrying GAMES' tag of their level, and "All N
+  games", which opens GAMES filtered to them.
 
 From Phase 22A a player's name anywhere in the stats links to their page.
 
