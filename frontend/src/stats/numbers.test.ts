@@ -10,6 +10,7 @@ import {
   rateFigure,
   wholePercent,
   wholeRating,
+  wholeSigned,
 } from "./numbers";
 
 describe("formatPercent", () => {
@@ -41,6 +42,25 @@ describe("formatSigned", () => {
     expect(formatSigned(0.4)).toBe("0");
     expect(formatSigned(-0.4)).toBe("0");
     expect(formatSigned(-0)).toBe("0");
+  });
+});
+
+describe("wholeSigned", () => {
+  it("is the whole number formatSigned shows", () => {
+    expect(wholeSigned(19.42)).toBe(19);
+    expect(wholeSigned(-12.58)).toBe(-13);
+    expect(wholeSigned(16)).toBe(16);
+    expect(wholeSigned(-15.6)).toBe(-16);
+    expect(wholeSigned(2.5)).toBe(3);
+    expect(wholeSigned(-2.5)).toBe(-2); // Math.round's half towards +∞, as formatSigned shows "−2"
+    for (const change of [19.42, -12.58, 16, -15.6, 2.5, -2.5, 0.4, -0.4, 0, -0]) {
+      const whole = wholeSigned(change);
+      expect(formatSigned(change)).toBe(whole === 0 ? "0" : whole > 0 ? `+${whole}` : `−${-whole}`);
+    }
+  });
+
+  it("is 0 for anything that rounds to zero, never −0", () => {
+    for (const change of [0, -0, 0.4, -0.4, -0.5]) expect(Object.is(wholeSigned(change), 0), String(change)).toBe(true);
   });
 });
 
@@ -104,6 +124,7 @@ describe("the module", () => {
       "rateFigure",
       "wholePercent",
       "wholeRating",
+      "wholeSigned",
     ]);
   });
 });

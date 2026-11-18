@@ -32,11 +32,21 @@ export function rateFigure(rate: Rate): number | null {
 }
 
 /**
+ * A signed number rounded to a whole number, such as a rating change: 19.42 is 19, −12.58 is −13,
+ * and anything that rounds to zero is 0, never −0. What a column of changes sorts by and
+ * `formatSigned` shows.
+ */
+export function wholeSigned(value: number): number {
+  const rounded = Math.round(value);
+  return rounded === 0 ? 0 : rounded;
+}
+
+/**
  * A signed number, rounded, such as a rating change: "+19", "−13" (with U+2212, a true minus),
  * and "0" for anything that rounds to zero, never "±0".
  */
 export function formatSigned(value: number): string {
-  const rounded = Math.round(value);
+  const rounded = wholeSigned(value);
   if (rounded === 0) return "0";
   return rounded > 0 ? `+${rounded}` : `−${-rounded}`;
 }

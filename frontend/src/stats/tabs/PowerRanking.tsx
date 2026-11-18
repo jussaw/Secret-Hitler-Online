@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { nameOf } from "../counting";
-import { formatRating, formatSigned, wholeRating } from "../numbers";
+import { formatRating, formatSigned, wholeRating, wholeSigned } from "../numbers";
 import type { PowerRow } from "../overview";
 import PlayerName from "../PlayerName";
 import "../RankedTable.css";
@@ -20,7 +20,7 @@ function powerColumns(names: Map<number, string>): HeadColumn<PowerRow, PowerCol
     rankColumn<PowerRow>((row) => row.rank),
     playerColumn<PowerRow>((row) => nameOf(names, row.player)),
     numberColumn<PowerRow, PowerColumn>("rating", "Elo", (row) => wholeRating(row.rating), "power-number"),
-    numberColumn<PowerRow, PowerColumn>("change", "Last", (row) => Math.round(row.lastChange), "power-number"),
+    numberColumn<PowerRow, PowerColumn>("change", "Last", (row) => wholeSigned(row.lastChange), "power-number"),
     numberColumn<PowerRow, PowerColumn>("games", "Games", (row) => row.games, "power-number"),
   ];
 }
