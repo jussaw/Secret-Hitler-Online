@@ -680,7 +680,7 @@ Issue #23: the lobby matches the game screen and fits one screen, says what STAR
 
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
 - [x] PR merged into `development`
-- [ ] The user plays one real lobby on the deployed build, on a desktop and on a phone: switches each way, sees the status line name the player still picking, and starts a game
+- [x] The user plays one real lobby on the deployed build, on a desktop and on a phone: switches each way, sees the status line name the player still picking, and starts a game
 
 ---
 
@@ -709,8 +709,8 @@ Issue #30: playing needs an account, made by signing in with Discord; each accou
 
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
 - [x] PR merged into `development`
-- [ ] The user creates the Discord application and sets `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` and `DISCORD_REDIRECT_URI` on the home server
-- [ ] The user signs in with Discord on the deployed build, on a desktop and on a phone, chooses a name, renames in a lobby, and plays a game
+- [x] The user creates the Discord application and sets `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` and `DISCORD_REDIRECT_URI` on the home server
+- [x] The user signs in with Discord on the deployed build, on a desktop and on a phone, chooses a name, renames in a lobby, and plays a game
 
 ---
 
@@ -740,8 +740,8 @@ Issue #31 (game stats), the first of its ten phases: the database is backed up b
 
 - [x] Backend and frontend unit tests pass, the frontend builds, the backup and restore test passes, and the browser tests pass in all four Playwright projects
 - [x] PR merged into `development`
-- [ ] The user schedules the nightly backup on the home server, with `AFTER_BACKUP` copying each backup off the host if wanted
-- [ ] The user takes one restore drill on the home server: restores a recent backup and signs in to find their account and name
+- [x] The user schedules the nightly backup on the home server, with `AFTER_BACKUP` copying each backup off the host if wanted
+- [x] The user takes one restore drill on the home server: restores a recent backup and signs in to find their account and name
 
 ---
 
@@ -790,7 +790,7 @@ Issue #31, the second half of the game recorder: the server stores every record 
 - [x] A real game played against the jar with a database file is served by `/api/stats/games` in the spec's key order (`curl`)
 - [x] The pull request says it changes nothing on screen
 - [x] PR merged into `development`, after Phase 13's
-- [ ] The user plays a game on the deployed build and finds its record in `https://<subdomain>/api/stats/games`
+- [x] The user plays a game on the deployed build and finds its record in `https://<subdomain>/api/stats/games`
 
 ---
 
@@ -814,7 +814,7 @@ Issue #31: the stats pages' shell at `/stats`, loaded as a chunk of its own so t
 
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects (`desktop` on macOS and `firefox` in the Linux image before the PR, all four in CI)
 - [x] PR merged into `development`, after Phase 14B's
-- [ ] The user opens `/stats` on the deployed build, on a desktop and on a phone, opens a game from the latest games, and moves between the pages with the header and the back button
+- [x] The user opens `/stats` on the deployed build, on a desktop and on a phone, opens a game from the latest games, and moves between the pages with the header and the back button
 
 ---
 
@@ -835,7 +835,7 @@ Issue #31: GAMES at `/stats/games`, every recorded game, newest first, with its 
 
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects (`desktop` on macOS and `firefox` in the Linux image before the PR, all four in CI)
 - [x] PR merged into `development`, after Phase 15A's
-- [ ] The user opens GAMES and a game's link from a real game on the deployed build, on a desktop and on a phone
+- [x] The user opens GAMES and a game's link from a real game on the deployed build, on a desktop and on a phone
 
 ---
 
@@ -859,7 +859,7 @@ Issue #31: each game's record, round by round. `rounds(record)` turns a timeline
 
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
 - [x] PR merged into `development`
-- [ ] The user opens a game they played, from GAMES and from its victory screen, on a desktop and on a phone, and reads its rounds
+- [x] The user opens a game they played, from GAMES and from its victory screen, on a desktop and on a phone, and reads its rounds
 
 ---
 
@@ -885,7 +885,7 @@ Issue #31: the stats engine every tab reads (the counting rules, the player filt
 
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
 - [x] PR merged into `development`
-- [ ] The user opens `/stats` on the deployed build, on a desktop and on a phone, moves between the tabs, and changes the filter and the toggle
+- [x] The user opens `/stats` on the deployed build, on a desktop and on a phone, moves between the tabs, and changes the filter and the toggle
 
 ---
 
@@ -905,7 +905,7 @@ Issue #31: OVERVIEW at `/stats`, filling Phase 17A's placeholder: the dashboard 
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
 - [x] OVERVIEW shows the numbers this design gives for a known set of records, under the filter and the toggle
 - [x] PR merged into `development`
-- [ ] The user opens OVERVIEW on the deployed build, on a desktop and on a phone, once games are recorded, and changes the filter and the toggle
+- [x] The user opens OVERVIEW on the deployed build, on a desktop and on a phone, once games are recorded, and changes the filter and the toggle
 
 ---
 
@@ -929,7 +929,7 @@ Issue #31: the ROLES & CARDS tab fills Phase 17A's placeholder with each player'
 
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
 - [x] PR merged into `development`
-- [ ] The user opens ROLES & CARDS on the deployed build, on a desktop and on a phone, and finds their games' numbers
+- [x] The user opens ROLES & CARDS on the deployed build, on a desktop and on a phone, and finds their games' numbers
 
 ---
 
@@ -953,7 +953,7 @@ Issue #31: the VOTES & POWERS tab at `/stats/votes`. It shows each player's elec
 
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
 - [x] PR merged into `development`
-- [ ] The user opens VOTES & POWERS on the deployed build after real games, on a desktop and on a phone, and its numbers match the games played
+- [x] The user opens VOTES & POWERS on the deployed build after real games, on a desktop and on a phone, and its numbers match the games played
 
 ---
 
@@ -979,7 +979,7 @@ Issue #31: the RIVALS tab (teammates, opponents, rivalries, each player's people
 
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
 - [x] PR merged into `development`
-- [ ] The user opens RIVALS and ENDINGS on the deployed build, on a desktop and on a phone, and finds the games they played in them
+- [x] The user opens RIVALS and ENDINGS on the deployed build, on a desktop and on a phone, and finds the games they played in them
 
 ---
 
@@ -1004,7 +1004,7 @@ Issue #31, after Phases 16 and 17A, beside 17B, 18, 19 and 20: the ACTIVITY tab 
 
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
 - [x] PR merged into `development`
-- [ ] The user opens ACTIVITY on the deployed build after a game night, on a desktop and on a phone, and finds the night's games in the charts and the calendar
+- [x] The user opens ACTIVITY on the deployed build after a game night, on a desktop and on a phone, and finds the night's games in the charts and the calendar
 
 ---
 
@@ -1026,7 +1026,7 @@ Issue #31, after Phases 21A and 17B: the RECORDS tab shows streaks, the best wee
 
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
 - [x] PR merged into `development`
-- [ ] The user opens RECORDS on the deployed build after a game night, on a desktop and on a phone, and finds the night's session and the player of the month
+- [x] The user opens RECORDS on the deployed build after a game night, on a desktop and on a phone, and finds the night's session and the player of the month
 
 ---
 
@@ -1067,7 +1067,7 @@ Issue #31, its last phase: PLAYERS lists every player with counted games by Elo,
 
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
 - [x] PR merged into `development`
-- [ ] The user browses the stats on the deployed build, on a desktop and on a phone: PLAYERS, their own page and its trophies, a name followed from GAMES, and a game page's Elo change
+- [x] The user browses the stats on the deployed build, on a desktop and on a phone: PLAYERS, their own page and its trophies, a name followed from GAMES, and a game page's Elo change
 - [x] The user closes issue #31 once every phase (13 to 22B) is merged
 
 ---
@@ -1091,7 +1091,7 @@ Added after Phases 13 to 22B were planned. The stats pages' top bar (SECRET-HITL
 
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
 - [x] PR merged into `development`
-- [ ] The user opens the deployed build on a desktop and a phone and moves between the login page and the stats with the header
+- [x] The user opens the deployed build on a desktop and a phone and moves between the login page and the stats with the header
 
 ---
 
@@ -1212,7 +1212,7 @@ Issue #72, part 4. Starts once 25A has merged; merges after 25D.
 
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
 - [x] PR merged into `development`
-- [ ] The user plays a game against Hard bots on the deployed build, with a guest who sees the level
+- [x] The user plays a game against Hard bots on the deployed build, with a guest who sees the level
 
 ---
 
