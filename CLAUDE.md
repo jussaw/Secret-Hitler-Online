@@ -601,8 +601,8 @@ keeps credit to upstream and to the board game's creators.
   download holds none of it
   (`npm run first-download` gives its gzipped size). `src/stats/` (issue #31; the interfaces file
   names who fills what): `record.ts` (the record's types, formats 1 and 2, with `ROLES`, `SIDES`,
-  `OUTCOMES` and `BOT_SKILLS` (`EASY`, `NORMAL`, `HARD`, the stats' own list beside the lobby's
-  in `src/types/commands.ts`, so the stats chunk imports nothing from the game's code) the lists
+  `OUTCOMES` and `BOT_SKILLS` (`EASY`, `NORMAL`, `HARD`, the stats' own list, never one from the
+  game's code, the lobby's included, so the stats chunk imports nothing from it) the lists
   their unions come from, `STATS_GAMES_PATH`,
   `EVENT_FIELDS`, each event type's keys in the spec's order, `parseStatsData`, which checks a
   response, format 1 (no `botSkill`) or 2 (`botSkill` null or one of `BOT_SKILLS`, a level exactly
@@ -1555,7 +1555,8 @@ keeps credit to upstream and to the board game's creators.
   `/stats/players…`) move to their new ones with their query (`desktop`), finds See this game on the victory screen, a 44px
   target on phones, checks GAMES at a hundred a page and with every filter set at every size,
   that format 2 rows' tags and link names give their bots' level (all three on the first hundred)
-  and format 1 rows say only Bots (the third hundred), and
+  and format 1 rows say only Bots (the third hundred), that no bots tag takes a second line at
+  320px, on GAMES or in a player's latest games (`brokenTags`), and
   twelve-character names inside their columns and chips at 320px; on `desktop` it goes through a
   filter, a page, a game and back, forward and reload by the address, and plays a real game of
   seven through `driveGame.ts` whose victory screen opens its page and which GAMES lists under its
