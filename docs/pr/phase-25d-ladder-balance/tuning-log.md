@@ -35,7 +35,9 @@ Amounts, in each row's order: `VD` `CpuPlayer.VOTE_DROP` (0.1 to 5), `FF` `Chanc
 (0.1 to 5), `LL` `ChancellorHand.LL_RISE` (0.1 to 5), `PD` `PeekMemory.DROP` (0.1 to 5), `LP`
 `CpuPlayer.LIBERAL_TRACKER_PUSH` (0.1 to 0.9), `FP` `CpuPlayer.FASCIST_TRACKER_PULL` (0.1 to 0.9),
 `CB` `CpuPlayer.CHANCELLOR_BLUFF_CHANCE` (0.10 to 0.90), `PB` `CpuPlayer.PRESIDENT_BLUFF_CHANCE`
-(0.10 to 0.90), `NW` `ClearedPlayers.NOMINATION_WEIGHT` (1.5 to 5). `ClearedPlayers.TRUSTED_SCORE`
+(0.10 to 0.90), `NW` `ClearedPlayers.NOMINATION_WEIGHT` (1.5 to 5); from run 2 the extra
+fascist-side rules' `LGP` `CpuPlayer.LIBERAL_GOVERNMENT_PULL` (rule 8, 0.1 to 0.9) and `SEC`
+`CpuPlayer.SIDE_ELECTION_CHANCE` (rule 9, 0.10 to 0.90). `ClearedPlayers.TRUSTED_SCORE`
 (3) and `EASY_MISTAKE_CHANCE` (0.15) never change. The seven rates are each pairing's pooled
 liberal win rate (liberals/fascists: E Easy, N Normal, H Hard). Steps: `L`/`F` the side, `E<N`,
 `N<H`, `E<H` the step, then its pooled verdict and any sizes inverted. Balance: the points between
@@ -45,6 +47,25 @@ all-Hard and all-Normal.
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | 0 | before | d4dd765 | VD 0.25 · FF 2.0 · LL 2.0 · PD 2.0 · LP 0.5 · FP 0.5 · CB 0.35 · PB 0.35 · NW 3 | 21.3% | 27.2% | 38.0% | 31.9% | 34.3% | 25.1% | 42.4% | Ladder FAIL: L E<N clears; L N<H clears; L E<H clears; F E<N clears; F N<H inverted (sizes 5, 6, 7, 8, 10); F E<H inverted (sizes 8) | 15.2 (check FAIL, target FAIL) | no (before) | Both bluff chances to their floor, 0.10 (they cost the fascist side about 7 points, 25C's attribution); rule 1's own-nominee change, a code change the user left to 25D: a Hard liberal president always votes yes on the chancellor it nominated (exploration 4: Hard liberals' gain over Normal, near 0 at 8 and 10 seats, becomes 6 to 23 points at every size). |
 | 1 | full | 3254dd7 | VD 0.25 · FF 2.0 · LL 2.0 · PD 2.0 · LP 0.5 · FP 0.5 · CB 0.10 · PB 0.10 · NW 3 · rule 1: a president backs its own nominee | 21.0% | 28.2% | 39.7% | 32.0% | 30.1% | 25.7% | 38.7% | Ladder FAIL: L E<N clears; L N<H clears; L E<H clears; F E<N clears; F N<H inverted; F E<H clears | 10.6 (check FAIL, target FAIL) | yes: (a) 1 of 10 | Fails only where extra fascist-side rules can help (Decision 5 (b)): the fascist side's Normal < Hard, and the balance with all-Hard liberals ahead. No amount in range moves the fascist side up (explorations 2 and 3: bluffs at their floor still leave Hard fascists about 2 points behind Normal; the tracker pull changes nothing), so (b) starts: rule 9, special elections to the side (`SIDE_ELECTION_CHANCE` 0.9), and rule 8, fascists vote down liberal governments (`LIBERAL_GOVERNMENT_PULL` 0.9), both before run 2 (exploration 9: rule 8 alone leaves the fascist step at the edge of overlapping). |
+| 2 | full | d847327 | VD 0.25 · FF 2.0 · LL 2.0 · PD 2.0 · LP 0.5 · FP 0.5 · CB 0.10 · PB 0.10 · NW 3 · rule 1: a president backs its own nominee · rule 8 LGP 0.9 · rule 9 SEC 0.9 | 21.7% | 27.9% | 39.7% | 32.5% | 23.5% | 25.3% | 26.9% | Ladder PASS: L E<N clears; L N<H clears; L E<H clears; F E<N clears; F N<H clears; F E<H clears | 1.0 (check PASS, target PASS) | no (a pass) | None: the confirmation, run 2c, on the same code (Decision 2). |
+
+## Extra fascist-side rules (Decision 5 (b))
+
+Two of the three allowed, each Hard only, each reading only what a fascist's role shows it, with
+its own tests (`HardFascistRulesTest`), range (`HardAmountsTest`) and no-peeking case:
+
+- **Rule 9, special elections to the side** (d0f876e), `SIDE_ELECTION_CHANCE` 0.9: a Hard
+  fascist president with the special election hands the presidency to a living fascist teammate
+  other than Hitler, when it has one. Decision 9's second candidate; it helps at 7 to 10 seats,
+  the only sizes with the power (explorations 5 and 7).
+- **Rule 8, fascists vote down liberal governments** (d847327), `LIBERAL_GOVERNMENT_PULL` 0.9: a
+  Hard fascist keeps only a tenth of its yes chance for a government whose president and
+  chancellor it knows are liberal. Another rule, as Decision 9 allows; it helps at every size and
+  is what brings all-Hard games into the band (explorations 6 to 8). Two expectations of 25C's
+  `HardTrackerTest` gain its factor by name (approved by the user; rule 6 unchanged).
+
+Decision 9's first and third candidates, groom Hitler and shoot the trusted, were tried in
+exploration 5 and dropped: the first made the fascist side worse, the second changed nothing.
 
 ## Exploration runs
 
