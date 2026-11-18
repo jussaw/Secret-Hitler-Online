@@ -197,6 +197,7 @@ public class BotSkillServerTest {
         assertTrue("the spectator stays", spectator.isOpen());
         settle(host, code);
         assertEquals("NORMAL", lastSkill(host));
+        assertEquals(List.of(), thrown);
     }
 
     @Test
