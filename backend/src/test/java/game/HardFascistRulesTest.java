@@ -10,13 +10,13 @@ import org.junit.Test;
 
 /**
  * Phase 25D's extra fascist-side rules (the bot skill design's "Hard's rules", its paragraph on
- * rules for the fascist side beyond the seven), each Hard only, each reading only what a fascist's
- * role shows it. Rule 8, fascists vote down liberal governments: a Hard bot on the fascist side
- * (a fascist, or Hitler) keeps only {@code 1 -} {@link CpuPlayer#LIBERAL_GOVERNMENT_PULL} of its
- * yes chance for a government whose president and chancellor it knows are liberal. Rule 9, special elections to the side: a Hard
- * fascist president with the special election hands the presidency to a living fascist teammate
- * other than Hitler, with {@link CpuPlayer#SIDE_ELECTION_CHANCE}, when it has one. Each scene is
- * made fresh for each seed, and the amounts are read by name.
+ * rules for the fascist side beyond the seven), each Hard only, each reading only the roles its
+ * seat knows. Rule 8, fascists vote down liberal governments: a Hard bot on the fascist side (a
+ * fascist, or Hitler) keeps only {@code 1 -} {@link CpuPlayer#LIBERAL_GOVERNMENT_PULL} of its yes
+ * chance for a government whose president and chancellor it knows are liberal. Rule 9, special
+ * elections to the side: a Hard fascist president with the special election hands the presidency
+ * to a living fascist teammate other than Hitler, with {@link CpuPlayer#SIDE_ELECTION_CHANCE},
+ * when it has one. Each scene is made fresh for each seed, and the amounts are read by name.
  */
 public class HardFascistRulesTest {
     private static final double SHARE_TOLERANCE = 0.03;
@@ -88,10 +88,51 @@ public class HardFascistRulesTest {
         }
     }
 
+    /** A liberal keeps Normal's chance, even for a government it knows is all liberal. */
     @Test
     public void liberalsVoteAsNormal() {
         assertEquals(chance(BotScenes.vote("LLLFH"), BotSkill.NORMAL), chance(BotScenes.vote("LLLFH"), BotSkill.HARD),
                 TOLERANCE);
+        assertEquals(knowingLiberals("LLLFH", BotSkill.NORMAL), knowingLiberals("LLLFH", BotSkill.HARD), TOLERANCE);
+    }
+
+    /** P0 nominates P1 in {@code roles}: P2's yes chance once it knows both are liberal. */
+    private static float knowingLiberals(String roles, BotSkill skill) {
+        Scene scene = BotScenes.vote(roles);
+        CpuPlayer bot = BotScenes.bot(scene, skill, 0);
+        bot.knownPlayerRoles.put("P0", Identity.LIBERAL);
+        bot.knownPlayerRoles.put("P1", Identity.LIBERAL);
+        return bot.chanceOfYes(scene.game());
+    }
+
+    /** Hitler at 6, who knows every role too. */
+    @Test
+    public void hitlerAtSixVotesDownAGovernmentOfTwoLiberals() {
+        assertEquals(chance(BotScenes.vote("LLHLLF"), BotSkill.NORMAL) * (1 - CpuPlayer.LIBERAL_GOVERNMENT_PULL),
+                chance(BotScenes.vote("LLHLLF"), BotSkill.HARD), TOLERANCE);
+    }
+
+    /**
+     * Rules 6 and 8 together: two failed elections (P0 nominates P1, then P1 nominates P2, every
+     * seat's nein), then P2 nominates P0, and Hitler, P3 at 5 seats, votes on two liberals.
+     */
+    @Test
+    public void hitlerAtTrackerTwoGetsBothPulls() {
+        assertEquals(atTrackerTwo(BotSkill.NORMAL) * (1 - CpuPlayer.FASCIST_TRACKER_PULL)
+                * (1 - CpuPlayer.LIBERAL_GOVERNMENT_PULL), atTrackerTwo(BotSkill.HARD), TOLERANCE);
+    }
+
+    private static float atTrackerTwo(BotSkill skill) {
+        SecretHitlerGame game = BotScenes.game("LLLHF");
+        BotScenes.Played played = new BotScenes.Played(game, BotScenes.bot(game, "P3", skill, 0));
+        for (String chancellor : new String[] {"P1", "P2"}) {
+            played.then(g -> g.nominateChancellor(chancellor));
+            played.then(g -> BotScenes.voteAll(g, false));
+            played.then(SecretHitlerGame::endPresidentialTerm);
+        }
+        assertEquals(2, game.getElectionTracker());
+        played.then(g -> g.nominateChancellor("P0"));
+        return played.bot().chanceOfYes(game);
     }
 
     /** Hitler at 5 or 6 knows every role: on two liberals it keeps a share of its trusting yes. */

@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import game.BotScenes.Scene;
+import game.datastructures.Identity;
 import game.datastructures.Policy;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -519,6 +520,35 @@ public class NoPeekingTest {
     @Test
     public void hardRule8HitlerAtFive() {
         actsAlike(() -> BotScenes.vote("LLHLF"), List.of(UNSEEN_CARDS));
+    }
+
+    /**
+     * Rule 8 for Hitler at 7 once it has investigated P0 and P1 and found them liberal: it votes on
+     * their government, with the roles of every pair of the other seats, which it does not know,
+     * swapped.
+     */
+    @Test
+    public void hardRule8HitlerAtSevenAfterInvestigating() {
+        Supplier<Scene> scene = () -> {
+            Scene vote = BotScenes.vote("LLHLLFF");
+            vote.game().getPlayer("P0").investigate();
+            vote.game().getPlayer("P1").investigate();
+            return vote;
+        };
+        List<Hidden> unknown = new ArrayList<>();
+        for (Hidden swap : eachSwap("LLHLLFF", "P2")) {
+            if (!swap.name().startsWith("the roles of P0 ") && !swap.name().startsWith("the roles of P1 ")) {
+                unknown.add(swap);
+            }
+        }
+        assertEquals("P3 or P4 with P5 or P6", 4, unknown.size());
+        playsAlike(scene, scene, unknown, twins -> {
+            for (CpuPlayer hitler : List.of(twins.botA(), twins.botB())) {
+                hitler.knownPlayerRoles.put("P0", Identity.LIBERAL);
+                hitler.knownPlayerRoles.put("P1", Identity.LIBERAL);
+            }
+            twins.botActs();
+        });
     }
 
     /** Rule 9: a fascist holds the special election at 7 seats, its teammate alive; unseen cards swapped. */
