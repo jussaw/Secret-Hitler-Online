@@ -19,9 +19,9 @@ export type Side = (typeof SIDES)[number];
 export const OUTCOMES = ["LIBERAL_POLICIES", "HITLER_EXECUTED", "FASCIST_POLICIES", "HITLER_ELECTED", "UNFINISHED"] as const;
 export type Outcome = (typeof OUTCOMES)[number];
 /**
- * Every bot level, as the server names them, easiest first. The lobby has its own list
- * (`src/types/commands.ts`): this module imports nothing, so the browser tests can use it, and the
- * stats chunk imports nothing from the game's code.
+ * Every bot level, as the server names them, easiest first. The stats keep their own list rather
+ * than the lobby's: this module imports nothing, so the browser tests can use it, and the stats
+ * chunk imports nothing from the game's code.
  */
 export const BOT_SKILLS = ["EASY", "NORMAL", "HARD"] as const;
 export type BotSkill = (typeof BOT_SKILLS)[number];

@@ -9,9 +9,9 @@ import { RoleWord } from "./text";
 /**
  * A game page's header card: the result, its first word in the winners' colour; the start, the
  * length, the rounds and the final board, then the bots' level for a game with bots whose record
- * keeps one ("Hard bots"; nothing for a format 1 record); the game's Elo change when it counted under the default
- * filter (`elo`, from `gameElo.ts`); and the seats in turn order, coloured by role, Hitler's
- * marked, each player's name a link to their page.
+ * keeps one ("Hard bots"; nothing for a format 1 record); the game's Elo change when it counted
+ * under the default filter (`elo`, from `gameElo.ts`); and the seats in turn order, coloured by
+ * role, Hitler's marked, each player's name a link to their page.
  */
 export function GameHeader({ record, elo }: { record: GameRecord; elo?: GameElo | null }): JSX.Element {
   const seatsLabel = useId();
