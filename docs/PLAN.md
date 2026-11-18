@@ -62,7 +62,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 24. Bot fixes and self-play | `phase-24-bot-fixes` | done |
 | 25A. Bot skill levels | `phase-25a-bot-levels` | done |
 | 25B. Hard's first rules | `phase-25b-hard-reads` | done |
-| 25C. Hard's other rules | `phase-25c-hard-bots` | in progress |
+| 25C. Hard's other rules | `phase-25c-hard-bots` | done |
 | 25D. Ladder and balance | `phase-25d-ladder-balance` | planned |
 | 26A. Bot skill in the lobby | `phase-26a-lobby-bot-skill` | planned |
 | 26B. Bot skill in the records | `phase-26b-record-bot-skill` | planned |
@@ -1169,12 +1169,12 @@ Breakdown: [`docs/superpowers/plans/2026-11-17-phase-25c-hard-bots.md`](superpow
 Issue #72, part 3. Backend only; changes nothing on screen. Starts once 25B has merged.
 
 - [x] Hard's rules 3 (votes), 5 (deck odds, which also scales rule 2), 6 (the election tracker) and 7 (fascists bluff), each with its own tests and in the no-peeking test; deck odds hold through a reshuffle
-- [ ] `CLAUDE.md` updated; the pull request quotes `botMatches -Pladder` before and after, with the checks' verdicts
+- [x] `CLAUDE.md` updated; the pull request quotes `botMatches -Pladder` before and after, with the checks' verdicts
 
 **Phase 25C acceptance**
 
 - [x] Backend tests pass
-- [ ] PR merged into `development`
+- [x] PR merged into `development`
 
 ---
 
