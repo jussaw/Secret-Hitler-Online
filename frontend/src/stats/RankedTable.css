@@ -99,22 +99,20 @@
     color: var(--textColorOnDark);
 }
 
-/* Each row at least 44px tall wherever the game's stacked query matches, so a name that becomes
-   a link (Phase 22) is a 44px target. */
+/* Wherever the game's stacked query matches (phones, and tall and narrow windows, whose heads and
+   names are 44px targets too). */
 @media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
+    /* Each row at least 44px tall, so a name that becomes a link (Phase 22) is a 44px target. */
     .ranked-table td {
         height: 44px;
         box-sizing: border-box;
     }
-}
 
-/* Wherever the game's stacked query matches (phones, and tall and narrow windows, whose heads and
-   names are 44px targets too): a card with a count column (#109) shows its count as a line under
-   the name ("12 games") in place of the column and its head, as PLAYERS' last played does on
-   phones. So a 44px #, a 44px name, the value and a count head such as "Nominations" never need
-   more than a card's width, a 320px phone's or a narrow grid column's. Sorting by the count is for
-   wide windows only. The value is then the row's last cell, at the card's edge. */
-@media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
+    /* A card with a count column (#109) shows its count as a line under the name ("12 games") in
+       place of the column and its head, as PLAYERS' last played does on phones. So a 44px #, a
+       44px name, the value and a count head such as "Nominations" never need more than a card's
+       width, a 320px phone's or a narrow grid column's. Sorting by the count is for wide windows
+       only. The value is then the row's last cell, at the card's edge. */
     .ranked-table .ranked-count {
         display: none;
     }
