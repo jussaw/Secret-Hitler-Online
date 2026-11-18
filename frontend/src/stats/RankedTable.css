@@ -88,7 +88,8 @@
     font-variant-numeric: tabular-nums;
 }
 
-/* The count under the name: phones only, where it takes the place of its column (below). */
+/* The count under the name: only where the stacked query matches, where it takes the place of its
+   column (below). */
 .ranked-count-under {
     display: none;
 }
@@ -107,11 +108,13 @@
     }
 }
 
-/* Phones (the game's phone-only query): a card with a count column (#109) shows its count as a
-   line under the name ("12 games") in place of the column and its head, as PLAYERS' last played
-   does, so a 44px #, a 44px name, the value and a count head such as "Nominations" never need more
-   than a 320px phone's card. The value is then the row's last cell, at the card's edge. */
-@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
+/* Wherever the game's stacked query matches (phones, and tall and narrow windows, whose heads and
+   names are 44px targets too): a card with a count column (#109) shows its count as a line under
+   the name ("12 games") in place of the column and its head, as PLAYERS' last played does on
+   phones. So a 44px #, a 44px name, the value and a count head such as "Nominations" never need
+   more than a card's width, a 320px phone's or a narrow grid column's. Sorting by the count is for
+   wide windows only. The value is then the row's last cell, at the card's edge. */
+@media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
     .ranked-table .ranked-count {
         display: none;
     }

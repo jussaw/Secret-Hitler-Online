@@ -14,7 +14,7 @@ const desc = (a: number, b: number) => b - a;
 /** The body's rows (the head row left out). */
 const bodyRows = () => screen.getAllByRole("row").filter((row) => row.closest("tbody") !== null);
 
-/** A cell's text but for the count's line under the name, which only phones show. */
+/** A cell's text but for the count's line under the name, which only the stacked query shows. */
 function cellText(cell: HTMLElement): string {
   return Array.from(cell.childNodes)
     .filter((node) => !(node instanceof HTMLElement && node.classList.contains("ranked-count-under")))
@@ -121,7 +121,8 @@ describe("RankedTable", () => {
   });
 
   it("aCountHeadPutsTheCountUnderTheNameToo", () => {
-    // Shown on phones only (RankedTable.css), in place of the count column and its head.
+    // Shown only where the stacked query matches (RankedTable.css), in place of the count column
+    // and its head.
     renderRates(WITH_UNRANKED, "Games");
     expect(underLines()).toEqual(["28 games", "10 games", "3 games"]);
     const under = bodyRows()[0].querySelector(".ranked-count-under")!;

@@ -76,9 +76,10 @@ function rankedColumns<T>(
  * column and sorts by it (`SortHeadRow`, #109): the table opens in rank order, `#` marked, and
  * ranks never change; under the value an unranked row has no figure, so it goes last either way.
  * Narrow columns, so it fits a 320px phone without scrolling: a long name wraps in its own column.
- * On phones the count column, its head too, gives way to a line under the name ("12 games",
- * `span.ranked-count-under`, `RankedTable.css`), as PLAYERS' last played does, so sorting by the
- * count is a desktop thing.
+ * Wherever the stacked query matches (phones, and tall and narrow windows) the count column, its
+ * head too, gives way to a line under the name ("12 games", `span.ranked-count-under`,
+ * `RankedTable.css`), as PLAYERS' last played does on phones, so sorting by the count is for wide
+ * windows only.
  */
 export function RankedTable<T>({
   rows,

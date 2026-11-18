@@ -61,7 +61,8 @@ const NIGHTS = Array.from({ length: 8 }, (_, i) => game(`n${i + 1}`, `2026-11-0$
 const stats = (games: GameRecord[]): StatsContext => buildStats({ players: PLAYERS, games }, DEFAULT_FILTER);
 const tab = (games: GameRecord[]) => render(<ActivityTab stats={stats(games)} now={NOW} timeZone="UTC" />);
 const card = (slug: string) => document.querySelector<HTMLElement>(`[data-card="${slug}"]`)!;
-/** An element's text but for a ranked card's count line under the name, which only phones show. */
+/** An element's text but for a ranked card's count line under the name, which only the stacked
+ *  query shows. */
 function shown(el: Element): string | null {
   const copy = el.cloneNode(true) as Element;
   copy.querySelectorAll(".ranked-count-under").forEach((line) => line.remove());

@@ -25,7 +25,8 @@ function tab(data: StatsData = fixture.data, filter: StatsFilter = DEFAULT_FILTE
 }
 
 const card = (name: string) => screen.getByRole("region", { name });
-/** A cell's text but for a ranked card's count line under the name, which only phones show. */
+/** A cell's text but for a ranked card's count line under the name, which only the stacked query
+ *  shows. */
 function shown(cell: Element): string {
   const copy = cell.cloneNode(true) as Element;
   copy.querySelectorAll(".ranked-count-under").forEach((line) => line.remove());
