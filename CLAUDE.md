@@ -241,14 +241,16 @@ keeps credit to upstream and to the board game's creators.
   `readsTheGame(game)` (Hard and not knowing every role, `knowsEveryRole`, which `initialize`
   asks too: a liberal, or Hitler at 7 or more) runs rules 2, 3 and 5 and rule 4's blame; every
   Hard bot runs rule 6 (`trackerAtTwo`) and follows its peek; and only a Hard fascist runs rule 7
-  (`bluffs`). Rule 1,
+  (`bluffs`) and Phase 25D's two extra fascist-side rules, 8 and 9 (below). Rule 1,
   `ClearedPlayers`: a chancellor seen in a legislative session (`CpuPlayer.inLegislativeSession`:
   `LEGISLATIVE_PRESIDENT`, `LEGISLATIVE_CHANCELLOR` or `LEGISLATIVE_PRESIDENT_VETO`, which rule 4
   shares) with 3 or more fascist policies down is cleared (not Hitler, or the
   election would have ended the game), kept in the order cleared (`names()`); nominating, a cleared
   seat's weight is multiplied by `NOMINATION_WEIGHT` (the liberal branch's `factor`, through a
   private overload of `chooseRandomPlayerWeighted`; the public one passes 1, so no Normal pick
-  changes); voting, `vote(game, chancellorScore, known)` is ja for a cleared chancellor and, with 3
+  changes); voting, `vote(game, self, chancellorScore, known)` is ja for the chancellor the bot
+  nominated as president (Phase 25D, the user's "Let 25D decide": a nein there failed its own
+  government and skewed the self-play run by table size), ja for a cleared chancellor and, with 3
   or more down, nein for one not cleared below `TRUSTED_SCORE`, and leaves the vote to Normal
   otherwise, and always when the bot's own investigation found the president or the chancellor on
   the fascist side (`CpuPlayer.isFascistSide`). Rule 2, `ChancellorHand.presidentChange(hand, drop)`: as chancellor, two
@@ -262,8 +264,8 @@ keeps credit to upstream and to the board game's creators.
   fascist policy (not an accepted veto) and the cards held a liberal, and the cards are forgotten
   either way. The amounts are `NOMINATION_WEIGHT` 3 (a `double`, a weight), the `int`
   `TRUSTED_SCORE` 3 and the `double`s `FF_DROP`, `LL_RISE` and `DROP`, 2.0 each (rules 2's and 4's
-  changes go through `shiftReputation`, below), and every test reads them by name, so 25D can
-  retune them without editing a test. `clearedPlayers`, `peekMemory` (each class pins
+  changes go through `shiftReputation`, below), and every test reads them by name, so a retune
+  edits no test (Phase 25D kept all five). `clearedPlayers`, `peekMemory` (each class pins
   `serialVersionUID` 1) and `handReadRound` are `CpuPlayer` fields that `initialize` resets; an
   older backup has none of them, and `readObject` fills the first two with empty ones while
   `handReadRound` reads 0 (`clearedPlayers()` and `peekMemory()` are package-private for the
@@ -313,9 +315,22 @@ keeps credit to upstream and to the board game's creators.
   chancellor holding one of each under a president it knows is liberal it plays the liberal with
   `CHANCELLOR_BLUFF_CHANCE`, and as president dealt FFL with a chancellor it knows is liberal it
   discards a fascist with `PRESIDENT_BLUFF_CHANCE`; `bluffs` draws only when a bluff is open. The
-  amounts are package-private `static final`s in `CpuPlayer` at their starting values, `VOTE_DROP`
-  0.25, the `float`s `LIBERAL_TRACKER_PUSH` and `FASCIST_TRACKER_PULL` 0.5, and
-  `CHANCELLOR_BLUFF_CHANCE` and `PRESIDENT_BLUFF_CHANCE` 0.35, which 25D tunes. `deck`,
+  amounts are package-private `static final`s in `CpuPlayer`: `VOTE_DROP` 0.25, the `float`s
+  `LIBERAL_TRACKER_PUSH` and `FASCIST_TRACKER_PULL` 0.5, and `CHANCELLOR_BLUFF_CHANCE` and
+  `PRESIDENT_BLUFF_CHANCE` 0.10 (Phase 25D lowered them from 0.35 to their floor: a bluff costs a
+  policy, and Normal liberals, who read no hands, are not fooled by it). Phase 25D's extra
+  fascist-side rules (the spec allows them where the fascist side fails the checks), Hard fascists'
+  only, each reading only the roles a fascist knows: rule 8, fascists vote down liberal
+  governments, keeps only `1 − LIBERAL_GOVERNMENT_PULL` (a `float`, 0.9) of a fascist's yes chance
+  for a government whose president and chancellor it knows are liberal (`liberalGovernmentPull`,
+  after rule 6's pull, so at tracker 2 both apply); rule 9, special elections to the side, hands
+  the special election to a living fascist teammate other than Hitler (Hitler as president
+  nominates a liberal) with `SIDE_ELECTION_CHANCE` (0.9) when it has one, and otherwise picks as
+  Normal (`electsToTheSide`, which draws only when a teammate is there). Every tuned amount stays
+  in a range whose floor keeps its rule on (`HardAmountsTest.everyRuleStaysOn`): `VOTE_DROP`,
+  `FF_DROP`, `LL_RISE` and `PeekMemory.DROP` 0.1 to 5, the tracker push and pull and
+  `LIBERAL_GOVERNMENT_PULL` 0.1 to 0.9, the bluff chances and `SIDE_ELECTION_CHANCE` 0.10 to 0.90,
+  and `NOMINATION_WEIGHT` 1.5 to 5; `TRUSTED_SCORE` and `EASY_MISTAKE_CHANCE` stay fixed. `deck`,
   `reputationCarry`, `drawnRound`, `drawnAllFascist`, `passedRound` and `elections` are fields
   `initialize` resets; `readObject` fills `deck`, `reputationCarry` and `elections` for a bot
   backed up before 25C, whose `int`s read 0 (`HardBotBackupTest`, on
@@ -326,7 +341,11 @@ keeps credit to upstream and to the board game's creators.
   refactor's guard), `HardBluffTest`, and `NoPeekingTest`'s `hardRule5DeckOdds`,
   `hardRule5PresidentsOwnCards` (its own discard and its chancellor's deduced one),
   `hardRule3Votes`, `hardRule3OpenBallots`, `hardRule6TrackerLiberal`, `…HitlerAtSeven` and
-  `…Fascist`, and `hardRule7ChancellorBluffs` and `…PresidentBluffs`. The bot tests build their games with
+  `…Fascist`, and `hardRule7ChancellorBluffs` and `…PresidentBluffs`; Phase 25D's
+  `HardFascistRulesTest` (rules 8 and 9, alone and against Normal and Easy) and `NoPeekingTest`'s
+  `hardRule8VotesDownLiberalGovernments` and `hardRule9SideElections` (a fascist knows every role,
+  so their twins hide an unseen card), and `HardTrackerTest`'s fascist cases on two liberals carry
+  rule 8's factor. The bot tests build their games with
   `BotScenes` (test source): seats `P0`, `P1`, … in seat order, every one a bot, dealt the roles a
   string names (`game("LLLFH")`), the draw pile in one fixed order, and `board`, `drawTop`,
   `swapRoles`, `swapUnseenCards`, `voteAll` and `elect` (by reflection on `SecretHitlerGame`'s
@@ -365,11 +384,21 @@ keeps credit to upstream and to the board game's creators.
   clearly above Hard where Normal overlaps both) clears when its pooled 95% intervals against
   Normal opponents do not overlap, the higher level's above, and at no size does the higher
   level's interval lie wholly below the lower's; the balance holds when all-Hard and all-Normal
-  pooled liberal rates are within `BALANCE_BAND`, 10 points. With 25C's rules at their starting
-  amounts the liberal side clears every step, while Hard fascists win less often than Normal ones
-  (the fascist side's Normal < Hard step is inverted) and the balance check fails; 25D tunes the
-  amounts until both checks pass. `BotMatchesTest` plays all nine pairings at 3 games a size, and
-  `LadderCheckTest` reads verdicts from tallies made by hand. A player's `/game`
+  pooled liberal rates are within `BALANCE_BAND`, 10 points, and a `Balance target:` line holds
+  them to `TUNING_BAND`, 8, the target a change tunes toward. The report ends with a tally block,
+  `Tallies: N games at each table size` and a line per pairing and size (`E/N 5` and each ending's
+  count in `ENDINGS`' order), which `BotMatches.readTallies` reads back; `-Ppool=<file>,<file>`
+  (`--pool`, alone) adds two reports' tallies (`pool`, labelled `…, pooled`) and prints their
+  report, playing nothing. A change to the bots is accepted on a full run that passes (`Ladder
+  check: PASS`, `Balance target: PASS`), one confirmation on the same code, and the two pooled,
+  whose ladder and balance checks must pass. Phase 25D's acceptance (runs 2 and 2c pooled, 4,000
+  games a size; its log, every run and the explorations, is
+  `docs/pr/phase-25d-ladder-balance/tuning-log.md`): liberal win rates E/N 21.5%, N/N 27.9%, H/N
+  40.2%, N/E 32.3%, N/H 23.5%, E/E 25.3%, H/H 26.6%, so each side rises Easy, Normal, Hard (the
+  liberals 21.5, 27.9, 40.2%; the fascists 67.7, 72.1, 76.5%), no size inverted, and all-Hard is
+  1.3 points from all-Normal. `BotMatchesTest` plays all nine pairings at 3 games a size and reads
+  a report's tallies back and pools them, and `LadderCheckTest` reads verdicts from tallies made by
+  hand. A player's `/game`
   query may carry `rejoinKey`, a random key the page keeps for its lifetime (sent to no client and
   not backed up). A connection that brings the key its account's live connection was opened with
   takes that connection's place, keeping the seat and portrait, and the old one is closed with
@@ -1546,7 +1575,8 @@ keeps credit to upstream and to the board game's creators.
 - `docs/`: `PLAN.md` (phased plan and progress), `superpowers/specs/` (design),
   `superpowers/plans/` (per-phase step-by-step breakdowns), `images/` (the README's screenshots,
   taken from a scripted seven-player game at 1600x900 and at 412x915 on a phone), `pr/` (each pull
-  request's before-and-after screenshots, in a folder named for its branch).
+  request's before-and-after screenshots, in a folder named for its branch;
+  `pr/phase-25d-ladder-balance/` holds Phase 25D's tuning log instead).
 - `.claude/skills/`: project skills. `implement-issue` (`/implement-issue N`) takes one GitHub issue
   through the Workflow below to a pull request with green CI, which it merges for an issue labelled
   `bug`, then checks the published image. An issue that needs design gets a pushed spec and plan and
@@ -1574,7 +1604,7 @@ fields from `package-lock.json`.
 | Run frontend dev server (`localhost:3000`, against the local backend) | `cd frontend && npm install && npm run dev` |
 | Backend tests | `cd backend && ./gradlew test` |
 | Remake the stats pages' contract fixture after a change to the record's format (a new file every run; commit it with the change) | `cd backend && ./gradlew recordedGamesFixture` |
-| Play all-bot games and print who wins at each table size (2,000 games a size, `-Pgames=N` for another count; `-Pliberals=LEVEL` and `-Pfascists=LEVEL` for each side's level, `-Pladder` for the ladder and balance pairings and their verdicts; runs differ) | `cd backend && ./gradlew botMatches` |
+| Play all-bot games and print who wins at each table size (2,000 games a size, `-Pgames=N` for another count; `-Pliberals=LEVEL` and `-Pfascists=LEVEL` for each side's level, `-Pladder` for the ladder and balance pairings and their verdicts, `-Ppool=<file>,<file>` for two saved `-Pladder` reports' games together; runs differ) | `cd backend && ./gradlew botMatches` |
 | Frontend tests (single run) | `cd frontend && npm test -- --run` |
 | Browser tests (build the frontend and the jar, serve them on `localhost:4545` with test sign-in, or `E2E_PORT` beside another run; Java 17 active) | `cd frontend && npx playwright install chromium firefox && npm run e2e` (one project: `-- --project=phone-360`) |
 | Browser tests on Linux (Firefox, or CI's font widths), against the jar serving on the host with `TEST_SIGN_IN=true` | `docker run … mcr.microsoft.com/playwright:v<version>-noble … npx playwright test --config playwright.linux.config.ts`, written out in `DEVELOPMENT.md` |
