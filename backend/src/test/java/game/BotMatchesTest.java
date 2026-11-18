@@ -423,6 +423,18 @@ public class BotMatchesTest {
         }
     }
 
+    /** A cut-short report is refused when read, before it meets the other run. */
+    @Test
+    public void aTallyBlockMissingALineIsRefused() {
+        List<String> lines = new ArrayList<>(List.of(BotMatches.ladderReport(BotMatches.ladder(1)).split("\n")));
+        assertTrue(lines.remove(lines.size() - 1).startsWith("H/H 10 "));
+
+        Throwable refused = thrown(() -> BotMatches.readTallies(lines));
+        assertNotNull(refused);
+        assertTrue(refused instanceof IllegalArgumentException);
+        assertEquals("The tally block has no line for H/H 10.", refused.getMessage());
+    }
+
     /** One run's report given twice would count its games twice and narrow every interval. */
     @Test
     public void poolRefusesOneRunTwice() {
@@ -446,7 +458,7 @@ public class BotMatchesTest {
         assertTrue(none instanceof IllegalArgumentException);
         assertEquals("No tally block in the report.", none.getMessage());
 
-        for (String bad : List.of("E/N 5 1 0 0", "X/Y 5 1 0 0 1", "E/N five 1 0 0 1", "E/N 5 1 0 0 0",
+        for (String bad : List.of("E/N 5 1 0 0", "X/Y 5 1 0 0 1", "E/N five 1 0 0 1", "E/N 5 1 0 0 0", "E/N 11 2 0 0 0",
                 "Liberals EASY, fascists NORMAL")) {
             Throwable unread = thrown(() -> BotMatches.readTallies(List.of("Tallies: 2 games at each table size", bad)));
             assertNotNull(bad, unread);

@@ -299,10 +299,12 @@ public final class BotMatches {
      * {@link LadderCheck#PAIRINGS}' order, each labelled as {@link #label} names it, with the
      * block's games a size. Blank lines are skipped.
      *
-     * @throws IllegalArgumentException {@code No tally block in the report.} without one, or naming
+     * @throws IllegalArgumentException {@code No tally block in the report.} without one; naming
      *                                  the first line of the block it cannot read: not a known
-     *                                  pairing, a size and four counts, counts that do not add up
-     *                                  to the block's games, or a pairing's size a second time.
+     *                                  pairing, a size from 5 to 10 and four counts, counts that do
+     *                                  not add up to the block's games, or a pairing's size a second
+     *                                  time; or
+     *                                  naming the first pairing and size from 5 to 10 it lacks.
      */
     static Map<LadderCheck.Pairing, Results> readTallies(List<String> reportLines) {
         int start = -1;
@@ -339,18 +341,23 @@ public final class BotMatches {
                 }
             }
             SortedMap<Integer, Tally> bySize = read.computeIfAbsent(pairing, p -> new TreeMap<>());
-            if (tally.games() != gamesPerSize || bySize.containsKey(seats)) {
+            if (tally.games() != gamesPerSize || bySize.containsKey(seats) || seats < SecretHitlerGame.MIN_PLAYERS
+                    || seats > SecretHitlerGame.MAX_PLAYERS) {
                 throw unreadable(line);
             }
             bySize.put(seats, tally);
         }
         Map<LadderCheck.Pairing, Results> results = new LinkedHashMap<>();
         for (LadderCheck.Pairing pairing : LadderCheck.PAIRINGS) {
-            SortedMap<Integer, Tally> bySize = read.get(pairing);
-            if (bySize != null) {
-                results.put(pairing, new Results(label(pairing.liberals(), pairing.fascists()), gamesPerSize,
-                        Collections.unmodifiableSortedMap(bySize)));
+            SortedMap<Integer, Tally> bySize = read.getOrDefault(pairing, new TreeMap<>());
+            for (int seats = SecretHitlerGame.MIN_PLAYERS; seats <= SecretHitlerGame.MAX_PLAYERS; seats++) {
+                if (!bySize.containsKey(seats)) {
+                    throw new IllegalArgumentException(
+                            "The tally block has no line for " + pairing.label() + " " + seats + ".");
+                }
             }
+            results.put(pairing, new Results(label(pairing.liberals(), pairing.fascists()), gamesPerSize,
+                    Collections.unmodifiableSortedMap(bySize)));
         }
         return results;
     }
