@@ -23,4 +23,12 @@
         padding-left: 3px;
         padding-right: 3px;
     }
+
+    /* The heads whose words stand at the right of their 44px button (#109: #, Elo, Last and Games)
+       need no room at their left, where the column before ends in its own padding: without it the
+       table fits a 320px phone's card with Linux's fonts. */
+    .ranked-table.power-ranking thead th.ranked-rank,
+    .ranked-table.power-ranking thead th.power-number {
+        padding-left: 0;
+    }
 }
