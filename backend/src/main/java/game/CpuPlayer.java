@@ -799,8 +799,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
    * Anyone else's chance, any other government's and any chance below Hard is as it was.
    */
   private float liberalGovernmentPull(SecretHitlerGame game, float chance) {
-    if (skill != BotSkill.HARD || myPlayerData.getIdentity() != Identity.FASCIST
-        || knownPlayerRoles.get(game.getCurrentPresident()) != Identity.LIBERAL
+    if (!hardFascist() || knownPlayerRoles.get(game.getCurrentPresident()) != Identity.LIBERAL
         || knownPlayerRoles.get(game.getCurrentChancellor()) != Identity.LIBERAL) {
       return chance;
     }
@@ -1171,8 +1170,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
    * teammate gets no bluff), draws: then it bluffs with {@code chance}. No other path draws.
    */
   private boolean bluffs(SecretHitlerGame game, String other, double chance) {
-    if (skill != BotSkill.HARD || myPlayerData.getIdentity() != Identity.FASCIST
-        || canHitlerWinByElection(game) || isFascistInDanger(game)
+    if (!hardFascist() || canHitlerWinByElection(game) || isFascistInDanger(game)
         || knownPlayerRoles.get(other) != Identity.LIBERAL) {
       return false;
     }
@@ -1185,7 +1183,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
    * then it does with {@link #SIDE_ELECTION_CHANCE}. No other path draws.
    */
   private boolean electsToTheSide(List<Player> candidates) {
-    if (skill != BotSkill.HARD || myPlayerData.getIdentity() != Identity.FASCIST) {
+    if (!hardFascist()) {
       return false;
     }
     boolean teammate = false;
@@ -1226,6 +1224,11 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   /** Whether this CPU runs Hard's rule 1: a Hard CPU dealt Liberal. */
   private boolean hardLiberal() {
     return skill == BotSkill.HARD && myPlayerData.getIdentity() == Identity.LIBERAL;
+  }
+
+  /** Whether this CPU runs Hard's rules 7, 8 and 9: a Hard CPU dealt Fascist (Hitler keeps its play). */
+  private boolean hardFascist() {
+    return skill == BotSkill.HARD && myPlayerData.getIdentity() == Identity.FASCIST;
   }
 
   /**
