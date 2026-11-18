@@ -2,7 +2,9 @@ import type { Rate } from "../counting";
 import { formatPercent } from "../numbers";
 
 /**
- * What RIVALS', ENDINGS' and the split tables' cells show: a rate as a whole percent, and
+ * What RIVALS', ENDINGS' and the split tables' cells show, and the ranked rate cards of ROLES &
+ * CARDS (all but Deep cover, which shows two shares) and VOTES & POWERS, whose `format` is
+ * `rateCellText`: a rate as a whole percent, and
  * `NO_VALUE` for a value that is not there. A cell's sort figure is `numbers.ts`' `percentFigure`
  * of the same value (`rateFigure` of the same `Rate`): it and `formatPercent` both go through
  * `wholePercent`, so a column sorts by exactly what its cells say.

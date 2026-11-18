@@ -68,6 +68,19 @@ const investigationsFigure = (p: PlayerPowers) => p.investigations;
 /** Every player's entry, by number. */
 type Entries<T> = [number, T][];
 
+/** A split cell and whether the player had a chance in its column: a split table leaves out a row
+ *  with no chance in any column. */
+interface CellWithChance {
+  cell: SplitCell;
+  chance: boolean;
+}
+
+/** VETOES AS PRESIDENT's cell: the vetoes accepted of those asked for ("2 of 5"), sorted by the
+ *  accepted ones it leads with ("0 of 0" is 0). */
+function vetoCell({ accepted, refused }: VetoAnswers): SplitCell {
+  return { text: `${accepted} of ${accepted + refused}`, value: accepted };
+}
+
 /** The tab's cards, in order in their sections, from the two modules' entries. */
 function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, names: Map<number, string>): Sections {
   /** Players ranked by a count, higher first, ties by name; only counts above zero. The count is
@@ -111,7 +124,7 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
     title: string,
     columns: Column<K>[],
     entries: Entries<T>,
-    cellOf: (entry: T, key: K) => { cell: SplitCell; chance: boolean }
+    cellOf: (entry: T, key: K) => CellWithChance
   ) => {
     const rows = entries
       .map(([player, entry]) => {
@@ -128,14 +141,14 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
       .map(({ player, cells }) => ({ player, cells }));
     return rows.length === 0 ? null : <SplitTable title={title} columns={columns} rows={rows} names={names} />;
   };
-  /** Each split cell, with whether it was a chance: it sorts by the figure its text shows (null for
-   *  "—"), a rate's whole percent (`rateCell`), a count (`countCell`), and the accepted vetoes
-   *  "2 of 5" leads with ("0 of 0" is 0). */
-  const rateFound = (r: Rate) => ({ cell: rateCell(r), chance: r.chances > 0 });
-  const countFound = (n: number) => ({ cell: countCell(n), chance: n > 0 });
-  const vetoFound = ({ accepted, refused }: VetoAnswers) => ({
-    cell: { text: `${accepted} of ${accepted + refused}`, value: accepted },
-    chance: accepted + refused > 0,
+  /** Each kind of split cell with its chance, each sorting by the figure its text shows (null for
+   *  "—"): a rate's (`rateCell`), a chance once it has one; a count's (`countCell`), above 0; and
+   *  a veto answer's (`vetoCell`), once a veto was asked for. */
+  const rateWithChance = (r: Rate): CellWithChance => ({ cell: rateCell(r), chance: r.chances > 0 });
+  const countWithChance = (n: number): CellWithChance => ({ cell: countCell(n), chance: n > 0 });
+  const vetoWithChance = (answers: VetoAnswers): CellWithChance => ({
+    cell: vetoCell(answers),
+    chance: answers.accepted + answers.refused > 0,
   });
 
   /**
@@ -195,13 +208,13 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
       title: "PICKING A TEAMMATE",
       definition: "As president, the share of their nominations that named someone on their own side.",
       line: noNominations,
-      table: splitTable("PICKING A TEAMMATE", BY_SIDE, votes, (v, key) => rateFound(v.teammatePick[key])),
+      table: splitTable("PICKING A TEAMMATE", BY_SIDE, votes, (v, key) => rateWithChance(v.teammatePick[key])),
     },
     {
       title: "JA RATE",
       definition: "The share of their votes that were Ja, by their role.",
       line: noVotes,
-      table: splitTable("JA RATE", BY_ROLE, votes, (v, key) => rateFound(v.jaByRole[key])),
+      table: splitTable("JA RATE", BY_ROLE, votes, (v, key) => rateWithChance(v.jaByRole[key])),
     },
     {
       title: "LIBERAL VOTE ACCURACY",
@@ -272,7 +285,7 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
       title: "TIMES INVESTIGATED",
       definition: "Times others investigated them, by their role.",
       line: noneInvestigated,
-      table: splitTable("TIMES INVESTIGATED", BY_ROLE, powers, (p, key) => countFound(p.timesInvestigated[key])),
+      table: splitTable("TIMES INVESTIGATED", BY_ROLE, powers, (p, key) => countWithChance(p.timesInvestigated[key])),
     },
     {
       title: "PEEKS",
@@ -290,7 +303,7 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
       title: "EXECUTION TARGETS",
       definition: "The share of their executions that hit someone from the Fascist side, by their own side.",
       line: noneExecuting,
-      table: splitTable("EXECUTION TARGETS", BY_SIDE, powers, (p, key) => rateFound(p.fascistTargets[key])),
+      table: splitTable("EXECUTION TARGETS", BY_SIDE, powers, (p, key) => rateWithChance(p.fascistTargets[key])),
     },
     {
       title: "HITLER EXECUTED",
@@ -330,13 +343,13 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
       title: "VETOES AS PRESIDENT",
       definition: "Vetoes they accepted, of those their chancellor asked for, by their role.",
       line: "No vetoes yet with these players.",
-      table: splitTable("VETOES AS PRESIDENT", BY_ROLE, powers, (p, key) => vetoFound(p.vetoes[key])),
+      table: splitTable("VETOES AS PRESIDENT", BY_ROLE, powers, (p, key) => vetoWithChance(p.vetoes[key])),
     },
     {
       title: "SURVIVAL",
       definition: "The share of their games they were alive at the end, by their role.",
       line: "No games yet with these players.",
-      table: splitTable("SURVIVAL", BY_ROLE, powers, (p, key) => rateFound(p.survivalByRole[key])),
+      table: splitTable("SURVIVAL", BY_ROLE, powers, (p, key) => rateWithChance(p.survivalByRole[key])),
     },
   ];
   return { elections, powers: powerCards };
