@@ -70,6 +70,15 @@ public class RecordedGamesFixtureTest {
     }
 
     @Test
+    public void theFixtureIsInFormatTwo() {
+        for (Map<String, Object> game : games()) {
+            assertEquals(game.get("id") + "'s format", 2, game.get("format"));
+            Object level = game.get("botSkill");
+            assertTrue(game.get("id") + "'s level " + level, level == null || RecordFormat.BOT_SKILLS.contains(level));
+        }
+    }
+
+    @Test
     public void everyFixtureGameReplays() {
         for (Map<String, Object> game : games()) {
             List<String> roles = new ArrayList<>();
@@ -114,6 +123,7 @@ public class RecordedGamesFixtureTest {
         }
         long lastEnded = Long.MIN_VALUE;
         String lastId = "";
+        Set<Object> levels = new HashSet<>();
         for (Map<String, Object> game : games()) {
             List<Map<String, Object>> seats = list(game.get("seats"));
             if (game.get("outcome").equals(GameRecord.UNFINISHED)) {
@@ -133,6 +143,11 @@ public class RecordedGamesFixtureTest {
                 }
             }
             assertEquals(seats.stream().anyMatch(s -> (Boolean) s.get("cpu")), game.get("hasCpu"));
+            assertEquals(game.get("id") + ": a level exactly when bots sat", game.get("hasCpu"),
+                    game.get("botSkill") != null);
+            if (game.get("botSkill") != null) {
+                levels.add(game.get("botSkill"));
+            }
             long ended = ((Number) game.get("endedAt")).longValue();
             String id = (String) game.get("id");
             assertTrue("oldest first", ended > lastEnded || (ended == lastEnded && id.compareTo(lastId) > 0));
@@ -146,6 +161,7 @@ public class RecordedGamesFixtureTest {
                 GameRecord.HITLER_ELECTED), outcomes);
         assertEquals(2, unfinished);
         assertTrue("a game with CPU seats", cpu);
+        assertEquals("Easy, Normal and Hard bots", Set.copyOf(RecordFormat.BOT_SKILLS), levels);
         assertTrue("a twelve-character name",
                 list(fixture.get("players")).stream().anyMatch(p -> ((String) p.get("name")).length() == 12));
     }

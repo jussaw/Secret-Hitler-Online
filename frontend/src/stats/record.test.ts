@@ -31,6 +31,7 @@ describe("parseStatsData", () => {
 
     const numbers = new Set(data.players.map((p) => p.number));
     let chaos = 0;
+    const levels = new Set<string>();
     for (const game of data.games) {
       for (const seat of game.seats) {
         if (seat.player !== null) expect(numbers.has(seat.player), `${game.id}: player ${seat.player}`).toBe(true);
@@ -46,8 +47,13 @@ describe("parseStatsData", () => {
       }
       const last = game.events[game.events.length - 1];
       expect(last, `${game.id}'s last event`).toMatchObject({ type: "end", outcome: game.outcome });
+      expect(game.format, `${game.id}'s format`).toBe(2);
+      const level = botSkillOf(game);
+      expect(level === null, `${game.id}: no level exactly when no bots`).toBe(!game.hasCpu);
+      if (level !== null) levels.add(level);
     }
     expect(chaos, "a chaos policy in the fixture").toBeGreaterThan(0);
+    expect(levels, "Easy, Normal and Hard bots").toEqual(new Set(BOT_SKILLS));
   });
 
   it("refuses another format", () => {
