@@ -174,6 +174,19 @@ public class LobbyRecordingTest {
         }
     }
 
+    /** A game the host started at Hard is recorded Hard: the level goes from the lobby to the bots to the record. */
+    @Test
+    public void aGameStartedAtHardRecordsHard() {
+        Lobby lobby = new Lobby();
+        lobby.setBotSkill(BotSkill.HARD);
+        lobby.startNewGame();
+
+        stepCpusToTheEnd(lobby);
+
+        assertEquals(1, records.size());
+        assertEquals(BotSkill.HARD, records.get(0).botSkill());
+    }
+
     @Test
     public void aSweptGameHandsOverOneUnfinishedRecord() throws Exception {
         Lobby.LOBBY_TIMEOUT_DURATION_IN_MIN = 0;
