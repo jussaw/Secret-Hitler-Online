@@ -25,11 +25,17 @@ function tab(data: StatsData = fixture.data, filter: StatsFilter = DEFAULT_FILTE
 }
 
 const card = (name: string) => screen.getByRole("region", { name });
+/** A cell's text but for a ranked card's count line under the name, which only phones show. */
+function shown(cell: Element): string {
+  const copy = cell.cloneNode(true) as Element;
+  copy.querySelectorAll(".ranked-count-under").forEach((line) => line.remove());
+  return copy.textContent ?? "";
+}
 /** A card's table body rows (the head row left out), each as its cells' text. */
 const rows = (name: string) =>
-  Array.from(card(name).querySelectorAll("tbody tr")).map((row) =>
-    Array.from(row.querySelectorAll("td, th")).map((cell) => cell.textContent ?? "")
-  );
+  Array.from(card(name).querySelectorAll("tbody tr")).map((row) => Array.from(row.querySelectorAll("td, th")).map(shown));
+/** A ranked card's lines under the names ("5 games"), in row order. */
+const underLines = (name: string) => Array.from(card(name).querySelectorAll(".ranked-count-under"), (line) => line.textContent);
 /** The names a card shows, in order. */
 const names = (el: HTMLElement) => Array.from(el.querySelectorAll(".player-name")).map((n) => n.textContent);
 
@@ -146,6 +152,9 @@ describe("OverviewTab", () => {
     expect(rows("Games played")[0]).toEqual(["1.", "Ann", "5"]);
     expect(rows("Win rate")).toContainEqual(["", "Bo", "—", "2"]);
     expect(rows("Win rate")[0]).toEqual(["1.", "Ann", "80%", "5"]);
+    expect(underLines("Win rate")[0]).toBe("5 games");
+    expect(underLines("Win rate")).toContain("2 games");
+    expect(underLines("Games played")).toEqual([]);
     expect(rows("Current streak")[0]).toEqual(["1.", "Ann", "4"]);
     expect(rows("Longest streak")[0]).toEqual(["1.", "Ann", "4"]);
     const sides = within(card("Liberal / Fascist wins"));

@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { rankRows, rate } from "./counting";
 import { formatPercent, wholePercent } from "./numbers";
-import { countFigure, RankedTable, rateFigure } from "./RankedTable";
+import { countFigure, countNouns, RankedTable, rateFigure } from "./RankedTable";
 
 const names = new Map([
   [1, "Ann"],
@@ -11,13 +11,24 @@ const names = new Map([
 ]);
 const desc = (a: number, b: number) => b - a;
 
-/** Each body row's cells, as text (the head row left out). */
-function cells(): string[][] {
-  return screen
-    .getAllByRole("row")
-    .filter((row) => row.closest("tbody") !== null)
-    .map((row) => within(row).getAllByRole("cell").map((cell) => cell.textContent ?? ""));
+/** The body's rows (the head row left out). */
+const bodyRows = () => screen.getAllByRole("row").filter((row) => row.closest("tbody") !== null);
+
+/** A cell's text but for the count's line under the name, which only phones show. */
+function cellText(cell: HTMLElement): string {
+  return Array.from(cell.childNodes)
+    .filter((node) => !(node instanceof HTMLElement && node.classList.contains("ranked-count-under")))
+    .map((node) => node.textContent ?? "")
+    .join("");
 }
+
+/** Each body row's cells, as text. */
+function cells(): string[][] {
+  return bodyRows().map((row) => within(row).getAllByRole("cell").map(cellText));
+}
+
+/** Each body row's line under the name ("28 games"), null for a row with none. */
+const underLines = () => bodyRows().map((row) => row.querySelector(".ranked-count-under")?.textContent ?? null);
 
 /** The names down the table, in order. */
 const shownNames = () => cells().map((row) => row[1]);
@@ -107,6 +118,57 @@ describe("RankedTable", () => {
       ["2.", "Cy", "40%", "10"],
       ["", "Bo", "—", "3"],
     ]);
+  });
+
+  it("aCountHeadPutsTheCountUnderTheNameToo", () => {
+    // Shown on phones only (RankedTable.css), in place of the count column and its head.
+    renderRates(WITH_UNRANKED, "Games");
+    expect(underLines()).toEqual(["28 games", "10 games", "3 games"]);
+    const under = bodyRows()[0].querySelector(".ranked-count-under")!;
+    expect(under.tagName).toBe("SPAN");
+    expect(under.closest("td")).toHaveClass("ranked-name");
+    expect(under.previousElementSibling).toHaveClass("player-name");
+    expect(screen.getByRole("table")).toHaveClass("ranked-table", "has-count");
+  });
+
+  it("theLineUnderTheNameSaysEachCountHeadsNoun", () => {
+    // Every count head the cards use, for one and for many.
+    const lines: Record<string, [string, string]> = {
+      Games: ["1 game", "2 games"],
+      Terms: ["1 term", "2 terms"],
+      Hands: ["1 hand", "2 hands"],
+      Nominations: ["1 nomination", "2 nominations"],
+      Elections: ["1 election", "2 elections"],
+      Votes: ["1 vote", "2 votes"],
+      Checks: ["1 check", "2 checks"],
+    };
+    for (const [countHead, [one, many]] of Object.entries(lines)) {
+      expect(countNouns(countHead)).toEqual([one.slice(2), many.slice(2)]);
+      const { unmount } = renderRates(
+        [
+          { player: 1, value: 0.5, count: 1 },
+          { player: 2, value: 0.4, count: 2 },
+        ],
+        countHead
+      );
+      // Both below the minimum, so unranked, the larger count first.
+      expect(underLines(), countHead).toEqual([many, one]);
+      unmount();
+    }
+  });
+
+  it("withoutACountHeadThereIsNoLineUnderTheName", () => {
+    renderRates(WITH_UNRANKED);
+    expect(underLines()).toEqual([null, null, null]);
+    expect(document.querySelector(".ranked-count-under")).toBeNull();
+    expect(screen.getByRole("table")).not.toHaveClass("has-count");
+  });
+
+  it("theLineUnderTheNameFollowsItsRowThroughASort", () => {
+    renderRates(WITH_UNRANKED, "Games");
+    press("Player");
+    expect(cells().map((row) => row[1])).toEqual(["Ann", "Bo", "Cy"]);
+    expect(underLines()).toEqual(["28 games", "3 games", "10 games"]);
   });
 
   it("opensInRankOrder", () => {

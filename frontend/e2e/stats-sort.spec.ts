@@ -1,16 +1,22 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { routePath } from "../src/stats/routes";
+import { routePath, type TabId } from "../src/stats/routes";
 import { NARROW_PHONE } from "./layout";
 import { settle } from "./lobby";
 import { bigStatsData, checkStatsPage, stubStats } from "./stats";
 
 /**
  * The sortable tables in the browser (#109): a ranked card's heads sort its rows while every rank
- * stays its player's, the power ranking sorts by Elo, a best week by player, Enter and Space on a
- * focused head sort it with the focus kept there, and a sorted card still fits a 320px phone.
+ * stays its player's (on phones, where its count is a line under the name, its count head is gone),
+ * the power ranking sorts by Elo, a best week by player, Enter and Space on a focused head sort it
+ * with the focus kept there, a sorted card still fits a 320px phone, and at 320px every ranked
+ * table fits inside its card.
  */
 
 const data = bigStatsData();
+
+/** The game's phone-only query (GameScreen.css), where a ranked card's count goes under the name. */
+const PHONE_ONLY =
+  "((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4)))";
 
 /** Opens `path` with the big response stubbed and the clock an hour after its last game ends. */
 async function open(page: Page, path: string): Promise<void> {
@@ -25,6 +31,7 @@ async function open(page: Page, path: string): Promise<void> {
 const card = (page: Page, name: string) => page.getByRole("region", { name, exact: true });
 const head = (table: Locator, name: string) => table.getByRole("columnheader", { name, exact: true });
 const headButton = (table: Locator, name: string) => head(table, name).getByRole("button");
+const phoneLayout = (page: Page) => page.evaluate((query) => matchMedia(query).matches, PHONE_ONLY);
 
 /** The body's cells of `cell`'s class, as numbers ("—" as null). */
 function numbers(table: Locator, cell: string): Promise<(number | null)[]> {
@@ -53,6 +60,9 @@ function names(table: Locator): Promise<string[]> {
   return table.locator("tbody .ranked-name .player-name").evaluateAll((all) => all.map((el) => (el.textContent ?? "").trim()));
 }
 
+/** Names A to Z, as the Player head sorts them. */
+const byName = (a: string, b: string) => a.localeCompare(b, "en", { sensitivity: "base" });
+
 function nonIncreasing(values: (number | null)[]): boolean {
   return values.every((value, i) => i === 0 || (values[i - 1] as number) >= (value as number));
 }
@@ -68,25 +78,51 @@ test("a ranked card's heads sort it and its ranks stay", async ({ page }) => {
   const opening = await ranks(table);
   expect(opening.length, "rows").toBeGreaterThan(1);
   const rankOf = new Map(opening);
+  const ranksStay = async () => {
+    for (const [player, rank] of await ranks(table)) expect(rank, `player ${player}'s rank`).toBe(rankOf.get(player));
+  };
 
-  await headButton(table, "Games").click();
-  await expect(head(table, "Games")).toHaveAttribute("aria-sort", "descending");
-  await expect(head(table, "Rank")).not.toHaveAttribute("aria-sort", /./);
-  const most = await numbers(table, "ranked-count");
-  expect(most.every((count) => count !== null), "every count shown").toBe(true);
-  expect(nonIncreasing(most), `most games first: ${most.join(", ")}`).toBe(true);
-  const byGames = await ranks(table);
-  for (const [player, rank] of byGames) expect(rank, `player ${player}'s rank`).toBe(rankOf.get(player));
+  const phone = await phoneLayout(page);
+  if (phone) {
+    // On a phone the count is a line under each name, in place of its column and head (as PLAYERS'
+    // Last played), so sorting by it is a desktop thing: the press here is on Player.
+    await expect(head(table, "Games")).toBeHidden();
+    await expect(table.locator("tbody td.ranked-count").first()).toBeHidden();
+    const lines = table.locator("tbody .ranked-count-under");
+    await expect(lines).toHaveCount(opening.length);
+    await expect(lines.first()).toBeVisible();
+    for (const line of await lines.allTextContents()) expect(line).toMatch(/^\d+ games?$/);
 
-  await headButton(table, "Games").click();
-  await expect(head(table, "Games")).toHaveAttribute("aria-sort", "ascending");
-  const fewest = await numbers(table, "ranked-count");
-  expect(nonDecreasing(fewest), `fewest games first: ${fewest.join(", ")}`).toBe(true);
-  for (const [player, rank] of await ranks(table)) expect(rank, `player ${player}'s rank`).toBe(rankOf.get(player));
+    await headButton(table, "Player").click();
+    await expect(head(table, "Player")).toHaveAttribute("aria-sort", "ascending");
+    const aToZ = await names(table);
+    expect(aToZ, "names A to Z").toEqual([...aToZ].sort(byName));
+    await ranksStay();
+    await headButton(table, "Player").click();
+    await expect(head(table, "Player")).toHaveAttribute("aria-sort", "descending");
+    expect(await names(table), "names Z to A").toEqual([...aToZ].reverse());
+    await ranksStay();
+  } else {
+    await expect(table.locator("tbody .ranked-count-under").first()).toBeHidden();
+    await headButton(table, "Games").click();
+    await expect(head(table, "Games")).toHaveAttribute("aria-sort", "descending");
+    await expect(head(table, "Rank")).not.toHaveAttribute("aria-sort", /./);
+    const most = await numbers(table, "ranked-count");
+    expect(most.every((count) => count !== null), "every count shown").toBe(true);
+    expect(nonIncreasing(most), `most games first: ${most.join(", ")}`).toBe(true);
+    await ranksStay();
+
+    await headButton(table, "Games").click();
+    await expect(head(table, "Games")).toHaveAttribute("aria-sort", "ascending");
+    const fewest = await numbers(table, "ranked-count");
+    expect(nonDecreasing(fewest), `fewest games first: ${fewest.join(", ")}`).toBe(true);
+    await ranksStay();
+  }
 
   await headButton(table, "Rank").click();
   await expect(head(table, "Rank")).toHaveAttribute("aria-sort", "ascending");
-  await expect(head(table, "Games")).not.toHaveAttribute("aria-sort", /./);
+  // The pressed head gives up its mark (a hidden head is in no role query, so only on desktop Games).
+  await expect(head(table, phone ? "Player" : "Games")).not.toHaveAttribute("aria-sort", /./);
   expect(await ranks(table), "the opening order").toEqual(opening);
 });
 
@@ -108,8 +144,7 @@ test("a best week sorts by player", async ({ page }) => {
   await expect(head(table, "Player")).toHaveAttribute("aria-sort", "ascending");
   const shown = await names(table);
   expect(shown.length, "rows").toBeGreaterThan(1);
-  const aToZ = [...shown].sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
-  expect(shown, "names A to Z").toEqual(aToZ);
+  expect(shown, "names A to Z").toEqual([...shown].sort(byName));
 });
 
 test("Enter and Space on a focused head sort it", async ({ page }) => {
@@ -133,10 +168,54 @@ test("Enter and Space on a focused head sort it", async ({ page }) => {
 
 test("a sorted ranked card still fits", async ({ page }) => {
   test.skip(test.info().project.name !== "phone-360", "the narrowest phone, once");
-  await open(page, routePath({ page: "tab", tab: "overview" }));
   await page.setViewportSize(NARROW_PHONE);
+  await open(page, routePath({ page: "tab", tab: "overview" }));
+  // Its count column gives way to the line under the name on a phone, so it sorts by its value.
   const table = card(page, "Win rate").locator("table.ranked-table");
-  await headButton(table, "Games").click();
-  await expect(head(table, "Games")).toHaveAttribute("aria-sort", "descending");
+  await headButton(table, "Win rate").click();
+  await expect(head(table, "Win rate")).toHaveAttribute("aria-sort", "descending");
   await checkStatsPage(page, NARROW_PHONE);
+});
+
+/** Every tab with ranked tables. */
+const RANKED_TABS: TabId[] = ["overview", "roles", "votes", "activity", "records"];
+
+test("every ranked table fits inside its card at 320px", async ({ page }) => {
+  test.skip(test.info().project.name !== "phone-360", "the narrowest phone, once");
+  test.slow();
+  await page.setViewportSize(NARROW_PHONE);
+  for (const tab of RANKED_TABS) {
+    for (const search of ["", "?cpu=1"]) {
+      const path = `${routePath({ page: "tab", tab })}${search}`;
+      await open(page, path);
+      const { checked, problems } = await page.evaluate(() => {
+        const out: string[] = [];
+        let count = 0;
+        for (const table of Array.from(document.querySelectorAll("table.ranked-table"))) {
+          const card = table.closest(".stats-card");
+          if (!card || table.getBoundingClientRect().width === 0) continue;
+          count++;
+          const title = (card.querySelector("h3")?.textContent ?? "?").trim();
+          // A table that scrolls inside a region of its own by design (the power ranking) is
+          // measured by its region, which must not scroll either.
+          const region = table.closest(".scroll-region");
+          const box = region ?? table;
+          const style = getComputedStyle(card);
+          const edges = card.getBoundingClientRect();
+          const left = edges.left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft);
+          const right = edges.right - parseFloat(style.borderRightWidth) - parseFloat(style.paddingRight);
+          const r = box.getBoundingClientRect();
+          if (r.left < left - 1 || r.right > right + 1) {
+            out.push(`${title}: [${r.left.toFixed(1)}, ${r.right.toFixed(1)}] outside [${left.toFixed(1)}, ${right.toFixed(1)}]`);
+          }
+          if (region && region.scrollWidth > region.clientWidth) {
+            out.push(`${title}: its region scrolls, ${region.scrollWidth} of ${region.clientWidth}`);
+          }
+        }
+        return { checked: count, problems: out };
+      });
+      expect(checked, `ranked tables on ${path}`).toBeGreaterThan(0);
+      expect(problems, `ranked tables outside their cards on ${path} at 320x568`).toEqual([]);
+    }
+  }
 });

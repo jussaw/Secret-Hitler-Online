@@ -88,6 +88,11 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* The count under the name: phones only, where it takes the place of its column (below). */
+.ranked-count-under {
+    display: none;
+}
+
 .ranked-unranked .ranked-name,
 .ranked-unranked .ranked-value {
     color: var(--textColorOnDark);
@@ -99,5 +104,28 @@
     .ranked-table td {
         height: 44px;
         box-sizing: border-box;
+    }
+}
+
+/* Phones (the game's phone-only query): a card with a count column (#109) shows its count as a
+   line under the name ("12 games") in place of the column and its head, as PLAYERS' last played
+   does, so a 44px #, a 44px name, the value and a count head such as "Nominations" never need more
+   than a 320px phone's card. The value is then the row's last cell, at the card's edge. */
+@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
+    .ranked-table .ranked-count {
+        display: none;
+    }
+
+    .ranked-table.has-count .ranked-value {
+        padding-right: 0;
+    }
+
+    .ranked-table .ranked-count-under {
+        display: block;
+        padding-bottom: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        line-height: 1.3;
+        color: var(--textColorOnDark);
     }
 }

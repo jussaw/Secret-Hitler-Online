@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { countLabel } from "./countLabel";
 import { nameOf, type Rate, type Row } from "./counting";
 import { wholePercent } from "./numbers";
 import PlayerName from "./PlayerName";
@@ -30,6 +31,14 @@ export interface RankedTableProps<T> {
   countHead?: string;
   /** The value stands at the right (the default); INVESTIGATIONS' left-aligned text passes false. */
   valueEnd?: boolean;
+}
+
+/** A count head's nouns for the line under the name (`countLabel`): the head lowercased for any
+ *  count but 1, and that less its final "s" for 1 ("Games": "1 game", "12 games"). Every count head
+ *  is a plural in -s. */
+export function countNouns(countHead: string): [string, string] {
+  const many = countHead.toLowerCase();
+  return [many.replace(/s$/, ""), many];
 }
 
 /** A ranked table's columns. */
@@ -67,6 +76,9 @@ function rankedColumns<T>(
  * column and sorts by it (`SortHeadRow`, #109): the table opens in rank order, `#` marked, and
  * ranks never change; under the value an unranked row has no figure, so it goes last either way.
  * Narrow columns, so it fits a 320px phone without scrolling: a long name wraps in its own column.
+ * On phones the count column, its head too, gives way to a line under the name ("12 games",
+ * `span.ranked-count-under`, `RankedTable.css`), as PLAYERS' last played does, so sorting by the
+ * count is a desktop thing.
  */
 export function RankedTable<T>({
   rows,
@@ -82,8 +94,9 @@ export function RankedTable<T>({
     [names, valueHead, sortValue, countHead, valueEnd]
   );
   const { rows: sorted, sort, press } = useTableSort(rows, columns, RANK_ORDER);
+  const nouns = useMemo(() => (countHead === undefined ? null : countNouns(countHead)), [countHead]);
   return (
-    <table className="ranked-table">
+    <table className={nouns === null ? "ranked-table" : "ranked-table has-count"}>
       <SortHeadRow columns={columns} sort={sort} onSort={press} />
       <tbody>
         {sorted.map((row) => {
@@ -93,6 +106,7 @@ export function RankedTable<T>({
               <td className="ranked-rank">{ranked ? `${row.rank}.` : ""}</td>
               <td className="ranked-name">
                 <PlayerName player={row.player} name={nameOf(names, row.player)} />
+                {nouns !== null && <span className="ranked-count-under">{countLabel(row.count, nouns)}</span>}
               </td>
               <td className="ranked-value">{ranked ? format(row.value) : "—"}</td>
               {countHead !== undefined && <td className="ranked-count">{row.count}</td>}
