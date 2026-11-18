@@ -240,9 +240,9 @@ keeps credit to upstream and to the board game's creators.
   is gated in `CpuPlayer` by who runs it: `hardLiberal()` (Hard and dealt Liberal) runs rule 1;
   `readsTheGame(game)` (Hard and not knowing every role, `knowsEveryRole`, which `initialize`
   asks too: a liberal, or Hitler at 7 or more) runs rules 2, 3 and 5 and rule 4's blame; every
-  Hard bot runs rule 6 (`trackerAtTwo`) and follows its peek; only a Hard fascist runs rule 7
-  (`bluffs`) and Phase 25D's rule 9 (`hardFascist()`); and the Hard fascist side, Hitler too, runs
-  Phase 25D's rule 8 (below). Rule 1,
+  Hard bot runs rule 6 (`trackerAtTwo`; its pull for `hardFascistSide()`) and follows its peek;
+  the Hard fascist side, Hitler too, runs Phase 25D's rule 8 (`hardFascistSide()`); and only a
+  Hard fascist runs rule 7 (`bluffs`) and Phase 25D's rule 9 (`hardFascist()`). Rule 1,
   `ClearedPlayers`: a chancellor seen in a legislative session (`CpuPlayer.inLegislativeSession`:
   `LEGISLATIVE_PRESIDENT`, `LEGISLATIVE_CHANCELLOR` or `LEGISLATIVE_PRESIDENT_VETO`, which rule 4
   shares) with 3 or more fascist policies down is cleared (not Hitler, or the
@@ -325,8 +325,10 @@ keeps credit to upstream and to the board game's creators.
   LIBERAL_GOVERNMENT_PULL` (a `float`, 0.9) of the yes chance of a Hard bot on the fascist side
   (a fascist, or Hitler, who knows the liberals at a table of 5 or 6 and at 7 or more only those
   it investigated) for a government whose president and chancellor it knows are liberal
-  (`liberalGovernmentPull`, on every voting path, after rule 6's pull, so at tracker 2 both
-  apply; Normal's Hitler at 5 or 6 votes yes on known liberals to look liberal); rule 9, special
+  (`liberalGovernmentPull`, on the fascist side's mix and on the trust curve, after rule 6's pull,
+  so at tracker 2 both apply; a government of two known liberals is never untrusted, and the 0.99
+  for Hitler's winning election stays; Normal's Hitler at 5 or 6 votes yes on known liberals to
+  look liberal); rule 9, special
   elections to the side, Hard fascists' only, hands the special election to a living fascist
   teammate other than Hitler (Hitler as president nominates a liberal) with
   `SIDE_ELECTION_CHANCE` (0.9) when it has one, and otherwise picks as Normal
@@ -346,10 +348,12 @@ keeps credit to upstream and to the board game's creators.
   `hardRule5PresidentsOwnCards` (its own discard and its chancellor's deduced one),
   `hardRule3Votes`, `hardRule3OpenBallots`, `hardRule6TrackerLiberal`, `…HitlerAtSeven` and
   `…Fascist`, and `hardRule7ChancellorBluffs` and `…PresidentBluffs`; Phase 25D's
-  `HardFascistRulesTest` (rules 8 and 9, alone and against Normal and Easy, Hitler at 5 and at 7
-  included) and `NoPeekingTest`'s `hardRule8VotesDownLiberalGovernments`, `hardRule8HitlerAtFive`
-  and `hardRule9SideElections` (each bot knows every role, so their twins hide an unseen card;
-  Hitler at 7, who knows none, is `votesByHitlerAtSeven`'s), and `HardTrackerTest`'s fascist cases
+  `HardFascistRulesTest` (rules 8 and 9 against Normal, and Easy for the fascist: Hitler at 5, 6
+  and 7, a liberal that knows two liberals, and rules 6 and 8 together at tracker 2) and
+  `NoPeekingTest`'s `hardRule8VotesDownLiberalGovernments`, `hardRule8HitlerAtFive` and
+  `hardRule9SideElections` (each bot knows every role, so their twins hide an unseen card) and
+  `hardRule8HitlerAtSevenAfterInvestigating` (Hitler at 7 knowing two liberals, the seats it does
+  not know swapped; `votesByHitlerAtSeven` swaps the rest), and `HardTrackerTest`'s fascist cases
   on two liberals carry rule 8's factor. The bot tests build their games with
   `BotScenes` (test source): seats `P0`, `P1`, … in seat order, every one a bot, dealt the roles a
   string names (`game("LLLFH")`), the draw pile in one fixed order, and `board`, `drawTop`,
