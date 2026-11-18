@@ -23,7 +23,7 @@
     --buttonAltHoverFill: #7abcca;
     --buttonAltShadowFill: #386F8B;
 
-    /* The snackbar's, the event bar's and the charts' tooltips' fill. */
+    /* The snackbar's and the charts' tooltips' fill. */
     --alertFill: #141414;
     /* The page under an open prompt (CustomAlert.css), which is blurred too. */
     --alertDim: rgba(20, 20, 20, 0.55);
@@ -35,10 +35,6 @@
     --selectionPressed: rgba(205, 135, 9, 1.00);
     --selectionSelected: rgba(228, 105, 73, 1.00);
     --selectionNone: rgba(246, 181, 63, 0.00);
-
-    --eventBarIn: 1s;
-    --eventBarOut: 1s;
-    --eventBarOpacity: 0.9;
 
     --statusBarColor: #141414;
 

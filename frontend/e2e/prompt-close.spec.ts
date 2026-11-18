@@ -78,13 +78,8 @@ async function overlayShare(page: Page, rect: Rect): Promise<number> {
   );
 }
 
-/**
- * Waits for the open prompt to finish fading in, checks that it is drawn, and returns its box.
- * The event bar, which passes over the box between prompts, is hidden so it cannot move between
- * the two screenshots of a measurement.
- */
+/** Waits for the open prompt to finish fading in, checks that it is drawn, and returns its box. */
 async function openBox(page: Page): Promise<Rect> {
-  await page.addStyleTag({ content: "#event-bar { display: none !important; }" });
   await waitForPrompt(page);
   const rect = (await page.locator("#alert-box").boundingBox())!;
   expect(await overlayShare(page, rect), "the open prompt is drawn").toBeGreaterThan(OPEN_SHARE);
