@@ -87,3 +87,7 @@ Normal fascists (N/N) ran 27.2% to 28.2% in these runs.
    16.2% against N/N 29.5, 45.2, 22.7, 30.6, 18.1, 23.2%. Voting down alone (exploration 8) leaves
    N/H about 1.6 points under N/N, the edge of the pooled intervals' overlap, so both rules go in
    before run 2. Nominating Hitler at 3 or more is not needed and stays out.
+10. **Rules 8 and 9 as built** (run 1's code with rule 9 committed and rule 8 in the working
+    tree), `-Pladder -Pgames=500`: E/N 20.7%, N/N 27.7%, H/N 39.3%, N/E 33.3%, N/H 23.1%, E/E
+    24.8%, H/H 27.4%; every step clears and the balance is 0.3 points apart, as exploration 9's
+    scratch edits said. At 500 games a size this decides nothing.
