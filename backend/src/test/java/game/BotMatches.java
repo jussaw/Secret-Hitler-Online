@@ -5,19 +5,23 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 import server.stats.CpuGames;
 
 /**
  * The bots' self-play run ({@code ./gradlew botMatches}): plays games with a bot in every seat at
  * each table size from 5 to 10, through {@link CpuGames}, and prints how often each side wins and
- * how the games ended. The deck cannot be seeded, so every run differs: the 95% intervals say how
- * far a difference can be trusted.
+ * how the games ended. The bots dealt liberal play at one level and those dealt fascist or Hitler
+ * at another ({@code -Pliberals}, {@code -Pfascists}), and {@code -Pladder} plays the pairings
+ * {@link LadderCheck} reads. The deck cannot be seeded, so every run differs: the 95% intervals
+ * say how far a difference can be trusted.
  */
 public final class BotMatches {
     /** Games a table size, unless {@code -Pgames} says otherwise. */
@@ -30,13 +34,12 @@ public final class BotMatches {
             GameState.FASCIST_VICTORY_POLICY,
             GameState.FASCIST_VICTORY_ELECTION);
 
-    /** The bots as they are built, whatever their seat's role. */
-    public static final BiFunction<String, Identity, CpuPlayer> BOTS_AS_BUILT = (name, role) -> new CpuPlayer(name);
-    public static final String BOTS_AS_BUILT_LABEL = "Bots as built";
-
     private static final double Z = 1.96; // a 95% interval
 
     private static final String GAMES_OPTION = "--games=";
+    private static final String LIBERALS_OPTION = "--liberals=";
+    private static final String FASCISTS_OPTION = "--fascists=";
+    private static final String LADDER_OPTION = "--ladder";
 
     private BotMatches() {
     }
@@ -201,24 +204,153 @@ public final class BotMatches {
         return new Results(label, gamesPerSize, Collections.unmodifiableSortedMap(bySize));
     }
 
-    /** The run's options, from {@code build.gradle}'s {@code -P} properties. */
-    public record Options(int games) {
+    /**
+     * Makes each seat's bot at its side's level: a seat dealt {@code LIBERAL} at {@code liberals},
+     * one dealt {@code FASCIST} or {@code HITLER} at {@code fascists}.
+     */
+    public static BiFunction<String, Identity, CpuPlayer> makeBots(BotSkill liberals, BotSkill fascists) {
+        return (name, role) -> new CpuPlayer(name, role == Identity.LIBERAL ? liberals : fascists);
+    }
+
+    /** Names both sides' levels, as the table and a failed game do: {@code Liberals HARD, fascists NORMAL}. */
+    public static String label(BotSkill liberals, BotSkill fascists) {
+        return "Liberals " + liberals + ", fascists " + fascists;
+    }
+
+    /** Plays every pairing {@link LadderCheck#PAIRINGS} names, in its order. */
+    public static Map<LadderCheck.Pairing, Results> ladder(int gamesPerSize) {
+        Map<LadderCheck.Pairing, Results> results = new LinkedHashMap<>();
+        for (LadderCheck.Pairing pairing : LadderCheck.PAIRINGS) {
+            results.put(pairing, playAt(gamesPerSize, pairing.liberals(), pairing.fascists()));
+        }
+        return results;
+    }
+
+    /** {@link #play} with each side's bots at its level, named by {@link #label}. */
+    private static Results playAt(int gamesPerSize, BotSkill liberals, BotSkill fascists) {
+        return play(gamesPerSize, label(liberals, fascists), makeBots(liberals, fascists));
+    }
+
+    /**
+     * The ladder run as plain text: a line naming the run, the liberal side's rate and interval for
+     * each pairing side by side (a row per table size and {@code All}), the ladder and balance
+     * verdicts, then each pairing's own table. Each line ends in a newline.
+     */
+    public static String ladderReport(Map<LadderCheck.Pairing, Results> results) {
+        List<List<String>> rows = new ArrayList<>();
+        List<String> header = new ArrayList<>();
+        header.add("Seats");
+        for (LadderCheck.Pairing pairing : results.keySet()) {
+            header.add(pairing.label());
+        }
+        rows.add(header);
+        Results first = results.values().iterator().next();
+        for (int seats : first.bySize().keySet()) {
+            rows.add(rateRow(Integer.toString(seats), results, pairing -> pairing.bySize().get(seats)));
+        }
+        rows.add(rateRow("All", results, Results::pooled));
+
+        StringBuilder out = new StringBuilder();
+        out.append(String.format(Locale.ROOT,
+                "Ladder and balance pairings (liberals/fascists; E Easy, N Normal, H Hard): "
+                        + "%d games at each table size",
+                first.gamesPerSize())).append('\n');
+        out.append(aligned(rows)).append('\n');
+        out.append(LadderCheck.verdicts(results));
+        for (Results pairing : results.values()) {
+            out.append('\n').append(pairing.table());
+        }
+        return out.toString();
+    }
+
+    /** A row of the side-by-side table: its name, then each pairing's liberal rate in {@code tallyOf} its results. */
+    private static List<String> rateRow(String name, Map<LadderCheck.Pairing, Results> results,
+            Function<Results, Tally> tallyOf) {
+        List<String> row = new ArrayList<>();
+        row.add(name);
+        for (Results pairing : results.values()) {
+            Tally tally = tallyOf.apply(pairing);
+            row.add(LadderCheck.rate(tally.liberalWins(), tally.games()));
+        }
+        return row;
+    }
+
+    /** Rows of cells as lines, each column right-aligned to its widest cell, two spaces apart. */
+    private static String aligned(List<List<String>> rows) {
+        int[] widths = new int[rows.get(0).size()];
+        for (List<String> row : rows) {
+            for (int i = 0; i < row.size(); i++) {
+                widths[i] = Math.max(widths[i], row.get(i).length());
+            }
+        }
+        StringBuilder out = new StringBuilder();
+        for (List<String> row : rows) {
+            StringBuilder line = new StringBuilder();
+            for (int i = 0; i < row.size(); i++) {
+                if (i > 0) {
+                    line.append("  ");
+                }
+                line.append(" ".repeat(widths[i] - row.get(i).length())).append(row.get(i));
+            }
+            out.append(line).append('\n');
+        }
+        return out.toString();
+    }
+
+    /**
+     * The run's options, from {@code build.gradle}'s {@code -P} properties.
+     *
+     * @param games    games at each table size.
+     * @param liberals the level of the bots dealt liberal.
+     * @param fascists the level of the bots dealt fascist or Hitler.
+     * @param ladder   whether to play the ladder's pairings instead of one.
+     */
+    public record Options(int games, BotSkill liberals, BotSkill fascists, boolean ladder) {
 
         /**
-         * Reads the arguments {@code build.gradle} passes: none gives {@link #DEFAULT_GAMES} games a
-         * size, and {@code --games=N} gives N, a whole number of at least 1.
+         * Reads the arguments {@code build.gradle} passes: {@code --games=N} (N a whole number of at
+         * least 1, {@link #DEFAULT_GAMES} without it), {@code --liberals=LEVEL} and
+         * {@code --fascists=LEVEL} (a level's name in any case, {@code NORMAL} without it) and
+         * {@code --ladder}, which plays its own pairings and so takes no level.
          *
          * @throws IllegalArgumentException for any other argument, saying what was wrong.
          */
         public static Options parse(String... args) {
             int games = DEFAULT_GAMES;
+            BotSkill liberals = BotSkill.NORMAL;
+            BotSkill fascists = BotSkill.NORMAL;
+            boolean levelGiven = false;
+            boolean ladder = false;
             for (String arg : args) {
-                if (!arg.startsWith(GAMES_OPTION)) {
-                    throw new IllegalArgumentException("Unknown option \"" + arg + "\". botMatches takes -Pgames=N.");
+                if (arg.startsWith(GAMES_OPTION)) {
+                    games = wholeNumber(arg.substring(GAMES_OPTION.length()));
+                } else if (arg.startsWith(LIBERALS_OPTION)) {
+                    liberals = level(arg.substring(LIBERALS_OPTION.length()));
+                    levelGiven = true;
+                } else if (arg.startsWith(FASCISTS_OPTION)) {
+                    fascists = level(arg.substring(FASCISTS_OPTION.length()));
+                    levelGiven = true;
+                } else if (arg.equals(LADDER_OPTION)) {
+                    ladder = true;
+                } else {
+                    throw new IllegalArgumentException("Unknown option \"" + arg + "\". botMatches takes -Pgames=N, "
+                            + "-Pliberals=LEVEL, -Pfascists=LEVEL and -Pladder.");
                 }
-                games = wholeNumber(arg.substring(GAMES_OPTION.length()));
             }
-            return new Options(games);
+            if (ladder && levelGiven) {
+                throw new IllegalArgumentException(
+                        "-Pladder plays its own pairings: leave out -Pliberals and -Pfascists.");
+            }
+            return new Options(games, liberals, fascists, ladder);
+        }
+
+        private static BotSkill level(String value) {
+            for (BotSkill skill : BotSkill.values()) {
+                if (skill.name().equalsIgnoreCase(value)) {
+                    return skill;
+                }
+            }
+            throw new IllegalArgumentException("Unknown level \"" + value + "\": use EASY, NORMAL or HARD.");
         }
 
         private static int wholeNumber(String value) {
@@ -234,7 +366,10 @@ public final class BotMatches {
         }
     }
 
-    /** Plays the run and prints its table; a refused option prints why and exits with status 2. */
+    /**
+     * Plays the run and prints its table, or with {@code --ladder} the ladder's report; a refused
+     * option prints why and exits with status 2.
+     */
     public static void main(String[] args) {
         Options options;
         try {
@@ -244,6 +379,10 @@ public final class BotMatches {
             System.exit(2);
             return;
         }
-        System.out.print(play(options.games(), BOTS_AS_BUILT_LABEL, BOTS_AS_BUILT).table());
+        if (options.ladder()) {
+            System.out.print(ladderReport(ladder(options.games())));
+        } else {
+            System.out.print(playAt(options.games(), options.liberals(), options.fascists()).table());
+        }
     }
 }

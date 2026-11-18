@@ -1,11 +1,13 @@
 package game;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import game.datastructures.Identity;
 import game.datastructures.Player;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.SortedMap;
@@ -51,18 +53,38 @@ public class BotMatchesTest {
 
     @Test
     public void everySizeFinishesItsGames() {
-        BotMatches.Results results = BotMatches.play(3, "Test bots", BotMatches.BOTS_AS_BUILT);
+        for (BotSkill liberals : BotSkill.values()) {
+            for (BotSkill fascists : BotSkill.values()) {
+                String label = BotMatches.label(liberals, fascists);
+                BotMatches.Results results = BotMatches.play(3, label, BotMatches.makeBots(liberals, fascists));
 
-        assertEquals(List.of(5, 6, 7, 8, 9, 10), List.copyOf(results.bySize().keySet()));
-        for (BotMatches.Tally tally : results.bySize().values()) {
-            assertEquals(3, tally.games());
-            int endings = 0;
-            for (GameState ending : BotMatches.ENDINGS) {
-                endings += tally.count(ending);
+                assertEquals(label, List.of(5, 6, 7, 8, 9, 10), List.copyOf(results.bySize().keySet()));
+                for (BotMatches.Tally tally : results.bySize().values()) {
+                    assertEquals(label, 3, tally.games());
+                    int endings = 0;
+                    for (GameState ending : BotMatches.ENDINGS) {
+                        endings += tally.count(ending);
+                    }
+                    assertEquals(label, 3, endings);
+                }
+                assertEquals(label, 18, results.pooled().games());
             }
-            assertEquals(3, endings);
         }
-        assertEquals(18, results.pooled().games());
+    }
+
+    @Test
+    public void eachSideGetsItsLevel() {
+        BiFunction<String, Identity, CpuPlayer> makeBot = BotMatches.makeBots(BotSkill.HARD, BotSkill.EASY);
+
+        assertEquals(BotSkill.HARD, makeBot.apply("Bot 1", Identity.LIBERAL).skill());
+        assertEquals(BotSkill.EASY, makeBot.apply("Bot 2", Identity.FASCIST).skill());
+        assertEquals(BotSkill.EASY, makeBot.apply("Bot 3", Identity.HITLER).skill());
+        assertEquals("Bot 1", makeBot.apply("Bot 1", Identity.LIBERAL).myName);
+    }
+
+    @Test
+    public void theLabelNamesBothLevels() {
+        assertEquals("Liberals HARD, fascists NORMAL", BotMatches.label(BotSkill.HARD, BotSkill.NORMAL));
     }
 
     @Test
@@ -217,7 +239,6 @@ public class BotMatchesTest {
         assertRefused(() -> BotMatches.Options.parse("--games=-3"));
         assertRefused(() -> BotMatches.Options.parse("--games=abc"));
         assertRefused(() -> BotMatches.Options.parse("--games="));
-        assertRefused(() -> BotMatches.Options.parse("--ladder"));
     }
 
     @Test
@@ -225,14 +246,96 @@ public class BotMatchesTest {
         Throwable games = thrown(() -> BotMatches.Options.parse("--games=abc"));
         assertNotNull(games);
         assertEquals("-Pgames must be a whole number of at least 1, not \"abc\".", games.getMessage());
+    }
 
-        Throwable unknown = thrown(() -> BotMatches.Options.parse("--ladder"));
+    @Test
+    public void optionsReadTheLevels() {
+        BotMatches.Options none = BotMatches.Options.parse();
+        assertEquals(BotSkill.NORMAL, none.liberals());
+        assertEquals(BotSkill.NORMAL, none.fascists());
+        assertFalse(none.ladder());
+
+        BotMatches.Options levels = BotMatches.Options.parse("--liberals=hard", "--fascists=Easy");
+        assertEquals(BotSkill.HARD, levels.liberals());
+        assertEquals(BotSkill.EASY, levels.fascists());
+        assertFalse(levels.ladder());
+        assertEquals(BotMatches.DEFAULT_GAMES, levels.games());
+
+        BotMatches.Options ladder = BotMatches.Options.parse("--ladder", "--games=50");
+        assertTrue(ladder.ladder());
+        assertEquals(50, ladder.games());
+        assertEquals(BotSkill.NORMAL, ladder.liberals());
+        assertEquals(BotSkill.NORMAL, ladder.fascists());
+    }
+
+    @Test
+    public void anUnknownLevelIsRefused() {
+        Throwable expert = thrown(() -> BotMatches.Options.parse("--fascists=expert"));
+        assertNotNull(expert);
+        assertTrue(expert instanceof IllegalArgumentException);
+        assertEquals("Unknown level \"expert\": use EASY, NORMAL or HARD.", expert.getMessage());
+
+        Throwable empty = thrown(() -> BotMatches.Options.parse("--liberals="));
+        assertNotNull(empty);
+        assertEquals("Unknown level \"\": use EASY, NORMAL or HARD.", empty.getMessage());
+    }
+
+    @Test
+    public void theLadderTakesNoLevels() {
+        String message = "-Pladder plays its own pairings: leave out -Pliberals and -Pfascists.";
+        Throwable after = thrown(() -> BotMatches.Options.parse("--ladder", "--liberals=HARD"));
+        assertNotNull(after);
+        assertTrue(after instanceof IllegalArgumentException);
+        assertEquals(message, after.getMessage());
+
+        Throwable before = thrown(() -> BotMatches.Options.parse("--fascists=normal", "--ladder"));
+        assertNotNull(before);
+        assertEquals(message, before.getMessage());
+    }
+
+    @Test
+    public void anUnknownOptionNamesEveryOption() {
+        Throwable unknown = thrown(() -> BotMatches.Options.parse("--seed=1"));
         assertNotNull(unknown);
-        assertEquals("Unknown option \"--ladder\". botMatches takes -Pgames=N.", unknown.getMessage());
+        assertTrue(unknown instanceof IllegalArgumentException);
+        assertEquals("Unknown option \"--seed=1\". botMatches takes -Pgames=N, -Pliberals=LEVEL, -Pfascists=LEVEL "
+                + "and -Pladder.", unknown.getMessage());
+    }
+
+    @Test
+    public void theLadderReportShowsEveryPairingSideBySide() {
+        String report = BotMatches.ladderReport(BotMatches.ladder(2));
+
+        assertTrue("every line ends in a newline", report.endsWith("\n"));
+        List<String> lines = List.of(report.split("\n"));
+        assertTrue(lines.get(0), lines.get(0).startsWith("Ladder and balance pairings (liberals/fascists; "
+                + "E Easy, N Normal, H Hard): 2 games at each table size"));
+        List<String> labels = new ArrayList<>();
+        for (LadderCheck.Pairing pairing : LadderCheck.PAIRINGS) {
+            labels.add(pairing.label());
+        }
+        List<String> header = new ArrayList<>(labels);
+        header.add(0, "Seats");
+        assertEquals(1, lines.stream().filter(line -> cells(line).equals(header)).count());
+        for (String seats : List.of("5", "6", "7", "8", "9", "10", "All")) {
+            assertEquals("the side-by-side row " + seats, 1, lines.stream()
+                    .filter(line -> cells(line).size() == 8 && cells(line).get(0).equals(seats)
+                            && cells(line).get(1).matches("[0-9.]+% [0-9.]+-[0-9.]+%"))
+                    .count());
+        }
+        assertEquals(1, lines.stream().filter(line -> line.matches("Ladder check: (PASS|FAIL).*")).count());
+        assertEquals(1, lines.stream().filter(line -> line.matches("Balance check: (PASS|FAIL).*")).count());
+        List<String> tables = lines.stream().filter(line -> line.startsWith("Liberals ")).toList();
+        assertEquals(7, tables.size());
+        for (int i = 0; i < 7; i++) {
+            LadderCheck.Pairing pairing = LadderCheck.PAIRINGS.get(i);
+            assertEquals(BotMatches.label(pairing.liberals(), pairing.fascists()) + ": 2 games at each table size",
+                    tables.get(i));
+        }
     }
 
     @Test
     public void noGamesIsRefused() {
-        assertRefused(() -> BotMatches.play(0, "No bots", BotMatches.BOTS_AS_BUILT));
+        assertRefused(() -> BotMatches.play(0, "No bots", BotMatches.makeBots(BotSkill.NORMAL, BotSkill.NORMAL)));
     }
 }

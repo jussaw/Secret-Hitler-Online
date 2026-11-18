@@ -10,6 +10,9 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import game.BotSkill;
+import game.CpuPlayer;
+import game.CpuTurn;
 import game.GameState;
 import game.SecretHitlerGame;
 import game.datastructures.Player;
@@ -17,6 +20,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.InputStream;
 import java.io.ObjectOutputStream;
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.sql.Connection;
@@ -343,6 +347,29 @@ public class DatabaseBackupTest {
         assertFalse(records.get(0).complete());
         assertEquals(1_000_000L, records.get(0).startedAt());
         assertEquals(id, records.get(0).id());
+    }
+
+    /**
+     * A bot backed up before bots had levels (the recorder's old fixture: a game with three bots)
+     * comes back Normal and plays on.
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    public void aBotFromBeforeLevelsPlaysNormal() throws Exception {
+        try (InputStream fixture = getClass().getResourceAsStream("/backup-before-recorder.db")) {
+            Files.copy(fixture, new File(dbPath()).toPath());
+        }
+        Lobby lobby = load().get("ABCD");
+        Field field = Lobby.class.getDeclaredField("cpuPlayers");
+        field.setAccessible(true);
+        Set<CpuPlayer> bots = (Set<CpuPlayer>) field.get(lobby);
+
+        assertEquals(3, bots.size());
+        for (CpuPlayer bot : bots) {
+            assertEquals(bot.myName, BotSkill.NORMAL, bot.skill());
+        }
+        CpuTurn.step(lobby.game(), bots, () -> {
+        });
     }
 
     /**

@@ -60,7 +60,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 22B. Player pages | `phase-22b-player-pages` | done |
 | 23. One header for the site | `phase-23-site-header` | done |
 | 24. Bot fixes and self-play | `phase-24-bot-fixes` | done |
-| 25A. Bot skill levels | `phase-25a-bot-levels` | planned |
+| 25A. Bot skill levels | `phase-25a-bot-levels` | done |
 | 25B. Hard's first rules | `phase-25b-hard-reads` | planned |
 | 25C. Hard's other rules | `phase-25c-hard-bots` | planned |
 | 25D. Ladder and balance | `phase-25d-ladder-balance` | planned |
@@ -1129,17 +1129,17 @@ Breakdown: [`docs/superpowers/plans/2026-11-17-phase-25a-bot-levels.md`](superpo
 
 Issue #72, part 3's start. Backend only; changes nothing on screen. Starts once 24 has merged.
 
-- [ ] `game.BotSkill` (Easy, Normal, Hard); `CpuPlayer(String name, BotSkill skill)` and `skill()`; a bot from an older backup plays Normal
-- [ ] Easy makes a random legal move at `EASY_MISTAKE_CHANCE` of its decisions, never one that throws the game for its own side
-- [ ] `EASY_MISTAKE_CHANCE` is set from the self-play run, one notch above the lowest that keeps Easy clearly below Normal
-- [ ] The no-peeking test: a bot decides the same in two games its seat cannot tell apart, for each level and each decision kind, with seeds mixed, open votes hidden until the election closes, and every pair of other seats swapped
-- [ ] `botMatches` takes `-Pliberals`, `-Pfascists` and `-Pladder` (the ladder and balance pairings side by side, with their verdicts), and `BotMatchesTest` plays every pairing
-- [ ] `CLAUDE.md` and `DEVELOPMENT.md` updated; the pull request quotes `botMatches` before, and `botMatches` and `botMatches -Pladder` after
+- [x] `game.BotSkill` (Easy, Normal, Hard); `CpuPlayer(String name, BotSkill skill)` and `skill()`; a bot from an older backup plays Normal
+- [x] Easy makes a random legal move at `EASY_MISTAKE_CHANCE` of its decisions, never one that throws the game for its own side
+- [x] `EASY_MISTAKE_CHANCE` is set from the self-play run, one notch above the lowest that keeps Easy clearly below Normal
+- [x] The no-peeking test: a bot decides the same in two games its seat cannot tell apart, for each level and each decision kind, with seeds mixed, open votes hidden until the election closes, and every pair of other seats swapped
+- [x] `botMatches` takes `-Pliberals`, `-Pfascists` and `-Pladder` (the ladder and balance pairings side by side, with their verdicts), and `BotMatchesTest` plays every pairing
+- [x] `CLAUDE.md` and `DEVELOPMENT.md` updated; the pull request quotes `botMatches` before, and `botMatches` and `botMatches -Pladder` after
 
 **Phase 25A acceptance**
 
-- [ ] Backend tests pass
-- [ ] PR merged into `development`
+- [x] Backend tests pass
+- [x] PR merged into `development`
 
 ---
 

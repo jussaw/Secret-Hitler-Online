@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 
 import game.datastructures.Identity;
@@ -27,6 +28,15 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   private static final long serialVersionUID = 2392054316009854878L;
 
   private static int MAX_REPUTATION = 5;
+
+  /**
+   * The share of an Easy CPU's decisions that are a random legal move instead
+   * of Normal's. Set from {@code botMatches -Pladder}: one 0.05 notch above
+   * 0.10, the lowest value at which each side's Easy bots still won clearly
+   * less often than Normal ones against Normal opponents, so the ladder is not
+   * marginal by design.
+   */
+  public static final double EASY_MISTAKE_CHANCE = 0.15;
 
   private List<Policy.Type> chancellorChoices;
   private transient Random random;
@@ -54,11 +64,41 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   public final String myName;
   public Player myPlayerData;
 
+  /**
+   * How well this CPU plays. Not final: a CPU read from a backup made before
+   * levels has none, and {@code readObject} makes it {@code NORMAL}.
+   */
+  private BotSkill skill;
+
+  /** A Normal CPU player. */
   public CpuPlayer(String name) {
+    this(name, BotSkill.NORMAL);
+  }
+
+  /**
+   * A CPU player at the given level.
+   *
+   * @throws NullPointerException if {@code skill} is null.
+   */
+  public CpuPlayer(String name, BotSkill skill) {
     this.myName = name;
+    this.skill = Objects.requireNonNull(skill, "skill");
     playerReputation = new HashMap<>();
     knownPlayerRoles = new HashMap<>();
     random = new Random();
+  }
+
+  /** How well this CPU plays. */
+  public BotSkill skill() {
+    return skill;
+  }
+
+  /**
+   * Replaces this CPU's random source, so a test can seed it. The source is
+   * transient: a CPU read from a backup gets a new unseeded one.
+   */
+  void useRandom(Random random) {
+    this.random = random;
   }
 
   public void initialize(SecretHitlerGame game) {
@@ -236,6 +276,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     if (!game.getCurrentPresident().equals(myName)) {
       return false;
     }
+    boolean mistake = mistake();
 
     List<Player> playerList = game.getPlayerList();
 
@@ -252,7 +293,9 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     String chancellorName = null;
 
     // Choose chancellor nominee using weighted random
-    if (myPlayerData.getIdentity() == Identity.FASCIST) {
+    if (mistake) { // Easy: any eligible player
+      chancellorName = anyOf(playerList).getUsername();
+    } else if (myPlayerData.getIdentity() == Identity.FASCIST) {
       if (canHitlerWinByElection(game)) { // Increase likelihood of choosing hitler
         chancellorName = chooseRandomPlayerWeighted(playerList, 0.35f, 1.5f, 0.15f, 0.05f);
       } else {
@@ -302,6 +345,11 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     // Check that we haven't already voted
     if (game.hasPlayerVoted(myName)) {
       return false;
+    }
+    boolean mistake = mistake();
+    if (mistake) { // Easy: ja or nein at random
+      game.registerVote(myName, anyOf(List.of(true, false)));
+      return true;
     }
 
     Identity myId = myPlayerData.getIdentity();
@@ -395,9 +443,25 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     if (!game.getCurrentPresident().equals(myName)) {
       return false; // We are not president, no action required
     }
+    boolean mistake = mistake();
 
     List<Policy> policies = game.getPresidentLegislativeChoices();
+    // Easy: any of the three cards; otherwise Normal's choice.
+    int policyIndexToRemove = mistake ? anyOf(List.of(0, 1, 2)) : normalDiscard(game, policies);
 
+    // Track what choices we gave the chancellor.
+    chancellorChoices = new ArrayList<>();
+    for (Policy policy : policies) {
+      chancellorChoices.add(policy.getType());
+    }
+    chancellorChoices.remove(policyIndexToRemove);
+
+    game.presidentDiscardPolicy(policyIndexToRemove);
+    return true;
+  }
+
+  /** The card a Normal president discards from {@code policies}, by its index. */
+  private int normalDiscard(SecretHitlerGame game, List<Policy> policies) {
     // Count the number of fascist and liberal policies
     int fascistPolicyCount = 0;
     for (Policy policy : policies) {
@@ -457,27 +521,30 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
         policyIndexToRemove = tryGetIndexOfPolicy(policies, Policy.Type.FASCIST);
       }
     }
-
-    // Track what choices we gave the chancellor.
-    chancellorChoices = new ArrayList<>();
-    for (Policy policy : policies) {
-      chancellorChoices.add(policy.getType());
-    }
-    chancellorChoices.remove(policyIndexToRemove);
-
-    game.presidentDiscardPolicy(policyIndexToRemove);
-    return true;
+    return policyIndexToRemove;
   }
 
   private boolean handleLegislativeChancellor(SecretHitlerGame game) {
     if (!myName.equals(game.getCurrentChancellor())) {
       return false;
     }
+    boolean mistake = mistake();
 
     Identity myId = myPlayerData.getIdentity();
     List<Policy> policies = game.getChancellorLegislativeChoices();
     // Veto can't re-occur
     boolean canVeto = game.getNumFascistPolicies() == 5 && !game.didVetoOccurThisTurn();
+
+    if (mistake) { // Easy: either card, or a veto where one may be asked for
+      List<Runnable> moves = new ArrayList<>();
+      moves.add(() -> game.chancellorEnactPolicy(0));
+      moves.add(() -> game.chancellorEnactPolicy(1));
+      if (canVeto) {
+        moves.add(game::chancellorVeto);
+      }
+      anyOf(moves).run();
+      return true;
+    }
 
     if (policies.get(0).getType() == policies.get(1).getType()) {
       // Both policies are the same.
@@ -522,24 +589,37 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
       return false; // We are not president, no action required
     }
 
+    boolean mistake = mistake();
+
     Identity myId = myPlayerData.getIdentity();
     List<Policy> policies = game.getChancellorLegislativeChoices();
+    String chancellor = game.getCurrentChancellor();
 
+    // What the chancellor's cards say of them is learned whatever the answer:
+    // an Easy mistake changes only the answer.
+    boolean allowVeto;
+    int repModifier = 0;
     // Check if policies are the same
     if (policies.get(0).getType() == policies.get(1).getType()) {
       Policy.Type policyType = policies.get(0).getType();
       if (myId == Identity.LIBERAL) {
-        boolean shouldAllowVeto = policyType == Policy.Type.FASCIST;
         // Allow veto for fascist policies, deny for liberal policies
-        game.presidentialVeto(shouldAllowVeto);
-        updateReputation(game.getCurrentChancellor(), shouldAllowVeto ? 4 : -4);
+        allowVeto = policyType == Policy.Type.FASCIST;
+        repModifier = allowVeto ? 4 : -4;
       } else { // Fascists and hitler should do the inverse
-        game.presidentialVeto(policyType == Policy.Type.LIBERAL);
+        allowVeto = policyType == Policy.Type.LIBERAL;
       }
     } else { // 1 F, 1 L
       // No reason to veto since chancellor has a choice
-      game.presidentialVeto(false);
-      updateReputation(game.getCurrentChancellor(), -1);
+      allowVeto = false;
+      repModifier = -1;
+    }
+    if (mistake) { // Easy: accept or refuse at random
+      allowVeto = anyOf(List.of(true, false));
+    }
+    game.presidentialVeto(allowVeto);
+    if (repModifier != 0) {
+      updateReputation(chancellor, repModifier);
     }
     return true;
   }
@@ -558,10 +638,13 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     if (!game.getCurrentPresident().equals(myName)) {
       return false;
     }
+    boolean mistake = mistake();
     // Pick once, among the players who may be investigated.
     List<Player> targets = investigationTargets(game);
     String selectedPlayer;
-    if (myPlayerData.getIdentity() == Identity.LIBERAL) {
+    if (mistake) { // Easy: any of them
+      selectedPlayer = anyOf(targets).getUsername();
+    } else if (myPlayerData.getIdentity() == Identity.LIBERAL) {
       selectedPlayer = chooseRandomPlayerWeighted(targets, 1f, 0, -0.4f, 0.5f);
     } else {
       // Totally randomize selection
@@ -576,11 +659,14 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     if (!game.getCurrentPresident().equals(myName)) {
       return false;
     }
+    boolean mistake = mistake();
     String selectedPlayer = "";
     // Liberals should avoid suspicious players, while fascists should
     // slightly avoid liberals. For both, preferentially choose players.
     List<Player> playerList = removeDeadPlayersAndSelf(game.getPlayerList());
-    if (myPlayerData.getIdentity() == Identity.LIBERAL) {
+    if (mistake) { // Easy: any living player but itself
+      selectedPlayer = anyOf(playerList).getUsername();
+    } else if (myPlayerData.getIdentity() == Identity.LIBERAL) {
       selectedPlayer = chooseRandomPlayerWeighted(playerList, -0.8f, 0, 1f, 0.5f);
     } else {
       selectedPlayer = chooseRandomPlayerWeighted(playerList, 1f, 1f, 0.5f, 0.5f);
@@ -594,10 +680,13 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
       return false;
     }
 
+    boolean mistake = mistake();
     // Pick once, among the players who may be executed: never a known teammate.
     List<Player> targets = executionTargets(game);
     String selectedPlayer;
-    if (myPlayerData.getIdentity() == Identity.LIBERAL) {
+    if (mistake) { // Easy: any of them, so still never a known teammate
+      selectedPlayer = anyOf(targets).getUsername();
+    } else if (myPlayerData.getIdentity() == Identity.LIBERAL) {
       // Aim for fascist or suspicious players
       // TODO: Keep a pool of players that are tested/untested for hitler role?
       selectedPlayer = chooseRandomPlayerWeighted(targets, 1f, 1f, -0.4f, 0);
@@ -642,6 +731,20 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   /** Whether a known role is on the fascist side (a fascist or Hitler); false for null. */
   private static boolean isFascistSide(Identity role) {
     return role == Identity.FASCIST || role == Identity.HITLER;
+  }
+
+  /**
+   * Whether this decision is an Easy mistake: only an Easy CPU draws, once the
+   * decision is its own and before anything else, so Normal's and Hard's draws
+   * are as they were before levels.
+   */
+  private boolean mistake() {
+    return skill == BotSkill.EASY && random.nextDouble() < EASY_MISTAKE_CHANCE;
+  }
+
+  /** One of {@code moves}, each equally likely. */
+  private <T> T anyOf(List<T> moves) {
+    return moves.get(random.nextInt(moves.size()));
   }
 
   private boolean handlePostLegislative(SecretHitlerGame game) {
@@ -782,6 +885,9 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
     in.defaultReadObject();
     random = new Random();
+    if (skill == null) { // backed up before bots had levels
+      skill = BotSkill.NORMAL;
+    }
   }
 
 } // end CpuPlayer

@@ -1,0 +1,319 @@
+package game;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import game.BotScenes.Scene;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+import org.junit.Test;
+
+/**
+ * No level reads what its seat could not see (the bot skill design's anti-goal and "The
+ * no-peeking test"): one bot in each of two games its seat cannot tell apart, which differ in
+ * something hidden from it (another seat's role, a card it has not seen, a card another president
+ * discarded, how others have voted while the election is open), decides the same and remembers
+ * the same, at every level and seed.
+ *
+ * <p>To cover a new rule (Phases 25B and 25C): add a test inside {@link #everyLevelAndSeed} that
+ * builds both games with {@link BotScenes}, hides a fact in the second (each pair of
+ * {@link #swaps} with {@code swapRoles} for a bot that does not know every role,
+ * {@code swapUnseenCards}, or {@link Twins#others(Consumer, Consumer)} for a discard or an open
+ * election's ballot, as {@link #votesWithBallotsAlreadyIn} does), and drives {@link Twins} through
+ * the moves that bring the rule into play.
+ */
+public class NoPeekingTest {
+    /** Seeds 0 to {@code SEEDS - 1}, mixed, at every level. */
+    static final int SEEDS = 200;
+
+    /** Runs {@code scene} at each level for each seed, a failure naming the level and seed. */
+    static void everyLevelAndSeed(BiConsumer<BotSkill, Long> scene) {
+        for (BotSkill skill : BotSkill.values()) {
+            for (long seed = 0; seed < SEEDS; seed++) {
+                try {
+                    scene.accept(skill, seed);
+                } catch (AssertionError e) {
+                    throw new AssertionError(skill + " at seed " + seed + ": " + e.getMessage(), e);
+                }
+            }
+        }
+    }
+
+    /**
+     * Every pair of seats but {@code bot} whose roles in {@code roles} differ, in seat order,
+     * leaving out a pair that would make a seat of {@code electedAtThree} Hitler (a seat the scene
+     * elects chancellor with 3 or more fascist policies down, which would have ended the game).
+     */
+    static List<String[]> swaps(String roles, String bot, String... electedAtThree) {
+        List<String> elected = Arrays.asList(electedAtThree);
+        List<String[]> pairs = new ArrayList<>();
+        for (int i = 0; i < roles.length(); i++) {
+            for (int j = i + 1; j < roles.length(); j++) {
+                String a = "P" + i;
+                String b = "P" + j;
+                char roleOfA = roles.charAt(i);
+                char roleOfB = roles.charAt(j);
+                if (a.equals(bot) || b.equals(bot) || roleOfA == roleOfB) {
+                    continue;
+                }
+                if ((roleOfA == 'H' && elected.contains(b)) || (roleOfB == 'H' && elected.contains(a))) {
+                    continue;
+                }
+                pairs.add(new String[] {a, b});
+            }
+        }
+        return pairs;
+    }
+
+    /** A fact hidden in the second game, named for a failure. */
+    private record Hidden(String name, Consumer<SecretHitlerGame> hide) {
+    }
+
+    /** Each pair of {@link #swaps}, swapped. */
+    private static List<Hidden> eachSwap(String roles, String bot, String... electedAtThree) {
+        List<Hidden> hidden = new ArrayList<>();
+        for (String[] pair : swaps(roles, bot, electedAtThree)) {
+            hidden.add(new Hidden("the roles of " + pair[0] + " and " + pair[1] + " swapped",
+                    g -> BotScenes.swapRoles(g, pair[0], pair[1])));
+        }
+        return hidden;
+    }
+
+    private static final Hidden UNSEEN_CARDS = new Hidden("an unseen liberal and fascist card swapped",
+            g -> BotScenes.swapUnseenCards(g, 0));
+
+    private static final Hidden NOTHING = new Hidden("nothing but the scene's own difference", g -> {
+    });
+
+    private static List<Hidden> with(List<Hidden> hidden, Hidden... more) {
+        List<Hidden> all = new ArrayList<>(hidden);
+        all.addAll(List.of(more));
+        return all;
+    }
+
+    /**
+     * For each hidden fact: both games from their builders, the fact hidden in the second, and the
+     * bot acting once in each.
+     */
+    private static void actsAlike(Supplier<Scene> first, Supplier<Scene> second, List<Hidden> hidden) {
+        everyLevelAndSeed((skill, seed) -> {
+            for (Hidden fact : hidden) {
+                Scene a = first.get();
+                Scene b = second.get();
+                fact.hide().accept(b.game());
+                try {
+                    Twins.of(a, b, skill, seed).botActs();
+                } catch (AssertionError e) {
+                    throw new AssertionError("with " + fact.name() + ": " + e.getMessage(), e);
+                }
+            }
+        });
+    }
+
+    private static void actsAlike(Supplier<Scene> scene, List<Hidden> hidden) {
+        actsAlike(scene, scene, hidden);
+    }
+
+    @Test
+    public void nominations() {
+        actsAlike(() -> BotScenes.nomination("LLLFH"), eachSwap("LLLFH", "P1"));
+    }
+
+    @Test
+    public void nominationsByAFascist() {
+        actsAlike(() -> BotScenes.nomination("LFLLLFH"), List.of(UNSEEN_CARDS));
+    }
+
+    @Test
+    public void nominationsByHitlerAtSeven() {
+        actsAlike(() -> BotScenes.nomination("LHLLLFF"), eachSwap("LHLLLFF", "P1"));
+    }
+
+    @Test
+    public void votes() {
+        actsAlike(() -> BotScenes.vote("LLLFH"), eachSwap("LLLFH", "P2"));
+    }
+
+    @Test
+    public void votesByHitlerAtSeven() {
+        actsAlike(() -> BotScenes.vote("LLHLLFF"), eachSwap("LLHLLFF", "P2"));
+    }
+
+    /**
+     * After 3 fascist policies the bot reaches {@code game.getPlayer(chancellor).isHitler()}, which
+     * is harmless while Hitler is the bot: it knows it is not the chancellor.
+     */
+    @Test
+    public void votesByHitlerAtSevenAfterThreeFascistPolicies() {
+        actsAlike(() -> BotScenes.vote("LLHLLFF", 3), eachSwap("LLHLLFF", "P2"));
+    }
+
+    /** Bots vote one by one in one step: a bot must not read the ballots already in. */
+    @Test
+    public void votesWithBallotsAlreadyIn() {
+        for (String roles : List.of("LLLFH", "LLHLLFF")) {
+            everyLevelAndSeed((skill, seed) -> {
+                Twins twins = Twins.of(BotScenes.vote(roles), BotScenes.vote(roles), skill, seed);
+                twins.others(g -> {
+                    g.registerVote("P0", true);
+                    g.registerVote("P1", true);
+                }, g -> {
+                    g.registerVote("P0", false);
+                    g.registerVote("P1", false);
+                });
+                twins.botActs();
+            });
+        }
+    }
+
+    @Test
+    public void presidentsDiscards() {
+        actsAlike(() -> BotScenes.presidentsHand("LLLFH", "FFL"), with(eachSwap("LLLFH", "P0"), UNSEEN_CARDS));
+    }
+
+    @Test
+    public void presidentsDiscardsByAFascist() {
+        actsAlike(() -> BotScenes.presidentsHand("FLLLH", "FLL"), List.of(UNSEEN_CARDS));
+    }
+
+    @Test
+    public void presidentsDiscardsByHitlerAtSeven() {
+        actsAlike(() -> BotScenes.presidentsHand("HLLLLFF", "FFL"), with(eachSwap("HLLLLFF", "P0"), UNSEEN_CARDS));
+    }
+
+    /** The card the president discarded (the extra) differs, and the chancellor never saw it. */
+    @Test
+    public void chancellorsChoices() {
+        actsAlike(() -> BotScenes.chancellorsHand("LLLFH", "FL", "L", 0),
+                () -> BotScenes.chancellorsHand("LLLFH", "FL", "F", 0), with(eachSwap("LLLFH", "P1"), NOTHING));
+    }
+
+    @Test
+    public void chancellorsChoicesByAFascist() {
+        actsAlike(() -> BotScenes.chancellorsHand("LFLLH", "FL", "L", 0),
+                () -> BotScenes.chancellorsHand("LFLLH", "FL", "F", 0), List.of(NOTHING));
+    }
+
+    @Test
+    public void chancellorsChoicesByHitlerAtSeven() {
+        actsAlike(() -> BotScenes.chancellorsHand("LHLLLFF", "FL", "L", 0),
+                () -> BotScenes.chancellorsHand("LHLLLFF", "FL", "F", 0), with(eachSwap("LHLLLFF", "P1"), NOTHING));
+    }
+
+    @Test
+    public void vetoRequests() {
+        actsAlike(() -> BotScenes.chancellorsHand("LLLFH", "FF", "L", 5),
+                () -> BotScenes.chancellorsHand("LLLFH", "FF", "F", 5), with(eachSwap("LLLFH", "P1"), NOTHING));
+    }
+
+    @Test
+    public void vetoAnswers() {
+        actsAlike(() -> BotScenes.vetoAnswer("LLLFH"), with(eachSwap("LLLFH", "P0", "P1"), UNSEEN_CARDS));
+    }
+
+    @Test
+    public void investigations() {
+        actsAlike(() -> BotScenes.power("LLLLLFFFH", 1, ""), eachSwap("LLLLLFFFH", "P0"));
+    }
+
+    @Test
+    public void specialElections() {
+        actsAlike(() -> BotScenes.power("LLLLFFH", 3, ""), eachSwap("LLLLFFH", "P0"));
+    }
+
+    @Test
+    public void executions() {
+        actsAlike(() -> BotScenes.power("LLLFH", 4, ""), eachSwap("LLLFH", "P0", "P1"));
+    }
+
+    @Test
+    public void executionsByAFascist() {
+        actsAlike(() -> BotScenes.power("FLLLLFH", 4, ""), List.of(UNSEEN_CARDS));
+    }
+
+    // The test's own checks: that its seeds differ, and that the twins catch what they should.
+
+    /** Normal always passes FL from FFL as a liberal; Easy passes FF for some of the seeds. */
+    @Test
+    public void easyMakesMistakesAcrossTheSeeds() {
+        for (long seed = 0; seed < SEEDS; seed++) {
+            Scene scene = BotScenes.presidentsHand("LLLFH", "FFL");
+            CpuPlayer bot = BotScenes.bot(scene, BotSkill.EASY, seed);
+            GameState before = scene.game().getState();
+            if (Decision.of(before, bot.act(scene.game()), scene.game(), scene.bot()).equals("pass FF")) {
+                return;
+            }
+        }
+        fail("No Easy bot passed FF from FFL at seeds 0 to " + (SEEDS - 1) + ": the seeds are not mixed.");
+    }
+
+    @Test
+    public void theTwinsTellADecisionApart() {
+        for (long seed = 0; seed < SEEDS; seed++) {
+            Twins twins = Twins.of(BotScenes.presidentsHand("LLLFH", "LLF"),
+                    BotScenes.presidentsHand("LLLFH", "LLF"), BotSkill.NORMAL, seed, seed + 1);
+            AssertionError error = thrown(twins::botActs);
+            if (error != null) {
+                assertTrue(error.getMessage(), error.getMessage().contains("decided differently"));
+                return;
+            }
+        }
+        fail("Two bots seeded apart never decided differently.");
+    }
+
+    @Test
+    public void theTwinsTellAHandTheBotSees() {
+        Twins twins = Twins.of(BotScenes.presidentsHand("LLLFH", "LLF"), BotScenes.presidentsHand("LLLFH", "LLL"),
+                BotSkill.NORMAL, 0);
+        AssertionError error = thrown(twins::botActs);
+        assertNotNull("a hand the bot holds told the games apart", error);
+        assertTrue(error.getMessage(), error.getMessage().contains("the scene let the bot tell the games apart"));
+    }
+
+    @Test
+    public void theTwinsTellADifferentMemory() {
+        Twins twins = Twins.of(BotScenes.vote("LLLFH"), BotScenes.vote("LLLFH"), BotSkill.NORMAL, 0);
+        twins.botB().playerReputation.put("P3", -5);
+        AssertionError error = thrown(() -> twins.others(g -> {
+        }));
+        assertNotNull("a different score told the bots apart", error);
+        assertTrue(error.getMessage(), error.getMessage().contains("P3=-5"));
+    }
+
+    @Test
+    public void theTwinsTellADifferentNumberOfDraws() {
+        Twins twins = Twins.of(BotScenes.vote("LLLFH"), BotScenes.vote("LLLFH"), BotSkill.NORMAL, 0);
+        twins.botB().chooseRandomPlayerWeighted(BotScenes.vote("LLLFH").game().getPlayerList(), 1, 1, 1, 0);
+        assertNotNull("an extra draw told the bots apart", thrown(() -> twins.others(g -> {
+        })));
+    }
+
+    @Test
+    public void swapsListsEveryHiddenPair() {
+        assertEquals(List.of("P0-P3", "P0-P4", "P2-P3", "P2-P4", "P3-P4"), names(swaps("LLLFH", "P1")));
+        assertEquals(List.of("P1-P3", "P2-P3", "P2-P4", "P3-P4"), names(swaps("LLLFH", "P0", "P1")));
+    }
+
+    private static List<String> names(List<String[]> pairs) {
+        List<String> names = new ArrayList<>();
+        for (String[] pair : pairs) {
+            names.add(pair[0] + "-" + pair[1]);
+        }
+        return names;
+    }
+
+    private static AssertionError thrown(Runnable call) {
+        try {
+            call.run();
+            return null;
+        } catch (AssertionError e) {
+            return e;
+        }
+    }
+}

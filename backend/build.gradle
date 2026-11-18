@@ -86,12 +86,24 @@ task recordedGamesFixture(type: JavaExec) {
 
 // Plays games with a bot in every seat and prints who wins, for each table size from 5 to 10
 // and pooled (game.BotMatches, in the test source set). -Pgames=N plays N games a size (2,000 by
-// default). The games cannot be seeded, so every run differs. Neither build nor test runs it.
+// default). -Pliberals=LEVEL and -Pfascists=LEVEL set the level (EASY, NORMAL or HARD, in any
+// case; NORMAL by default) of the bots dealt liberal and of those dealt fascist or Hitler.
+// -Pladder plays the ladder and balance pairings side by side, with their verdicts, and takes no
+// level. The games cannot be seeded, so every run differs. Neither build nor test runs it.
 task botMatches(type: JavaExec) {
     mainClass = 'game.BotMatches'
     classpath = sourceSets.test.runtimeClasspath
     if (project.hasProperty('games')) {
         args "--games=${project.property('games')}"
+    }
+    if (project.hasProperty('liberals')) {
+        args "--liberals=${project.property('liberals')}"
+    }
+    if (project.hasProperty('fascists')) {
+        args "--fascists=${project.property('fascists')}"
+    }
+    if (project.hasProperty('ladder')) {
+        args '--ladder'
     }
 }
 
