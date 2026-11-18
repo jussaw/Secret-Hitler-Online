@@ -1192,7 +1192,7 @@ Issue #72, part 3's end. Backend only; changes nothing on screen. Starts once 25
 
 **Phase 25D acceptance**
 
-- [ ] Backend tests pass
+- [x] Backend tests pass
 - [ ] PR merged into `development`
 
 ---

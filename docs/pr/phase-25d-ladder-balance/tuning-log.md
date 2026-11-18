@@ -59,13 +59,16 @@ all-Hard and all-Normal.
 | 4c | confirmation | e82908f | VD 0.25 · FF 2.0 · LL 2.0 · PD 2.0 · LP 0.5 · FP 0.5 · CB 0.10 · PB 0.10 · NW 3 · rule 1: a president backs its own nominee · rule 8 LGP 0.9 (fascists and Hitler) · rule 9 SEC 0.9 | 21.8% | 28.3% | 40.3% | 31.6% | 21.3% | 24.9% | 23.1% | Ladder PASS: L E<N clears; L N<H clears; L E<H clears; F E<N clears; F N<H clears; F E<H clears | 5.2 (check PASS, target PASS) | no (a pass) | None: the acceptance pools runs 4 and 4c. |
 | A3 | acceptance (runs 4 and 4c pooled, 4,000 games a size) | e82908f | VD 0.25 · FF 2.0 · LL 2.0 · PD 2.0 · LP 0.5 · FP 0.5 · CB 0.10 · PB 0.10 · NW 3 · rule 1: a president backs its own nominee · rule 8 LGP 0.9 (fascists and Hitler) · rule 9 SEC 0.9 | 21.7% | 27.9% | 40.4% | 32.1% | 21.4% | 25.1% | 22.9% | Ladder PASS: L E<N clears; L N<H clears; L E<H clears; F E<N clears; F N<H clears; F E<H clears | 5.0 (check PASS, target PASS) | no (it passes) | Accepted. A second review of the change after run 3c then changed `game/` again (`hardFascistSide()` naming rule 6's and rule 8's check, and rule 8's pull dropped where it could never act: no behaviour), so run 5. |
 | 5 | full (after the second review) | ca58157 | VD 0.25 · FF 2.0 · LL 2.0 · PD 2.0 · LP 0.5 · FP 0.5 · CB 0.10 · PB 0.10 · NW 3 · rule 1: a president backs its own nominee · rule 8 LGP 0.9 (fascists and Hitler) · rule 9 SEC 0.9 | 20.9% | 28.1% | 39.6% | 31.8% | 21.7% | 24.9% | 23.4% | Ladder PASS: L E<N clears; L N<H clears; L E<H clears; F E<N clears; F N<H clears; F E<H clears | 4.7 (check PASS, target PASS) | no (a pass) | None: the confirmation, run 5c, on the same code. |
+| 5c | confirmation | ca58157 | VD 0.25 · FF 2.0 · LL 2.0 · PD 2.0 · LP 0.5 · FP 0.5 · CB 0.10 · PB 0.10 · NW 3 · rule 1: a president backs its own nominee · rule 8 LGP 0.9 (fascists and Hitler) · rule 9 SEC 0.9 | 21.6% | 28.6% | 40.0% | 32.0% | 21.4% | 24.8% | 23.2% | Ladder PASS: L E<N clears; L N<H clears; L E<H clears; F E<N clears; F N<H clears; F E<H clears | 5.5 (check PASS, target PASS) | no (a pass) | None: the acceptance pools runs 5 and 5c. |
+| A4 | acceptance (runs 5 and 5c pooled, 4,000 games a size) | ca58157 | VD 0.25 · FF 2.0 · LL 2.0 · PD 2.0 · LP 0.5 · FP 0.5 · CB 0.10 · PB 0.10 · NW 3 · rule 1: a president backs its own nominee · rule 8 LGP 0.9 (fascists and Hitler) · rule 9 SEC 0.9 | 21.2% | 28.4% | 39.8% | 31.9% | 21.6% | 24.8% | 23.3% | Ladder PASS: L E<N clears; L N<H clears; L E<H clears; F E<N clears; F N<H clears; F E<H clears | 5.1 (check PASS, target PASS) | no (it passes) | None: accepted, on the final code. |
 
-**Summary.** Run 0 (before), then seven full runs and three acceptances. Two counted as failing
-full runs: run 1, (a)'s, and acceptance A2, (b)'s (runs 3 and 3c, made again after the review
-changed `game/`, pooled and inverted at 5 seats). Runs 2, 2c, 3, 3c, 4 and 4c passed, and
-acceptances A1 (runs 2 and 2c) and A3 (runs 4 and 4c) passed. A3, on the final code, is the
-acceptance: `Ladder check: PASS` and `Balance check: PASS`, all-Hard 22.9% against all-Normal
-27.9%, 5.0 points apart. Budgets left: (a) 9 of its 10 failing runs; (b) 9 of its 10 failing runs
+**Summary.** Run 0 (before), then nine full runs and four acceptances. Two counted as failing
+full runs: run 1, (a)'s, and acceptance A2, (b)'s (runs 3 and 3c, made again after the first
+review changed `game/`, pooled and inverted at 5 seats). Runs 2, 2c, 3, 3c, 4, 4c, 5 and 5c
+passed, and acceptances A1 (runs 2 and 2c), A3 (runs 4 and 4c) and A4 (runs 5 and 5c) passed. A4,
+on the final code (runs 5 and 5c were made again after the second review changed `game/`), is the
+acceptance: `Ladder check: PASS` and `Balance check: PASS`, all-Hard 23.3% against all-Normal
+28.4%, 5.1 points apart. Budgets left: (a) 9 of its 10 failing runs; (b) 9 of its 10 failing runs
 and 1 of its 3 rules.
 
 ## Extra fascist-side rules (Decision 5 (b))
