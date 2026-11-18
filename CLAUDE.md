@@ -212,7 +212,54 @@ keeps credit to upstream and to the board game's creators.
   the guards, the interval, the table and the options) and `testCpuPlayer`'s pick cases (#72's
   shares within 0.01, every weight 0, no known teammate executed, a teammate Hitler found by
   investigating included, and investigation and execution with everyone left at +3), which reach a state with `GameDriver.playUntil` and pick on copies of
-  it (`SerializationUtils.clone`). A player's `/game`
+  it (`SerializationUtils.clone`). Every bot has a level (#72, Phase 25A), `game.BotSkill`
+  (`EASY`, `NORMAL`, `HARD`, written by name): `CpuPlayer(name, skill)`, `CpuPlayer(name)` for
+  Normal, and `skill()`; `readObject` gives a bot backed up before levels `NORMAL`
+  (`DatabaseBackupTest.aBotFromBeforeLevelsPlaysNormal`, on `backup-before-recorder.db`). The lobby
+  still seats Normal bots (`new CpuPlayer(name)`) until Phase 26A, and Hard plays as Normal until
+  Phase 25B gives it its first rules. Normal is held by `NormalBaselineTest`: twenty scenes at seeds
+  0 to 19 against `src/test/resources/normal-baseline.txt`, recorded on Phase 24's code before
+  levels and never recorded again to make a change pass (a difference writes
+  `build/normal-baseline-actual.txt` and names the first line that differs). Easy is Normal with
+  mistakes: once a decision is its own (a nomination, a vote, a discard, a chancellor's choice, a
+  veto answer, a power's target) an Easy bot draws first, and at `CpuPlayer.EASY_MISTAKE_CHANCE`
+  picks uniformly among that decision's legal moves (`anyOf`): the seats `nominateChancellor`
+  allows; ja or nein; each of the president's three cards by place; each of the chancellor's two,
+  and VETO where one may be asked for; accept or refuse; `investigationTargets`; the living seats
+  but its own; and `executionTargets`, so no level shoots a known teammate. The peek and END TERM
+  are not decisions. A mistake replaces only the move: what the bot learns (`chancellorChoices`
+  from the card it discarded, the veto answer's score change, an investigation's party) stays
+  Normal's, and Normal and Hard never draw the coin, so their draws are Phase 24's.
+  `EASY_MISTAKE_CHANCE` is 0.15, set from `botMatches -Pladder` one 0.05 notch above 0.10, the
+  lowest value at which both sides' Easy bots still won clearly less often than Normal ones
+  (`EasyMistakesTest`: each decision kind's shares against Normal's over 10,000 seeds, never an
+  illegal move, a known teammate shot or a skipped END TERM). The bot tests build their games with
+  `BotScenes` (test source): seats `P0`, `P1`, … in seat order, every one a bot, dealt the roles a
+  string names (`game("LLLFH")`), the draw pile in one fixed order, and `board`, `drawTop`,
+  `swapRoles`, `swapUnseenCards`, `voteAll` and `elect` (by reflection on `SecretHitlerGame`'s
+  private `board` and `draw` only); builders that stop at each decision (`nomination`, `vote`,
+  `presidentsHand`, `chancellorsHand`, `vetoAnswer`, `power`); and `bot(…, skill, seed)`, seeded
+  from `mix(seed)`, SplitMix64's finalizer, since consecutive seeds give `java.util.Random` almost
+  the same first draw (`BotScenesTest.mixedSeedsLookRandom`). `Decision.of` writes a move as a line
+  (`nominate P3`, `pass FL`, `accept veto`, …). `NoPeekingTest` holds the spec's rule that a bot
+  knows no more than a person in its seat would: `Twins` runs one bot in each of two games its seat
+  cannot tell apart (`Visible`: the board, the offices, the piles' sizes, deaths, investigations,
+  the roles its own role reveals, the cards it holds or saw, and the ballots only once an election
+  has closed) that differ in something hidden (another seat's role, for every pair `swaps` lists;
+  an unseen card; another president's discard; ballots already in), and fails unless the two
+  decide alike, serialize alike and draw as many random numbers, but for the party of a seat just
+  investigated; it covers every decision kind at every level for seeds 0 to 199, and a Hard rule
+  (25B, 25C) adds its scene inside `everyLevelAndSeed`. `botMatches -Pliberals=LEVEL
+  -Pfascists=LEVEL` (any case, Normal by default) plays the bots dealt liberal at one level and
+  those dealt fascist or Hitler at another (`BotMatches.makeBots`, labelled `Liberals HARD,
+  fascists NORMAL`, which a failed game names too), and `-Pladder`, which takes no level, plays
+  E/N, N/N, H/N, N/E, N/H, E/E and H/H (liberals/fascists) side by side and prints `LadderCheck`'s
+  verdicts: a side's step clears when its pooled 95% intervals against Normal opponents do not
+  overlap, the higher level's above, and at no size does the higher level's interval lie wholly
+  below the lower's; the balance holds when all-Hard and all-Normal pooled liberal rates are within
+  `BALANCE_BAND`, 10 points. In 25A only the Easy steps pass; 25D makes the rest pass.
+  `BotMatchesTest` plays all nine pairings at 3 games a size, and `LadderCheckTest` reads verdicts
+  from tallies made by hand. A player's `/game`
   query may carry `rejoinKey`, a random key the page keeps for its lifetime (sent to no client and
   not backed up). A connection that brings the key its account's live connection was opened with
   takes that connection's place, keeping the seat and portrait, and the old one is closed with
@@ -1417,7 +1464,7 @@ fields from `package-lock.json`.
 | Run frontend dev server (`localhost:3000`, against the local backend) | `cd frontend && npm install && npm run dev` |
 | Backend tests | `cd backend && ./gradlew test` |
 | Remake the stats pages' contract fixture after a change to the record's format (a new file every run; commit it with the change) | `cd backend && ./gradlew recordedGamesFixture` |
-| Play all-bot games and print who wins at each table size (2,000 games a size, `-Pgames=N` for another count; runs differ) | `cd backend && ./gradlew botMatches` |
+| Play all-bot games and print who wins at each table size (2,000 games a size, `-Pgames=N` for another count; `-Pliberals=LEVEL` and `-Pfascists=LEVEL` for each side's level, `-Pladder` for the ladder and balance pairings and their verdicts; runs differ) | `cd backend && ./gradlew botMatches` |
 | Frontend tests (single run) | `cd frontend && npm test -- --run` |
 | Browser tests (build the frontend and the jar, serve them on `localhost:4545` with test sign-in, or `E2E_PORT` beside another run; Java 17 active) | `cd frontend && npx playwright install chromium firefox && npm run e2e` (one project: `-- --project=phone-360`) |
 | Browser tests on Linux (Firefox, or CI's font widths), against the jar serving on the host with `TEST_SIGN_IN=true` | `docker run … mcr.microsoft.com/playwright:v<version>-noble … npx playwright test --config playwright.linux.config.ts`, written out in `DEVELOPMENT.md` |
