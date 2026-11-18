@@ -1188,7 +1188,7 @@ Issue #72, part 3's end. Backend only; changes nothing on screen. Starts once 25
 - [x] The balance check passes: the pooled liberal win rate of all-Hard games is within 10 points of all-Normal's
 - [x] Both checks hold on two confirming runs pooled, within the plan's tuning budget
 - [x] Any extra fascist-side rule the checks needed keeps the no-peeking rule, has its own tests and is listed in the pull request
-- [ ] `CLAUDE.md` updated; the pull request quotes the full `botMatches -Pladder` table before and after
+- [x] `CLAUDE.md` updated; the pull request quotes the full `botMatches -Pladder` table before and after
 
 **Phase 25D acceptance**
 

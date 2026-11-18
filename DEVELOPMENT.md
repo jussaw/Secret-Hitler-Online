@@ -145,7 +145,7 @@ Each side can play at its own level, `EASY`, `NORMAL` or `HARD`, written in any 
 ./gradlew botMatches -Pfascists=Hard -Pgames=500
 ```
 
-`-Pladder` plays the seven pairings the levels are judged on, written liberals/fascists with each level's first letter: Easy, Normal and Hard liberals against Normal fascists (E/N, N/N, H/N), Easy and Hard fascists against Normal liberals (N/E, N/H), and all-Easy and all-Hard games (E/E, H/H). It prints the liberal side's win rate and 95% interval for every pairing side by side, then its two verdicts, then each pairing's own table. It takes `-Pgames` but no level, and a full run takes about ten seconds:
+`-Pladder` plays the seven pairings the levels are judged on, written liberals/fascists with each level's first letter: Easy, Normal and Hard liberals against Normal fascists (E/N, N/N, H/N), Easy and Hard fascists against Normal liberals (N/E, N/H), and all-Easy and all-Hard games (E/E, H/H). It prints the liberal side's win rate and 95% interval for every pairing side by side, then its verdicts, then each pairing's own table, then a block of raw tallies (below). It takes `-Pgames` but no level, and a full run takes about twelve seconds:
 
 ```bash
 ./gradlew botMatches -Pladder
@@ -162,7 +162,17 @@ Each side can play at its own level, `EASY`, `NORMAL` or `HARD`, written in any 
   Fascist side, Easy < Hard: …
 ```
 
-Easy < Hard's pooled part follows from the other two; its sizes catch an Easy clearly above Hard at a size where Normal overlaps both. `Balance check: PASS` means all-Hard games' liberal win rate is within 10 points of all-Normal games'. Hard's rules come in Phases 25B and 25C and are tuned in 25D, so until 25D the steps up to Hard and the balance check may fail. A level other than these three, an unknown option, or `-Pladder` with a level stops the run with a one-line message.
+Easy < Hard's pooled part follows from the other two; its sizes catch an Easy clearly above Hard at a size where Normal overlaps both. `Balance check: PASS` means all-Hard games' liberal win rate is within 10 points of all-Normal games'. The line after it, `Balance target: PASS (1.3 points apart, target 8)`, holds the same rates to 8 points, the target a change to the bots tunes toward, so that the acceptance's 10 leave room for chance. A level other than these three, an unknown option, or `-Pladder` with a level stops the run with a one-line message.
+
+The report ends with its raw tallies, so two runs can be judged on all their games together: `Tallies: 2000 games at each table size`, then a line per pairing and table size, the pairing's letters, the seats and each ending's count (5 liberal policies, Hitler shot, 6 fascist policies, Hitler elected), `E/N 5 308 148 54 1490`. `-Ppool` reads two saved reports' tallies, adds them and prints the report of both runs' games (4,000 a size), verdicts and all, playing no game. It takes no other option, and a file it cannot read or two runs that do not match (different pairings or sizes) stop it with a one-line message:
+
+```bash
+./gradlew -q botMatches -Pladder > /tmp/run-a.txt
+./gradlew -q botMatches -Pladder > /tmp/run-b.txt
+./gradlew -q botMatches -Ppool=/tmp/run-a.txt,/tmp/run-b.txt
+```
+
+A change to the bots is accepted on three reports, never on one lucky run. A full run on the committed change must pass: `Ladder check: PASS` and `Balance target: PASS`. One more full run on the same code confirms it, and `-Ppool` of the two is the acceptance, whose `Ladder check:` and `Balance check:` must pass. A run that fails needs a change, with its reason, before the next one, so a pass cannot be had by playing again. Phase 25D tuned Hard this way, and its log, `docs/pr/phase-25d-ladder-balance/tuning-log.md`, keeps every run.
 
 A game still running after 2,000 moves, one no bot can move, a bot whose move throws (or makes a move the game's timeline cannot read), or a bot that cannot be made fails the run, with a message naming the table size, both sides' levels and the game's timeline. The games cannot be seeded, so every run differs: the intervals say how far a difference between two runs can be trusted (where two intervals do not overlap, it can be). A change to the bots quotes the run before and after it in its pull request. `./gradlew test` plays only 3 games a size (`BotMatchesTest`).
 
