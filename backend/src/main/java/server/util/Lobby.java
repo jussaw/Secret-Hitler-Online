@@ -1,6 +1,7 @@
 package server.util;
 
 import game.CpuPlayer;
+import game.CpuTurn;
 import game.GameState;
 import game.SecretHitlerGame;
 import io.javalin.websocket.WsContext;
@@ -772,35 +773,9 @@ public class Lobby implements Serializable {
             dropGame();
         }
 
-        // Update all the CpuPlayers so they can act
-        boolean didCpuUpdateState = false;
-        if (isInGame()) {
-            // Update all CPUs before allowing them to start acting
-            for (CpuPlayer cpu : cpuPlayers) {
-                cpu.update(game);
-            }
-            for (CpuPlayer cpu : cpuPlayers) {
-                if (game.getState() == GameState.CHANCELLOR_VOTING) {
-                    // We're in a voting step, so it doesn't matter if the CPU is
-                    // acting unless the gamestate changes.
-                    boolean stateUpdated = cpu.act(game);
-                    if (stateUpdated) {
-                        observeGame(false); // each CPU's vote on its own, in the order they vote
-                    }
-                    // Did acting cause voting to end?
-                    if (stateUpdated && game.getState() != GameState.CHANCELLOR_VOTING) {
-                        didCpuUpdateState = true;
-                        break;
-                    }
-                } else {
-                    if (cpu.act(game)) {
-                        observeGame(false);
-                        didCpuUpdateState = true;
-                        break;
-                    }
-                }
-            }
-        }
+        // Let the CpuPlayers act: one CPU move, or every CPU's vote, each observed on its own (in
+        // the order they vote). cpuPlayers is a sorted set, so they act in name order.
+        boolean didCpuUpdateState = isInGame() && CpuTurn.step(game, cpuPlayers, () -> observeGame(false));
 
         if (didCpuUpdateState) {
             int delay_in_ms = (int) (CPU_ACTION_DELAY_IN_SEC * 1000);
