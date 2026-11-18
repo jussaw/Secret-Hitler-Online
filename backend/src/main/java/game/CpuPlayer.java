@@ -228,8 +228,12 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
 
   /** {@code name}'s score with its fraction, from -5 to 5: {@code playerReputation}'s whole number plus its carry. */
   double score(String name) {
-    double whole = playerReputation.get(name) + reputationCarry.getOrDefault(name, 0.0);
-    return Math.max(-MAX_REPUTATION, Math.min(MAX_REPUTATION, whole));
+    return clamped(playerReputation.get(name) + reputationCarry.getOrDefault(name, 0.0));
+  }
+
+  /** {@code score} clamped to [-5, 5]. */
+  private static double clamped(double score) {
+    return Math.max(-MAX_REPUTATION, Math.min(MAX_REPUTATION, score));
   }
 
   public void initialize(SecretHitlerGame game) {
@@ -304,8 +308,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
    * rest to the carry.
    */
   private void shiftReputation(String name, double amount) {
-    double whole = playerReputation.get(name) + reputationCarry.getOrDefault(name, 0.0) + amount;
-    whole = Math.max(-MAX_REPUTATION, Math.min(MAX_REPUTATION, whole));
+    double whole = clamped(score(name) + amount);
     int rounded = (int) Math.round(whole);
     playerReputation.put(name, rounded);
     double carry = whole - rounded;
@@ -317,7 +320,9 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   }
 
   /**
-   * Allows the CpuPlayer to update assumptions after legislation is passed.
+   * Allows the CpuPlayer to update assumptions from what its seat sees now: called after every
+   * move. Normal judges each government once its policy is enacted; a Hard CPU also follows, at
+   * every look, what its rules remember (cleared players, its peek, the deck and the elections).
    * 
    * @param game
    */
@@ -636,7 +641,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
       game.registerVote(myName, cleared.get());
       return true;
     }
-    voteWithProbability(game, chanceOfYes(game));
+    voteWithProbability(game, chanceOfYesByScores(game));
     return true;
   }
 
@@ -662,7 +667,15 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     if (cleared.isPresent()) {
       return cleared.get() ? 1f : 0f;
     }
+    return chanceOfYesByScores(game);
+  }
 
+  /**
+   * {@link #chanceOfYes} where rule 1 leaves the vote to the scores: the fascist side's vote for
+   * Hitler's winning election, the fascist side's mix of its known roles, or the trust curve and
+   * its untrusted vote, each with Hard's rule 6.
+   */
+  private float chanceOfYesByScores(SecretHitlerGame game) {
     Identity myId = myPlayerData.getIdentity();
     String chancellor = game.getCurrentChancellor();
     String president = game.getCurrentPresident();
@@ -705,7 +718,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
         fascistVoteProbability = 0.9f;
         liberalVoteProbability = 0.25f;
       }
-      return withTracker(game, t * liberalVoteProbability + (1f - t) * fascistVoteProbability, false);
+      return fascistTrackerPull(game, t * liberalVoteProbability + (1f - t) * fascistVoteProbability);
     }
 
     // DEFAULT voting behavior for liberals + hitler:
@@ -721,31 +734,42 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
 
     if (presidentRep < minIndividualRep || chancellorRep < minIndividualRep || combinedRep < minCombinedRep) {
       // This legislation is untrustworthy and should probably not be voted for.
-      return withTracker(game, 0.05f, false);
+      return fascistTrackerPull(game, 0.05f);
     }
     // Scale probability of voting yes with the reputation of the players.
     // Use a parabolic curve that's more likely to say yes to neutral or
     // unknown values: f(t) = 2t - t^2
     // f(0) = 0, f(0.5) = 0.75, f(1) = 1
-    return withTracker(game, 2f * t - (t * t), true);
+    return fascistTrackerPull(game, liberalTrackerPush(game, 2f * t - (t * t)));
+  }
+
+  /** Whether Hard's rule 6 is in play for this CPU: it is Hard, and two elections have failed. */
+  private boolean trackerAtTwo(SecretHitlerGame game) {
+    return skill == BotSkill.HARD && game.getElectionTracker() == SecretHitlerGame.MAX_FAILED_ELECTIONS - 1;
   }
 
   /**
-   * Hard's rule 6 on a yes chance: with two failed elections, a third enacts the top card. A Hard
-   * liberal moves its chance on the trusting path ({@code trusting}) {@link #LIBERAL_TRACKER_PUSH}
-   * of the way to certain yes, and keeps its untrusted chance; the Hard fascist side (fascists, and
-   * Hitler at every size) drops {@link #FASCIST_TRACKER_PULL} of its chance for a government with
-   * no member it knows is on its side, itself included. Below Hard, or at any other tracker, the
-   * chance is as it was.
+   * Hard's rule 6 for a liberal, on a yes chance from the trust curve: with two failed elections,
+   * as a third enacts the top card, it moves {@link #LIBERAL_TRACKER_PUSH} of the way to certain
+   * yes. Anyone else's chance, and any chance below Hard or at another tracker, is as it was.
    */
-  private float withTracker(SecretHitlerGame game, float chance, boolean trusting) {
-    if (skill != BotSkill.HARD || game.getElectionTracker() != SecretHitlerGame.MAX_FAILED_ELECTIONS - 1) {
+  private float liberalTrackerPush(SecretHitlerGame game, float chance) {
+    if (!trackerAtTwo(game) || myPlayerData.getIdentity() != Identity.LIBERAL) {
       return chance;
     }
-    if (myPlayerData.getIdentity() == Identity.LIBERAL) {
-      return trusting ? chance + LIBERAL_TRACKER_PUSH * (1f - chance) : chance;
-    }
-    if (isFascistSide(knownPlayerRoles.get(game.getCurrentPresident()))
+    return chance + LIBERAL_TRACKER_PUSH * (1f - chance);
+  }
+
+  /**
+   * Hard's rule 6 for the fascist side (fascists, and Hitler at every size), on any yes chance but
+   * the one for Hitler's winning election: with two failed elections, it keeps only {@code 1 -}
+   * {@link #FASCIST_TRACKER_PULL} of its chance for a government with no member it knows is on its
+   * side, itself included, so the top card may come. A liberal's chance, and any chance below Hard
+   * or at another tracker, is as it was.
+   */
+  private float fascistTrackerPull(SecretHitlerGame game, float chance) {
+    if (!trackerAtTwo(game) || myPlayerData.getIdentity() == Identity.LIBERAL
+        || isFascistSide(knownPlayerRoles.get(game.getCurrentPresident()))
         || isFascistSide(knownPlayerRoles.get(game.getCurrentChancellor()))) {
       return chance;
     }
