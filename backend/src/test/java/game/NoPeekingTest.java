@@ -506,6 +506,12 @@ public class NoPeekingTest {
 
     // Phase 25D's extra fascist-side rules. A fascist knows every role, so its twin hides a card.
 
+    /** Rule 8: a fascist votes on a government of two liberals; unseen cards swapped. */
+    @Test
+    public void hardRule8VotesDownLiberalGovernments() {
+        actsAlike(() -> BotScenes.vote("LLFLH"), List.of(UNSEEN_CARDS));
+    }
+
     /** Rule 9: a fascist holds the special election at 7 seats, its teammate alive; unseen cards swapped. */
     @Test
     public void hardRule9SideElections() {

@@ -10,10 +10,12 @@ import org.junit.Test;
 /**
  * Phase 25D's extra fascist-side rules (the bot skill design's "Hard's rules", its paragraph on
  * rules for the fascist side beyond the seven), each Hard only, each reading only what a fascist's
- * role shows it. Rule 9, special elections to the side: a Hard fascist president with the special
- * election hands the presidency to a living fascist teammate other than Hitler, with
- * {@link CpuPlayer#SIDE_ELECTION_CHANCE}, when it has one. Each scene is made fresh for each seed,
- * and the amounts are read by name.
+ * role shows it. Rule 8, fascists vote down liberal governments: a Hard fascist keeps only
+ * {@code 1 -} {@link CpuPlayer#LIBERAL_GOVERNMENT_PULL} of its yes chance for a government whose
+ * president and chancellor it knows are liberal. Rule 9, special elections to the side: a Hard
+ * fascist president with the special election hands the presidency to a living fascist teammate
+ * other than Hitler, with {@link CpuPlayer#SIDE_ELECTION_CHANCE}, when it has one. Each scene is
+ * made fresh for each seed, and the amounts are read by name.
  */
 public class HardFascistRulesTest {
     private static final double SHARE_TOLERANCE = 0.03;
@@ -53,6 +55,55 @@ public class HardFascistRulesTest {
         for (long seed = 0; seed < seeds; seed++) {
             assertEquals("seed " + seed, decision(scene, BotSkill.NORMAL, seed), decision(scene, BotSkill.HARD, seed));
         }
+    }
+
+    // Rule 8: fascists vote down liberal governments.
+
+    private static final double TOLERANCE = 1e-6;
+
+    /** The yes chance of the bot of {@code scene}'s voter at {@code skill}. */
+    private static float chance(Scene scene, BotSkill skill) {
+        return BotScenes.bot(scene, skill, 0).chanceOfYes(scene.game());
+    }
+
+    /** The liberal P0 nominates the liberal P1: the fascist P2 votes. */
+    @Test
+    public void aFascistVotesDownAGovernmentOfTwoLiberals() {
+        assertEquals("Normal's mix of two liberals", 0.6, chance(BotScenes.vote("LLFLH"), BotSkill.NORMAL), TOLERANCE);
+        assertEquals(0.6 * (1 - CpuPlayer.LIBERAL_GOVERNMENT_PULL), chance(BotScenes.vote("LLFLH"), BotSkill.HARD),
+                TOLERANCE);
+        Scene inDanger = BotScenes.vote("LLFLH");
+        BotScenes.board(inDanger.game(), 0, 4);
+        assertEquals("with the liberals one policy from winning", 0.25 * (1 - CpuPlayer.LIBERAL_GOVERNMENT_PULL),
+                chance(inDanger, BotSkill.HARD), TOLERANCE);
+    }
+
+    /** A government with a member on its side keeps Normal's mix. */
+    @Test
+    public void aFascistKeepsItsYesForAGovernmentWithItsSide() {
+        for (String roles : new String[] {"HLFLL", "LHFLL", "FLFLLLH", "LFFLLLH"}) {
+            assertEquals(roles, chance(BotScenes.vote(roles), BotSkill.NORMAL), chance(BotScenes.vote(roles),
+                    BotSkill.HARD), TOLERANCE);
+        }
+    }
+
+    /** Liberals, and Hitler at every size, vote as before. */
+    @Test
+    public void liberalsAndHitlerVoteAsNormal() {
+        for (String roles : new String[] {"LLLFH", "LLHLF", "LLHLLFF"}) {
+            assertEquals(roles, chance(BotScenes.vote(roles), BotSkill.NORMAL), chance(BotScenes.vote(roles),
+                    BotSkill.HARD), TOLERANCE);
+        }
+        Scene hitlerInDanger = BotScenes.vote("LLHLF");
+        BotScenes.board(hitlerInDanger.game(), 0, 4);
+        assertEquals("Hitler at 5, voting as fascists do", 0.25, chance(hitlerInDanger, BotSkill.HARD), TOLERANCE);
+    }
+
+    /** Easy's coin comes before the chance and is not part of it. */
+    @Test
+    public void normalAndEasyFascistsVoteAsBefore() {
+        assertEquals(0.6, chance(BotScenes.vote("LLFLH"), BotSkill.NORMAL), TOLERANCE);
+        assertEquals(0.6, chance(BotScenes.vote("LLFLH"), BotSkill.EASY), TOLERANCE);
     }
 
     // Rule 9: special elections to the side.

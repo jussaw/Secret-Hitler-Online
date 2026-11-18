@@ -77,6 +77,13 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   static final double PRESIDENT_BLUFF_CHANCE = 0.10;
 
   /**
+   * Hard's rule 8, fascists vote down liberal governments (Phase 25D, an extra fascist-side rule):
+   * the share of its yes chance a Hard fascist drops for a government whose president and
+   * chancellor it knows are liberal, so fewer such governments pass and more elections fail.
+   */
+  static final float LIBERAL_GOVERNMENT_PULL = 0.9f;
+
+  /**
    * Hard's rule 9, special elections to the side (Phase 25D, an extra fascist-side rule): how often
    * a Hard fascist president with the special election hands the presidency to a living fascist
    * teammate other than Hitler, when it has one. Hitler as president nominates a liberal, so the
@@ -681,8 +688,8 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
 
   /**
    * {@link #chanceOfYes} where rule 1 leaves the vote to the scores: the fascist side's vote for
-   * Hitler's winning election, the fascist side's mix of its known roles, or the trust curve and
-   * its untrusted vote, each with Hard's rule 6.
+   * Hitler's winning election, the fascist side's mix of its known roles (with Hard's rule 8 for a
+   * fascist), or the trust curve and its untrusted vote, each with Hard's rule 6.
    */
   private float chanceOfYesByScores(SecretHitlerGame game) {
     Identity myId = myPlayerData.getIdentity();
@@ -727,7 +734,8 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
         fascistVoteProbability = 0.9f;
         liberalVoteProbability = 0.25f;
       }
-      return fascistTrackerPull(game, t * liberalVoteProbability + (1f - t) * fascistVoteProbability);
+      return liberalGovernmentPull(game,
+          fascistTrackerPull(game, t * liberalVoteProbability + (1f - t) * fascistVoteProbability));
     }
 
     // DEFAULT voting behavior for liberals + hitler:
@@ -783,6 +791,20 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
       return chance;
     }
     return chance * (1f - FASCIST_TRACKER_PULL);
+  }
+
+  /**
+   * Hard's rule 8 for a fascist, on its yes chance: for a government whose president and chancellor
+   * it knows are liberal, it keeps only {@code 1 -} {@link #LIBERAL_GOVERNMENT_PULL} of the chance.
+   * Anyone else's chance, any other government's and any chance below Hard is as it was.
+   */
+  private float liberalGovernmentPull(SecretHitlerGame game, float chance) {
+    if (skill != BotSkill.HARD || myPlayerData.getIdentity() != Identity.FASCIST
+        || knownPlayerRoles.get(game.getCurrentPresident()) != Identity.LIBERAL
+        || knownPlayerRoles.get(game.getCurrentChancellor()) != Identity.LIBERAL) {
+      return chance;
+    }
+    return chance * (1f - LIBERAL_GOVERNMENT_PULL);
   }
 
   /**
