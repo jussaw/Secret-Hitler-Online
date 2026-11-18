@@ -693,7 +693,7 @@ public class Lobby implements Serializable {
 
     /**
      * Returns whether the account is the lobby's host: the first in join order, who starts the
-     * game and chooses how many bots join it.
+     * game and chooses how many bots join it and how well they play.
      */
     synchronized public boolean isHost(String accountId) {
         return accountId != null && accountId.equals(activeAccounts.peek());
@@ -892,7 +892,7 @@ public class Lobby implements Serializable {
         List<String> usernames = activeAccounts.stream().map(accountToName::get).collect(Collectors.toList());
         message.put("usernames", usernames);
         message.put(SecretHitlerServer.PARAM_BOTS, botNames(botCount(), usernames));
-        message.put(SecretHitlerServer.PARAM_BOT_SKILL, chosenSkill.name());
+        message.put(SecretHitlerServer.PARAM_BOT_SKILL, botSkill().name());
         return message;
     }
 
@@ -1098,10 +1098,11 @@ public class Lobby implements Serializable {
      *          Each connected account is seated under its current name, in a
      *          randomized order, and {@code gameSeats} records the seats, beside the bots the
      *          lobby packet named ({@code botCount}, worked out again for the people seated), each
-     *          at the host's level ({@code botSkill}). A user inside the grace window after a disconnect ({@code PLAYER_TIMEOUT_IN_SEC}) is
-     *          not seated: the lobby drops them at once, as {@code RemoveUserTask} would have,
-     *          keeping their preferred icon. They find the lobby in a game when they return and
-     *          can watch it. A start that throws changes nothing.
+     *          at the host's level ({@code botSkill}). A user inside the grace window after a
+     *          disconnect ({@code PLAYER_TIMEOUT_IN_SEC}) is not seated: the lobby drops them at
+     *          once, as {@code RemoveUserTask} would have, keeping their preferred icon. They find
+     *          the lobby in a game when they return and can watch it. A start that throws changes
+     *          nothing.
      */
     synchronized public void startNewGame() {
         if (isInGame()) {
