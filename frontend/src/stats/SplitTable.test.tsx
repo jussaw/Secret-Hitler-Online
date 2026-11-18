@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { SplitTable, type SplitCell, type SplitColumn } from "./SplitTable";
+import { rate } from "./counting";
+import { countCell, rateCell, SplitTable, type SplitCell, type SplitColumn } from "./SplitTable";
 
 const columns: SplitColumn[] = [
   { key: "LIBERAL", label: "Liberal" },
@@ -200,5 +201,25 @@ describe("SplitTable", () => {
       window.removeEventListener("error", handled);
       quiet.mockRestore();
     }
+  });
+});
+
+describe("the cell builders", () => {
+  it("aRatesCellIsItsShareAndTheWholePercentItShows", () => {
+    expect(rateCell(rate(5, 8))).toEqual({ text: "63%", value: 63, count: 8 });
+    expect(rateCell(rate(0, 5))).toEqual({ text: "0%", value: 0, count: 5 });
+    // Another count beside it (a share's hits), never what it sorts by.
+    expect(rateCell(rate(3, 5), 3)).toEqual({ text: "60%", value: 60, count: 3 });
+    expect(rateCell(rate(0, 0), 0)).toEqual({ text: "—", value: null, count: 0 });
+  });
+
+  it("aRateBelowItsMinimumIsADashWithNoFigure", () => {
+    expect(rateCell(rate(1, 2))).toEqual({ text: "—", value: null, count: 2 }); // below MIN_CHANCES
+  });
+
+  it("aCountsCellIsTheNumberWithNoCountBesideIt", () => {
+    expect(countCell(7)).toEqual({ text: "7", value: 7 });
+    expect(countCell(0)).toEqual({ text: "0", value: 0 });
+    expect(countCell(0)).not.toHaveProperty("count");
   });
 });

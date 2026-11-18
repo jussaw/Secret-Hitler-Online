@@ -7,7 +7,7 @@ import { countFigure, formatPercent, formatSigned, rateFigure, wholePercent } fr
 import { RankedTable, type RankedHeads } from "../RankedTable";
 import { ROLES, type Role } from "../record";
 import { byRole, computeRoles, TABLE_SIZES, type RoleStats } from "../roles";
-import { SplitTable, type SplitCell, type SplitColumn } from "../SplitTable";
+import { countCell, rateCell, SplitTable, type SplitCell, type SplitColumn } from "../SplitTable";
 import { StatCard } from "../StatCard";
 import type { StatsContext } from "../useStats";
 import { rateCellText } from "./cellText";
@@ -26,12 +26,6 @@ const handsLabel = (n: number) => plural(n, "hand");
 const sum = (counts: readonly number[]) => counts.reduce((total, n) => total + n, 0);
 /** Each player's stats in a module's `byPlayer`, as rows to filter and map. */
 const entries = <P,>(byPlayer: Map<number, P>) => Array.from(byPlayer, ([player, p]) => ({ player, p }));
-
-/** A rate's cell: its share with its chances ("60%" and 5), "—" and its chances below the minimum,
- *  sorted by the whole percent it shows (null for "—"). */
-const rateCell = (r: Rate): SplitCell => ({ text: rateCellText(r), value: rateFigure(r), count: r.chances });
-/** A plain count's cell: the number as its text and its figure, with no count beside it. */
-const countCell = (n: number): SplitCell => ({ text: String(n), value: countFigure(n) });
 
 const ROLE_COLUMNS: SplitColumn[] = ROLES.map((role) => ({ key: role, label: ROLE_WORDS[role] }));
 const SIZE_COLUMNS: SplitColumn[] = TABLE_SIZES.map((n) => ({ key: String(n), label: String(n) }));
@@ -125,10 +119,8 @@ function rolesCards(stats: StatsContext, roles: RoleStats): CardSpec[] {
           .filter(({ p }) => p.games > 0)
           .map(({ player, p }) => ({
             player,
-            cells: roleCells((role) => {
-              const share = p.split[role];
-              return { text: rateCellText(share), value: rateFigure(share), count: share.hits };
-            }),
+            // Each share beside its games in that role.
+            cells: roleCells((role) => rateCell(p.split[role], p.split[role].hits)),
           }))
       ),
     },
@@ -230,9 +222,8 @@ function handsCard(names: Map<number, string>, cards: CardStats): CardSpec {
         const drawn = sum(p.hands);
         const cells: Record<string, SplitCell> = { total: countCell(drawn) };
         HAND_LABELS.forEach((label, i) => {
-          // One rate for the text and the figure it sorts by.
-          const share = rate(p.hands[i], drawn, MIN_CHANCES);
-          cells[label] = { text: rateCellText(share), value: rateFigure(share), count: p.hands[i] };
+          // Each share beside the hands of its kind.
+          cells[label] = rateCell(rate(p.hands[i], drawn, MIN_CHANCES), p.hands[i]);
         });
         return { player, cells };
       })

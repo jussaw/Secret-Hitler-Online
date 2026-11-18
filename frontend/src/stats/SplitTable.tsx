@@ -1,9 +1,11 @@
 import { useMemo } from "react";
-import { compareNames, nameOf } from "./counting";
+import { compareNames, nameOf, type Rate } from "./counting";
+import { countFigure, rateFigure } from "./numbers";
 import PlayerName from "./PlayerName";
 import { ScrollRegion } from "./ScrollRegion";
-import { playerColumn, SortHeadRow, useTableSort, type HeadColumn } from "./SortHead";
+import { numberColumn, playerColumn, SortHeadRow, useTableSort, type HeadColumn } from "./SortHead";
 import { NAME_ORDER } from "./sorting";
+import { rateCellText } from "./tabs/cellText";
 import "./SplitTable.css";
 
 /** A column of a split table: a role or a side (`LIBERAL`, `FASCIST`, `HITLER`), or anything else.
@@ -22,6 +24,18 @@ export interface SplitCell {
   value: number | null;
   /** Beside the text, a 0 too; never sorted by. */
   count?: number;
+}
+
+/** A rate's cell: its share ("60%", `rateCellText`) and the whole percent it shows (`rateFigure`),
+ *  "—" and null below its minimum, with `count` beside it, its chances unless given. */
+export function rateCell(rate: Rate, count: number = rate.chances): SplitCell {
+  return { text: rateCellText(rate), value: rateFigure(rate), count };
+}
+
+/** A plain count's cell: the number as its text and its figure (`countFigure`), with no count
+ *  beside it. */
+export function countCell(n: number): SplitCell {
+  return { text: String(n), value: countFigure(n) };
 }
 
 export interface SplitTableProps {
@@ -48,20 +62,14 @@ function cellOf(row: SplitRow, key: string): SplitCell | undefined {
   return Object.prototype.hasOwnProperty.call(row.cells, key) ? row.cells[key] : undefined;
 }
 
-/** The table's sortable columns: Player, by name A to Z, then each of `columns`, most first by its
- *  cells' values, a cell the row lacks missing. Throws for a column keyed `name`. */
+/** The table's sortable columns: Player, by name A to Z, then each of `columns` (`numberColumn`:
+ *  its values at the right, most first by its cells' values, a cell the row lacks missing, and a
+ *  side's or role's head class, none for another key). Throws for a column keyed `name`. */
 function splitColumns(columns: SplitColumn[], names: Map<number, string>): HeadColumn<SplitRow>[] {
   const heads: HeadColumn<SplitRow>[] = [playerColumn<SplitRow>((row) => nameOf(names, row.player), "split-name")];
   for (const { key, label } of columns) {
     if (key === "name") throw new Error('A split column cannot be keyed "name"');
-    heads.push({
-      key,
-      label,
-      className: HEAD_CLASS[key],
-      end: true,
-      first: "descending",
-      value: (row) => cellOf(row, key)?.value ?? null,
-    });
+    heads.push(numberColumn<SplitRow, string>(key, label, (row) => cellOf(row, key)?.value ?? null, HEAD_CLASS[key]));
   }
   return heads;
 }
