@@ -17,7 +17,7 @@ final class DeckOdds implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /** The cards in a president's hand. */
-    private static final int HAND = SecretHitlerGame.PRESIDENT_DRAW_SIZE;
+    private static final int PRESIDENT_HAND = SecretHitlerGame.PRESIDENT_DRAW_SIZE;
 
     /** The cards in a chancellor's hand. */
     private static final int CHANCELLOR_HAND = SecretHitlerGame.CHANCELLOR_DRAW_SIZE;
@@ -30,6 +30,13 @@ final class DeckOdds implements Serializable {
 
     /** The draw pile's size at this seat's last look; 0 before any. */
     private int drawSize;
+
+    /** The liberal and fascist cards a hand is drawn from. */
+    private record Pool(int liberals, int fascists) {
+        int cards() {
+            return liberals + fascists;
+        }
+    }
 
     /**
      * The chance that {@code cards} drawn at random, without replacement, from {@code liberals}
@@ -90,40 +97,45 @@ final class DeckOdds implements Serializable {
     }
 
     /**
+     * The cards this seat cannot place, with {@code liberalsOnBoard} and {@code fascistsOnBoard}
+     * policies on the board: the deck less the board and the seen discards. A pool that cannot be
+     * (a negative count, under 3 cards or under {@code minFascists} fascists, as after an odd
+     * restore) falls back to the cards not on the board, and that, if it cannot be either (no board
+     * a game reaches), to no cards at all.
+     */
+    private Pool pool(int liberalsOnBoard, int fascistsOnBoard, int minFascists) {
+        Pool seen = new Pool(SecretHitlerGame.NUM_LIBERAL_POLICIES - liberalsOnBoard - seenLiberals,
+                SecretHitlerGame.NUM_FASCIST_POLICIES - fascistsOnBoard - seenFascists);
+        if (holds(seen, minFascists)) {
+            return seen;
+        }
+        Pool offTheBoard = new Pool(Math.max(0, SecretHitlerGame.NUM_LIBERAL_POLICIES - liberalsOnBoard),
+                Math.max(0, SecretHitlerGame.NUM_FASCIST_POLICIES - fascistsOnBoard));
+        return holds(offTheBoard, minFascists) ? offTheBoard : new Pool(0, 0);
+    }
+
+    /** Whether {@code pool} can be: no negative count, a president's hand and {@code minFascists} fascists. */
+    private static boolean holds(Pool pool, int minFascists) {
+        return pool.liberals() >= 0 && pool.fascists() >= minFascists && pool.cards() >= PRESIDENT_HAND;
+    }
+
+    /**
      * The chance a president's hand drawn now is all fascist, with {@code liberalsOnBoard} and
-     * {@code fascistsOnBoard} policies on the board. A pool that cannot be (under 3 cards, or a
-     * negative count, as after an odd restore) falls back to the cards not on the board.
+     * {@code fascistsOnBoard} policies on the board, from {@link #pool}; 0 from no cards.
      */
     double allFascistHand(int liberalsOnBoard, int fascistsOnBoard) {
-        int liberals = SecretHitlerGame.NUM_LIBERAL_POLICIES - liberalsOnBoard - seenLiberals;
-        int fascists = SecretHitlerGame.NUM_FASCIST_POLICIES - fascistsOnBoard - seenFascists;
-        if (liberals < 0 || fascists < 0 || liberals + fascists < HAND) {
-            liberals = Math.max(0, SecretHitlerGame.NUM_LIBERAL_POLICIES - liberalsOnBoard);
-            fascists = Math.max(0, SecretHitlerGame.NUM_FASCIST_POLICIES - fascistsOnBoard);
-            if (liberals + fascists < HAND) {
-                return 0;
-            }
-        }
-        return allFascist(liberals, fascists, HAND);
+        Pool pool = pool(liberalsOnBoard, fascistsOnBoard, 0);
+        return pool.cards() == 0 ? 0 : allFascist(pool.liberals(), pool.fascists(), PRESIDENT_HAND);
     }
 
     /**
      * For a chancellor handed two fascist cards, the chance the president discarded a liberal: the
-     * pool's liberals over the pool less the two it holds. A scale, not the exact posterior (which
-     * would weigh how likely a liberal or a fascist president is to pass two fascists). A pool that
-     * cannot be (under 3 cards, under 2 fascists, or a negative count) falls back to the cards not
-     * on the board.
+     * pool's liberals over the pool less the two it holds, from {@link #pool} (which must hold those
+     * two); 0 from no cards. A scale, not the exact posterior (which would weigh how likely a liberal
+     * or a fascist president is to pass two fascists).
      */
     double liberalThirdCard(int liberalsOnBoard, int fascistsOnBoard) {
-        int liberals = SecretHitlerGame.NUM_LIBERAL_POLICIES - liberalsOnBoard - seenLiberals;
-        int fascists = SecretHitlerGame.NUM_FASCIST_POLICIES - fascistsOnBoard - seenFascists;
-        if (liberals < 0 || fascists < CHANCELLOR_HAND || liberals + fascists < HAND) {
-            liberals = Math.max(0, SecretHitlerGame.NUM_LIBERAL_POLICIES - liberalsOnBoard);
-            fascists = Math.max(0, SecretHitlerGame.NUM_FASCIST_POLICIES - fascistsOnBoard);
-            if (fascists < CHANCELLOR_HAND || liberals + fascists < HAND) {
-                return 0;
-            }
-        }
-        return (double) liberals / (liberals + fascists - CHANCELLOR_HAND);
+        Pool pool = pool(liberalsOnBoard, fascistsOnBoard, CHANCELLOR_HAND);
+        return pool.cards() == 0 ? 0 : (double) pool.liberals() / (pool.cards() - CHANCELLOR_HAND);
     }
 }
