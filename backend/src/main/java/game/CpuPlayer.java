@@ -61,6 +61,14 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     random = new Random();
   }
 
+  /**
+   * Replaces this CPU's random source, so a test can seed it. The source is
+   * transient: a CPU read from a backup gets a new unseeded one.
+   */
+  void useRandom(Random random) {
+    this.random = random;
+  }
+
   public void initialize(SecretHitlerGame game) {
     List<Player> playerList = game.getPlayerList();
 
