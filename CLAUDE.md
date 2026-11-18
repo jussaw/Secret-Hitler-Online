@@ -1393,7 +1393,7 @@ keeps credit to upstream and to the board game's creators.
   `longestLineViewers`' seven viewers, each with its note, with 44px targets, 16px field text,
   bot rows a person's row's size (`botRowMismatches`), the bots' level it should see
   (`skillShown`), its BOT SKILL row or line on one line (`skillRowLines`) and, for a player, the
-  four buttons two rows of two (`playerButtonRows`),
+  four buttons two rows of two (`playerButtonRows`), held sideways too, where one row would fit,
   the roster first, the busy bubble at 320px, and `checkNamePrompt` for CHOOSE A NAME on the login
   page and over the lobby, after which PLAY INSTEAD takes a seat at once, and for CHANGE NAME on the
   login page and in the lobby: 44px targets, 16px field text, unwrapped labels, both buttons on one
@@ -1403,7 +1403,9 @@ keeps credit to upstream and to the board game's creators.
   text, its roster rows and bot rows (`botRowMismatches`), the buttons 44px targets at every
   size, the level it sees (`skillShown`), the BOT SKILL row or line on one line at every size
   (`skillRowLines`) and a player's four buttons one row exactly where they fit and two rows of two
-  everywhere else (`playerButtonRows`), and a login page test per state (the header, the cards and the footer in order, 44px
+  everywhere else (`playerButtonRows`: today one row in every narrow window and two rows of two at
+  every desktop size, and a column a px wider than the four makes one row and a px narrower two
+  rows of two), and a login page test per state (the header, the cards and the footer in order, 44px
   targets, the header's links among them, and 16px field text, and Sign out's box clear of CHANGE
   NAME's, `accountTargets`), both at
   `DESKTOP_SIZES`, `SQUARE_DESKTOPS` and the `NARROW_WINDOWS`. The viewers are the host (the bot
@@ -1615,7 +1617,8 @@ keeps credit to upstream and to the board game's creators.
   level), `skillRowLines` (the lines the BOT SKILL row or line takes, by the middles of its
   parts' words, as a button's box holds its shadow below its face), `playerButtonRows` (the player
   buttons on each line, by their tops, and the room their column leaves beside the four at their
-  own widths),
+  own widths, or with `setRoom` the column first made to leave that room), each `LobbyViewer`'s
+  `player` saying whether it has them,
   `longestLogin`, `accountTargets`, `lobbyStatusCard`, `waitForPrompt`, `watchLobby`, and
   `codeField`, the login page's one field), `e2e/accounts.ts`, `e2e/layout.ts` (`wrappedLabels` and
   `smallTargets`, which measure links drawn as buttons, `.button-link`, too, `smallLinks` for plain
