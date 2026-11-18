@@ -423,6 +423,42 @@ public class NoPeekingTest {
         });
     }
 
+    /**
+     * Rule 6: two failed elections (P0 nominates P1, then P1 nominates P2, every seat's nein), then
+     * P2 nominates P0 and the bot of P3 votes, with {@code hidden} hidden in the second game.
+     */
+    private static void votesAtTrackerTwo(String roles, Hidden hidden) {
+        playsAlike(() -> new Scene(BotScenes.game(roles), "P3"), () -> new Scene(BotScenes.game(roles), "P3"),
+                List.of(hidden), twins -> {
+                    for (String chancellor : List.of("P1", "P2")) {
+                        twins.others(g -> g.nominateChancellor(chancellor));
+                        twins.others(g -> BotScenes.voteAll(g, false));
+                        twins.others(SecretHitlerGame::endPresidentialTerm);
+                    }
+                    twins.others(g -> g.nominateChancellor("P0"));
+                    twins.botActs();
+                });
+    }
+
+    /** Rule 6 for a liberal: the nominee P0, a liberal, swapped with Hitler. */
+    @Test
+    public void hardRule6TrackerLiberal() {
+        votesAtTrackerTwo("LLFLH", new Hidden("the roles of P0 and P4 swapped", g -> BotScenes.swapRoles(g, "P0", "P4")));
+    }
+
+    /** Rule 6 for Hitler at seven, who knows no other role: the nominee P0, a liberal, swapped with a fascist. */
+    @Test
+    public void hardRule6TrackerHitlerAtSeven() {
+        votesAtTrackerTwo("LLLHLFF",
+                new Hidden("the roles of P0 and P5 swapped", g -> BotScenes.swapRoles(g, "P0", "P5")));
+    }
+
+    /** Rule 6 for a fascist, who knows every role: an unseen card. */
+    @Test
+    public void hardRule6TrackerFascist() {
+        votesAtTrackerTwo("LLLFH", UNSEEN_CARDS);
+    }
+
     // The test's own checks: that its seeds differ, and that the twins catch what they should.
 
     /** Normal always passes FL from FFL as a liberal; Easy passes FF for some of the seeds. */

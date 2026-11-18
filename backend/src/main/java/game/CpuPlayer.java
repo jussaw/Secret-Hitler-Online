@@ -53,6 +53,18 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   static final double VOTE_DROP = 0.25;
 
   /**
+   * Hard's rule 6: with two failed elections, the share of the way from a liberal's yes chance on
+   * its trusting path to certain yes that it moves, as a third failure enacts the top card.
+   */
+  static final float LIBERAL_TRACKER_PUSH = 0.5f;
+
+  /**
+   * Hard's rule 6: with two failed elections, the share of the fascist side's yes chance that it
+   * drops for a government with no member it knows is on its side, so the top card may come.
+   */
+  static final float FASCIST_TRACKER_PULL = 0.5f;
+
+  /**
    * Hard's rule 3: one closed election as every seat saw it: its round, its government and each
    * living player's vote (a {@code TreeMap}, so a backup's bytes depend only on the votes).
    */
@@ -681,7 +693,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
         fascistVoteProbability = 0.9f;
         liberalVoteProbability = 0.25f;
       }
-      return t * liberalVoteProbability + (1f - t) * fascistVoteProbability;
+      return withTracker(game, t * liberalVoteProbability + (1f - t) * fascistVoteProbability, false);
     }
 
     // DEFAULT voting behavior for liberals + hitler:
@@ -697,13 +709,35 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
 
     if (presidentRep < minIndividualRep || chancellorRep < minIndividualRep || combinedRep < minCombinedRep) {
       // This legislation is untrustworthy and should probably not be voted for.
-      return 0.05f;
+      return withTracker(game, 0.05f, false);
     }
     // Scale probability of voting yes with the reputation of the players.
     // Use a parabolic curve that's more likely to say yes to neutral or
     // unknown values: f(t) = 2t - t^2
     // f(0) = 0, f(0.5) = 0.75, f(1) = 1
-    return 2f * t - (t * t);
+    return withTracker(game, 2f * t - (t * t), true);
+  }
+
+  /**
+   * Hard's rule 6 on a yes chance: with two failed elections, a third enacts the top card. A Hard
+   * liberal moves its chance on the trusting path ({@code trusting}) {@link #LIBERAL_TRACKER_PUSH}
+   * of the way to certain yes, and keeps its untrusted chance; the Hard fascist side (fascists, and
+   * Hitler at every size) drops {@link #FASCIST_TRACKER_PULL} of its chance for a government with
+   * no member it knows is on its side, itself included. Below Hard, or at any other tracker, the
+   * chance is as it was.
+   */
+  private float withTracker(SecretHitlerGame game, float chance, boolean trusting) {
+    if (skill != BotSkill.HARD || game.getElectionTracker() != SecretHitlerGame.MAX_FAILED_ELECTIONS - 1) {
+      return chance;
+    }
+    if (myPlayerData.getIdentity() == Identity.LIBERAL) {
+      return trusting ? chance + LIBERAL_TRACKER_PUSH * (1f - chance) : chance;
+    }
+    if (isFascistSide(knownPlayerRoles.get(game.getCurrentPresident()))
+        || isFascistSide(knownPlayerRoles.get(game.getCurrentChancellor()))) {
+      return chance;
+    }
+    return chance * (1f - FASCIST_TRACKER_PULL);
   }
 
   /**
