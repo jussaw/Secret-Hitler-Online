@@ -1206,7 +1206,7 @@ Issue #72, part 4. Starts once 25A has merged; merges after 25D.
 - [x] `Lobby` keeps the host's level (Normal in a new lobby, kept after a game, Normal after a restore) and seats bots at it; `set-bot-skill` (host only, known levels, dropped during a game); every lobby packet carries `botSkill`
 - [x] The host's BOT SKILL row under START GAME's row (EASY, NORMAL, HARD), on even with no bots to seat; guests and spectators see the level on a line in the same place
 - [x] The lobby still fits one screen for every viewer at every tested size, with 44px targets on phones, checked with Linux fonts too
-- [ ] `CLAUDE.md` (the lobby and the protocol line) and `README.md` updated; the pull request shows the lobby before and after, on desktop and on a phone
+- [x] `CLAUDE.md` (the lobby and the protocol line) and `README.md` updated; the pull request shows the lobby before and after, on desktop and on a phone
 
 **Phase 26A acceptance**
 
