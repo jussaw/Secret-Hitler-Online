@@ -63,7 +63,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 25A. Bot skill levels | `phase-25a-bot-levels` | done |
 | 25B. Hard's first rules | `phase-25b-hard-reads` | done |
 | 25C. Hard's other rules | `phase-25c-hard-bots` | done |
-| 25D. Ladder and balance | `phase-25d-ladder-balance` | in progress |
+| 25D. Ladder and balance | `phase-25d-ladder-balance` | done |
 | 26A. Bot skill in the lobby | `phase-26a-lobby-bot-skill` | planned |
 | 26B. Bot skill in the records | `phase-26b-record-bot-skill` | planned |
 
@@ -1193,7 +1193,7 @@ Issue #72, part 3's end. Backend only; changes nothing on screen. Starts once 25
 **Phase 25D acceptance**
 
 - [x] Backend tests pass
-- [ ] PR merged into `development`
+- [x] PR merged into `development`
 
 ---
 
