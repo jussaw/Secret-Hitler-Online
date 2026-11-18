@@ -77,6 +77,14 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   static final double PRESIDENT_BLUFF_CHANCE = 0.10;
 
   /**
+   * Hard's rule 9, special elections to the side (Phase 25D, an extra fascist-side rule): how often
+   * a Hard fascist president with the special election hands the presidency to a living fascist
+   * teammate other than Hitler, when it has one. Hitler as president nominates a liberal, so the
+   * rule passes him over.
+   */
+  static final double SIDE_ELECTION_CHANCE = 0.9;
+
+  /**
    * Hard's rule 3: one closed election as every seat saw it: its round, its government and each
    * living player's vote (a {@code TreeMap}, so a backup's bytes depend only on the votes).
    */
@@ -1061,6 +1069,8 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
       selectedPlayer = anyOf(playerList).getUsername();
     } else if (myPlayerData.getIdentity() == Identity.LIBERAL) {
       selectedPlayer = chooseRandomPlayerWeighted(playerList, -0.8f, 0, 1f, 0.5f);
+    } else if (electsToTheSide(playerList)) { // Hard's rule 9: a fascist teammate, each as likely
+      selectedPlayer = chooseRandomPlayerWeighted(playerList, 1f, 0, 0, 0);
     } else {
       selectedPlayer = chooseRandomPlayerWeighted(playerList, 1f, 1f, 0.5f, 0.5f);
     }
@@ -1145,6 +1155,22 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
       return false;
     }
     return random.nextDouble() < chance;
+  }
+
+  /**
+   * Hard's rule 9: whether this CPU hands the special election to a fascist teammate now. Only a
+   * Hard fascist with a living fascist teammate other than Hitler among {@code candidates} draws:
+   * then it does with {@link #SIDE_ELECTION_CHANCE}. No other path draws.
+   */
+  private boolean electsToTheSide(List<Player> candidates) {
+    if (skill != BotSkill.HARD || myPlayerData.getIdentity() != Identity.FASCIST) {
+      return false;
+    }
+    boolean teammate = false;
+    for (Player player : candidates) {
+      teammate |= player.isAlive() && knownPlayerRoles.get(player.getUsername()) == Identity.FASCIST;
+    }
+    return teammate && random.nextDouble() < SIDE_ELECTION_CHANCE;
   }
 
   /** Whether a known role is on the fascist side (a fascist or Hitler); false for null. */

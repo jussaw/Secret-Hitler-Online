@@ -30,5 +30,6 @@ public class HardAmountsTest {
         within("CpuPlayer.CHANCELLOR_BLUFF_CHANCE (rule 7)", CpuPlayer.CHANCELLOR_BLUFF_CHANCE, 0.10, 0.90);
         within("CpuPlayer.PRESIDENT_BLUFF_CHANCE (rule 7)", CpuPlayer.PRESIDENT_BLUFF_CHANCE, 0.10, 0.90);
         within("ClearedPlayers.NOMINATION_WEIGHT (rule 1)", ClearedPlayers.NOMINATION_WEIGHT, 1.5, 5);
+        within("CpuPlayer.SIDE_ELECTION_CHANCE (rule 9)", CpuPlayer.SIDE_ELECTION_CHANCE, 0.10, 0.90);
     }
 }

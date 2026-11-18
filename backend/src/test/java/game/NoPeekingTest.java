@@ -504,6 +504,14 @@ public class NoPeekingTest {
         actsAlike(() -> BotScenes.presidentsHand("FLLLH", "FFL"), List.of(UNSEEN_CARDS));
     }
 
+    // Phase 25D's extra fascist-side rules. A fascist knows every role, so its twin hides a card.
+
+    /** Rule 9: a fascist holds the special election at 7 seats, its teammate alive; unseen cards swapped. */
+    @Test
+    public void hardRule9SideElections() {
+        actsAlike(() -> BotScenes.power("FLLLLFH", 3, ""), List.of(UNSEEN_CARDS));
+    }
+
     // The test's own checks: that its seeds differ, and that the twins catch what they should.
 
     /** Normal always passes FL from FFL as a liberal; Easy passes FF for some of the seeds. */
