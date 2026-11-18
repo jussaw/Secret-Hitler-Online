@@ -52,11 +52,10 @@ all-Hard and all-Normal.
 | 2c | confirmation | d847327 | VD 0.25 · FF 2.0 · LL 2.0 · PD 2.0 · LP 0.5 · FP 0.5 · CB 0.10 · PB 0.10 · NW 3 · rule 1: a president backs its own nominee · rule 8 LGP 0.9 · rule 9 SEC 0.9 | 21.3% | 28.0% | 40.8% | 32.1% | 23.5% | 25.4% | 26.3% | Ladder PASS: L E<N clears; L N<H clears; L E<H clears; F E<N clears; F N<H clears; F E<H clears | 1.7 (check PASS, target PASS) | no (a pass) | None: the acceptance pools runs 2 and 2c. |
 | A | acceptance (runs 2 and 2c pooled, 4,000 games a size) | d847327 | VD 0.25 · FF 2.0 · LL 2.0 · PD 2.0 · LP 0.5 · FP 0.5 · CB 0.10 · PB 0.10 · NW 3 · rule 1: a president backs its own nominee · rule 8 LGP 0.9 · rule 9 SEC 0.9 | 21.5% | 27.9% | 40.2% | 32.3% | 23.5% | 25.3% | 26.6% | Ladder PASS: L E<N clears; L N<H clears; L E<H clears; F E<N clears; F N<H clears; F E<H clears | 1.3 (check PASS, target PASS) | no (it passes) | Accepted. The review (Task 7) then changed `backend/src/main/java/game/` (comments, and `hardFascist()` naming the check rules 7 to 9 share, no behaviour), so the plan asks for a new pass, its confirmation and their acceptance: run 3. |
 | 3 | full (after the review) | 9fdaaac | VD 0.25 · FF 2.0 · LL 2.0 · PD 2.0 · LP 0.5 · FP 0.5 · CB 0.10 · PB 0.10 · NW 3 · rule 1: a president backs its own nominee · rule 8 LGP 0.9 · rule 9 SEC 0.9 | 20.9% | 26.9% | 40.1% | 32.3% | 24.0% | 25.5% | 27.0% | Ladder PASS: L E<N clears; L N<H clears; L E<H clears; F E<N clears; F N<H clears; F E<H clears | 0.2 (check PASS, target PASS) | no (a pass) | None: the confirmation, run 3c, on the same code. |
+| 3c | confirmation | 9fdaaac | VD 0.25 · FF 2.0 · LL 2.0 · PD 2.0 · LP 0.5 · FP 0.5 · CB 0.10 · PB 0.10 · NW 3 · rule 1: a president backs its own nominee · rule 8 LGP 0.9 · rule 9 SEC 0.9 | 21.9% | 27.1% | 40.1% | 32.1% | 23.7% | 24.5% | 26.5% | Ladder PASS: L E<N clears; L N<H clears; L E<H clears; F E<N clears; F N<H clears; F E<H clears | 0.6 (check PASS, target PASS) | no (a pass) | None: the acceptance pools runs 3 and 3c. |
+| A2 | acceptance (runs 3 and 3c pooled, 4,000 games a size) | 9fdaaac | VD 0.25 · FF 2.0 · LL 2.0 · PD 2.0 · LP 0.5 · FP 0.5 · CB 0.10 · PB 0.10 · NW 3 · rule 1: a president backs its own nominee · rule 8 LGP 0.9 · rule 9 SEC 0.9 | 21.4% | 27.0% | 40.1% | 32.2% | 23.8% | 25.0% | 26.8% | Ladder FAIL: L E<N clears; L N<H clears; L E<H clears; F E<N clears; F N<H clears (sizes 5); F E<H clears | 0.2 (check PASS, target PASS) | yes: (b) 1 of 10 (a failed acceptance counts as a failing full run) | Fails at one size: the fascist side's Normal < Hard is inverted at 5 seats (Normal fascists 73.4% 72.0-74.8%, Hard 70.1% 68.7-71.5%); at 5 seats Hard fascists won no more than Normal in any run (rule 9 has no special election there, and the bluffs cost a policy). Rule 8 now runs for the whole fascist side: Hitler, who knows every role at 5 or 6, also votes down governments he knows are all liberal (exploration 11), a change to rule 8, not a new rule. |
 
-**Summary.** Five reports: run 0 (before), run 1 (failed, the one run that counted, (a)'s), run 2
-(a pass), its confirmation 2c (a pass) and the acceptance, the two pooled: `Ladder check: PASS`
-and `Balance check: PASS`, all-Hard 26.6% against all-Normal 27.9%. Budgets left: (a) 9 of its
-10 failing runs, (b) all 10 of its failing runs and 1 of its 3 rules.
+**Summary.** To be written with the next acceptance.
 
 ## Extra fascist-side rules (Decision 5 (b))
 
@@ -69,7 +68,9 @@ its own tests (`HardFascistRulesTest`), range (`HardAmountsTest`) and no-peeking
   the only sizes with the power (explorations 5 and 7).
 - **Rule 8, fascists vote down liberal governments** (d847327), `LIBERAL_GOVERNMENT_PULL` 0.9: a
   Hard fascist keeps only a tenth of its yes chance for a government whose president and
-  chancellor it knows are liberal. Another rule, as Decision 9 allows; it helps at every size and
+  chancellor it knows are liberal; after acceptance A2 failed at 5 seats, Hitler too (the commit
+  after run 3c), who knows every role at 5 or 6 and at 7 or more only the liberals it
+  investigated. Another rule, as Decision 9 allows; it helps at every size and
   is what brings all-Hard games into the band (explorations 6 to 8). Two expectations of 25C's
   `HardTrackerTest` gain its factor by name (approved by the user; rule 6 unchanged).
 
@@ -121,3 +122,10 @@ Normal fascists (N/N) ran 27.2% to 28.2% in these runs.
     tree), `-Pladder -Pgames=500`: E/N 20.7%, N/N 27.7%, H/N 39.3%, N/E 33.3%, N/H 23.1%, E/E
     24.8%, H/H 27.4%; every step clears and the balance is 0.3 points apart, as exploration 9's
     scratch edits said. At 500 games a size this decides nothing.
+11. **After acceptance A2, at 4,000 games a size** (run 3's code with scratch edits): rule 8 as
+    committed, N/H by size 28.4, 44.1, 17.5, 25.8, 11.4, 16.3% (23.9%), H/H 26.8%, against N/N
+    28.2, 44.9, 22.7, 31.9, 15.7, 23.6% (27.8%): at 5 and 6 seats Hard fascists are no better
+    than Normal. Rule 8 for Hitler too: N/H 22.7, 36.0, 18.5, 25.4, 11.4, 16.0% (21.6%), H/H
+    23.2%. Hitler at 5 or 6 voting the fascists' mix instead of trusting known liberals: N/H
+    25.2, 39.6, … (22.6%), H/H 25.8%; both: 23.0, 34.0, … (21.3%), H/H 22.5%. Rule 8 for Hitler
+    alone does the most at 5 and 6 seats with all-Hard games inside the band, so it goes in.
