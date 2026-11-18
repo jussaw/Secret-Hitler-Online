@@ -392,7 +392,7 @@ public class testCpuPlayer {
     expectIllegalArgument(() -> cpu.chooseRandomPlayerWeighted(onlySelfAndDead, 1, 1, 1, 1));
   }
 
-  /** #72: four people at reputation 0 weigh 0.605 each (today 15.1%, 15.1%, 15.1%, 54.7%). */
+  /** #72: four people at reputation 0 weigh 0.605 each (before the fix 15.1%, 15.1%, 15.1%, 54.7%). */
   @Test
   public void aLiberalsFirstNominationIsEven() {
     SecretHitlerGame game = gameAt(5, GameState.CHANCELLOR_NOMINATION, Identity.LIBERAL);
@@ -413,7 +413,7 @@ public class testCpuPlayer {
 
   /**
    * #72: the first other seat at reputation −5 weighs 1.0 and the other three, at 0, weigh 0.3
-   * (today 25.0%, 7.6%, 7.4%, 60.1%).
+   * (before the fix 25.0%, 7.6%, 7.4%, 60.1%).
    */
   @Test
   public void aLiberalsExecutionFollowsTheWeights() {
@@ -471,7 +471,7 @@ public class testCpuPlayer {
 
   /**
    * #72: a fascist's special election weighs the other fascist and Hitler at 1.5 and the four
-   * liberals at 1.0, all people (today the last seat 0.0%).
+   * liberals at 1.0, all people (before the fix the shares followed the seats, not the weights).
    */
   @Test
   public void aFascistsSpecialElectionFollowsTheWeights() {
@@ -494,7 +494,7 @@ public class testCpuPlayer {
 
   /**
    * Every other player is a CPU at +3, which a liberal's execution weighs at 0: the pick is then
-   * even among the living others (today always the first).
+   * even among the living others (before the fix always the first).
    */
   @Test
   public void aLiberalExecutionEndsWhenEveryoneLeftIsTrusted() {
@@ -590,6 +590,46 @@ public class testCpuPlayer {
       expected.put(other, 0.75 / 4.25);
     }
     assertShares(picks, expected);
+  }
+
+  /**
+   * Hitler at 7 is dealt no teammates and knows one only by investigating them: the investigation
+   * records a fascist as FASCIST, and from then on Hitler's executions leave them out, while the
+   * fascist it never found keeps the reputation's weight.
+   */
+  @Test
+  public void hitlerAtSevenNeverExecutesAnInvestigatedTeammate() {
+    // The investigation: every other living player but one fascist has been investigated already.
+    SecretHitlerGame investigating = gameAt(7, GameState.PRESIDENTIAL_POWER_INVESTIGATE, Identity.HITLER);
+    String fascist = getPlayerOfIdentity(investigating, Identity.FASCIST);
+    CpuPlayer hitler = presidentBot(investigating);
+    for (String other : othersThan(investigating, investigating.getCurrentPresident())) {
+      if (!other.equals(fascist)) {
+        investigating.getPlayer(other).investigate();
+      }
+    }
+    assertTrue(hitler.act(investigating));
+    assertEquals(fascist, investigating.getTarget());
+    assertEquals(Identity.FASCIST, hitler.knownPlayerRoles.get(fascist));
+
+    // The execution, with the teammate known as that investigation records them.
+    SecretHitlerGame game = gameAt(7, GameState.PRESIDENTIAL_POWER_EXECUTION, Identity.HITLER);
+    String found = getPlayerOfIdentity(game, Identity.FASCIST);
+    Map<String, Integer> picks = new HashMap<>();
+    for (int i = 0; i < ITERATIONS / 10; i++) {
+      SecretHitlerGame copy = copyOf(game);
+      CpuPlayer bot = presidentBot(copy);
+      bot.knownPlayerRoles.put(found, Identity.FASCIST);
+      assertTrue(bot.act(copy));
+      picks.merge(copy.getTarget(), 1, Integer::sum);
+    }
+
+    assertFalse("Hitler executed the fascist it found: " + picks, picks.containsKey(found));
+    for (String other : othersThan(game, game.getCurrentPresident())) {
+      if (!other.equals(found)) {
+        assertTrue(other + " was never executed: " + picks, picks.containsKey(other));
+      }
+    }
   }
 
   /**

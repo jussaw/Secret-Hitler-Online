@@ -34,8 +34,6 @@ public final class BotMatches {
     public static final BiFunction<String, Identity, CpuPlayer> BOTS_AS_BUILT = (name, role) -> new CpuPlayer(name);
     public static final String BOTS_AS_BUILT_LABEL = "Bots as built";
 
-    private static final int MIN_SEATS = 5;
-    private static final int MAX_SEATS = 10;
     private static final double Z = 1.96; // a 95% interval
 
     private static final String GAMES_OPTION = "--games=";
@@ -186,7 +184,7 @@ public final class BotMatches {
             throw new IllegalArgumentException("A run plays at least 1 game a size, not " + gamesPerSize + ".");
         }
         SortedMap<Integer, Tally> bySize = new TreeMap<>();
-        for (int seats = MIN_SEATS; seats <= MAX_SEATS; seats++) {
+        for (int seats = SecretHitlerGame.MIN_PLAYERS; seats <= SecretHitlerGame.MAX_PLAYERS; seats++) {
             Tally tally = new Tally();
             for (int i = 0; i < gamesPerSize; i++) {
                 SecretHitlerGame game;
