@@ -18,12 +18,15 @@ public class HardDeckOddsTest {
     private static final double TOLERANCE = 1e-9;
     private static final long SEED = 0;
 
-    /** The drop an onlooker gives each member of a government that enacted a fascist policy from {@code pool}. */
+    /**
+     * The drop an onlooker gives each member of a government that enacted a fascist policy, its hand
+     * drawn from {@code liberals} and {@code fascists} cards the onlooker cannot place.
+     */
     private static double scaledDrop(int liberals, int fascists) {
         return -(1 - DeckOdds.allFascist(liberals, fascists, 3));
     }
 
-    /** {@code president} elects {@code chancellor} from {@code hand} on top, every seat's ja made by the scene. */
+    /** The president elects {@code chancellor} from {@code hand} on top, every seat's ja made by the scene. */
     private static void elected(Played played, String chancellor, String hand) {
         played.then(g -> BotScenes.drawTop(g, hand));
         played.then(g -> g.nominateChancellor(chancellor));
@@ -32,24 +35,18 @@ public class HardDeckOddsTest {
 
     /** The president discards the first card of {@code type}. */
     private static void presidentDiscards(Played played, Policy.Type type) {
-        played.then(g -> g.presidentDiscardPolicy(indexOf(g.getPresidentLegislativeChoices(), type)));
+        played.then(g -> BotScenes.presidentDiscards(g, type));
     }
 
     /** The chancellor enacts the first card of {@code type}. */
     private static void chancellorEnacts(Played played, Policy.Type type) {
-        played.then(g -> g.chancellorEnactPolicy(indexOf(g.getChancellorLegislativeChoices(), type)));
+        played.then(g -> BotScenes.chancellorEnacts(g, type));
     }
 
-    private static int indexOf(List<Policy> cards, Policy.Type type) {
-        for (int i = 0; i < cards.size(); i++) {
-            if (cards.get(i).getType() == type) {
-                return i;
-            }
-        }
-        throw new IllegalStateException("No " + type + " card in " + Decision.letters(cards) + ".");
-    }
-
-    /** {@code secondRound(roles, bot, skill)}, then P1 elects P3 from {@code hand}, discards {@code discard} and P3 enacts the other kind. */
+    /**
+     * {@code secondRound(roles, bot, skill)}, then P1 elects P3 from {@code hand}, discards a
+     * {@code discard} card and P3 enacts an {@code enact} one.
+     */
     private static Played roundTwo(String roles, String bot, BotSkill skill, String hand, Policy.Type discard,
             Policy.Type enact) {
         Played played = BotScenes.secondRound(roles, bot, skill, SEED);

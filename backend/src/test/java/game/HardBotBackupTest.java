@@ -72,6 +72,7 @@ public class HardBotBackupTest {
             CpuTurn.step(backup.game(), bots, () -> {
             });
         }
-        assertTrue("the game ended within 2,000 steps, in " + backup.game().getState(), backup.game().hasGameFinished());
+        assertTrue("the game ended within 2,000 steps, in " + backup.game().getState(),
+                backup.game().hasGameFinished());
     }
 }

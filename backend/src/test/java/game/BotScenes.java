@@ -215,6 +215,25 @@ final class BotScenes {
         voteAll(game, true);
     }
 
+    /** The president discards the first card of {@code type} in its hand. */
+    static void presidentDiscards(SecretHitlerGame game, Policy.Type type) {
+        game.presidentDiscardPolicy(indexOf(game.getPresidentLegislativeChoices(), type));
+    }
+
+    /** The chancellor enacts the first card of {@code type} in its hand. */
+    static void chancellorEnacts(SecretHitlerGame game, Policy.Type type) {
+        game.chancellorEnactPolicy(indexOf(game.getChancellorLegislativeChoices(), type));
+    }
+
+    private static int indexOf(List<Policy> cards, Policy.Type type) {
+        for (int i = 0; i < cards.size(); i++) {
+            if (cards.get(i).getType() == type) {
+                return i;
+            }
+        }
+        throw new IllegalStateException("No " + type + " card in " + Decision.letters(cards) + ".");
+    }
+
     /** Cards written as letters ({@code F} and {@code L}), in order. */
     static List<Policy> policies(String cards) {
         List<Policy> policies = new ArrayList<>();

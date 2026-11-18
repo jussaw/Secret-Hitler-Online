@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import game.BotScenes.Scene;
+import game.datastructures.Policy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -351,8 +352,7 @@ public class NoPeekingTest {
 
     /** The chancellor enacts the first fascist card it holds. */
     private static void enactsAFascist(SecretHitlerGame game) {
-        String cards = Decision.letters(game.getChancellorLegislativeChoices());
-        game.chancellorEnactPolicy(cards.indexOf('F'));
+        BotScenes.chancellorEnacts(game, Policy.Type.FASCIST);
     }
 
     /**
@@ -377,6 +377,37 @@ public class NoPeekingTest {
             twins.others(g -> g.presidentDiscardPolicy(2), g -> g.presidentDiscardPolicy(0));
             twins.others(NoPeekingTest::enactsAFascist);
             twins.others(SecretHitlerGame::endPresidentialTerm);
+            twins.botActs();
+        });
+    }
+
+    /**
+     * Rule 5's own cards: round 2 fails, then the bot of P2 presides over FFL, nominates, votes,
+     * discards, and its chancellor enacts a fascist policy, so the bot deduces the card its
+     * chancellor discarded; it then ends its term and votes in round 4. The cards under round 3's
+     * hand, which it never sees, are swapped in the second game.
+     */
+    @Test
+    public void hardRule5PresidentsOwnCards() {
+        everyLevelAndSeed((skill, seed) -> {
+            Twins twins = Twins.of(new Scene(BotScenes.game("LLLFH"), "P2"), new Scene(BotScenes.game("LLLFH"), "P2"),
+                    skill, seed);
+            roundOne(twins);
+            twins.others(g -> g.nominateChancellor("P3"));
+            twins.botActs();
+            twins.others(g -> BotScenes.voteAll(g, false));
+            twins.others(SecretHitlerGame::endPresidentialTerm);
+            twins.others(g -> BotScenes.drawTop(g, "FFL"), g -> {
+                BotScenes.drawTop(g, "FFL");
+                BotScenes.swapUnseenCards(g, 3);
+            });
+            twins.botActs();
+            twins.botActs();
+            twins.others(g -> BotScenes.voteAll(g, true));
+            twins.botActs();
+            twins.others(NoPeekingTest::enactsAFascist);
+            twins.botActs();
+            twins.others(g -> g.nominateChancellor("P0".equals(g.getLastChancellor()) ? "P1" : "P0"));
             twins.botActs();
         });
     }
@@ -443,7 +474,8 @@ public class NoPeekingTest {
     /** Rule 6 for a liberal: the nominee P0, a liberal, swapped with Hitler. */
     @Test
     public void hardRule6TrackerLiberal() {
-        votesAtTrackerTwo("LLFLH", new Hidden("the roles of P0 and P4 swapped", g -> BotScenes.swapRoles(g, "P0", "P4")));
+        votesAtTrackerTwo("LLFLH",
+                new Hidden("the roles of P0 and P4 swapped", g -> BotScenes.swapRoles(g, "P0", "P4")));
     }
 
     /** Rule 6 for Hitler at seven, who knows no other role: the nominee P0, a liberal, swapped with a fascist. */
@@ -459,7 +491,7 @@ public class NoPeekingTest {
         votesAtTrackerTwo("LLLFH", UNSEEN_CARDS);
     }
 
-    /** Rule 7: a fascist chancellor holding one of each under a liberal president, the cards it has not seen swapped. */
+    /** Rule 7: a fascist chancellor holding one of each under a liberal president, unseen cards swapped. */
     @Test
     public void hardRule7ChancellorBluffs() {
         actsAlike(() -> BotScenes.chancellorsHand("LFLLH", "FL", "F", 0), List.of(UNSEEN_CARDS));

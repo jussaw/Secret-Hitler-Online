@@ -32,7 +32,7 @@ public class HardVoteMemoryTest {
     private static final Election ROUND_ONE = new Election(1, "P0", "P1",
             votes("P0", true, "P1", true, "P2", true, "P3", true, "P4", true));
 
-    /** Each seat votes as {@code ballots} says, in the order given. */
+    /** Each seat of {@code seatsAndVotes} (a seat, then its vote, and so on) votes, in the order given. */
     private static void ballots(Played played, Object... seatsAndVotes) {
         for (int i = 0; i < seatsAndVotes.length; i += 2) {
             String seat = (String) seatsAndVotes[i];
@@ -43,14 +43,12 @@ public class HardVoteMemoryTest {
 
     /** The president discards the first card of {@code type}. */
     private static void presidentDiscards(Played played, Policy.Type type) {
-        played.then(g -> g.presidentDiscardPolicy(Decision.letters(g.getPresidentLegislativeChoices())
-                .indexOf(Decision.letter(type))));
+        played.then(g -> BotScenes.presidentDiscards(g, type));
     }
 
     /** The chancellor enacts the first card of {@code type}. */
     private static void chancellorEnacts(Played played, Policy.Type type) {
-        played.then(g -> g.chancellorEnactPolicy(Decision.letters(g.getChancellorLegislativeChoices())
-                .indexOf(Decision.letter(type))));
+        played.then(g -> BotScenes.chancellorEnacts(g, type));
     }
 
     /** The drop for one fascist policy from {@code liberals} and {@code fascists} unplaced cards. */
@@ -68,7 +66,8 @@ public class HardVoteMemoryTest {
         played.botActs();
         boolean v = played.game().getVotes().get("P2");
 
-        Election roundTwo = new Election(2, "P1", "P3", votes("P0", true, "P1", true, "P2", v, "P3", false, "P4", true));
+        Election roundTwo = new Election(2, "P1", "P3",
+                votes("P0", true, "P1", true, "P2", v, "P3", false, "P4", true));
         assertEquals(List.of(ROUND_ONE, roundTwo), played.bot().elections());
         assertTrue(played.bot().elections().get(1).votes() instanceof TreeMap);
     }
@@ -82,7 +81,8 @@ public class HardVoteMemoryTest {
         List<Election> elections = played.bot().elections();
         assertEquals(2, elections.size());
         assertEquals(ROUND_ONE, elections.get(0));
-        assertEquals(new Election(2, "P1", "P3", votes("P0", false, "P1", false, "P2", false, "P3", false, "P4", false)),
+        assertEquals(
+                new Election(2, "P1", "P3", votes("P0", false, "P1", false, "P2", false, "P3", false, "P4", false)),
                 elections.get(1));
     }
 

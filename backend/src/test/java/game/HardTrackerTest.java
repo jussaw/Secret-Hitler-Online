@@ -22,7 +22,7 @@ public class HardTrackerTest {
         return BotScenes.bot(scene, BotSkill.NORMAL, SEED).chanceOfYes(scene.game());
     }
 
-    /** Every voting path's chance is as before the refactor: the curve, the untrusted vote and the fascist side's mix. */
+    /** Each voting path's chance is as before the refactor: the curve, the untrusted vote, the fascist side's mix. */
     @Test
     public void normalChancesAreAsBefore() {
         assertEquals(0.75, normalChance(BotScenes.vote("LLLFH")), TOLERANCE);
