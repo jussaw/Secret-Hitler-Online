@@ -1210,7 +1210,7 @@ Issue #72, part 4. Starts once 25A has merged; merges after 25D.
 
 **Phase 26A acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
 - [ ] PR merged into `development`
 - [ ] The user plays a game against Hard bots on the deployed build, with a guest who sees the level
 
