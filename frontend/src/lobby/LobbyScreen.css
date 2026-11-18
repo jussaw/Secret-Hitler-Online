@@ -435,15 +435,16 @@
    so the row wraps only between the pairs, whose widths decide it; a pair alone on its line takes
    the whole line, its two buttons sharing it equally, and a label never wraps. A shadow takes no
    room (App.css's --button-depth, 5px), so the rows are 5px further apart than the columns,
-   leaving the columns' gap between a shadow and the face below. */
+   leaving the columns' gap, --pair-gap, between a shadow and the face below. */
 .lobby-player-buttons {
-    row-gap: calc(0.9em + 5px);
+    --pair-gap: 0.9em;
+    gap: calc(var(--pair-gap) + 5px) var(--pair-gap);
 }
 
 .lobby-button-pair {
     flex: 1 0 auto;
     display: flex;
-    gap: 0.9em;
+    gap: var(--pair-gap);
 }
 
 .lobby-button-pair > button {

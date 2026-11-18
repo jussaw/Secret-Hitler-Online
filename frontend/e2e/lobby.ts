@@ -254,8 +254,9 @@ export async function longestLineLobby(
 
 /**
  * One viewer of a lobby layout test: who it is, its page, the people and the bots its lobby has,
- * the buttons it gets (actionLabels), the bots' level it sees (skillShown) and, for a spectator,
- * the note under its buttons (#lobby-note, "" for none).
+ * the buttons it gets (actionLabels), whether it is a player, with a player's four buttons
+ * (playerButtonRows), the bots' level it sees (skillShown) and, for a spectator, the note under its
+ * buttons (#lobby-note, "" for none).
  */
 export type LobbyViewer = {
   viewer: string;
@@ -263,6 +264,7 @@ export type LobbyViewer = {
   players: number;
   bots: number;
   buttons: string[];
+  player: boolean;
   skill: BotSkill;
   note?: string;
 };
@@ -354,14 +356,15 @@ export async function longestLineViewers(
     sockets,
     viewers: [
       // NORMAL, the longest level's word, is the line every viewer but the second lobby's has.
-      { viewer: "host", page: host, players: 10, bots: 0, buttons: HOST_BUTTONS, skill: "NORMAL" },
-      { viewer: "guest", page: guest, players: 10, bots: 0, buttons: PLAYER_BUTTONS, skill: "NORMAL" },
+      { viewer: "host", page: host, players: 10, bots: 0, buttons: HOST_BUTTONS, player: true, skill: "NORMAL" },
+      { viewer: "guest", page: guest, players: 10, bots: 0, buttons: PLAYER_BUTTONS, player: true, skill: "NORMAL" },
       {
         viewer: "signed-in spectator",
         page: signedIn,
         players: 10,
         bots: 0,
         buttons: ["PLAY INSTEAD", "LEAVE LOBBY"],
+        player: false,
         skill: "NORMAL",
         note: FULL_NOTE,
       },
@@ -371,6 +374,7 @@ export async function longestLineViewers(
         players: 10,
         bots: 0,
         buttons: ["SIGN IN TO PLAY", "LEAVE LOBBY"],
+        player: false,
         skill: "NORMAL",
         note: FULL_NOTE,
       },
@@ -380,6 +384,7 @@ export async function longestLineViewers(
         players: 10,
         bots: 0,
         buttons: ["SIGN IN TO PLAY", "LEAVE LOBBY"],
+        player: false,
         skill: "NORMAL",
         note: "Sign-in is not set up on this server.",
       },
@@ -389,6 +394,7 @@ export async function longestLineViewers(
         players: 9,
         bots: 1,
         buttons: HOST_BUTTONS,
+        player: true,
         skill: "HARD",
       },
       {
@@ -397,6 +403,7 @@ export async function longestLineViewers(
         players: 9,
         bots: 1,
         buttons: ["PLAY INSTEAD", "LEAVE LOBBY"],
+        player: false,
         skill: "HARD",
         note: CONTACT_ERROR,
       },
@@ -420,23 +427,22 @@ export async function actionLabels(page: Page): Promise<string[]> {
 
 /**
  * A player's four buttons under the status line (CHANGE NAME, CHANGE LOOK, WATCH INSTEAD and LEAVE
- * LOBBY, `.lobby-player-buttons`): how many stand on each line, top to bottom (buttons whose tops
- * are within 2px share a line), and `room`, how many px the row's column leaves beside them in one
- * line at their own widths (each its max-content width, with the row's column gap between them),
- * negative when they do not fit. Throws for a page without them (a spectator's).
+ * LOBBY, in two `.lobby-button-pair`s in `.lobby-player-buttons`): how many stand on each line, top
+ * to bottom (buttons whose tops are within 2px share a line), and `room`, how many px the column
+ * (`.lobby-actions`) leaves beside them in one line at their own widths (each its max-content
+ * width, with the gaps the row and the pairs put between them), negative when they do not fit.
+ * With `setRoom`, the column is first made just wide enough to leave that room, and put back after:
+ * where the browser makes one row from two rows of two. Throws for a page without the four (a
+ * spectator's).
  */
-export function playerButtonRows(page: Page): Promise<{ rows: number[]; room: number }> {
-  return page.evaluate(() => {
+export function playerButtonRows(page: Page, setRoom?: number): Promise<{ rows: number[]; room: number }> {
+  return page.evaluate((setRoom) => {
     const row = document.querySelector<HTMLElement>(".lobby-player-buttons");
     if (!row) throw new Error("the page has no player buttons");
-    const buttons = Array.from(row.querySelectorAll<HTMLElement>("button"));
-    if (buttons.length !== 4) throw new Error(`${buttons.length} player buttons`);
-    const lines: number[] = [];
-    let lastTop = -Infinity;
-    for (const top of buttons.map((b) => b.getBoundingClientRect().top).sort((a, b) => a - b)) {
-      if (top - lastTop > 2) lines.push(0);
-      lines[lines.length - 1] += 1;
-      lastTop = top;
+    const pairs = Array.from(row.querySelectorAll<HTMLElement>(":scope > .lobby-button-pair"));
+    const buttons = pairs.flatMap((pair) => Array.from(pair.querySelectorAll<HTMLElement>(":scope > button")));
+    if (pairs.length !== 2 || buttons.length !== 4) {
+      throw new Error(`${pairs.length} pairs of ${buttons.length} player buttons`);
     }
     // Each button's own width, measured with nothing stretching or squeezing it, then put back.
     const styles = buttons.map((b) => b.getAttribute("style"));
@@ -447,11 +453,24 @@ export function playerButtonRows(page: Page): Promise<{ rows: number[]; room: nu
       if (style === null) b.removeAttribute("style");
       else b.setAttribute("style", style);
     });
-    const gap = parseFloat(getComputedStyle(row).columnGap);
-    const column = document.querySelector(".lobby-actions")!.getBoundingClientRect().width;
-    const room = column - widths.reduce((sum, w) => sum + w, 0) - 3 * gap;
-    return { rows: lines, room: Math.round(room * 10) / 10 };
-  });
+    // The gap between the pairs, then each pair's own (the row's, where a pair draws no box).
+    const gapOf = (el: HTMLElement) => parseFloat(getComputedStyle(el).columnGap);
+    const gaps = [row, ...pairs].map((el) => (getComputedStyle(el).display === "contents" ? gapOf(row) : gapOf(el)));
+    const needed = [...widths, ...gaps].reduce((sum, w) => sum + w, 0);
+    const actions = document.querySelector<HTMLElement>(".lobby-actions")!;
+    const width = actions.style.width;
+    if (setRoom !== undefined) actions.style.width = `${needed + setRoom}px`;
+    const room = actions.getBoundingClientRect().width - needed;
+    const lines: number[] = [];
+    let lastTop = -Infinity;
+    for (const top of buttons.map((b) => b.getBoundingClientRect().top).sort((a, b) => a - b)) {
+      if (top - lastTop > 2) lines.push(0);
+      lines[lines.length - 1] += 1;
+      lastTop = top;
+    }
+    actions.style.width = width;
+    return { rows: lines, room };
+  }, setRoom);
 }
 
 /**

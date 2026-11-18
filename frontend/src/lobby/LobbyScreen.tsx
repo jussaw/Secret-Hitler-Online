@@ -196,7 +196,7 @@ export default function LobbyScreen(props: LobbyScreenProps) {
   };
 
   // Everyone's last button: a player's in the second pair, a spectator's beside their first.
-  const leave = (
+  const leaveButton = (
     <button type="button" onClick={props.onLeave}>
       LEAVE LOBBY
     </button>
@@ -291,7 +291,7 @@ export default function LobbyScreen(props: LobbyScreenProps) {
                       <Eye className="lobby-button-icon lobby-switch-icon" aria-hidden="true" />
                       WATCH INSTEAD
                     </button>
-                    {leave}
+                    {leaveButton}
                   </div>
                 </>
               ) : props.signedIn ? (
@@ -308,7 +308,7 @@ export default function LobbyScreen(props: LobbyScreenProps) {
                   SIGN IN TO PLAY
                 </button>
               )}
-              {spectator && leave}
+              {spectator && leaveButton}
             </div>
           </div>
 

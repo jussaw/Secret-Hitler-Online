@@ -35,6 +35,7 @@ import {
   settle,
   startGame,
   watchLobby,
+  type LobbyViewer,
 } from "./lobby";
 
 type Size = { width: number; height: number };
@@ -495,12 +496,13 @@ function measureLobby(page: Page) {
 }
 
 /**
- * Every lobby check at one window size. Windows 5:4 or wider put the roster in the column at the
- * left; narrower ones put it across the top, and are touch screens. `player` is whether the viewer
- * has a player's four buttons.
+ * Every lobby check at one window size, for one of longestLineViewers' viewers. Windows 5:4 or
+ * wider put the roster in the column at the left; narrower ones put it across the top, and are
+ * touch screens.
  */
-async function checkLobby(page: Page, size: Size, viewer: string, players: number, bots: number, player: boolean) {
+async function checkLobby({ page, viewer, players, bots, player }: LobbyViewer, size: Size) {
   await page.setViewportSize(size);
+  const wide = size.width * 4 >= size.height * 5;
   const at = `${size.width}x${size.height} for the ${viewer}`;
 
   expect(await pageHeight(page), `scrollHeight at ${at}`).toBeLessThanOrEqual(size.height);
@@ -524,17 +526,23 @@ async function checkLobby(page: Page, size: Size, viewer: string, players: numbe
   // The host's BOT SKILL row, or everyone else's line, is one line (#72).
   expect(await skillRowLines(page), `the bot skill row's lines at ${at}`).toBe(1);
   // A player's four buttons are one row where they fit the column at their own widths, and two
-  // rows of two where they do not: never three and one.
+  // rows of two where they do not: never three and one. Today that is one row in every narrow
+  // window and two rows of two at every desktop size (CLAUDE.md). The browser decides by the
+  // buttons' widths: a column a px wider than the four makes one row, and one a px narrower two
+  // rows of two.
   if (player) {
     const { rows, room } = await playerButtonRows(page);
-    const expected = room >= 0 ? [4] : [2, 2];
-    expect(rows, `the player buttons' rows at ${at}, with ${room}px to spare for one`).toEqual(expected);
+    const spare = `${room.toFixed(1)}px to spare for one row`;
+    expect(rows, `the player buttons' rows at ${at}, ${spare}`).toEqual(room >= 0 ? [4] : [2, 2]);
+    expect(rows, `the player buttons' rows at ${at}, ${spare}`).toEqual(wide ? [2, 2] : [4]);
+    expect((await playerButtonRows(page, 1)).rows, `a px to spare at ${at}`).toEqual([4]);
+    expect((await playerButtonRows(page, -1)).rows, `a px short at ${at}`).toEqual([2, 2]);
   }
   // Twelve-character names fit whole, as they do in the game.
   for (const name of lobby.names) {
     expect(name.scrollWidth, `"${name.text}" is cut off at ${at}`).toBeLessThanOrEqual(name.clientWidth + 1);
   }
-  if (size.width * 4 >= size.height * 5) {
+  if (wide) {
     expect(Math.abs(lobby.players.left), `roster at the left edge at ${at}`).toBeLessThanOrEqual(0.5);
     expect(lobby.players.right, `roster left of the main column at ${at}`).toBeLessThanOrEqual(lobby.main.left);
   } else {
@@ -564,12 +572,13 @@ test("the lobby fits every desktop size and narrow window, for the host, a guest
       failed,
     });
     try {
-      for (const { viewer, page: viewerPage, players, bots, buttons, skill, note } of viewers) {
+      for (const lobbyViewer of viewers) {
+        const { viewer, page: viewerPage, buttons, skill, note } = lobbyViewer;
         expect(await actionLabels(viewerPage), `the ${viewer}'s buttons`).toEqual(buttons);
         expect(await skillShown(viewerPage), `the ${viewer}'s bot skill`).toBe(skill);
         await settle(viewerPage);
         for (const size of [...DESKTOP_SIZES, ...SQUARE_DESKTOPS, ...NARROW_WINDOWS]) {
-          await checkLobby(viewerPage, size, viewer, players, bots, buttons.includes("WATCH INSTEAD"));
+          await checkLobby(lobbyViewer, size);
         }
         // The note measured is the one meant.
         if (note !== undefined) await expect(viewerPage.locator("#lobby-note")).toHaveText(note);

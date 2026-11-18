@@ -137,7 +137,7 @@ for (const narrow of [false, true]) {
         failed,
       });
       try {
-        for (const { viewer, page: viewerPage, buttons, skill, note } of viewers) {
+        for (const { viewer, page: viewerPage, buttons, player, skill, note } of viewers) {
           expect(await actionLabels(viewerPage), `the ${viewer}'s buttons`).toEqual(buttons);
           expect(await skillShown(viewerPage), `the ${viewer}'s bot skill`).toBe(skill);
           if (note !== undefined) await expect(viewerPage.locator("#lobby-note")).toHaveText(note);
@@ -156,9 +156,15 @@ for (const narrow of [false, true]) {
           expect(await botRowMismatches(viewerPage), `the ${viewer}'s bot rows`).toEqual([]);
           // The host's BOT SKILL row, or everyone else's line, is one line (#72).
           expect(await skillRowLines(viewerPage), `the ${viewer}'s bot skill row's lines`).toBe(1);
-          // A player's four buttons are two rows of two on phones.
-          if (buttons.includes("WATCH INSTEAD")) {
+          // A player's four buttons are two rows of two on phones, held sideways too, where one row
+          // would fit.
+          if (player) {
             expect((await playerButtonRows(viewerPage)).rows, `the ${viewer}'s player buttons' rows`).toEqual([2, 2]);
+            await viewerPage.setViewportSize({ width: height, height: width });
+            const sideways = await playerButtonRows(viewerPage);
+            expect(sideways.room, `room for one row sideways for the ${viewer}`).toBeGreaterThan(0);
+            expect(sideways.rows, `the ${viewer}'s player buttons' rows sideways`).toEqual([2, 2]);
+            await viewerPage.setViewportSize({ width, height });
           }
           expect(
             await smallFieldText(viewerPage, ".lobby-screen"),
