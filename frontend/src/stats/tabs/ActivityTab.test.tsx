@@ -289,6 +289,44 @@ describe("ActivityTab", () => {
     ]);
   });
 
+  it("decisionTimesThatShowAlikeKeepNameOrder", () => {
+    // Review Focus 3's other half: Ann votes in 2,010 ms and Bo in 2,040 ms, both shown "2.0 s", so
+    // under Vote they tie and keep name order either way, never Bo first for his extra 30 ms.
+    const delays = [2010, 2040, 5000, 1000, 3000];
+    const election = (): GameEvent[] => {
+      const votes = delays
+        .map((delay, seat) => ({ seat, t: 4000 + delay }))
+        .sort((a, b) => a.t - b.t)
+        .map(({ seat, t }) => ev.vote(1, t, seat, true));
+      return [ev.nominate(1, 4000, 0, 1), ...votes, ev.election(1, 4000 + Math.max(...delays), true, 5, 0)];
+    };
+    tab(Array.from({ length: 5 }, (_, i) => game(`v${i + 1}`, `2026-11-0${i + 1}T20:00:00Z`, 30, [1, 2, 3, 4, 5], election())));
+    const table = within(card("decision-times")).getByRole("region", { name: "Decision times table" });
+    const votes = () =>
+      Array.from(table.querySelectorAll("tbody tr"), (tr) => [
+        tr.querySelector("th")?.textContent,
+        tr.querySelectorAll("td")[1].querySelector(".split-text")?.textContent,
+      ]);
+    fireEvent.click(within(table).getByRole("button", { name: "Vote" }));
+    expect(within(table).getByRole("columnheader", { name: "Vote" })).toHaveAttribute("aria-sort", "descending");
+    expect(votes()).toEqual([
+      ["Cy", "5.0 s"],
+      ["Ed", "3.0 s"],
+      ["Ann", "2.0 s"],
+      ["Bo", "2.0 s"],
+      ["Di", "1.0 s"],
+    ]);
+    fireEvent.click(within(table).getByRole("button", { name: "Vote" }));
+    expect(within(table).getByRole("columnheader", { name: "Vote" })).toHaveAttribute("aria-sort", "ascending");
+    expect(votes()).toEqual([
+      ["Di", "1.0 s"],
+      ["Ann", "2.0 s"],
+      ["Bo", "2.0 s"],
+      ["Ed", "3.0 s"],
+      ["Cy", "5.0 s"],
+    ]);
+  });
+
   it("everyDashSortsLast", () => {
     // Review Focus 1: Ed never presides, so his Nominate, Discard and End term are "—" beside times.
     const { container } = tab([game("one", "2026-11-02T19:00:00Z", 30, [1, 2, 3, 4, 5], oneElection()), ...NIGHTS]);
