@@ -716,12 +716,51 @@ keeps credit to upstream and to the board game's creators.
   change), `useStats.ts` (`buildStats(data, filter)`, and `useStats()`, null until the records
   come, with the filter from `useLocation().search`: one `StatsContext` per records and filter
   however the address spells it, the last 8 filters kept per set of records), `numbers.ts`
-  (`formatPercent`, `formatSigned` with U+2212 and `0` for anything that rounds to zero,
+  (`formatPercent`, and `wholePercent`, the whole percent it shows, which a percent column sorts
+  by; `formatSigned` with U+2212 and `0` for anything that rounds to zero,
   `formatRating`, `formatDays`; counts are `format.ts`'s `plural`), `StatCard` (a `section.stats-card`
   region named by its `h3` title, the definition, then the stat, or for `empty` `NO_GAMES`, "No
-  games yet with these players.", or `empty`'s own line), `RankedTable` (rank, `PlayerName`, the
-  value or "—" below the minimum, and the count; four columns that fit 320px, rows 44px tall in the
-  stacked query), `ScrollRegion` (a focusable region that scrolls sideways inside its card, named
+  games yet with these players.", or `empty`'s own line), `sorting.ts` (#109, Phase 27A: the rules
+  every sortable stats table shares, pure, importing only `compareNames`: `SortDirection`,
+  `SortValue` (a number, a string compared as `compareNames` does, or null for a missing value,
+  shown "—"), `SortColumn` (its `key`, the direction a first press sorts in, `first`, and `value`,
+  the figure a row's cell shows), `TableSort`, the frozen `NAME_ORDER` (`name`, A to Z) and
+  `RANK_ORDER` (`rank`, 1 first), `nextSort` (a press on the sorted head turns it round, on another
+  sorts by its column in its first direction) and `sortRows`, a stable sort into a new array: a
+  missing value goes below every value whichever way it runs, ties, the missing values too, keep
+  the order the rows came in (each table passes its own order), and a column it does not have
+  throws), `SortHead.tsx` and `SortHead.css` (the heads: `HeadColumn`, a `SortColumn` with its
+  `label`, `className`, `end` (its values stand at the right: the arrow before the words) and
+  `name` (the `aria-label` of its button and its `th`); `SortHead`, a `th scope="col"` holding a
+  `button.stats-sort` with Lucide's `ArrowUpDown`, dimmed, until it sorts the table, then `ArrowUp`
+  or `ArrowDown`, and `aria-sort` on the sorted head only; `SortHeadRow`, a `thead` of them;
+  `useTableSort(rows, columns, opening)`, the sort kept in the table's own state (never the
+  address, nor stored) and the rows in its order, keeping its column and direction when a filter
+  brings new rows; `rankColumn`, `#`, named Rank, 1 first, a row with no rank missing;
+  `playerColumn`, A to Z; and `.stats-sort`, which PLAYERS' `.players-sort` became, undoing
+  App.css's button look under `.stats-screen thead`: the head's own size and weight, the sorted
+  head and a hovered one in `--headerTextColor`, a focus outline, words that never wrap, and a 44px
+  target wherever the stacked query matches, an `end` head's content at its right),
+  `RankedTable` (a head row of `#`, Player, the card's `valueHead` and, with `countHead`, the
+  count's, each sorting by its column, the value by `sortValue`, the number a ranked row's shown
+  value says, an unranked row's value missing; it takes its rows in `rankRows`' order and opens in
+  it (`RANK_ORDER`, `#` marked), which ties keep under any other sort, and a row keeps its rank
+  under every sort; then rank, `PlayerName`, the value or "—" below the minimum, and with
+  `countHead` the count as a bare number on every row; `valueEnd={false}` for INVESTIGATIONS'
+  left-standing value; `countFigure` and `rateFigure`, the whole percent, the cards' shared sort
+  figures; three columns, four with a count, that fit 320px, rows 44px tall and heads 44px
+  targets in the stacked query; the power ranking's head look, `.ranked-table thead th`, which
+  never reaches Trophy holders' row heads; each card's head words as Phase 27A's plan, Task 4,
+  lists them. The 18 cards with a count column are those whose rows could show a count before
+  issue #109: OVERVIEW's Win rate, ACTIVITY's Participation, END TERM countdown and Dropped
+  connections, ROLES & CARDS' three Win rate as … cards, Role luck, First president, Liberal
+  accuracy and Deep cover, and VOTES & POWERS' seven rate cards. Wherever the stacked query
+  matches, phones and tall windows alike, a count column's head and cells are hidden and
+  `span.ranked-count-under` shows the count under the name ("12 games", its nouns from the head,
+  `countNouns`), as PLAYERS' Last played does on phones, so sorting by the count is for wide
+  windows only: the spec says phones only, and the user chose the whole stacked query once four
+  count cards were seen running past their cards in tall windows), `ScrollRegion` (a focusable
+  region that scrolls sideways inside its card, named
   "<card title> table"), `SplitTable` (players down by name, roles or sides across, heads in their
   colours, a sticky name column capped at 9em in which a long name wraps whole (never cut short)
   with the full name as its title, each cell its text then its count,
@@ -777,8 +816,13 @@ keeps credit to upstream and to the board game's creators.
   Player of the month, whose names are `link={false}`; two columns in the phone-only query, a lone
   last card across both), then Ratings (`tabs/PowerRanking`, a `ScrollRegion` "Power ranking table"
   of rank, name, Elo, the last change and games in `RankedTable`'s look, its classes and
-  `RankedTable.css`, with `PowerRanking.css` adding the header row and provisional rows,
-  `.is-provisional`, in italics; and
+  `RankedTable.css`, head row included, with `PowerRanking.css` adding provisional rows,
+  `.is-provisional`, in italics, and tighter columns on phones (the left padding of its `#` and
+  number heads dropped, `:not(.players-table)`, so it fits a 320px phone's card with Linux's
+  fonts); its heads (`SortHeadRow`: `#`, Player, Elo, Last and Games) each sort by the figure its
+  cell shows, the rounded rating and change, and it opens at `RANK_ORDER`, the one way back to its
+  own order, under which provisional rows stay at the bottom either way, while under any other
+  column they take their place; and
   the rating history's `LineChart`, a colour per player by number so a filter never changes it),
   Headline (five `RankedTable`s and Liberal / Fascist wins) and Games (the latest games, each a
   link of its start and result, no names in it). Each card says `NO_GAMES` with no counted games,
@@ -911,14 +955,18 @@ keeps credit to upstream and to the board game's creators.
   failed election, or an accepted veto with the tracker at two), counted for that round's
   president, and an accepted veto is no failed election. Voted Hitler in reads only the last
   election of a `HITLER_ELECTED` game that made Hitler chancellor. A count card ranks the players
-  above zero (`RankedTable`), a rate card those with a chance, unranked below `MIN_CHANCES`, and a
-  split card (`SplitTable`, by role or by side) lists every player with a chance in any column,
+  above zero (`RankedTable`, through `countTable(entries, value, valueHead)`, with no count
+  column), a rate card those with a chance, unranked below `MIN_CHANCES` (`rateTable(entries,
+  value, valueHead, countHead)`, its chances in the count column), and a split card
+  (`SplitTable`, by role or by side) lists every player with a chance in any column,
   every cell given; a card with no row shows its own line, and every card `NO_GAMES` when no game
   counts. A power's two sides can differ with CPU seats in, so the lines say whom: "None of these
   players has investigated anyone yet." (INVESTIGATIONS) and "has been investigated" (TIMES
   INVESTIGATED), "has executed anyone" (EXECUTIONS, EXECUTION TARGETS) and "has been executed"
   (TIMES EXECUTED, FIRST TO GO). INVESTIGATIONS names whom ("4 (3 F, 1 L) · Di 2, Bo 1, Bots ×1": most times first, then by
-  name, the Bots last, their "×" so the count never reads as a seat's name, "Bot 1"); its card spans the grid's row, and `VotesTab.css` lets its value wrap in
+  name, the Bots last, their "×" so the count never reads as a seat's name, "Bot 1"); its value
+  stands at the left (`valueEnd={false}`) and sorts by the investigations it starts with, its card
+  spans the grid's row, and `VotesTab.css` lets its value wrap in
   65% of the table (`.votes-investigations`), the one place it styles a `RankedTable`.
   `votesTestRounds.ts` holds the tests' builders (`term`, `gameOf`, `investigate`, `execute`,
   `eventsOf`, `sum`).
@@ -946,10 +994,13 @@ keeps credit to upstream and to the board game's creators.
   though not packed `dense`, which could lift a card above its heading) under five
   `h2.records-heading`s (Streaks, Wins, Sessions, Ratings, Trophies): the longest win and losing streaks (a
   line per first and last day naming every tied holder), current streaks (a `RankedTable`, "3
-  wins" or "2 losses"), the most wins in a week and in a month (a table in `RankedTable`'s classes,
-  as `PowerRanking` does, of the rank, the name over its period and the wins, so a long name keeps
-  its width), the player of the month (every tied player) and the players of the month (the month
-  over its holders, one a line, and the wins), the most games in one session (up to five lines of games, day and length), and
+  wins" or "2 losses", under Streak, sorting by the signed run, losses below 0), the most wins in
+  a week and in a month (`PeriodTable`, a table in `RankedTable`'s classes, as `PowerRanking` does,
+  of the rank, the name over its period and the wins, so a long name keeps its width, under
+  `SortHeadRow`'s `#`, Player and Wins, opening at `RANK_ORDER`, with the period, which does not
+  sort, staying under its name), the player of the month (every tied player) and the players of
+  the month (the month over its holders, one a line, and the wins), the most games in one session
+  (up to five lines of games, day and length), and
   the rating records (the highest peak, then the upset, its winners' gain and its losers' loss, a
   side with no person left out, and See the game, `a.records-game-link`, 44px at every size), and
   last (Phase 22A) Trophy holders ("Worked out from the counted games. Most need 8 of them.", the
@@ -1001,18 +1052,24 @@ keeps credit to upstream and to the board game's creators.
   counted games, win rate (`formatRate`:
   a whole percent, or `— (N)` below 5 games), rounded Elo and when they last played
   (`formatLastPlayed`: `today`, `yesterday`, `N days ago`, in local days), in OVERVIEW's power
-  ranking's look (`RankedTable.css` and `tabs/PowerRanking.css`: a header row, a provisional row,
+  ranking's look (`RankedTable.css`'s head row and `tabs/PowerRanking.css`'s provisional row,
   `.ranked-unranked.is-provisional`, grey and in italics wherever it falls), and `NO_GAMES` when the
   filter counts no game. It opens in `computePlayersList`'s name order. Each column's head is a
-  button (`.players-sort`, in the head's own look, an arrow from Lucide: `ArrowUpDown` dimmed until
-  it sorts, then `ArrowUp` or `ArrowDown`, before the word in every column but Player's, which
-  stand at the right; `HEADS` names each column's word, class and arrow side) that sorts by
-  its column, with `aria-sort` on the sorted head; a second press turns the order round.
-  `players/playersOrder.ts` holds the rules (`NAME_ORDER`, `pressHead`, `sortPlayers`,
-  `searchPlayers`, `noMatchLine`): a first press puts names A to Z and every other column the most
-  or the latest first; each column compares what it shows (the whole percent, the rounded Elo, the
-  local day of the last game), ties go by name, then number, whichever way it runs, and a win rate
-  below 5 games stays below every rate either way. The search box (`input type="search"`, "Search
+  `SortHead` (`SortHeadRow`, the stats tables' shared heads, which Phase 27A moved PLAYERS onto
+  with nothing anyone can see changed: `.stats-sort`, once `.players-sort`, its arrow before the
+  word in every column but Player's, which stand at the right; `HEADS`, a
+  `Record<PlayersColumn, …>`, names each column's word, class and `end`) that sorts by its
+  column, with `aria-sort` on the sorted head; a second press turns the order round.
+  `players/playersOrder.ts` holds the columns and the search on `sorting.ts`' rules
+  (`playersColumns(timeZone)`, each column's first direction and the figure it sorts by;
+  `NAME_ORDER`, re-exported from `sorting.ts`; `PlayersSort`, a `TableSort<PlayersColumn>`;
+  `pressHead`, `nextSort` with each column's first direction, and `sortPlayers`, `sortRows` over
+  the rows put in name order first; `searchPlayers`, `noMatchLine`), and `PlayersList` sorts with
+  `useTableSort` over `computePlayersList`'s rows, in name order: a first press puts names A to Z
+  and every other column the most or the latest first; each column compares what it shows (the
+  whole percent, the rounded Elo, the local day of the last game), ties keep the name order, so
+  go by name, then number, whichever way it runs, and a win rate below 5 games stays below every
+  rate either way. The search box (`input type="search"`, "Search
   players", Lucide's `Search` in it) shows only the rows whose name as shown (`Player N` too)
   contains what was typed, ignoring case and spaces at either end; with none, the card says "No
   players match “…”." in place of the table. The sort is `PlayersList`'s state and the search
@@ -1606,8 +1663,17 @@ keeps credit to upstream and to the board game's creators.
   that a name in GAMES opens its player's page at its top; that All N games opens GAMES filtered
   to the player, every row on its first page naming them; and that the page's CPU switch adds
   `cpu=1` to the address and counts the CPU games the header's `+N` left out, and that All N
-  games keeps a space before its arrow on phones. No `e2e/` file imports `src/constants` or
-  anything that does (`api.ts`, `App`): it
+  games keeps a space before its arrow on phones. `stats-sort.spec.ts` (Phase 27A) opens the tabs
+  against `bigStatsData()` an hour after its last game: OVERVIEW's Win rate card sorts by its heads
+  with every row keeping its rank (by Games where the count has its column, by Player where the
+  stacked query matches, whose count head and cells are hidden and whose lines under the names
+  show), the power ranking sorts by Elo and a best week by Player; Enter and Space on a focused
+  head sort it and the focus stays there (`desktop` and `firefox`); a sorted card passes
+  `checkStatsPage` at 320x568 (`phone-360`); and every shown `table.ranked-table` stays inside its
+  card's content box, which `checkStatsPage` does not check, with the power ranking's
+  `ScrollRegion` never scrolling, on every tab with ranked tables and on PLAYERS, with CPU games and
+  without, at every `statsSizesFor` size in `desktop` and `firefox` and at 320x568 in `phone-360`.
+  No `e2e/` file imports `src/constants` or anything that does (`api.ts`, `App`): it
   reads `window` when it loads, which throws in Playwright's Node process; specs build stats paths
   with `routePath`. Shared helpers are `e2e/lobby.ts`
   (`waitForPlayers`, which counts the roster's people, `PEOPLE_ROWS`, since the heading counts
@@ -1785,7 +1851,8 @@ no trailing period, at most 72 characters. Scopes in use: `frontend`, `backend`,
   the phases share in `docs/superpowers/plans/2026-11-15-game-stats-interfaces.md`; the bots'
   fixes, self-play run and skill levels (#72, Phases 24 to 26B):
   `docs/superpowers/specs/2026-11-17-bot-skill-design.md`, whose "Names the phases share" pins the
-  names and file owners those phases share.
+  names and file owners those phases share; sortable stats tables (#109, Phases 27A and 27B):
+  `docs/superpowers/specs/2026-11-18-sortable-tables-design.md`.
 
 ## Constraints
 
