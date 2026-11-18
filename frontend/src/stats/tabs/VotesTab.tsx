@@ -1,6 +1,6 @@
 import { useId, useMemo } from "react";
 import { compareNames, MIN_CHANCES, nameOf, rankRows, type Rate } from "../counting";
-import { countFigure, formatPercent, rateFigure } from "../numbers";
+import { countFigure, rateFigure } from "../numbers";
 import { computePowers, type PlayerPowers, type VetoAnswers } from "../powers";
 import { RankedTable, type RankedHeads } from "../RankedTable";
 import type { Role, Side } from "../record";
@@ -8,7 +8,7 @@ import { SplitTable, type SplitCell, type SplitColumn } from "../SplitTable";
 import { StatCard } from "../StatCard";
 import type { StatsContext } from "../useStats";
 import { computeVotes, type PlayerVotes } from "../votes";
-import { rateText } from "./cellText";
+import { rateCellText } from "./cellText";
 import "./VotesTab.css";
 
 /**
@@ -47,12 +47,6 @@ interface CardSpec {
 interface Sections {
   elections: CardSpec[];
   powers: CardSpec[];
-}
-
-/** A rate as shown: "—" below its minimum, else a whole percent (`rateText`, whose figure is
- *  `rateFigure`'s). */
-function percent(r: Rate): string {
-  return rateText(r.value);
 }
 
 /** Larger values first, a missing one (below the minimum) last. */
@@ -104,7 +98,7 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
     return (
       <RankedTable
         rows={rankRows(rows, byRate, names, MIN_CHANCES)}
-        format={(r) => formatPercent(r.value!)}
+        format={rateCellText}
         names={names}
         sortValue={rateFigure}
         {...heads}
@@ -136,7 +130,7 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
   };
   /** Each split cell sorts by the figure its text shows (null for "—"): a rate's whole percent, a
    *  count, and the accepted vetoes "2 of 5" leads with ("0 of 0" is 0). */
-  const rateCell = (r: Rate) => ({ cell: { text: percent(r), value: rateFigure(r), count: r.chances }, chance: r.chances > 0 });
+  const rateCell = (r: Rate) => ({ cell: { text: rateCellText(r), value: rateFigure(r), count: r.chances }, chance: r.chances > 0 });
   const countCell = (n: number) => ({ cell: { text: String(n), value: countFigure(n) }, chance: n > 0 });
   const vetoCell = ({ accepted, refused }: VetoAnswers) => ({
     cell: { text: `${accepted} of ${accepted + refused}`, value: accepted },

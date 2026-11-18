@@ -10,7 +10,7 @@ import { byRole, computeRoles, TABLE_SIZES, type RoleStats } from "../roles";
 import { SplitTable, type SplitCell, type SplitColumn } from "../SplitTable";
 import { StatCard } from "../StatCard";
 import type { StatsContext } from "../useStats";
-import { rateText } from "./cellText";
+import { rateCellText } from "./cellText";
 import "./RolesTab.css";
 
 /** Larger first, null last: how a rate or a share ranks. */
@@ -22,9 +22,6 @@ function larger(a: number | null, b: number | null): number {
 /** More first: how a count ranks. */
 const more = (a: number, b: number) => b - a;
 const byValue = (a: Rate, b: Rate) => larger(a.value, b.value);
-/** A rate as shown: a whole percent, or "—" below its minimum (`rateText`, whose figure is
- *  `rateFigure`'s). */
-const percent = (r: Rate) => rateText(r.value);
 const handsLabel = (n: number) => plural(n, "hand");
 const sum = (counts: readonly number[]) => counts.reduce((total, n) => total + n, 0);
 /** Each player's stats in a module's `byPlayer`, as rows to filter and map. */
@@ -32,7 +29,7 @@ const entries = <P,>(byPlayer: Map<number, P>) => Array.from(byPlayer, ([player,
 
 /** A rate's cell: its share with its chances ("60%" and 5), "—" and its chances below the minimum,
  *  sorted by the whole percent it shows (null for "—"). */
-const rateCell = (r: Rate): SplitCell => ({ text: percent(r), value: rateFigure(r), count: r.chances });
+const rateCell = (r: Rate): SplitCell => ({ text: rateCellText(r), value: rateFigure(r), count: r.chances });
 /** A plain count's cell: the number as its text and its figure, with no count beside it. */
 const countCell = (n: number): SplitCell => ({ text: String(n), value: countFigure(n) });
 
@@ -110,7 +107,7 @@ function rolesCards(stats: StatsContext, roles: RoleStats): CardSpec[] {
       names,
       players.map(({ player, p }) => ({ player, value: p.winAs[role], count: p.winAs[role].chances })),
       byValue,
-      percent,
+      rateCellText,
       MIN_GAMES,
       { valueHead: "Win rate", sortValue: rateFigure, countHead: "Games" }
     ),
@@ -130,7 +127,7 @@ function rolesCards(stats: StatsContext, roles: RoleStats): CardSpec[] {
             player,
             cells: roleCells((role) => {
               const share = p.split[role];
-              return { text: percent(share), value: rateFigure(share), count: share.hits };
+              return { text: rateCellText(share), value: rateFigure(share), count: share.hits };
             }),
           }))
       ),
@@ -208,7 +205,7 @@ function rolesCards(stats: StatsContext, roles: RoleStats): CardSpec[] {
         names,
         players.map(({ player, p }) => ({ player, value: p.firstPresident, count: p.firstPresident.chances })),
         byValue,
-        percent,
+        rateCellText,
         MIN_GAMES,
         { valueHead: "Win rate", sortValue: rateFigure, countHead: "Games" }
       ),
@@ -235,7 +232,7 @@ function handsCard(names: Map<number, string>, cards: CardStats): CardSpec {
         HAND_LABELS.forEach((label, i) => {
           // One rate for the text and the figure it sorts by.
           const share = rate(p.hands[i], drawn, MIN_CHANCES);
-          cells[label] = { text: percent(share), value: rateFigure(share), count: p.hands[i] };
+          cells[label] = { text: rateCellText(share), value: rateFigure(share), count: p.hands[i] };
         });
         return { player, cells };
       })
@@ -267,7 +264,7 @@ function presidentCards(names: Map<number, string>, cards: CardStats): CardSpec[
         names,
         players.map(({ player, p }) => ({ player, value: p.liberalAccuracy, count: p.liberalAccuracy.chances })),
         byValue,
-        percent,
+        rateCellText,
         MIN_CHANCES,
         { valueHead: "Accuracy", sortValue: rateFigure, countHead: "Hands" }
       ),

@@ -22,7 +22,7 @@ import type { TableSort } from "../sorting";
 import { StatCard } from "../StatCard";
 import StatsLink from "../StatsLink";
 import type { StatsContext } from "../useStats";
-import { NO_VALUE, rateText } from "./cellText";
+import { NO_VALUE, rateCellText } from "./cellText";
 import "./cardGrid.css";
 import "./EndingsTab.css";
 import "./PlayerMatrix.css";
@@ -163,7 +163,7 @@ function WinRateTable({ sizes }: { sizes: SizeEndings[] }): JSX.Element {
             <th scope="row">{size.seats}</th>
             <td>{size.games}</td>
             <td>{size.liberalWins}</td>
-            <td>{rateText(size.liberalRate.value)}</td>
+            <td>{rateCellText(size.liberalRate)}</td>
             <td>{formatPercent(size.smoothedLiberalRate)}</td>
           </tr>
         ))}

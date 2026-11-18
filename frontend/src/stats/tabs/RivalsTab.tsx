@@ -17,7 +17,7 @@ import { playerColumn, SortHeadRow, useTableSort, type HeadColumn } from "../Sor
 import { NAME_ORDER } from "../sorting";
 import { StatCard } from "../StatCard";
 import type { StatsContext } from "../useStats";
-import { NO_VALUE, rateText } from "./cellText";
+import { NO_VALUE, rateCellText } from "./cellText";
 import { PlayerMatrix, type MatrixCell } from "./PlayerMatrix";
 import "./cardGrid.css";
 import "./RivalsTab.css";
@@ -37,7 +37,7 @@ function Duo({ pair, wins, games, names }: { pair: Pair; wins: number; games: nu
       <p className="rivals-headline">
         <HeadlineName player={first} names={names} /> &amp; <HeadlineName player={second} names={names} />
       </p>
-      <p className="rivals-figure">{`${rateText(rate(wins, games, MIN_GAMES).value)} · won ${wins} of ${games}`}</p>
+      <p className="rivals-figure">{`${rateCellText(rate(wins, games, MIN_GAMES))} · won ${wins} of ${games}`}</p>
     </>
   );
 }
@@ -130,7 +130,7 @@ export function RivalsTab({ stats }: { stats: StatsContext }): JSX.Element {
     const pair = pairOf(rivals, row, column);
     if (!pair || pair.together === 0) return null;
     return {
-      text: rateText(rate(pair.togetherWins, pair.together, MIN_GAMES).value),
+      text: rateCellText(rate(pair.togetherWins, pair.together, MIN_GAMES)),
       sub: String(pair.together),
       title: `${name(row)} and ${name(column)}: won ${pair.togetherWins} of ${pair.together} together`,
     };
