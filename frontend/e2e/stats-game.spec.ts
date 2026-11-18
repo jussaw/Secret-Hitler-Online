@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { outcomeLabel } from "../src/stats/format";
-import { parseStatsData, STATS_GAMES_PATH, type GameRecord } from "../src/stats/record";
+import { botSkillOf, parseStatsData, STATS_GAMES_PATH, type GameRecord } from "../src/stats/record";
 import { routePath } from "../src/stats/routes";
 import { rounds } from "../src/stats/rounds";
 import { isVictory, openTable, play } from "./driveGame";
@@ -14,6 +14,10 @@ const data = bigStatsData();
 const largest = [...data.games].sort((a, b) => b.seats.length - a.seats.length || b.events.length - a.events.length)[0];
 const incomplete = data.games.find((g) => !g.complete)!;
 const unfinished = data.games.find((g) => g.outcome === "UNFINISHED")!;
+/** The format 2 game with bots with the most seats, then the most events: its header names their level. */
+const withBots = [...data.games]
+  .filter((g) => botSkillOf(g) !== null)
+  .sort((a, b) => b.seats.length - a.seats.length || b.events.length - a.events.length)[0];
 const NOT_FOUND = "This game was not found.";
 
 const isPhone = (size: { width: number; height: number }) =>
@@ -56,8 +60,9 @@ test("the game page fits every size", async ({ page }) => {
   test.slow();
   await stubStats(page, data);
   expect(largest.seats.length).toBe(10);
-  for (const game of [largest, incomplete, unfinished, null]) {
+  for (const game of [largest, incomplete, unfinished, withBots, null]) {
     await openGame(page, game ? game.id : "no-such-game");
+    if (game === withBots) await expect(page.locator("p.game-facts")).toHaveText(/ · (Easy|Normal|Hard) bots$/);
     if (game === largest) await expect(page.locator(".round-block")).toHaveCount(rounds(largest).length);
     if (game === incomplete) await expect(page.getByText("The first rounds of this game were not recorded.")).toBeVisible();
     if (game === unfinished) await expect(page.getByText("Unfinished: the lobby closed")).toBeVisible();

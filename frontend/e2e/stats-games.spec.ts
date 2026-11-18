@@ -117,6 +117,22 @@ test.describe("GAMES fits every size", () => {
   }
 });
 
+test("a game's tag names its bots' level, and an older one says Bots", async ({ page }) => {
+  // big-400 to big-301, all format 2: every level, and link names that say it.
+  await openGames(page, "/games?per=100");
+  await expect(page.locator(".games-row").first()).toBeVisible();
+  const tags = await page.locator(".games-row-cpu").allTextContents();
+  expect([...new Set(tags)].sort()).toEqual(["Easy bots", "Hard bots", "Normal bots"]);
+  const names = await page.locator("a.games-row-link").evaluateAll((links) => links.map((a) => a.getAttribute("aria-label") ?? ""));
+  expect(names.some((name) => / · with (Easy|Normal|Hard) bots$/.test(name))).toBe(true);
+  // big-200 to big-101, all format 1: no level was kept.
+  await openGames(page, "/games?per=100&page=3");
+  await expect(page.locator(".games-row").first()).toBeVisible();
+  const older = await page.locator(".games-row-cpu").allTextContents();
+  expect(older.length).toBeGreaterThan(0);
+  expect([...new Set(older)]).toEqual(["Bots"]);
+});
+
 test("twelve-character names stay inside their columns at 320px", async ({ page }) => {
   test.slow();
   await page.setViewportSize(NARROW_PHONE);

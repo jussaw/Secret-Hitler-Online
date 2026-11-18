@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { outcomeLabel } from "../src/stats/format";
-import { EVENT_FIELDS, parseStatsData, STATS_GAMES_PATH, type Outcome } from "../src/stats/record";
+import { BOT_SKILLS, EVENT_FIELDS, parseStatsData, STATS_GAMES_PATH, type Outcome } from "../src/stats/record";
 import { routePath } from "../src/stats/routes";
 import { signedOutMe, stubMe } from "./accounts";
 import { NARROW_PHONE, smallLinks } from "./layout";
@@ -73,6 +73,21 @@ test("bigStatsData() is a valid response", () => {
   const restored = big.games.find((g) => g.id === "big-200")!;
   expect(restored.complete).toBe(false);
   expect(restored.events[0].type).toBe("restored");
+
+  // Both formats, as a database that has stored games since before levels holds them: 1 to 200 in
+  // format 1, with no level, and 201 to 400 in format 2, a level exactly when bots sat.
+  const levels = new Set<string>();
+  big.games.forEach((game, i) => {
+    if (i < 200) {
+      expect(game.format, `${game.id}'s format`).toBe(1);
+      expect("botSkill" in game, `${game.id} has no botSkill key`).toBe(false);
+    } else {
+      expect(game.format, `${game.id}'s format`).toBe(2);
+      expect(game.botSkill === null, `${game.id}: no level exactly when no bots`).toBe(!game.hasCpu);
+      if (game.botSkill) levels.add(game.botSkill);
+    }
+  });
+  expect([...levels].sort(), "every level among format 2's games with bots").toEqual([...BOT_SKILLS].sort());
 
   for (let i = 1; i < big.games.length; i++) {
     expect(big.games[i].endedAt, `${big.games[i].id} after the one before`).toBeGreaterThan(big.games[i - 1].endedAt);
