@@ -67,7 +67,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 26A. Bot skill in the lobby | `phase-26a-lobby-bot-skill` | done |
 | 26B. Bot skill in the records | `phase-26b-record-bot-skill` | done |
 | 27A. Sortable ranked tables | `phase-27a-sortable-tables` | done |
-| 27B. Sortable split and other tables | `phase-27b-other-tables` | not started |
+| 27B. Sortable split and other tables | `phase-27b-other-tables` | in progress |
 
 ---
 
