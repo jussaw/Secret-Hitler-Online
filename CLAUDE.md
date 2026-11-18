@@ -114,7 +114,8 @@ keeps credit to upstream and to the board game's creators.
   player's packet adds `you`, their name or, in a game, their seat's; a spectator's gets none.
   Every lobby packet, a player's or a spectator's, adds `bots` (#70), the names of the CPU players
   a game started now would seat (`Bot 1`, `Bot 2`, …), so a page never counts or names them (the
-  host's stepper works out only its own limits from the people).
+  host's stepper works out only its own limits from the people), and `botSkill` (#72,
+  `PARAM_BOT_SKILL`), the name of the level they would play at (`EASY`, `NORMAL` or `HARD`).
   Every game packet, a player's or a spectator's, the victory packet included, carries `gameId`,
   the running game's record ID (`Lobby.gameId()`, not a secret): `GameToJSONConverter.convert(game,
   name, gameId)` and `convertForSpectator(game, gameId)` put it in (org.json leaves a null out),
@@ -159,7 +160,19 @@ keeps credit to upstream and to the board game's creators.
   five, and the host's number comes back when the people allow it, after a game too. Bots never
   fill the lobby: `isFull` counts people only. `startNewGame` seats `botNames(botsFor(chosenBots,
   seated))`, the names the lobby packet showed, worked out for the people seated after the grace
-  window's are dropped (`LobbyBotCountTest`, `BotCountServerTest`). `LobbyTesting` also has the
+  window's are dropped (`LobbyBotCountTest`, `BotCountServerTest`). The host also chooses how well
+  the bots play (#72) with `set-bot-skill` (`skill`, a `game.BotSkill`'s name, `PARAM_SKILL`),
+  refused and dropped as `set-bot-count` is: a guest's closes their socket with 1002, a
+  spectator's is dropped, and the host's once a game runs is logged and dropped with no OK; a
+  level the server does not know (missing, lowercase, unknown or not a string) closes the host's
+  socket with 1002 and changes nothing. `Lobby.chosenSkill`, transient, is `NORMAL` in a new lobby
+  and in one restored from a backup, and stays after a game; `botSkill()` reads it and
+  `setBotSkill` sets it (it throws in a game, and for null). `startNewGame` makes every bot
+  `new CpuPlayer(name, chosenSkill)`, so a running game's bots keep their level whatever the host
+  picks next, and a game restored from a backup keeps its bots' levels (they are backed up) while
+  the lobby's choice goes back to `NORMAL`. `seatedBotSkills()`, package-private, is the running
+  game's bots by seat name and level, for tests (`LobbyBotSkillTest`, `BotSkillServerTest`).
+  `LobbyTesting` also has the
   lobby tests' shared `strings(JSONArray)` and `waitForUserCount`. A player who rejoins a running game after that
   window, or after a restore from a backup (`activeAccounts` is transient, so a restored lobby has
   no one in it), goes back at the end of `activeAccounts`, and to their seat by account: the lobby
@@ -1196,7 +1209,24 @@ keeps credit to upstream and to the board game's creators.
   left of START GAME (off until every player has picked a look) on one row, `.lobby-start-row`,
   as tall as START GAME's face (on phones the stepper's buttons fill its height, 44px wide at
   least, and START GAME takes the rest). START GAME never shrinks below its label: where the two
-  do not fit, the row wraps and the stepper takes a line of its own above it; every player gets
+  do not fit, the row wraps and the stepper takes a line of its own above it. Under that row the
+  host gets the BOT SKILL row (#72, `BotSkillSwitch`, a `role="group"` "Bot skill": the label, then
+  EASY, NORMAL and HARD, each `aria-pressed`, the pressed one in START GAME's orange and the others
+  dark with grey labels, on a darker track, in a card of the stepper's look). A press shows the new
+  level at once and sends `set-bot-skill`, and the row holds that level until the next lobby
+  packet, a new `bots`, answers with the server's level, as the stepper holds its count; a press
+  of the level shown sends nothing. It stays on with no bots to seat (with ten people the stepper
+  reads 0 and is off), so the level is ready when someone leaves. START GAME's row and the BOT
+  SKILL row share a column, `.lobby-host-controls`, as wide as the wider of the two on desktop and
+  in tall windows, which the BOT SKILL row stretches across; on phones it is the column's width,
+  the label at the left and the options in equal columns. Its buttons are 44px targets at every
+  size. Everyone else (guests and spectators) gets the level on a line in the same place, first in
+  `.lobby-actions` (`BotSkillLine`, `p.lobby-skill-line`: BOT SKILL, then the level in white,
+  `.lobby-skill-level`, their middles in line); the roster's bot rows and the status line never
+  show the level. `App` keeps the lobby packet's level as `botSkill` (`botSkillOf`, in
+  `src/types/commands.ts` with `BotSkill` and `BOT_SKILLS`: `NORMAL` for a missing or unknown one,
+  and on a socket to another lobby) and sends the host's press with `onClickSetBotSkill`. Every
+  player gets
   CHANGE NAME (the CHANGE NAME prompt,
   which starts from the roster's name, `nameToChange`), CHANGE LOOK, WATCH INSTEAD and LEAVE LOBBY
   (`.lobby-player-buttons`: a wrapping centred row on desktop and in tall windows, two rows of two
@@ -1329,26 +1359,34 @@ keeps credit to upstream and to the board game's creators.
   lobby there; the login page fits without scrolling in each of `LOGIN_STATES`, with 44px targets
   (SIGN IN WITH DISCORD, TEST SIGN-IN, CHANGE NAME and Sign out among them, and the header's links,
   `smallLinks` in `e2e/layout.ts`), 16px field text and unwrapped button labels; the lobby tests (the lobby fits without scrolling for each of
-  `longestLineViewers`' seven viewers, each with its note, with 44px targets, 16px field text and
-  bot rows a person's row's size (`botRowMismatches`),
+  `longestLineViewers`' seven viewers, each with its note, with 44px targets, 16px field text,
+  bot rows a person's row's size (`botRowMismatches`), the bots' level it should see
+  (`skillShown`) and its BOT SKILL row or line on one line (`skillRowLines`),
   the roster first, the busy bubble at 320px, and `checkNamePrompt` for CHOOSE A NAME on the login
   page and over the lobby, after which PLAY INSTEAD takes a seat at once, and for CHANGE NAME on the
   login page and in the lobby: 44px targets, 16px field text, unwrapped labels, both buttons on one
   row and twelve characters at most); and a phone held sideways gets the phone layout).
   `no-scroll.spec.ts` also has a lobby test, for the same seven viewers, each one's buttons checked
   by label (`actionLabels`, an icon-only button by its accessible name), a spectator's note by its
-  text, its roster rows and bot rows (`botRowMismatches`), and the buttons 44px targets at every
-  size, and a login page test per state (the header, the cards and the footer in order, 44px
+  text, its roster rows and bot rows (`botRowMismatches`), the buttons 44px targets at every
+  size, the level it sees (`skillShown`) and the BOT SKILL row or line on one line at every size
+  (`skillRowLines`), and a login page test per state (the header, the cards and the footer in order, 44px
   targets, the header's links among them, and 16px field text, and Sign out's box clear of CHANGE
   NAME's, `accountTargets`), both at
   `DESKTOP_SIZES`, `SQUARE_DESKTOPS` and the `NARROW_WINDOWS`. The viewers are the host (the bot
-  stepper, both off at ten people, and START GAME) and a guest (the four player buttons), a
+  stepper, both off at ten people, START GAME and the BOT SKILL row's three, `HOST_BUTTONS`) and a
+  guest (the four player buttons), a
   signed-in spectator (PLAY INSTEAD, off in the full lobby) and two signed-out ones, on a server
-  with Discord sign-in and one without (`/me` stubbed), all in the full lobby; and, in a lobby of
-  nine people and the bot its host's stepper added (ten seats), its host and a signed-in
-  spectator, with the longest lines too, whose PLAY INSTEAD's `/check-login` failed: its note, `CONTACT_ERROR`, is the longest a spectator gets (one
+  with Discord sign-in and one without (`/me` stubbed), all in the full lobby at NORMAL, the
+  longest level's word; and, in a lobby of
+  nine people and the bot its host's stepper added (ten seats), whose host presses HARD, its host
+  and a signed-in spectator who watches after the press and sees HARD (each viewer's `skill`),
+  with the longest lines too, whose PLAY INSTEAD's `/check-login` failed: its note, `CONTACT_ERROR`, is the longest a spectator gets (one
   line on desktop, with 220px or more to spare; two on phones, with 170px to spare at 360x740 and
-  27px at 320x568, on Linux too). The login tests open the page with `longestLogin(page, state)`
+  27px at 320x568, on Linux too). The host's lobby is the tightest: with its BOT SKILL row (63px
+  on phones, one line with 33px of its width to spare at 320x568 on Linux, so its label never
+  shortens) it has about 28px of height to spare at 360x740, and 39px at 990x793, the same in the
+  Linux image. The login tests open the page with `longestLogin(page, state)`
   (`e2e/lobby.ts`): each state at its fullest from stubbed requests, the longest error under every
   card and, signed in, a twelve-character name and `LONGEST_DISCORD_NAME` (32 m's, Discord's
   widest; "signed in, short Discord name" puts Sign out on the line just under CHANGE NAME). The
@@ -1533,7 +1571,8 @@ keeps credit to upstream and to the board game's creators.
   (`waitForPlayers`, which counts the roster's people, `PEOPLE_ROWS`, since the heading counts
   bots too, `botRowMismatches`, `joinGuests`, with `pickLooks` false for guests who stay on the
   default portrait, `joinLobby`, `pickPortrait`, `longestLineLobby`, `longestLineViewers`,
-  `actionLabels`,
+  `actionLabels`, `skillShown` (the level the lobby shows: the host's pressed button or the line's
+  level) and `skillRowLines` (the lines the BOT SKILL row or line takes, by its parts' middles),
   `longestLogin`, `accountTargets`, `lobbyStatusCard`, `waitForPrompt`, `watchLobby`, and
   `codeField`, the login page's one field), `e2e/accounts.ts`, `e2e/layout.ts` (`wrappedLabels` and
   `smallTargets`, which measure links drawn as buttons, `.button-link`, too, `smallLinks` for plain
@@ -1710,7 +1749,8 @@ no trailing period, at most 72 characters. Scopes in use: `frontend`, `backend`,
   session (accounts), and their packets only add fields (`you`); spectator support only adds
   fields and a query parameter, the END TERM countdown only adds `termTimer` and two commands,
   recording games only adds `gameId` to every game packet, and the host's bot count only adds
-  `bots` to every lobby packet and the host's `set-bot-count` command.
+  `bots` to every lobby packet and the host's `set-bot-count` command, and the host's bot skill
+  only adds `botSkill` to every lobby packet and the host's `set-bot-skill` command.
 - Never set `TEST_SIGN_IN` in the `Dockerfile` or CI's image job (the backup test sets it only on
   its own `docker run`), and never log a session token,
   an OAuth code, an access token or the Discord client secret, or put one in a URL or a file.
