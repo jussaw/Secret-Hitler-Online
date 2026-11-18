@@ -1329,7 +1329,14 @@ keeps credit to upstream and to the board game's creators.
 - `.claude/skills/`: project skills. `implement-issue` (`/implement-issue N`) takes one GitHub issue
   through the Workflow below to a pull request with green CI, which it merges for an issue labelled
   `bug`, then checks the published image. An issue that needs design gets a pushed spec and plan and
-  a prompt for a new session instead. `write-issue` (`/write-issue <what you saw or want>`)
+  a prompt for a new session instead. `implement-issues` (`/implement-issues 43 51 60`) manages a
+  batch: one subagent per issue, each running `implement-issue` on its own issue, up to three at
+  once, each with a block of ten browser-test ports the manager hands out. Issues that need design
+  are left out and offered as sessions of their own, and the issues that wait on them are left out
+  with them. A subagent merges its PR only
+  for a `bug`; any other PR the manager merges itself on the user's yes, since that yes comes to the
+  manager, and a subagent may refuse one an agent passes on.
+  `write-issue` (`/write-issue <what you saw or want>`)
   writes one or more issues in the house style (`formats.md`), tries every bug on `development`
   first, and posts each only once the user has read its draft and said yes.
 
@@ -1382,7 +1389,9 @@ between games.
   merged into `development` by pull request on the fork once every box in the phase is ticked.
 - A single issue outside a phase gets its own branch and pull request through the `implement-issue`
   skill. Once CI is green it merges the pull request itself for an issue labelled `bug`, and any
-  other once the user says yes in chat.
+  other once the user says yes in chat. Several issues at once go through `implement-issues`, which
+  runs `implement-issue` for each in a subagent of its own, so each still gets its own branch and
+  pull request.
 - Every pull request, a phase's or an issue's, is squashed into one commit on `development`: never
   a merge commit or a rebase. `development` asks for an approving review, so every merge is
   `gh pr merge --squash --admin`.
