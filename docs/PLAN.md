@@ -1134,7 +1134,7 @@ Issue #72, part 3's start. Backend only; changes nothing on screen. Starts once 
 - [x] `EASY_MISTAKE_CHANCE` is set from the self-play run, one notch above the lowest that keeps Easy clearly below Normal
 - [x] The no-peeking test: a bot decides the same in two games its seat cannot tell apart, for each level and each decision kind, with seeds mixed, open votes hidden until the election closes, and every pair of other seats swapped
 - [x] `botMatches` takes `-Pliberals`, `-Pfascists` and `-Pladder` (the ladder and balance pairings side by side, with their verdicts), and `BotMatchesTest` plays every pairing
-- [ ] `CLAUDE.md` and `DEVELOPMENT.md` updated; the pull request quotes `botMatches` before, and `botMatches` and `botMatches -Pladder` after
+- [x] `CLAUDE.md` and `DEVELOPMENT.md` updated; the pull request quotes `botMatches` before, and `botMatches` and `botMatches -Pladder` after
 
 **Phase 25A acceptance**
 
