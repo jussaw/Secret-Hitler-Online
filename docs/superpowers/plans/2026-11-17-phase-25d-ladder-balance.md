@@ -258,9 +258,11 @@ where the code differs, keep the code's names and say so in the PR.
 **Interfaces:**
 - Produces on `BotMatches`:
   - `ladderReport` ends with the block `Tallies: <games> games at each table size`, then a line per
-    pairing and size, `<label> <seats> <liberal policies> <hitler shot> <fascist policies> <hitler
-    elected>` (each `ENDINGS` count, in `ENDINGS`' order, for every pairing in `PAIRINGS` order and
-    seats 5 to 10).
+    pairing and size, `<pairing> <seats> <liberal policies> <hitler shot> <fascist policies> <hitler
+    elected>`, where `<pairing>` is `Pairing.label()`'s short form (`E/N`, never the run's own
+    `Liberals …` label, so 25A's `theLadderReportShowsEveryPairingSideBySide` still finds seven
+    lines starting `Liberals `) (each `ENDINGS` count, in `ENDINGS`' order, for every pairing in
+    `PAIRINGS` order and seats 5 to 10).
   - `static Map<LadderCheck.Pairing, Results> readTallies(List<String> reportLines)`: the block read
     back; `IllegalArgumentException` (`No tally block in the report.` or the first line it cannot
     read) otherwise.
@@ -270,7 +272,9 @@ where the code differs, keep the code's names and say so in the PR.
     runs do not match.`) unless both have the same pairings and sizes.
   - `Options` gains `pool` (two paths), read from `--pool=<file>,<file>`; with it, `main` prints
     `ladderReport(pool(readTallies(a), readTallies(b)))`. `--pool` with any other option, or not two
-    paths, is refused: `-Ppool takes two ladder reports: -Ppool=<file>,<file>.`
+    paths, is refused: `-Ppool takes two ladder reports: -Ppool=<file>,<file>.` 25A's unknown-option
+    message gains the option: `botMatches takes -Pgames=N, -Pliberals=LEVEL, -Pfascists=LEVEL,
+    -Pladder and -Ppool=<file>,<file>.`, and 25A's `anUnknownOptionNamesEveryOption` expects it.
 - Produces on `LadderCheck`: `static final int TUNING_BAND = 8` and, in `verdicts`, a line after
   `Balance check:`, `Balance target: PASS|FAIL (<d> points apart, target 8)`, compared in whole
   numbers as `balanced` is.
@@ -282,7 +286,8 @@ where the code differs, keep the code's names and say so in the PR.
   message); `aReportWithoutTalliesIsRefused`; `optionsReadThePool` (`--pool=a.txt,b.txt` ⇒ both
   paths; `--pool=a.txt`, `--pool=a.txt,b.txt --ladder` ⇒ the refusal). `LadderCheckTest`:
   `theTuningTargetIsEightPoints` (N/N 350 of 1,000 a size; H/H 430 ⇒ `Balance target: PASS`, 431 ⇒
-  `FAIL`, while `Balance check:` passes at both).
+  `FAIL`, while `Balance check:` passes at both); and 25A's `anUnknownOptionNamesEveryOption`
+  updated to the message naming `-Ppool`.
 - [ ] **Step 2: Run** `./gradlew test --tests game.BotMatchesTest --tests game.LadderCheckTest`.
   Expected: compilation fails.
 - [ ] **Step 3: Implement** as in Interfaces, and the one `build.gradle` line beside 25A's.
@@ -314,7 +319,9 @@ where the code differs, keep the code's names and say so in the PR.
 - [ ] **Step 4: Check Easy < Normal** (Decision 3): if either side's `Easy < Normal` step fails, or
   its two pooled intervals are under 1 point apart, tell the manager with the two step lines and
   wait for the answer before tuning.
-- [ ] **Step 5: Commit and push** `docs(docs): start phase 25d's tuning log`.
+- [ ] **Step 5: Commit and push** `docs(docs): start phase 25d's tuning log`, setting Phase 25D's
+  Progress row in `docs/PLAN.md` to "in progress" in the same push (`docs(plan): start phase
+  25d`).
 
 ---
 
@@ -352,7 +359,8 @@ where the code differs, keep the code's names and say so in the PR.
   Step 6. Otherwise it counts as a failing full run: a change with its reason (Step 2), and on from
   Step 3.
 - [ ] **Step 6: Commit** the log with the acceptance, ticking the boxes for the ladder and balance
-  checks (and the extra-rules box with "none was needed" when Task 5 did not run), and push.
+  checks and "Both checks hold on two confirming runs pooled, within the plan's tuning budget"
+  (and the extra-rules box with "none was needed" when Task 5 did not run), and push.
 
 ---
 
@@ -395,7 +403,8 @@ At most three rules, one at a time, from Decision 9.
   example, the `Balance target:` line, and how a change to the bots is accepted (a pass, its
   confirmation, the two pooled).
 - [ ] **Step 3: Commit** `docs(claude): record the hard bots' tuned amounts` and `docs(development):
-  describe pooling two ladder runs`.
+  describe pooling two ladder runs`, the last ticking the docs box in Phase 25D's section of
+  `docs/PLAN.md`.
 
 ---
 

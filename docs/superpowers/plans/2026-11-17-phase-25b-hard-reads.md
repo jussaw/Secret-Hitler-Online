@@ -14,7 +14,7 @@ for older backups, and `CpuPlayer` calls them from `update` and its handlers, ea
 runs that rule. The tests build their games with Phase 25A's `BotScenes` and two new builders that
 make the bot first and update it after every move, check each rule through `CpuPlayer` and on its
 own, add a scene per rule to 25A's `NoPeekingTest` (whose `Twins` already compares every new field),
-and take every expected amount from the rules' named constants, so Phase 25C can retune them
+and take every expected amount from the rules' named constants, so Phase 25D can retune them
 without editing a test. `botMatches -Pladder` (25A) shows Hard against Normal before and after.
 
 **Tech Stack:** Java 17, Gradle 7.4.2 (wrapper), JUnit 4.12 (no `assertThrows`), commons-lang3's
@@ -45,9 +45,8 @@ and the spec differ, the spec wins.
    are updated after every command and before every CPU step, so one of those states is seen for
    every passed election. Nominating, a cleared seat's weight is multiplied by
    `NOMINATION_WEIGHT`. Voting, a cleared chancellor gets ja, **except** when the bot's own
-   investigation found the president or the chancellor `FASCIST`: then Normal votes (a departure
-   from the spec's wording, which the spec will gain: voting in a known fascist hands the fascists a
-   policy). With 3 or more fascist policies, a chancellor not cleared gets nein unless their score
+   investigation found the president or the chancellor `FASCIST`: then Normal votes (the spec's
+   rule 1 says so: voting in a known fascist hands the fascists a policy). With 3 or more fascist policies, a chancellor not cleared gets nein unless their score
    (with identity) is `TRUSTED_SCORE` or more, when Normal votes; otherwise Normal votes.
 3. **Rule 2.** Read in the chancellor's handler, once per round (`handReadRound`), so the second
    decision after a refused veto reads nothing again: two fascist cards lower the president by
@@ -66,7 +65,7 @@ and the spec differ, the spec wins.
    `NOMINATION_WEIGHT` 3 (a `double`, a weight), `TRUSTED_SCORE` 3 (the spec's "+3 or more",
    fixed), `FF_DROP` 2, `LL_RISE` 2, `PeekMemory.DROP` 2. 25C moves the amounts to `double` with
    fractional scores. Every test takes its expected value from these constants, never a literal, so
-   25C and 25D retune them without editing a test.
+   25D retunes them without editing a test (25C only makes them `double`s).
 6. **Hard not below Normal** (the anti-goal "a lower level that plays better than a higher one"):
    in `-Pladder`'s run, for neither side may Hard's interval lie wholly below Normal's, pooled or at
    any size. Clearing the `Normal < Hard` step is 25D's.
@@ -422,9 +421,7 @@ where the code differs, keep the code, make this plan's change on it, and say so
   nothing on screen."; `botMatches -Pladder` before (25A's: Hard as Normal) and after, in code
   blocks, with the `Normal < Hard` lines called out and a line that the `Ladder check:` and
   `Balance check:` verdicts are reported, not required, until 25D; **Decisions (where this plan
-  fills or departs from the spec)**: rule 1's exception (a cleared chancellor gets Normal's vote
-  when the bot's own investigation found the president or the chancellor `FASCIST`), rule 4's
-  "only an onlooker blames", the who-runs reading, once per round for rule 2, the draw pile's size
+  fills or departs from the spec)**: rule 4's "only an onlooker blames", the who-runs reading, once per round for rule 2, the draw pile's size
   test for rule 4, the amounts as `int`s read by name; any retuning from Task 4; where 24's or 25A's
   code differed from their plans' Interfaces; **Review** (each finding and what was done);
   **Tests** (what each new test checks, the counts); "Part of #72". Read it back (`gh pr view <n>

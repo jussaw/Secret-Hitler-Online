@@ -178,7 +178,9 @@ where the code differs, keep the code's names, make this plan's change on them, 
   `backend/src/test/java/game/` creates `DeckOddsTest`, `HardDeckOddsTest`, `HardBotBackupTest`,
   `HardVoteMemoryTest`, `HardTrackerTest` and `HardBluffTest`, and
   `backend/src/test/resources/bots-before-25c.ser`; changes 25A's `LadderCheck` and `LadderCheckTest`
-  (one step), 25B's `ChancellorHandTest` (its scaled cases), `NoPeekingTest` (a case per rule) and
+  (one step), 25B's `ChancellorHandTest` (its scaled cases), 25B's `PeekMemoryTest` (its
+  expectations read through `score` with a delta, as `ChancellorHandTest`'s are, once `DROP` is a
+  `double`), `NoPeekingTest` (a case per rule) and
   `BotScenes` (one builder, `secondRound`); and the docs (`CLAUDE.md`'s bots section,
   `DEVELOPMENT.md`'s `botMatches` lines, Phase 25C's section and Progress row in `docs/PLAN.md`).
 - **Never touch** `SecretHitlerGame.java` (no field, no method, not even private: the class pins no
@@ -384,7 +386,9 @@ where the code differs, keep the code's names, make this plan's change on them, 
 **Files:**
 - Modify: `backend/src/main/java/game/CpuPlayer.java`, `backend/src/main/java/game/ChancellorHand.java`,
   `backend/src/main/java/game/PeekMemory.java` (`DROP`'s type)
-- Modify (test): `BotScenes.java`, `ChancellorHandTest.java`, `NoPeekingTest.java`
+- Modify (test): `BotScenes.java`, `ChancellorHandTest.java`, `PeekMemoryTest.java` (read
+  through `score` with a delta, as `ChancellorHandTest`'s are, once `DROP` is a `double`),
+  `NoPeekingTest.java`
 - Create (test): `backend/src/test/java/game/HardDeckOddsTest.java`, `HardBotBackupTest.java`
 
 **Interfaces:**
@@ -631,7 +635,8 @@ where the code differs, keep the code's names, make this plan's change on them, 
 - [ ] **Step 4: Implement** Decision 6, Hard fascists only.
 - [ ] **Step 5: Run** the tests again, then `./gradlew test`. Expected: all pass,
   `NormalBaselineTest` unchanged.
-- [ ] **Step 6: Commit** `feat(backend): let hard fascists bluff`.
+- [ ] **Step 6: Commit** `feat(backend): let hard fascists bluff`, ticking the box for Hard's rules
+  3, 5, 6 and 7 in Phase 25C's section of `docs/PLAN.md`.
 
 ---
 
@@ -651,7 +656,8 @@ where the code differs, keep the code's names, make this plan's change on them, 
 - [ ] **Step 2: Update `DEVELOPMENT.md`'s** `botMatches` section: the six step lines under `Ladder
   check:`.
 - [ ] **Step 3: Commit** `docs(claude): describe the hard bots' other rules` and `docs(development):
-  describe the easy against hard step`.
+  describe the easy against hard step`, the last ticking the docs box in Phase 25C's section of
+  `docs/PLAN.md`.
 
 ---
 

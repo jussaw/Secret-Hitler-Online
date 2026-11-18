@@ -296,7 +296,7 @@ task botMatches(type: JavaExec) {
   `--liberals=`, `--fascists=` and `--ladder`, and `build.gradle` forwards each `-P` property it is
   given as one argument. `-Pladder` calls `play` once per pairing and prints their `Results`
   together. `BotMatchesTest.everySizeFinishesItsGames` loops over the pairings. `Interval` is what
-  25B's ladder check compares (`a.high() < b.low()`).
+  25A's `LadderCheck.clearlyAbove` compares (`lower.high() < higher.low()`).
 
 - [ ] **Step 1: Write the failing tests** in `BotMatchesTest` (JUnit 4.12: catch the throwable and
   `assertNotNull` it, as `LobbySpectatorTest`'s `expectIllegalArgument` does):
@@ -469,7 +469,7 @@ task botMatches(type: JavaExec) {
   alone); `CpuPlayer` pins `2392054316009854878L`, the value Java computed before Phase 24, which
   both backup fixtures' CPU players carry, so its methods may change and a field added later comes
   back empty from an older backup and is filled in `readObject`, as `random` is. Right after it,
-  one passage on the bots (#72), which Phases 25A and 25B extend:
+  one passage on the bots (#72), which Phases 25A to 25D extend:
   - Each CPU tick is `CpuTurn.step` (every bot's `update`, then `act` in name order, every bot
     voting in one step; `afterMove` after each move, each vote too; true when the bots moved the
     game on). `Lobby.updateAllUsers` calls it with `observeGame` and schedules the next tick only
@@ -562,4 +562,4 @@ task botMatches(type: JavaExec) {
 - **Names:** `CpuTurn.step(SecretHitlerGame, Collection<CpuPlayer>, Runnable)` returning the
   lobby's `didCpuUpdateState`, `BotMatches` (`main`, `play`), `BotMatchesTest` and the
   `botMatches` task, as the spec's "Names the phases share" pins them; `CpuGames.play(…, makeBot)`,
-  `BotMatches.Interval` and `Options` are this plan's, for 25A and 25B.
+  `BotMatches.Interval` and `Options` are this plan's, for 25A to 25D.

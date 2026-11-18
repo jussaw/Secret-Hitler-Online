@@ -1130,7 +1130,8 @@ Breakdown: [`docs/superpowers/plans/2026-11-17-phase-25a-bot-levels.md`](superpo
 Issue #72, part 3's start. Backend only; changes nothing on screen. Starts once 24 has merged.
 
 - [ ] `game.BotSkill` (Easy, Normal, Hard); `CpuPlayer(String name, BotSkill skill)` and `skill()`; a bot from an older backup plays Normal
-- [ ] Easy makes a random legal move at `EASY_MISTAKE_CHANCE` of its decisions, never one that throws the game for its own side; the value is set from the self-play run, one notch above the lowest that keeps Easy clearly below Normal
+- [ ] Easy makes a random legal move at `EASY_MISTAKE_CHANCE` of its decisions, never one that throws the game for its own side
+- [ ] `EASY_MISTAKE_CHANCE` is set from the self-play run, one notch above the lowest that keeps Easy clearly below Normal
 - [ ] The no-peeking test: a bot decides the same in two games its seat cannot tell apart, for each level and each decision kind, with seeds mixed, open votes hidden until the election closes, and every pair of other seats swapped
 - [ ] `botMatches` takes `-Pliberals`, `-Pfascists` and `-Pladder` (the ladder and balance pairings side by side, with their verdicts), and `BotMatchesTest` plays every pairing
 - [ ] `CLAUDE.md` and `DEVELOPMENT.md` updated; the pull request quotes `botMatches` before, and `botMatches` and `botMatches -Pladder` after
@@ -1148,7 +1149,9 @@ Breakdown: [`docs/superpowers/plans/2026-11-17-phase-25b-hard-reads.md`](superpo
 
 Issue #72, part 3. Backend only; changes nothing on screen. Starts once 25A has merged.
 
-- [ ] Hard's rules 1 (cleared players), 2 (the chancellor's hand) and 4 (the peek), each with its own tests and in the no-peeking test
+- [ ] Hard's rule 1 (cleared players), with its own tests and in the no-peeking test
+- [ ] Hard's rule 2 (the chancellor's hand), with its own tests and in the no-peeking test
+- [ ] Hard's rule 4 (the peek), with its own tests and in the no-peeking test
 - [ ] A Hard bot's memory survives a backup, and `-Pladder` shows Hard not below Normal
 - [ ] `CLAUDE.md` updated; the pull request quotes `botMatches -Pladder` before and after
 
@@ -1217,7 +1220,7 @@ Issue #72, part 4. Starts once 25A has merged; merges after 25D.
 
 Breakdown: [`docs/superpowers/plans/2026-11-17-phase-26b-record-bot-skill.md`](superpowers/plans/2026-11-17-phase-26b-record-bot-skill.md) · Spec: [`docs/superpowers/specs/2026-11-17-bot-skill-design.md`](superpowers/specs/2026-11-17-bot-skill-design.md), "The records (Phase 26B)"
 
-Issue #72's records, decided in the design. Starts once 25A has merged; merges after 25D.
+Issue #72's records, decided in the design. Starts once 25A has merged; merges after 25D and 26A.
 
 - [ ] Records are format 2 with `botSkill` after `hasCpu` (a level's name, or null without bots); format 1 records stay as stored and are still served and read
 - [ ] The contract fixture is made again with levels in turn, and `RecordFormat` and the replay checks know both formats

@@ -165,15 +165,17 @@ it picks uniformly among the legal moves instead of deciding as Normal would. Th
 out the moves no level makes because they throw the game for the bot's own side: the fixes below
 hold at every level, so a fascist or Hitler never executes a known teammate, and a fascist never
 executes Hitler. (A bot that shoots its own Hitler ends the game at once and reads as broken, not
-naive.) The starting value is 0.25; Phase 25A sets the final value from the self-play run, the
-lowest that keeps Easy clearly below Normal (below). Ending its term as president is not a
-decision: Easy ends it as every bot does.
+naive.) The starting value is 0.25; Phase 25A sets the final value from the self-play run: one
+0.05 notch above the lowest that keeps Easy clearly below Normal (below), at most 0.25, so the
+ladder is not marginal by design. Ending its term as president is not a decision: Easy ends it
+as every bot does.
 
 #### Hard's rules
 
 Each rule reads only what the bot's seat could see (the anti-goal above). Each is its own method or
 small class with its own test, and only a Hard bot runs it. The amounts below are starting points;
-each phase tunes them with the self-play run and writes the final ones in the code.
+Phase 25D tunes them with the self-play run (25B only if Hard falls below Normal) and writes the
+final ones in the code.
 
 Here a "liberal bot" is one dealt Liberal, a "fascist bot" one dealt Fascist, and "the fascist side"
 is fascist bots and Hitler. Who runs which rule: rule 1 is a liberal bot's. Rules 2 to 5 read the
@@ -266,7 +268,8 @@ repeatable: the intervals say how far a difference can be trusted.
 
 `./gradlew test` stays fast: one test plays a few games at every size and at every pairing of levels
 and checks only that each finishes. The ladder is checked by `botMatches -Pladder`, whose output each
-bot phase's pull request quotes before and after.
+bot phase from 25B on quotes before and after (24 and 25A quote plain `botMatches` before, as
+`-Pladder` does not exist yet).
 
 **The ladder check.** For each side, its win rate pooled over sizes 5 to 10 must rise with its level
 against Normal opponents: Easy below Normal below Hard, the two rates' 95% intervals not
@@ -378,7 +381,7 @@ and `README.md` are edited by each in its own section, and the later to merge re
 | 25C. Hard's other rules | Hard's rules 3, 5, 6 and 7, each in the no-peeking test, with rule 2 scaled by rule 5 | 25B |
 | 25D. Ladder and balance | Tuning the amounts (and any extra fascist-side rules) until the ladder and balance checks pass | 25C |
 | 26A. Bot skill in the lobby | The lobby's level, `set-bot-skill`, `botSkill`, the BOT SKILL row and the guests' line | 25A to build, 25D to merge |
-| 26B. Bot skill in the records | Format 2 with `botSkill`, the readers, the fixture and the stats pages' tags | 25A to build, 25D to merge |
+| 26B. Bot skill in the records | Format 2 with `botSkill`, the readers, the fixture and the stats pages' tags | 25A to build, 25D and 26A to merge |
 
 26A and 26B are built alongside 25B to 25D but merge after 25D, in the order 25D, 26A, 26B. Every merge
 into `development` publishes the image the home server pulls, so HARD reaches players, and records
@@ -442,8 +445,6 @@ gains `./gradlew botMatches` (24). The game stats design's record table gains `b
 ## Left to the builder
 
 - Each Hard rule's amounts, and `EASY_MISTAKE_CHANCE`'s final value, set from `botMatches`.
-- The shared step's name and signature, and where the self-play run's code lives in the test source
-  set.
 - How the deck odds are worked out, as long as they use only what the bot's seat has seen.
 - The BOT SKILL row's exact spacing and the label's shortening at 320px, within the fit rules above.
 - How a press of a level, like the stepper's, holds its shown value until the next packet.
