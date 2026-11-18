@@ -60,6 +60,7 @@ public class HardBotBackupTest {
             assertNotNull(bot.myName, bot.deckOdds());
             assertEquals(bot.myName + " has seen no discard", DeckOdds.allFascist(6, 11, 3),
                     bot.deckOdds().allFascistHand(0, 0), 0);
+            assertEquals(bot.myName + " remembers no election", List.of(), bot.elections());
         }
     }
 

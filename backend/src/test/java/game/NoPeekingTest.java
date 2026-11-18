@@ -381,6 +381,48 @@ public class NoPeekingTest {
         });
     }
 
+    /**
+     * Rule 3: the bot of P2 remembers round 2's votes, where P3 and P5 (a liberal and a fascist,
+     * their roles swapped in the second game) back a government that enacts a fascist policy; it
+     * then presides, votes, and votes on P3's nomination, a decision that reads P3's score.
+     */
+    @Test
+    public void hardRule3Votes() {
+        Supplier<Scene> scene = () -> new Scene(BotScenes.game("LLLLFFH"), "P2");
+        Hidden swap = new Hidden("the roles of P3 and P5 swapped", g -> BotScenes.swapRoles(g, "P3", "P5"));
+        playsAlike(scene, scene, List.of(swap), twins -> {
+            roundOne(twins);
+            twins.others(g -> BotScenes.drawTop(g, "FFL"));
+            twins.others(g -> g.nominateChancellor("P4"));
+            twins.others(g -> {
+                g.registerVote("P3", true);
+                g.registerVote("P5", true);
+                g.registerVote("P6", false);
+            });
+            twins.botActs();
+            twins.others(g -> BotScenes.voteAll(g, true));
+            twins.others(g -> g.presidentDiscardPolicy(2));
+            twins.others(NoPeekingTest::enactsAFascist);
+            twins.others(SecretHitlerGame::endPresidentialTerm);
+            twins.botActs();
+            twins.botActs();
+            twins.others(g -> BotScenes.voteAll(g, false));
+            twins.botActs();
+            twins.others(g -> g.nominateChancellor("P0"));
+            twins.botActs();
+        });
+    }
+
+    /** Rule 3 never reads an open election's ballots: P3 votes ja in the first game and nein in the second. */
+    @Test
+    public void hardRule3OpenBallots() {
+        everyLevelAndSeed((skill, seed) -> {
+            Twins twins = Twins.of(BotScenes.vote("LLLFH"), BotScenes.vote("LLLFH"), skill, seed);
+            twins.others(g -> g.registerVote("P3", true), g -> g.registerVote("P3", false));
+            twins.botActs();
+        });
+    }
+
     // The test's own checks: that its seeds differ, and that the twins catch what they should.
 
     /** Normal always passes FL from FFL as a liberal; Easy passes FF for some of the seeds. */

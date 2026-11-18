@@ -7,12 +7,15 @@ package game;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
+import java.util.TreeMap;
 import java.util.function.ToDoubleFunction;
 
 import game.datastructures.Identity;
@@ -42,6 +45,20 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
    * marginal by design.
    */
   public static final double EASY_MISTAKE_CHANCE = 0.15;
+
+  /**
+   * Hard's rule 3: how far a reader lowers each player who voted yes for a government that then
+   * enacted a fascist policy, before rule 5 scales it by how unlikely an all-fascist hand was.
+   */
+  static final double VOTE_DROP = 0.25;
+
+  /**
+   * Hard's rule 3: one closed election as every seat saw it: its round, its government and each
+   * living player's vote (a {@code TreeMap}, so a backup's bytes depend only on the votes).
+   */
+  record Election(int round, String president, String chancellor, Map<String, Boolean> votes)
+      implements Serializable {
+  }
 
   private List<Policy.Type> chancellorChoices;
   private transient Random random;
@@ -122,6 +139,13 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
    */
   private int passedRound;
 
+  /**
+   * Hard's rule 3: every election this CPU saw close, oldest first, one per round (none below Hard,
+   * or for a CPU that knows every role). A CPU read from a backup made before the rule has none,
+   * and {@code readObject} makes an empty list.
+   */
+  private ArrayList<Election> elections;
+
   /** A Normal CPU player. */
   public CpuPlayer(String name) {
     this(name, BotSkill.NORMAL);
@@ -141,6 +165,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     peekMemory = new PeekMemory();
     deck = new DeckOdds();
     reputationCarry = new HashMap<>();
+    elections = new ArrayList<>();
     random = new Random();
   }
 
@@ -170,6 +195,11 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   /** Hard's rule 5: the discards this CPU has seen (none unless it is a Hard CPU that reads the game). */
   DeckOdds deckOdds() {
     return deck;
+  }
+
+  /** Hard's rule 3: the elections this CPU saw close, oldest first; unmodifiable. */
+  List<Election> elections() {
+    return Collections.unmodifiableList(new ArrayList<>(elections));
   }
 
   /** {@code name}'s score with its fraction, from -5 to 5: {@code playerReputation}'s whole number plus its carry. */
@@ -228,6 +258,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     drawnRound = 0;
     drawnAllFascist = 0;
     passedRound = 0;
+    elections = new ArrayList<>();
 
   } // end initialize()
 
@@ -281,6 +312,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     }
     if (readsTheGame(game)) {
       followTheDeck(game); // Hard's rule 5, after rule 4 has followed the peek
+      rememberElection(game); // Hard's rule 3
     }
     if (game.getRound() > lastUpdatedRound && game.getState() == GameState.POST_LEGISLATIVE) {
       Policy.Type lastPolicy = game.getLastEnactedPolicy();
@@ -311,9 +343,10 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
         }
         if (lastPolicy == Policy.Type.FASCIST && readsTheGame(game)) {
           // Hard's rule 5: a fascist policy says less of a government the likelier an all-fascist hand.
-          double drop = -(1 - handAllFascist(game));
-          shiftReputation(lastPresident, drop);
-          shiftReputation(lastChancellor, drop);
+          double unlikely = 1 - handAllFascist(game);
+          shiftReputation(lastPresident, -unlikely);
+          shiftReputation(lastChancellor, -unlikely);
+          blameBackers(game, lastPresident, lastChancellor, unlikely); // Hard's rule 3
         } else {
           updateReputation(lastPresident, repModifier);
           updateReputation(lastChancellor, repModifier);
@@ -350,6 +383,51 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
         drawnAllFascist = peeked.contains(Policy.Type.LIBERAL) ? 0 : 1;
       } else {
         drawnAllFascist = deck.allFascistHand(game.getNumLiberalPolicies(), game.getNumFascistPolicies());
+      }
+    }
+  }
+
+  /**
+   * Hard's rule 3: records this round's election at the first look after its vote closes (any
+   * state but a nomination, where the game still holds the last round's votes, and an open vote,
+   * whose ballots no seat sees), once a round.
+   */
+  private void rememberElection(SecretHitlerGame game) {
+    GameState state = game.getState();
+    if (state == GameState.CHANCELLOR_NOMINATION || state == GameState.CHANCELLOR_VOTING
+        || electionOf(game.getRound()) != null) {
+      return;
+    }
+    elections.add(new Election(game.getRound(), game.getCurrentPresident(), game.getCurrentChancellor(),
+        new TreeMap<>(game.getVotes())));
+  }
+
+  /** The election this CPU saw close in {@code round}, or null if it saw none. */
+  private Election electionOf(int round) {
+    for (int i = elections.size() - 1; i >= 0; i--) {
+      if (elections.get(i).round() == round) {
+        return elections.get(i);
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Hard's rule 3: lowers every other living player who voted yes in this round's election, if
+   * this CPU saw it close, by {@link #VOTE_DROP} times {@code unlikely} (rule 5's scale), so a forced
+   * hand blames no one and repeated backing adds up. The government's two members, whom the
+   * onlooker's drop already judges, and this CPU are left out.
+   */
+  private void blameBackers(SecretHitlerGame game, String president, String chancellor, double unlikely) {
+    Election election = electionOf(game.getRound());
+    if (election == null) {
+      return;
+    }
+    for (Map.Entry<String, Boolean> vote : election.votes().entrySet()) {
+      String voter = vote.getKey();
+      if (vote.getValue() && !voter.equals(myName) && !voter.equals(president) && !voter.equals(chancellor)
+          && game.getPlayer(voter).isAlive()) {
+        shiftReputation(voter, -VOTE_DROP * unlikely);
       }
     }
   }
@@ -1167,6 +1245,9 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     }
     if (reputationCarry == null) { // backed up before scores carried fractions
       reputationCarry = new HashMap<>();
+    }
+    if (elections == null) { // backed up before Hard's rule 3
+      elections = new ArrayList<>();
     }
   }
 

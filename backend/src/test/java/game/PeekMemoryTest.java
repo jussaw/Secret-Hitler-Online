@@ -203,7 +203,12 @@ public class PeekMemoryTest {
             played.then(g -> g.presidentDiscardPolicy(0));
             played.then(g -> g.chancellorEnactPolicy(0));
         });
-        assertScores(blamed("P1", "P2"), ruleChange("LLLFH", "LFF", moves));
+        Map<String, Double> change = blamed("P1", "P2");
+        // Normal's judgement of round 2 comes here too, so Hard's rule 3 lowers P4, alive and a yes
+        // voter for that government, by its whole drop: the peek showed a liberal, so the hand was
+        // not all fascist. P3, the other yes voter, was executed.
+        change.put("P4", -CpuPlayer.VOTE_DROP);
+        assertScores(change, ruleChange("LLLFH", "LFF", moves));
     }
 
     @Test
