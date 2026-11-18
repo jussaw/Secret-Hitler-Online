@@ -5,11 +5,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import game.CpuPlayer;
 import game.CpuTurn;
 import game.SecretHitlerGame;
+import game.datastructures.Identity;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.TreeSet;
+import java.util.function.BiFunction;
 import java.util.function.LongSupplier;
 
 /**
@@ -34,10 +36,23 @@ public final class CpuGames {
      * voting closes. Every move is diffed from the look before it, at {@code t = clock - startedAt}.
      *
      * @param stopAtRound stop once {@code getRound()} reaches this round; 0 plays to the end.
-     * @throws AssertionError with the timeline as JSON, if the game runs past 2,000 moves or no
-     *                        CPU can move.
+     * @throws AssertionError with the timeline as JSON, if the game runs past 2,000 moves, no CPU
+     *                        can move, or a CPU's move throws.
      */
     public static Played play(int seats, LongSupplier clock, long startedAt, int stopAtRound) {
+        return play(seats, clock, startedAt, stopAtRound, (name, role) -> new CpuPlayer(name));
+    }
+
+    /**
+     * Plays a game as {@code play(seats, clock, startedAt, stopAtRound)} does, with each seat's CPU
+     * player made by {@code makeBot}, from the seat's name and the role it was dealt (roles are
+     * dealt when the game is made, so each bot is made after the deal), then initialized.
+     *
+     * @throws AssertionError with the timeline as JSON, if the game runs past 2,000 moves, no CPU
+     *                        can move, or a CPU's move throws.
+     */
+    public static Played play(int seats, LongSupplier clock, long startedAt, int stopAtRound,
+            BiFunction<String, Identity, CpuPlayer> makeBot) {
         List<String> names = new ArrayList<>();
         for (int i = 1; i <= seats; i++) {
             names.add("Bot " + i);
@@ -46,14 +61,21 @@ public final class CpuGames {
         SecretHitlerGame game = new SecretHitlerGame(names);
         TreeSet<CpuPlayer> cpus = new TreeSet<>();
         for (String name : names) {
-            CpuPlayer cpu = new CpuPlayer(name);
+            CpuPlayer cpu = makeBot.apply(name, game.getPlayer(name).getIdentity());
             cpu.initialize(game);
             cpus.add(cpu);
         }
 
         Timeline timeline = new Timeline(game, clock, startedAt);
         while (!timeline.last.finished() && (stopAtRound == 0 || game.getRound() < stopAtRound)) {
-            if (!CpuTurn.step(game, cpus, timeline::afterMove)) {
+            boolean moved;
+            try {
+                moved = CpuTurn.step(game, cpus, timeline::afterMove);
+            } catch (RuntimeException e) {
+                throw new AssertionError("A CPU's move failed in " + game.getState() + ": " + e + ": "
+                        + json(timeline.events), e);
+            }
+            if (!moved) {
                 throw new AssertionError("No CPU could move in " + game.getState() + ": " + json(timeline.events));
             }
         }
