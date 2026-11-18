@@ -215,6 +215,25 @@ final class BotScenes {
         voteAll(game, true);
     }
 
+    /** The president discards the first card of {@code type} in its hand. */
+    static void presidentDiscards(SecretHitlerGame game, Policy.Type type) {
+        game.presidentDiscardPolicy(indexOf(game.getPresidentLegislativeChoices(), type));
+    }
+
+    /** The chancellor enacts the first card of {@code type} in its hand. */
+    static void chancellorEnacts(SecretHitlerGame game, Policy.Type type) {
+        game.chancellorEnactPolicy(indexOf(game.getChancellorLegislativeChoices(), type));
+    }
+
+    private static int indexOf(List<Policy> cards, Policy.Type type) {
+        for (int i = 0; i < cards.size(); i++) {
+            if (cards.get(i).getType() == type) {
+                return i;
+            }
+        }
+        throw new IllegalStateException("No " + type + " card in " + Decision.letters(cards) + ".");
+    }
+
     /** Cards written as letters ({@code F} and {@code L}), in order. */
     static List<Policy> policies(String cards) {
         List<Policy> policies = new ArrayList<>();
@@ -385,6 +404,30 @@ final class BotScenes {
         played.then(g -> g.chancellorEnactPolicy(0));
         played.botActs();
         played.botActs();
+        return played;
+    }
+
+    /**
+     * Phase 25C's rules: {@code roles}, the bot of {@code bot} made first and updated after every
+     * move. Round 1 is played by the others: {@code LLL} on top, P0 elects P1 (every seat's ja, the
+     * bot's too, made by the scene), P0 discards the first card, P1 enacts the first and P0 ends
+     * the term. It waits at round 2, P1 to nominate, with one liberal policy down and no government
+     * judged (Normal's {@code update} judges none of round 1).
+     *
+     * @throws IllegalArgumentException if the bot sits in P0 or P1, round 1's government.
+     */
+    static Played secondRound(String roles, String bot, BotSkill skill, long seed) {
+        if (bot.equals("P0") || bot.equals("P1")) {
+            throw new IllegalArgumentException("The bot of " + bot + " would sit in round 1's government.");
+        }
+        SecretHitlerGame game = game(roles);
+        Played played = new Played(game, bot(game, bot, skill, seed));
+        played.then(g -> drawTop(g, "LLL"));
+        played.then(g -> g.nominateChancellor("P1"));
+        played.then(g -> voteAll(g, true));
+        played.then(g -> g.presidentDiscardPolicy(0));
+        played.then(g -> g.chancellorEnactPolicy(0));
+        played.then(SecretHitlerGame::endPresidentialTerm);
         return played;
     }
 

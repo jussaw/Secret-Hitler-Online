@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import game.BotScenes.Scene;
+import game.datastructures.Policy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -331,6 +332,175 @@ public class NoPeekingTest {
             twins.others(g -> g.nominateChancellor("P1"));
             twins.botActs();
         });
+    }
+
+    // Hard's other rules (Phase 25C).
+
+    /**
+     * {@link BotScenes#secondRound}'s round 1 on twins, the bot voting itself: {@code LLL} on top,
+     * P0 elects P1, P0 discards the first card, P1 enacts the first and P0 ends the term.
+     */
+    private static void roundOne(Twins twins) {
+        twins.others(g -> BotScenes.drawTop(g, "LLL"));
+        twins.others(g -> g.nominateChancellor("P1"));
+        twins.botActs();
+        twins.others(g -> BotScenes.voteAll(g, true));
+        twins.others(g -> g.presidentDiscardPolicy(0));
+        twins.others(g -> g.chancellorEnactPolicy(0));
+        twins.others(SecretHitlerGame::endPresidentialTerm);
+    }
+
+    /** The chancellor enacts the first fascist card it holds. */
+    private static void enactsAFascist(SecretHitlerGame game) {
+        BotScenes.chancellorEnacts(game, Policy.Type.FASCIST);
+    }
+
+    /**
+     * Rule 5: the bot of P2, an onlooker, judges round 2's government by the deck's odds. P1
+     * discards the liberal card in the first game and a fascist one in the second, P3 enacting a
+     * fascist policy either way, and the cards under round 2's hand are swapped in the second; the
+     * bot then nominates, a decision that reads both members' scores.
+     */
+    @Test
+    public void hardRule5DeckOdds() {
+        everyLevelAndSeed((skill, seed) -> {
+            Twins twins = Twins.of(new Scene(BotScenes.game("LLLFH"), "P2"), new Scene(BotScenes.game("LLLFH"), "P2"),
+                    skill, seed);
+            roundOne(twins);
+            twins.others(g -> BotScenes.drawTop(g, "FFL"), g -> {
+                BotScenes.drawTop(g, "FFL");
+                BotScenes.swapUnseenCards(g, 3);
+            });
+            twins.others(g -> g.nominateChancellor("P3"));
+            twins.botActs();
+            twins.others(g -> BotScenes.voteAll(g, true));
+            twins.others(g -> g.presidentDiscardPolicy(2), g -> g.presidentDiscardPolicy(0));
+            twins.others(NoPeekingTest::enactsAFascist);
+            twins.others(SecretHitlerGame::endPresidentialTerm);
+            twins.botActs();
+        });
+    }
+
+    /**
+     * Rule 5's own cards: round 2 fails, then the bot of P2 presides over FFL, nominates, votes,
+     * discards, and its chancellor enacts a fascist policy, so the bot deduces the card its
+     * chancellor discarded; it then ends its term and votes in round 4. The cards under round 3's
+     * hand, which it never sees, are swapped in the second game.
+     */
+    @Test
+    public void hardRule5PresidentsOwnCards() {
+        everyLevelAndSeed((skill, seed) -> {
+            Twins twins = Twins.of(new Scene(BotScenes.game("LLLFH"), "P2"), new Scene(BotScenes.game("LLLFH"), "P2"),
+                    skill, seed);
+            roundOne(twins);
+            twins.others(g -> g.nominateChancellor("P3"));
+            twins.botActs();
+            twins.others(g -> BotScenes.voteAll(g, false));
+            twins.others(SecretHitlerGame::endPresidentialTerm);
+            twins.others(g -> BotScenes.drawTop(g, "FFL"), g -> {
+                BotScenes.drawTop(g, "FFL");
+                BotScenes.swapUnseenCards(g, 3);
+            });
+            twins.botActs();
+            twins.botActs();
+            twins.others(g -> BotScenes.voteAll(g, true));
+            twins.botActs();
+            twins.others(NoPeekingTest::enactsAFascist);
+            twins.botActs();
+            twins.others(g -> g.nominateChancellor("P0".equals(g.getLastChancellor()) ? "P1" : "P0"));
+            twins.botActs();
+        });
+    }
+
+    /**
+     * Rule 3: the bot of P2 remembers round 2's votes, where P3 and P5 (a liberal and a fascist,
+     * their roles swapped in the second game) back a government that enacts a fascist policy; it
+     * then presides, votes, and votes on P3's nomination, a decision that reads P3's score.
+     */
+    @Test
+    public void hardRule3Votes() {
+        Supplier<Scene> scene = () -> new Scene(BotScenes.game("LLLLFFH"), "P2");
+        Hidden swap = new Hidden("the roles of P3 and P5 swapped", g -> BotScenes.swapRoles(g, "P3", "P5"));
+        playsAlike(scene, scene, List.of(swap), twins -> {
+            roundOne(twins);
+            twins.others(g -> BotScenes.drawTop(g, "FFL"));
+            twins.others(g -> g.nominateChancellor("P4"));
+            twins.others(g -> {
+                g.registerVote("P3", true);
+                g.registerVote("P5", true);
+                g.registerVote("P6", false);
+            });
+            twins.botActs();
+            twins.others(g -> BotScenes.voteAll(g, true));
+            twins.others(g -> g.presidentDiscardPolicy(2));
+            twins.others(NoPeekingTest::enactsAFascist);
+            twins.others(SecretHitlerGame::endPresidentialTerm);
+            twins.botActs();
+            twins.botActs();
+            twins.others(g -> BotScenes.voteAll(g, false));
+            twins.botActs();
+            twins.others(g -> g.nominateChancellor("P0"));
+            twins.botActs();
+        });
+    }
+
+    /** Rule 3 never reads an open election's ballots: P3 votes ja in the first game and nein in the second. */
+    @Test
+    public void hardRule3OpenBallots() {
+        everyLevelAndSeed((skill, seed) -> {
+            Twins twins = Twins.of(BotScenes.vote("LLLFH"), BotScenes.vote("LLLFH"), skill, seed);
+            twins.others(g -> g.registerVote("P3", true), g -> g.registerVote("P3", false));
+            twins.botActs();
+        });
+    }
+
+    /**
+     * Rule 6: two failed elections (P0 nominates P1, then P1 nominates P2, every seat's nein), then
+     * P2 nominates P0 and the bot of P3 votes, with {@code hidden} hidden in the second game.
+     */
+    private static void votesAtTrackerTwo(String roles, Hidden hidden) {
+        playsAlike(() -> new Scene(BotScenes.game(roles), "P3"), () -> new Scene(BotScenes.game(roles), "P3"),
+                List.of(hidden), twins -> {
+                    for (String chancellor : List.of("P1", "P2")) {
+                        twins.others(g -> g.nominateChancellor(chancellor));
+                        twins.others(g -> BotScenes.voteAll(g, false));
+                        twins.others(SecretHitlerGame::endPresidentialTerm);
+                    }
+                    twins.others(g -> g.nominateChancellor("P0"));
+                    twins.botActs();
+                });
+    }
+
+    /** Rule 6 for a liberal: the nominee P0, a liberal, swapped with Hitler. */
+    @Test
+    public void hardRule6TrackerLiberal() {
+        votesAtTrackerTwo("LLFLH",
+                new Hidden("the roles of P0 and P4 swapped", g -> BotScenes.swapRoles(g, "P0", "P4")));
+    }
+
+    /** Rule 6 for Hitler at seven, who knows no other role: the nominee P0, a liberal, swapped with a fascist. */
+    @Test
+    public void hardRule6TrackerHitlerAtSeven() {
+        votesAtTrackerTwo("LLLHLFF",
+                new Hidden("the roles of P0 and P5 swapped", g -> BotScenes.swapRoles(g, "P0", "P5")));
+    }
+
+    /** Rule 6 for a fascist, who knows every role: an unseen card. */
+    @Test
+    public void hardRule6TrackerFascist() {
+        votesAtTrackerTwo("LLLFH", UNSEEN_CARDS);
+    }
+
+    /** Rule 7: a fascist chancellor holding one of each under a liberal president, unseen cards swapped. */
+    @Test
+    public void hardRule7ChancellorBluffs() {
+        actsAlike(() -> BotScenes.chancellorsHand("LFLLH", "FL", "F", 0), List.of(UNSEEN_CARDS));
+    }
+
+    /** Rule 7: a fascist president dealt FFL with a liberal chancellor, the cards it has not seen swapped. */
+    @Test
+    public void hardRule7PresidentBluffs() {
+        actsAlike(() -> BotScenes.presidentsHand("FLLLH", "FFL"), List.of(UNSEEN_CARDS));
     }
 
     // The test's own checks: that its seeds differ, and that the twins catch what they should.

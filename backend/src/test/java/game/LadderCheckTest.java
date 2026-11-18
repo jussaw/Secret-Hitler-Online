@@ -88,6 +88,44 @@ public class LadderCheckTest {
         assertFalse(step.passes());
     }
 
+    /** {@code side}'s step from {@code lower} to {@code higher} in the ladder, or a failure if it has none. */
+    private static Step stepOf(List<Step> ladder, Side side, BotSkill lower, BotSkill higher) {
+        for (Step step : ladder) {
+            if (step.side() == side && step.lower() == lower && step.higher() == higher) {
+                return step;
+            }
+        }
+        throw new AssertionError("The ladder has no step " + side + " " + lower + " < " + higher + ": " + ladder);
+    }
+
+    /**
+     * Normal overlaps Easy and Hard at size 7 while Easy lies clearly above Hard there: the
+     * neighbours' steps pass, and only the Easy < Hard step catches the size.
+     */
+    @Test
+    public void easyClearlyAboveHardAtASizeFailsTheLadder() {
+        Map<Pairing, BotMatches.Results> results = pairings(400, Map.of(
+                new Pairing(E, N), results(300, Map.of(7, 450)),
+                new Pairing(H, N), results(500, Map.of(7, 350)),
+                new Pairing(N, E), results(500),
+                new Pairing(N, H), results(300)));
+
+        List<Step> ladder = LadderCheck.ladder(results);
+
+        assertEquals(6, ladder.size());
+        assertTrue(stepOf(ladder, Side.LIBERAL, E, N).passes());
+        assertTrue(stepOf(ladder, Side.LIBERAL, N, H).passes());
+        Step easyToHard = stepOf(ladder, Side.LIBERAL, E, H);
+        assertTrue(easyToHard.pooledClears());
+        assertEquals(List.of(7), easyToHard.invertedSizes());
+        assertFalse(easyToHard.passes());
+        for (BotSkill[] levels : new BotSkill[][] {{E, N}, {N, H}, {E, H}}) {
+            assertTrue(stepOf(ladder, Side.FASCIST, levels[0], levels[1]).passes());
+        }
+        String verdicts = LadderCheck.verdicts(results);
+        assertTrue(verdicts, verdicts.startsWith("Ladder check: FAIL (Liberal side, Easy < Hard: size 7 inverted)\n"));
+    }
+
     @Test
     public void theFascistSideCountsFascistWins() {
         Map<Pairing, BotMatches.Results> results = pairings(600, Map.of(new Pairing(N, E), results(700)));
@@ -116,14 +154,18 @@ public class LadderCheckTest {
         List<String> lines = List.of(verdicts.split("\n"));
 
         assertTrue(lines.get(0), lines.get(0).startsWith("Ladder check: FAIL ("));
-        for (String step : List.of("Liberal side, Easy < Normal", "Liberal side, Normal < Hard",
-                "Fascist side, Easy < Normal", "Fascist side, Normal < Hard")) {
+        List<String> steps = List.of("Liberal side, Easy < Normal", "Liberal side, Normal < Hard",
+                "Liberal side, Easy < Hard", "Fascist side, Easy < Normal", "Fascist side, Normal < Hard",
+                "Fascist side, Easy < Hard");
+        for (String step : steps) {
             assertTrue(step + " in " + lines.get(0), lines.get(0).contains(step));
         }
-        assertEquals("  Liberal side, Easy < Normal: 50.0% 48.7-51.3% vs 50.0% 48.7-51.3% pooled, overlaps; "
-                + "sizes inverted: none", lines.get(1));
-        assertEquals(6, lines.size());
-        assertEquals("Balance check: PASS (all-Hard 50.0%, all-Normal 50.0%, band 10 points)", lines.get(5));
+        for (int i = 0; i < steps.size(); i++) {
+            assertEquals("  " + steps.get(i) + ": 50.0% 48.7-51.3% vs 50.0% 48.7-51.3% pooled, overlaps; "
+                    + "sizes inverted: none", lines.get(i + 1));
+        }
+        assertEquals(8, lines.size());
+        assertEquals("Balance check: PASS (all-Hard 50.0%, all-Normal 50.0%, band 10 points)", lines.get(7));
     }
 
     @Test
