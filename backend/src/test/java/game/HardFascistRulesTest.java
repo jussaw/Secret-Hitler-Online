@@ -141,7 +141,11 @@ public class HardFascistRulesTest {
         double p6 = share(nine, BotSkill.HARD, "elect P6", SEEDS);
         double p7 = share(nine, BotSkill.HARD, "elect P7", SEEDS);
         assertEquals(p6, p7, 2 * SHARE_TOLERANCE);
-        assertEquals(CpuPlayer.SIDE_ELECTION_CHANCE, p6 + p7, 2 * SHARE_TOLERANCE);
+        double normal = share(nine, BotSkill.NORMAL, "elect P6", SEEDS)
+                + share(nine, BotSkill.NORMAL, "elect P7", SEEDS);
+        assertEquals("Normal's weights: P6 and P7 of 1 + 1 + 1 + 5 x 0.5", 2 / 5.5, normal, 2 * SHARE_TOLERANCE);
+        double chance = CpuPlayer.SIDE_ELECTION_CHANCE;
+        assertEquals(chance + (1 - chance) * normal, p6 + p7, 2 * SHARE_TOLERANCE);
     }
 
     @Test

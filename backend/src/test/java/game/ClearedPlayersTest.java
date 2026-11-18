@@ -160,7 +160,8 @@ public class ClearedPlayersTest {
     /** Rule 1's exception holds for the president too: it votes as Normal does on a nominee it found fascist. */
     @Test
     public void aPresidentVotesAsNormalOnANomineeItFoundFascist() {
-        assertEquals(Optional.empty(), new ClearedPlayers().vote(p1Nominated(3), "P0", -5, Map.of("P1", Identity.FASCIST)));
+        assertEquals(Optional.empty(),
+                new ClearedPlayers().vote(p1Nominated(3), "P0", -5, Map.of("P1", Identity.FASCIST)));
     }
 
     @Test

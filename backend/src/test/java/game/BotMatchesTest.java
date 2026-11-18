@@ -460,7 +460,8 @@ public class BotMatchesTest {
 
         for (String bad : List.of("E/N 5 1 0 0", "X/Y 5 1 0 0 1", "E/N five 1 0 0 1", "E/N 5 1 0 0 0", "E/N 11 2 0 0 0",
                 "Liberals EASY, fascists NORMAL")) {
-            Throwable unread = thrown(() -> BotMatches.readTallies(List.of("Tallies: 2 games at each table size", bad)));
+            Throwable unread = thrown(
+                    () -> BotMatches.readTallies(List.of("Tallies: 2 games at each table size", bad)));
             assertNotNull(bad, unread);
             assertTrue(unread instanceof IllegalArgumentException);
             assertMentions(unread.getMessage(), bad);
