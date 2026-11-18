@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
 import fixture from "./fixtures/recorded-games.json";
-import { EVENT_FIELDS, parseStatsData, playerName, sideOf, type GameRecord, type StatsData } from "./record";
-import { makeData, makeRecord, makeSeats } from "./testRecords";
+import {
+  BOT_SKILLS,
+  botSkillOf,
+  EVENT_FIELDS,
+  parseStatsData,
+  playerName,
+  sideOf,
+  type GameRecord,
+  type StatsData,
+} from "./record";
+import { asFormatTwo, makeData, makeRecord, makeSeats } from "./testRecords";
 
 /** A fresh copy of the contract fixture, safe to change. */
 function fixtureCopy(): StatsData {
@@ -42,9 +51,66 @@ describe("parseStatsData", () => {
   });
 
   it("refuses another format", () => {
-    const data = fixtureCopy();
-    (data.games[3] as unknown as { format: number }).format = 2;
-    expect(() => parseStatsData(data)).toThrow(/Unsupported game record format: 2/);
+    for (const format of [3, 0]) {
+      const data = fixtureCopy();
+      (data.games[3] as unknown as { format: number }).format = format;
+      expect(() => parseStatsData(data)).toThrow(new RegExp(`Unsupported game record format: ${format}`));
+    }
+  });
+
+  describe("the bots' level", () => {
+    const bots = makeRecord({
+      hasCpu: true,
+      seats: makeSeats(["LIBERAL", "LIBERAL", "FASCIST", "LIBERAL", "HITLER"], [1, 2, null, 4, null]),
+    });
+    const none = makeRecord();
+
+    it("reads format 1, which has no level", () => {
+      const data = makeData([bots]);
+      expect(parseStatsData(data)).toBe(data);
+      expect("botSkill" in data.games[0]).toBe(false);
+      expect(botSkillOf(data.games[0])).toBeNull();
+    });
+
+    it("reads format 2 with each level or none", () => {
+      for (const skill of BOT_SKILLS) {
+        const data = makeData([asFormatTwo(bots, skill)]);
+        expect(parseStatsData(data)).toBe(data);
+        expect(botSkillOf(data.games[0])).toBe(skill);
+      }
+      const data = makeData([asFormatTwo(none, null)]);
+      expect(parseStatsData(data)).toBe(data);
+      expect(botSkillOf(data.games[0])).toBeNull();
+    });
+
+    it("refuses a bad level", () => {
+      const withLevel = (level: unknown) =>
+        makeData([{ ...asFormatTwo(bots, "NORMAL"), botSkill: level } as unknown as GameRecord]);
+      expect(() => parseStatsData(withLevel("EXPERT"))).toThrow(
+        'Malformed games response: games[0].botSkill is not a bot skill or null: "EXPERT"'
+      );
+      expect(() => parseStatsData(withLevel("hard"))).toThrow(
+        'Malformed games response: games[0].botSkill is not a bot skill or null: "hard"'
+      );
+      const missing = asFormatTwo(bots, "NORMAL");
+      delete (missing as { botSkill?: unknown }).botSkill;
+      expect(() => parseStatsData(makeData([missing]))).toThrow(/games\[0\]\.botSkill/);
+    });
+
+    it("refuses a level that disagrees with hasCpu", () => {
+      expect(() => parseStatsData(makeData([asFormatTwo(none, "HARD")]))).toThrow(
+        'Malformed games response: games[0].botSkill does not match hasCpu: "HARD"'
+      );
+      expect(() => parseStatsData(makeData([asFormatTwo(bots, null)]))).toThrow(
+        "Malformed games response: games[0].botSkill does not match hasCpu: null"
+      );
+    });
+
+    it("reads a response holding both formats", () => {
+      const data = makeData([bots, { ...asFormatTwo(bots, "HARD"), id: "game-2" }]);
+      expect(parseStatsData(data)).toBe(data);
+      expect(data.games.map(botSkillOf)).toEqual([null, "HARD"]);
+    });
   });
 
   it("refuses a malformed response", () => {

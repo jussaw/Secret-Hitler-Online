@@ -1,8 +1,9 @@
 /**
- * The game record, format 1, as the server stores it and `GET /api/stats/games` serves it (the
- * spec's "The record"), and the check every response goes through before a page reads it. Seats
- * are referred to by index, cards and policies are `L` and `F`, `t` is milliseconds since
- * `startedAt` and `r` the round the move was made in.
+ * The game record, formats 1 and 2, as the server stores it and `GET /api/stats/games` serves it
+ * (the spec's "The record"), and the check every response goes through before a page reads it.
+ * Format 2 (since Phase 26B) adds `botSkill` after `hasCpu`; a record keeps the format it was saved
+ * in, so a response may hold both. Seats are referred to by index, cards and policies are `L` and
+ * `F`, `t` is milliseconds since `startedAt` and `r` the round the move was made in.
  *
  * This module imports nothing that reads the browser, so the browser tests can use it.
  */
@@ -17,6 +18,13 @@ export type Side = (typeof SIDES)[number];
 /** Every way a game ends, the four endings first. */
 export const OUTCOMES = ["LIBERAL_POLICIES", "HITLER_EXECUTED", "FASCIST_POLICIES", "HITLER_ELECTED", "UNFINISHED"] as const;
 export type Outcome = (typeof OUTCOMES)[number];
+/**
+ * Every bot level, as the server names them, easiest first. The lobby has its own list
+ * (`src/types/commands.ts`): this module imports nothing, so the browser tests can use it, and the
+ * stats chunk imports nothing from the game's code.
+ */
+export const BOT_SKILLS = ["EASY", "NORMAL", "HARD"] as const;
+export type BotSkill = (typeof BOT_SKILLS)[number];
 
 export interface Seat {
   player: number | null;
@@ -55,13 +63,15 @@ export type GameEvent =
 
 export interface GameRecord {
   id: string;
-  format: 1;
+  format: 1 | 2;
   startedAt: number;
   endedAt: number;
   outcome: Outcome;
   winner: Side | null;
   complete: boolean;
   hasCpu: boolean;
+  /** Format 2: the level of the game's bots, null without bots. Format 1 has no such key: read it through botSkillOf. */
+  botSkill?: BotSkill | null;
   liberalPolicies: number;
   fascistPolicies: number;
   rounds: number;
@@ -158,7 +168,7 @@ function checkEvent(event: unknown, path: string): void {
 function checkGame(game: unknown, path: string): void {
   check(isObject(game), path, "is not an object");
   const g = game as Json;
-  if (g.format !== 1) {
+  if (g.format !== 1 && g.format !== 2) {
     throw new Error(`Unsupported game record format: ${String(g.format)}`);
   }
   check(typeof g.id === "string", `${path}.id`, "is not a string", g.id);
@@ -168,6 +178,11 @@ function checkGame(game: unknown, path: string): void {
   check(g.winner === null || isOneOf(SIDES, g.winner), `${path}.winner`, "is not a side or null", g.winner);
   check(typeof g.complete === "boolean", `${path}.complete`, "is not a boolean", g.complete);
   check(typeof g.hasCpu === "boolean", `${path}.hasCpu`, "is not a boolean", g.hasCpu);
+  if (g.format === 2) {
+    const skill = g.botSkill;
+    check(skill === null || isOneOf(BOT_SKILLS, skill), `${path}.botSkill`, "is not a bot skill or null", skill);
+    check((skill !== null) === g.hasCpu, `${path}.botSkill`, "does not match hasCpu", skill);
+  }
   for (const key of ["liberalPolicies", "fascistPolicies", "rounds"]) {
     check(isInteger(g[key]), `${path}.${key}`, "is not an integer", g[key]);
   }
@@ -179,8 +194,11 @@ function checkGame(game: unknown, path: string): void {
 
 /**
  * Checks a `GET /api/stats/games` response and returns it, typed and in its own order.
+ * Format 1 records have no `botSkill` (read it through `botSkillOf`); a format 2 record's must be
+ * null or one of `BOT_SKILLS`, and a level exactly when `hasCpu` is true. The input is returned
+ * unchanged, never rewritten.
  * @throws Error naming the first problem found: `Unsupported game record format: <format>` for a
- *   record of a format other than 1, or the path of the first malformed field.
+ *   record of a format other than 1 and 2, or the path of the first malformed field.
  */
 export function parseStatsData(json: unknown): StatsData {
   check(isObject(json), "the response", "is not an object");
@@ -195,6 +213,11 @@ export function parseStatsData(json: unknown): StatsData {
   check(Array.isArray(data.games), "games", "is not an array");
   (data.games as unknown[]).forEach((game, i) => checkGame(game, `games[${i}]`));
   return json as StatsData;
+}
+
+/** The level of the record's bots: null for a game without bots, and for every format 1 record. */
+export function botSkillOf(record: GameRecord): BotSkill | null {
+  return record.format === 2 ? (record.botSkill ?? null) : null;
 }
 
 /** The side a role plays for: Hitler is a Fascist. */
