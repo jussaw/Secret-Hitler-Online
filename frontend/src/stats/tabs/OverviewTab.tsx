@@ -3,7 +3,7 @@ import { LineChart, SERIES_COLORS, type LineSeries } from "../charts/LineChart";
 import { MIN_GAMES, nameOf, type Rate } from "../counting";
 import { PROVISIONAL_GAMES } from "../elo";
 import { formatLocalDateTime, outcomeLabel, plural, sideWord } from "../format";
-import { formatDays, formatPercent } from "../numbers";
+import { countFigure, formatDays, formatPercent, rateFigure } from "../numbers";
 import {
   computeOverview,
   HOT_HAND_GAMES,
@@ -13,7 +13,7 @@ import {
   type Leaders,
 } from "../overview";
 import PlayerName, { roleClass } from "../PlayerName";
-import { countFigure, RankedTable, rateFigure } from "../RankedTable";
+import { RankedTable } from "../RankedTable";
 import type { GameRecord } from "../record";
 import { routePath } from "../routes";
 import { StatCard } from "../StatCard";

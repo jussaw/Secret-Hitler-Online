@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
+import { rate } from "./counting";
 import * as numbers from "./numbers";
-import { formatDays, formatPercent, formatRating, formatSigned, wholePercent } from "./numbers";
+import {
+  countFigure,
+  formatDays,
+  formatPercent,
+  formatRating,
+  formatSigned,
+  rateFigure,
+  wholePercent,
+  wholeRating,
+} from "./numbers";
 
 describe("formatPercent", () => {
   it("rounds to a whole percent", () => {
@@ -42,6 +52,39 @@ describe("formatRating", () => {
   });
 });
 
+describe("wholeRating", () => {
+  it("is the whole number formatRating shows", () => {
+    expect(wholeRating(1497.1)).toBe(1497);
+    expect(wholeRating(1519.5)).toBe(1520);
+    expect(wholeRating(1500)).toBe(1500);
+    expect(wholeRating(1480.49)).toBe(1480);
+    for (const rating of [1497.1, 1519.5, 1500, 1480.49, 1612.7]) {
+      expect(formatRating(rating)).toBe(String(wholeRating(rating)));
+    }
+  });
+});
+
+describe("sort figures", () => {
+  it("aCountsFigureIsItself", () => {
+    expect(countFigure(7)).toBe(7);
+    expect(countFigure(0)).toBe(0);
+    expect(countFigure(-2)).toBe(-2); // a current streak of two losses
+  });
+
+  it("aRatesFigureIsTheWholePercentItShows", () => {
+    const shown = rate(5, 8); // 0.625, shown "63%"
+    expect(formatPercent(shown.value!)).toBe("63%");
+    expect(rateFigure(shown)).toBe(63);
+    expect(rateFigure(rate(0, 5))).toBe(0);
+  });
+
+  it("aRateWithNoValueHasNoFigure", () => {
+    expect(rate(1, 2).value).toBeNull(); // below MIN_CHANCES, shown "—"
+    expect(rateFigure(rate(1, 2))).toBeNull();
+    expect(rateFigure({ hits: 0, chances: 0, value: null })).toBeNull();
+  });
+});
+
 describe("formatDays", () => {
   it("says today, a day or days", () => {
     expect(formatDays(0)).toBe("Today");
@@ -52,6 +95,15 @@ describe("formatDays", () => {
 
 describe("the module", () => {
   it("leaves plural to format.ts and has no formatChange", () => {
-    expect(Object.keys(numbers).sort()).toEqual(["formatDays", "formatPercent", "formatRating", "formatSigned", "wholePercent"]);
+    expect(Object.keys(numbers).sort()).toEqual([
+      "countFigure",
+      "formatDays",
+      "formatPercent",
+      "formatRating",
+      "formatSigned",
+      "rateFigure",
+      "wholePercent",
+      "wholeRating",
+    ]);
   });
 });

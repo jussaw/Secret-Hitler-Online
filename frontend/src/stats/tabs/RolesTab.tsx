@@ -3,8 +3,8 @@ import { computeCards, HAND_LABELS, type CardStats } from "../cards";
 import { MIN_CHANCES, MIN_GAMES, rankRows, rate, type Rate } from "../counting";
 import { plural } from "../format";
 import { ROLE_WORDS } from "../game/text";
-import { formatPercent, formatSigned } from "../numbers";
-import { countFigure, RankedTable, rateFigure, type RankedTableProps } from "../RankedTable";
+import { countFigure, formatPercent, formatSigned, rateFigure, wholePercent } from "../numbers";
+import { RankedTable, type RankedTableProps } from "../RankedTable";
 import { ROLES, type Role } from "../record";
 import { byRole, computeRoles, TABLE_SIZES, type RoleStats } from "../roles";
 import { SplitTable, type SplitCell, type SplitColumn } from "../SplitTable";
@@ -137,7 +137,7 @@ function rolesCards(stats: StatsContext, roles: RoleStats): CardSpec[] {
         larger,
         (luck) => (luck === null ? "—" : `${formatSigned(luck * 100)}%`),
         MIN_GAMES,
-        { valueHead: "Luck", sortValue: (luck) => (luck === null ? null : Math.round(luck * 100)), countHead: "Games" }
+        { valueHead: "Luck", sortValue: (luck) => (luck === null ? null : wholePercent(luck)), countHead: "Games" }
       ),
     },
     {

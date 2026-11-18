@@ -1,5 +1,6 @@
 import { compareNames } from "../counting";
 import { localDayKey, viewerTimeZone } from "../format";
+import { rateFigure, wholeRating } from "../numbers";
 import type { PlayerListRow } from "../player";
 import { NAME_ORDER, nextSort, sortRows, type SortColumn, type SortDirection, type TableSort } from "../sorting";
 
@@ -30,20 +31,17 @@ const FIRST: Readonly<Record<PlayersColumn, SortDirection>> = {
 
 /**
  * PLAYERS' columns, in order, each sorted by its value as the column shows it, so a tie the reader
- * sees keeps the rows' order: the name, the games, the whole percent (`formatPercent`'s; null for
- * a win rate below its minimum, "— (N)", which goes below every rate either way), the rounded
- * rating, and the local day of the last game in `timeZone` ("YYYY-MM-DD", in order as a string).
+ * sees keeps the rows' order: the name, the games, the whole percent (`rateFigure`, what
+ * `formatPercent` shows; null for a win rate below its minimum, "— (N)", which goes below every rate
+ * either way), the rounded rating (`wholeRating`), and the local day of the last game in `timeZone`
+ * ("YYYY-MM-DD", in order as a string).
  */
 export function playersColumns(timeZone: string): SortColumn<PlayerListRow, PlayersColumn>[] {
   return [
     { key: "name", first: FIRST.name, value: (row) => row.name },
     { key: "games", first: FIRST.games, value: (row) => row.games },
-    {
-      key: "winRate",
-      first: FIRST.winRate,
-      value: (row) => (row.winRate.value === null ? null : Math.round(row.winRate.value * 100)),
-    },
-    { key: "rating", first: FIRST.rating, value: (row) => Math.round(row.rating) },
+    { key: "winRate", first: FIRST.winRate, value: (row) => rateFigure(row.winRate) },
+    { key: "rating", first: FIRST.rating, value: (row) => wholeRating(row.rating) },
     { key: "lastPlayed", first: FIRST.lastPlayed, value: (row) => localDayKey(row.lastPlayed, timeZone) },
   ];
 }

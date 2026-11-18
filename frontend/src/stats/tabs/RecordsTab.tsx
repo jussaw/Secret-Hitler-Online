@@ -2,7 +2,7 @@ import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { countLabel, GAME_NOUNS } from "../activity";
 import { compareNames, nameOf, rankRows, type Row } from "../counting";
 import { formatDuration, sideWord, viewerTimeZone } from "../format";
-import { formatPercent, formatRating, formatSigned } from "../numbers";
+import { countFigure, formatPercent, formatRating, formatSigned } from "../numbers";
 import PlayerName, { roleClass } from "../PlayerName";
 import { RankedTable } from "../RankedTable";
 import "../RankedTable.css";
@@ -34,10 +34,9 @@ const LOSS_NOUNS: [string, string] = ["loss", "losses"];
  */
 const DOT = " · ";
 
-/** A current streak: "3 wins", or "2 losses" for a negative one. */
+/** A current streak: "3 wins", or "2 losses" for a negative one. It sorts by the signed run
+ *  (`countFigure`), losses negative. */
 const streakText = (current: number) => (current < 0 ? countLabel(-current, LOSS_NOUNS) : countLabel(current, WIN_NOUNS));
-/** A current streak's sort figure: the signed run, losses negative. */
-const streakFigure = (current: number) => current;
 
 /** One card in the tab's grid, named by its slug. */
 function Cell({ slug, children }: { slug: string; children: ReactNode }): JSX.Element {
@@ -207,7 +206,7 @@ export function RecordsTab(props: { stats: StatsContext; now?: number; timeZone?
       </Cell>
       <Cell slug="current-streaks">
         <StatCard title="Current streaks" definition="Each player's run as of their last counted game." empty={empty}>
-          <RankedTable rows={current} format={streakText} names={names} valueHead="Streak" sortValue={streakFigure} />
+          <RankedTable rows={current} format={streakText} names={names} valueHead="Streak" sortValue={countFigure} />
         </StatCard>
       </Cell>
 

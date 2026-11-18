@@ -1,22 +1,10 @@
 import { useMemo } from "react";
 import { countLabel } from "./countLabel";
-import { nameOf, type Rate, type Row } from "./counting";
-import { wholePercent } from "./numbers";
+import { nameOf, type Row } from "./counting";
 import PlayerName from "./PlayerName";
 import { playerColumn, rankColumn, SortHeadRow, useTableSort, type HeadColumn } from "./SortHead";
 import { RANK_ORDER } from "./sorting";
 import "./RankedTable.css";
-
-/** A count's sort figure (a `sortValue`): the count itself, as its cell shows it. */
-export function countFigure(count: number): number {
-  return count;
-}
-
-/** A rate's sort figure (a `sortValue`): the whole percent its cell shows (`formatPercent`), null
- *  for a rate with no value, shown "—". */
-export function rateFigure(rate: Rate): number | null {
-  return rate.value === null ? null : wholePercent(rate.value);
-}
 
 export interface RankedTableProps<T> {
   /** In rank order, as `rankRows` gives them. */
@@ -25,7 +13,8 @@ export interface RankedTableProps<T> {
   names: Map<number, string>;
   /** The value column's head. */
   valueHead: string;
-  /** A ranked row's sort figure, the number its shown value says; an unranked row's is null. */
+  /** A ranked row's sort figure, the number its shown value says (`numbers.ts`' `countFigure`,
+   *  `rateFigure`, `wholePercent`); an unranked row's is null. */
   sortValue: (value: T) => number | null;
   /** The count column's head; no count column without it. */
   countHead?: string;

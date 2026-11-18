@@ -1,8 +1,8 @@
 import { useId, useMemo } from "react";
 import { compareNames, MIN_CHANCES, nameOf, rankRows, type Rate } from "../counting";
-import { formatPercent } from "../numbers";
+import { countFigure, formatPercent, rateFigure } from "../numbers";
 import { computePowers, type PlayerPowers, type VetoAnswers } from "../powers";
-import { countFigure, RankedTable, rateFigure } from "../RankedTable";
+import { RankedTable } from "../RankedTable";
 import type { Role, Side } from "../record";
 import { SplitTable, type SplitCell, type SplitColumn } from "../SplitTable";
 import { StatCard } from "../StatCard";
