@@ -365,7 +365,9 @@ public final class BotMatches {
      * runs' games a size summed.
      *
      * @throws IllegalArgumentException {@code The two runs do not match.} unless both have the same
-     *                                  pairings and, for each, the same sizes.
+     *                                  pairings and, for each, the same sizes; and when every
+     *                                  tally is the same in both (one run's report given twice,
+     *                                  which would count its games twice).
      */
     static Map<LadderCheck.Pairing, Results> pool(Map<LadderCheck.Pairing, Results> a,
             Map<LadderCheck.Pairing, Results> b) {
@@ -373,6 +375,7 @@ public final class BotMatches {
             throw new IllegalArgumentException(RUNS_DO_NOT_MATCH);
         }
         Map<LadderCheck.Pairing, Results> pooled = new LinkedHashMap<>();
+        boolean same = true;
         for (Map.Entry<LadderCheck.Pairing, Results> entry : a.entrySet()) {
             LadderCheck.Pairing pairing = entry.getKey();
             Results first = entry.getValue();
@@ -381,10 +384,16 @@ public final class BotMatches {
                 throw new IllegalArgumentException(RUNS_DO_NOT_MATCH);
             }
             SortedMap<Integer, Tally> bySize = new TreeMap<>();
-            first.bySize().forEach((seats, tally) ->
-                    bySize.put(seats, Tally.pooled(List.of(tally, second.bySize().get(seats)))));
+            for (Map.Entry<Integer, Tally> size : first.bySize().entrySet()) {
+                Tally other = second.bySize().get(size.getKey());
+                same &= size.getValue().counts.equals(other.counts);
+                bySize.put(size.getKey(), Tally.pooled(List.of(size.getValue(), other)));
+            }
             pooled.put(pairing, new Results(label(pairing.liberals(), pairing.fascists()) + ", pooled",
                     first.gamesPerSize() + second.gamesPerSize(), Collections.unmodifiableSortedMap(bySize)));
+        }
+        if (same) {
+            throw new IllegalArgumentException("The two reports hold the same games: pool two separate runs.");
         }
         return pooled;
     }

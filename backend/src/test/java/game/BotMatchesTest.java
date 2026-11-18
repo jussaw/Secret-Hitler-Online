@@ -423,6 +423,22 @@ public class BotMatchesTest {
         }
     }
 
+    /** One run's report given twice would count its games twice and narrow every interval. */
+    @Test
+    public void poolRefusesOneRunTwice() {
+        int[][] counts = {{1, 2, 3, 4}, {5, 0, 5, 0}, {0, 0, 0, 10}, {10, 0, 0, 0}, {2, 2, 3, 3}, {4, 1, 4, 1}};
+        Map<LadderCheck.Pairing, BotMatches.Results> run = handBuiltRun(10, counts, EN, HH);
+        List<String> report = List.of(BotMatches.ladderReport(BotMatches.ladder(2)).split("\n"));
+
+        for (Runnable call : List.<Runnable>of(() -> BotMatches.pool(run, handBuiltRun(10, counts, EN, HH)),
+                () -> BotMatches.pool(BotMatches.readTallies(report), BotMatches.readTallies(report)))) {
+            Throwable refused = thrown(call);
+            assertNotNull(refused);
+            assertTrue(refused instanceof IllegalArgumentException);
+            assertEquals("The two reports hold the same games: pool two separate runs.", refused.getMessage());
+        }
+    }
+
     @Test
     public void aReportWithoutTalliesIsRefused() {
         Throwable none = thrown(() -> BotMatches.readTallies(List.of("Ladder check: PASS", "Balance check: PASS")));
