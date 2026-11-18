@@ -68,13 +68,13 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
    * Hard's rule 7: how often a Hard fascist chancellor holding one of each card, under a president
    * it knows is liberal, plays the liberal one while the bluff is open (see {@code bluffs}).
    */
-  static final double CHANCELLOR_BLUFF_CHANCE = 0.35;
+  static final double CHANCELLOR_BLUFF_CHANCE = 0.10;
 
   /**
    * Hard's rule 7: how often a Hard fascist president dealt two fascists and a liberal, with a
    * chancellor it knows is liberal, discards a fascist and so passes one of each.
    */
-  static final double PRESIDENT_BLUFF_CHANCE = 0.35;
+  static final double PRESIDENT_BLUFF_CHANCE = 0.10;
 
   /**
    * Hard's rule 3: one closed election as every seat saw it: its round, its government and each
