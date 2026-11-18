@@ -91,15 +91,15 @@ final class Twins {
             List<String> investigated, List<String> bots, String target, SortedMap<String, Identity> knownRoles,
             String cards, List<String> voted, SortedMap<String, Boolean> ballots) {
 
-        static Visible of(SecretHitlerGame g, String bot) {
-            GameState state = g.getState();
-            String president = g.getCurrentPresident();
-            String chancellor = g.getCurrentChancellor();
+        static Visible of(SecretHitlerGame game, String bot) {
+            GameState state = game.getState();
+            String president = game.getCurrentPresident();
+            String chancellor = game.getCurrentChancellor();
             List<String> living = new ArrayList<>();
             List<String> investigated = new ArrayList<>();
             List<String> bots = new ArrayList<>();
             List<String> voted = new ArrayList<>();
-            for (Player player : g.getPlayerList()) {
+            for (Player player : game.getPlayerList()) {
                 String name = player.getUsername();
                 if (player.isAlive()) {
                     living.add(name);
@@ -110,45 +110,37 @@ final class Twins {
                 if (player.isCpu()) {
                     bots.add(name);
                 }
-                if (g.hasPlayerVoted(name)) {
+                if (game.hasPlayerVoted(name)) {
                     voted.add(name);
                 }
             }
             SortedMap<String, Identity> knownRoles = new TreeMap<>();
-            Identity own = g.getPlayer(bot).getIdentity();
+            Identity own = game.getPlayer(bot).getIdentity();
             boolean knowsAll = own == Identity.FASCIST
-                    || (own == Identity.HITLER && g.getPlayerList().size() <= 6);
-            for (Player player : g.getPlayerList()) {
+                    || (own == Identity.HITLER && game.getPlayerList().size() <= 6);
+            for (Player player : game.getPlayerList()) {
                 if (knowsAll || player.getUsername().equals(bot)) {
                     knownRoles.put(player.getUsername(), player.getIdentity());
                 }
             }
             String cards = "";
             if (state == GameState.LEGISLATIVE_PRESIDENT && bot.equals(president)) {
-                cards = letters(g.getPresidentLegislativeChoices());
+                cards = Decision.letters(game.getPresidentLegislativeChoices());
             } else if ((state == GameState.LEGISLATIVE_CHANCELLOR || state == GameState.LEGISLATIVE_PRESIDENT_VETO)
                     && (bot.equals(president) || bot.equals(chancellor))) {
-                cards = letters(g.getChancellorLegislativeChoices());
+                cards = Decision.letters(game.getChancellorLegislativeChoices());
             } else if (state == GameState.PRESIDENTIAL_POWER_PEEK && bot.equals(president)) {
-                cards = letters(g.getPeek());
+                cards = Decision.letters(game.getPeek());
             }
             SortedMap<String, Boolean> ballots = new TreeMap<>();
             if (state != GameState.CHANCELLOR_VOTING) {
-                ballots.putAll(g.getVotes());
+                ballots.putAll(game.getVotes());
             }
-            return new Visible(state, g.getRound(), president, chancellor, g.getLastPresident(),
-                    g.getLastChancellor(), g.getElectionTracker(), g.getNumFascistPolicies(),
-                    g.getNumLiberalPolicies(), g.getLastEnactedPolicy(), g.getDrawSize(), g.getDiscardSize(),
-                    g.didElectionTrackerAdvance(), g.didVetoOccurThisTurn(), living, investigated, bots,
-                    g.getTarget(), knownRoles, cards, voted, ballots);
-        }
-
-        private static String letters(List<Policy> cards) {
-            StringBuilder out = new StringBuilder();
-            for (Policy card : cards) {
-                out.append(card.getType() == Policy.Type.FASCIST ? 'F' : 'L');
-            }
-            return out.toString();
+            return new Visible(state, game.getRound(), president, chancellor, game.getLastPresident(),
+                    game.getLastChancellor(), game.getElectionTracker(), game.getNumFascistPolicies(),
+                    game.getNumLiberalPolicies(), game.getLastEnactedPolicy(), game.getDrawSize(),
+                    game.getDiscardSize(), game.didElectionTrackerAdvance(), game.didVetoOccurThisTurn(), living,
+                    investigated, bots, game.getTarget(), knownRoles, cards, voted, ballots);
         }
     }
 
@@ -196,8 +188,8 @@ final class Twins {
         }
 
         String saw = null;
-        if (decisionA.startsWith("investigate ")) {
-            String target = decisionA.substring("investigate ".length());
+        if (beforeA == GameState.PRESIDENTIAL_POWER_INVESTIGATE && actedA) {
+            String target = a.game().getTarget();
             if (a.game().getPlayer(target).isFascist() != b.game().getPlayer(target).isFascist()) {
                 saw = target;
             }

@@ -136,7 +136,8 @@ final class LadderCheck {
         long hardGames = hard.games();
         long normalWins = normal.liberalWins();
         long normalGames = normal.games();
-        return 100 * Math.abs(hardWins * normalGames - normalWins * hardGames) <= BALANCE_BAND * hardGames * normalGames;
+        return 100 * Math.abs(hardWins * normalGames - normalWins * hardGames)
+                <= BALANCE_BAND * hardGames * normalGames;
     }
 
     /**

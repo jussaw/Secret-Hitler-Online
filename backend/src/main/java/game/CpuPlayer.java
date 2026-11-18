@@ -38,9 +38,6 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
    */
   public static final double EASY_MISTAKE_CHANCE = 0.15;
 
-  /** The chancellor's veto among its moves, beside the indices of its two cards. */
-  private static final int VETO = -1;
-
   private List<Policy.Type> chancellorChoices;
   private transient Random random;
   private int lastUpdatedRound = 1;
@@ -349,7 +346,8 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     if (game.hasPlayerVoted(myName)) {
       return false;
     }
-    if (mistake()) { // Easy: ja or nein at random
+    boolean mistake = mistake();
+    if (mistake) { // Easy: ja or nein at random
       game.registerVote(myName, anyOf(List.of(true, false)));
       return true;
     }
@@ -538,16 +536,13 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     boolean canVeto = game.getNumFascistPolicies() == 5 && !game.didVetoOccurThisTurn();
 
     if (mistake) { // Easy: either card, or a veto where one may be asked for
-      List<Integer> moves = new ArrayList<>(List.of(0, 1));
+      List<Runnable> moves = new ArrayList<>();
+      moves.add(() -> game.chancellorEnactPolicy(0));
+      moves.add(() -> game.chancellorEnactPolicy(1));
       if (canVeto) {
-        moves.add(VETO);
+        moves.add(game::chancellorVeto);
       }
-      int move = anyOf(moves);
-      if (move == VETO) {
-        game.chancellorVeto();
-      } else {
-        game.chancellorEnactPolicy(move);
-      }
+      anyOf(moves).run();
       return true;
     }
 

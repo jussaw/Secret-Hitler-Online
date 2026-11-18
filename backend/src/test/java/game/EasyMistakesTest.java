@@ -88,16 +88,13 @@ public class EasyMistakesTest {
         return distinct;
     }
 
-    /** Sets each named seat's score, and every other seat but the bot's to {@code others}. */
-    private static Consumer<CpuPlayer> scores(int others, Object... seatsAndScores) {
+    /** Sets each seat in {@code named} to its score, and every other seat but the bot's to {@code others}. */
+    private static Consumer<CpuPlayer> scores(int others, Map<String, Integer> named) {
         return bot -> {
             for (String seat : new ArrayList<>(bot.playerReputation.keySet())) {
                 if (!seat.equals(bot.myName)) {
-                    bot.playerReputation.put(seat, others);
+                    bot.playerReputation.put(seat, named.getOrDefault(seat, others));
                 }
-            }
-            for (int i = 0; i < seatsAndScores.length; i += 2) {
-                bot.playerReputation.put((String) seatsAndScores[i], (Integer) seatsAndScores[i + 1]);
             }
         };
     }
@@ -107,7 +104,7 @@ public class EasyMistakesTest {
 
     @Test
     public void nominations() {
-        assertMistakes(() -> BotScenes.nomination("LLLFH"), scores(0, "P0", 5, "P3", -5, "P4", -5),
+        assertMistakes(() -> BotScenes.nomination("LLLFH"), scores(0, Map.of("P0", 5, "P3", -5, "P4", -5)),
                 List.of("nominate P0", "nominate P3", "nominate P4"));
     }
 
@@ -119,7 +116,8 @@ public class EasyMistakesTest {
 
     @Test
     public void votes() {
-        assertMistakes(() -> BotScenes.vote("LLLFH"), scores(0, "P0", 5, "P1", 5), List.of("vote ja", "vote nein"));
+        assertMistakes(() -> BotScenes.vote("LLLFH"), scores(0, Map.of("P0", 5, "P1", 5)),
+                List.of("vote ja", "vote nein"));
     }
 
     @Test
@@ -140,6 +138,16 @@ public class EasyMistakesTest {
                 List.of("veto", "enact F", "enact F"));
     }
 
+    /** After the president refuses a veto, the chancellor must enact: no level asks for it again. */
+    @Test
+    public void noVetoAfterARefusedOne() {
+        assertMistakes(() -> {
+            Scene answer = BotScenes.vetoAnswer("LLLFH");
+            answer.game().presidentialVeto(false);
+            return new Scene(answer.game(), "P1");
+        }, NO_SCORES, List.of("enact F", "enact F"));
+    }
+
     @Test
     public void vetoAnswers() {
         assertMistakes(() -> BotScenes.vetoAnswer("LLLFH"), NO_SCORES, List.of("accept veto", "refuse veto"));
@@ -147,20 +155,20 @@ public class EasyMistakesTest {
 
     @Test
     public void investigations() {
-        assertMistakes(() -> BotScenes.power("LLLLLFFFH", 1, ""), scores(5, "P5", -5),
+        assertMistakes(() -> BotScenes.power("LLLLLFFFH", 1, ""), scores(5, Map.of("P5", -5)),
                 List.of("investigate P5", "investigate P1", "investigate P2", "investigate P3", "investigate P4",
                         "investigate P6", "investigate P7", "investigate P8"));
     }
 
     @Test
     public void specialElections() {
-        assertMistakes(() -> BotScenes.power("LLLLFFH", 3, ""), scores(-5, "P3", 5),
+        assertMistakes(() -> BotScenes.power("LLLLFFH", 3, ""), scores(-5, Map.of("P3", 5)),
                 List.of("elect P3", "elect P1", "elect P2", "elect P4", "elect P5", "elect P6"));
     }
 
     @Test
     public void executions() {
-        assertMistakes(() -> BotScenes.power("LLLFH", 4, ""), scores(5, "P3", -5),
+        assertMistakes(() -> BotScenes.power("LLLFH", 4, ""), scores(5, Map.of("P3", -5)),
                 List.of("execute P3", "execute P1", "execute P2", "execute P4"));
     }
 

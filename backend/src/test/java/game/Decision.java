@@ -9,8 +9,18 @@ final class Decision {
     private Decision() {
     }
 
-    private static String letter(Policy.Type type) {
+    /** A card's letter: {@code F} or {@code L}. */
+    static String letter(Policy.Type type) {
         return type == Policy.Type.FASCIST ? "F" : "L";
+    }
+
+    /** Cards as letters, in order: {@code FFL}. */
+    static String letters(List<Policy> cards) {
+        StringBuilder out = new StringBuilder();
+        for (Policy card : cards) {
+            out.append(letter(card.getType()));
+        }
+        return out.toString();
     }
 
     /**
@@ -33,10 +43,8 @@ final class Decision {
                 return "nominate " + after.getCurrentChancellor();
             case CHANCELLOR_VOTING:
                 return "vote " + (after.getVotes().get(bot) ? "ja" : "nein");
-            case LEGISLATIVE_PRESIDENT: {
-                List<Policy> passed = after.getChancellorLegislativeChoices();
-                return "pass " + letter(passed.get(0).getType()) + letter(passed.get(1).getType());
-            }
+            case LEGISLATIVE_PRESIDENT:
+                return "pass " + letters(after.getChancellorLegislativeChoices());
             case LEGISLATIVE_CHANCELLOR:
                 if (after.getState() == GameState.LEGISLATIVE_PRESIDENT_VETO) {
                     return "veto";

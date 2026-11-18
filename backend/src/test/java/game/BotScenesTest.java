@@ -8,21 +8,12 @@ import static org.junit.Assert.assertTrue;
 import game.BotScenes.Scene;
 import game.datastructures.Identity;
 import game.datastructures.Player;
-import game.datastructures.Policy;
 import java.util.List;
 import java.util.Random;
 import org.junit.Test;
 
 /** The scenes the bot tests build: each stops at the decision it names, with the cards it names. */
 public class BotScenesTest {
-
-    private static String letters(List<Policy> cards) {
-        StringBuilder out = new StringBuilder();
-        for (Policy card : cards) {
-            out.append(card.getType() == Policy.Type.FASCIST ? 'F' : 'L');
-        }
-        return out.toString();
-    }
 
     private static int countOf(String cards, char type) {
         int count = 0;
@@ -72,25 +63,25 @@ public class BotScenesTest {
         assertEquals(GameState.LEGISLATIVE_PRESIDENT, hand.game().getState());
         assertEquals("P0", hand.game().getCurrentPresident());
         assertEquals("P1", hand.game().getCurrentChancellor());
-        assertEquals("FLL", letters(hand.game().getPresidentLegislativeChoices()));
+        assertEquals("FLL", Decision.letters(hand.game().getPresidentLegislativeChoices()));
 
         Scene choice = BotScenes.chancellorsHand("LHLLLFF", "FL", "F", 0);
         assertEquals("P1", choice.bot());
         assertEquals(GameState.LEGISLATIVE_CHANCELLOR, choice.game().getState());
         assertEquals("P1", choice.game().getCurrentChancellor());
-        assertEquals("FL", letters(choice.game().getChancellorLegislativeChoices()));
+        assertEquals("FL", Decision.letters(choice.game().getChancellorLegislativeChoices()));
         assertEquals(1, choice.game().getDiscardSize());
 
         Scene veto = BotScenes.chancellorsHand("LLLFH", "FF", "F", 5);
         assertEquals(5, veto.game().getNumFascistPolicies());
         assertEquals(GameState.LEGISLATIVE_CHANCELLOR, veto.game().getState());
-        assertEquals("FF", letters(veto.game().getChancellorLegislativeChoices()));
+        assertEquals("FF", Decision.letters(veto.game().getChancellorLegislativeChoices()));
 
         Scene answer = BotScenes.vetoAnswer("LLLFH");
         assertEquals("P0", answer.bot());
         assertEquals(GameState.LEGISLATIVE_PRESIDENT_VETO, answer.game().getState());
         assertEquals("P0", answer.game().getCurrentPresident());
-        assertEquals("FF", letters(answer.game().getChancellorLegislativeChoices()));
+        assertEquals("FF", Decision.letters(answer.game().getChancellorLegislativeChoices()));
 
         Scene investigate = BotScenes.power("LLLLLFFFH", 1, "");
         assertEquals("P0", investigate.bot());
@@ -103,7 +94,7 @@ public class BotScenesTest {
 
         Scene peek = BotScenes.power("LLLFH", 3, "LLF");
         assertEquals(GameState.PRESIDENTIAL_POWER_PEEK, peek.game().getState());
-        assertEquals("LLF", letters(peek.game().getPeek()));
+        assertEquals("LLF", Decision.letters(peek.game().getPeek()));
 
         Scene execute = BotScenes.power("FLLLLFH", 4, "");
         assertEquals(GameState.PRESIDENTIAL_POWER_EXECUTION, execute.game().getState());

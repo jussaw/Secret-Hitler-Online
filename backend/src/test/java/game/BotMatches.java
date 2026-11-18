@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 import server.stats.CpuGames;
 
 /**
@@ -32,10 +33,6 @@ public final class BotMatches {
             GameState.LIBERAL_VICTORY_EXECUTION,
             GameState.FASCIST_VICTORY_POLICY,
             GameState.FASCIST_VICTORY_ELECTION);
-
-    /** The bots as they are built, whatever their seat's role. */
-    public static final BiFunction<String, Identity, CpuPlayer> BOTS_AS_BUILT = (name, role) -> new CpuPlayer(name);
-    public static final String BOTS_AS_BUILT_LABEL = "Bots as built";
 
     private static final double Z = 1.96; // a 95% interval
 
@@ -224,10 +221,14 @@ public final class BotMatches {
     public static Map<LadderCheck.Pairing, Results> ladder(int gamesPerSize) {
         Map<LadderCheck.Pairing, Results> results = new LinkedHashMap<>();
         for (LadderCheck.Pairing pairing : LadderCheck.PAIRINGS) {
-            results.put(pairing, play(gamesPerSize, label(pairing.liberals(), pairing.fascists()),
-                    makeBots(pairing.liberals(), pairing.fascists())));
+            results.put(pairing, playAt(gamesPerSize, pairing.liberals(), pairing.fascists()));
         }
         return results;
+    }
+
+    /** {@link #play} with each side's bots at its level, named by {@link #label}. */
+    private static Results playAt(int gamesPerSize, BotSkill liberals, BotSkill fascists) {
+        return play(gamesPerSize, label(liberals, fascists), makeBots(liberals, fascists));
     }
 
     /**
@@ -245,25 +246,14 @@ public final class BotMatches {
         rows.add(header);
         Results first = results.values().iterator().next();
         for (int seats : first.bySize().keySet()) {
-            List<String> row = new ArrayList<>();
-            row.add(Integer.toString(seats));
-            for (Results pairing : results.values()) {
-                Tally tally = pairing.bySize().get(seats);
-                row.add(LadderCheck.rate(tally.liberalWins(), tally.games()));
-            }
-            rows.add(row);
+            rows.add(rateRow(Integer.toString(seats), results, pairing -> pairing.bySize().get(seats)));
         }
-        List<String> all = new ArrayList<>();
-        all.add("All");
-        for (Results pairing : results.values()) {
-            Tally pooled = pairing.pooled();
-            all.add(LadderCheck.rate(pooled.liberalWins(), pooled.games()));
-        }
-        rows.add(all);
+        rows.add(rateRow("All", results, Results::pooled));
 
         StringBuilder out = new StringBuilder();
         out.append(String.format(Locale.ROOT,
-                "Ladder and balance pairings (liberals/fascists; E Easy, N Normal, H Hard): %d games at each table size",
+                "Ladder and balance pairings (liberals/fascists; E Easy, N Normal, H Hard): "
+                        + "%d games at each table size",
                 first.gamesPerSize())).append('\n');
         out.append(aligned(rows)).append('\n');
         out.append(LadderCheck.verdicts(results));
@@ -271,6 +261,18 @@ public final class BotMatches {
             out.append('\n').append(pairing.table());
         }
         return out.toString();
+    }
+
+    /** A row of the side-by-side table: its name, then each pairing's liberal rate in {@code tallyOf} its results. */
+    private static List<String> rateRow(String name, Map<LadderCheck.Pairing, Results> results,
+            Function<Results, Tally> tallyOf) {
+        List<String> row = new ArrayList<>();
+        row.add(name);
+        for (Results pairing : results.values()) {
+            Tally tally = tallyOf.apply(pairing);
+            row.add(LadderCheck.rate(tally.liberalWins(), tally.games()));
+        }
+        return row;
     }
 
     /** Rows of cells as lines, each column right-aligned to its widest cell, two spaces apart. */
@@ -380,8 +382,7 @@ public final class BotMatches {
         if (options.ladder()) {
             System.out.print(ladderReport(ladder(options.games())));
         } else {
-            System.out.print(play(options.games(), label(options.liberals(), options.fascists()),
-                    makeBots(options.liberals(), options.fascists())).table());
+            System.out.print(playAt(options.games(), options.liberals(), options.fascists()).table());
         }
     }
 }

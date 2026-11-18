@@ -336,6 +336,6 @@ public class BotMatchesTest {
 
     @Test
     public void noGamesIsRefused() {
-        assertRefused(() -> BotMatches.play(0, "No bots", BotMatches.BOTS_AS_BUILT));
+        assertRefused(() -> BotMatches.play(0, "No bots", BotMatches.makeBots(BotSkill.NORMAL, BotSkill.NORMAL)));
     }
 }

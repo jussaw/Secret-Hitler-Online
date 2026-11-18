@@ -1138,7 +1138,7 @@ Issue #72, part 3's start. Backend only; changes nothing on screen. Starts once 
 
 **Phase 25A acceptance**
 
-- [ ] Backend tests pass
+- [x] Backend tests pass
 - [ ] PR merged into `development`
 
 ---

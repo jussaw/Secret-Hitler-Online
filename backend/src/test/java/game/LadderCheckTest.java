@@ -30,26 +30,30 @@ public class LadderCheckTest {
         return tally;
     }
 
-    /** 1,000 games at each size, the liberals winning {@code liberalWins} of them at every size but those given. */
-    private static BotMatches.Results results(int liberalWins, int... sizeAndWins) {
+    /** 1,000 games at each size, the liberals winning {@code liberalWins} of them at every size. */
+    private static BotMatches.Results results(int liberalWins) {
+        return results(liberalWins, Map.of());
+    }
+
+    /** As {@link #results(int)}, but the liberals win {@code bySizeWins}' count at each size it names. */
+    private static BotMatches.Results results(int liberalWins, Map<Integer, Integer> bySizeWins) {
         SortedMap<Integer, BotMatches.Tally> bySize = new TreeMap<>();
         for (int seats = 5; seats <= 10; seats++) {
-            bySize.put(seats, tally(liberalWins, 1000));
-        }
-        for (int i = 0; i < sizeAndWins.length; i += 2) {
-            bySize.put(sizeAndWins[i], tally(sizeAndWins[i + 1], 1000));
+            bySize.put(seats, tally(bySizeWins.getOrDefault(seats, liberalWins), 1000));
         }
         return new BotMatches.Results("Test", 1000, bySize);
     }
 
-    /** Every pairing at {@code liberalWins} of 1,000 a size, but those given. */
-    private static Map<Pairing, BotMatches.Results> pairings(int liberalWins, Object... pairingsAndResults) {
+    /** Every pairing at {@code liberalWins} of 1,000 a size. */
+    private static Map<Pairing, BotMatches.Results> pairings(int liberalWins) {
+        return pairings(liberalWins, Map.of());
+    }
+
+    /** As {@link #pairings(int)}, but each pairing {@code others} names has its results. */
+    private static Map<Pairing, BotMatches.Results> pairings(int liberalWins, Map<Pairing, BotMatches.Results> others) {
         Map<Pairing, BotMatches.Results> all = new LinkedHashMap<>();
         for (Pairing pairing : LadderCheck.PAIRINGS) {
-            all.put(pairing, results(liberalWins));
-        }
-        for (int i = 0; i < pairingsAndResults.length; i += 2) {
-            all.put((Pairing) pairingsAndResults[i], (BotMatches.Results) pairingsAndResults[i + 1]);
+            all.put(pairing, others.getOrDefault(pairing, results(liberalWins)));
         }
         return all;
     }
@@ -74,7 +78,8 @@ public class LadderCheckTest {
 
     @Test
     public void aSizeWhereTheHigherLevelIsClearlyLowerFailsTheStep() {
-        Map<Pairing, BotMatches.Results> results = pairings(300, new Pairing(H, N), results(450, 7, 150));
+        Map<Pairing, BotMatches.Results> results =
+                pairings(300, Map.of(new Pairing(H, N), results(450, Map.of(7, 150))));
 
         Step step = LadderCheck.step(Side.LIBERAL, N, H, results);
 
@@ -85,23 +90,24 @@ public class LadderCheckTest {
 
     @Test
     public void theFascistSideCountsFascistWins() {
-        Map<Pairing, BotMatches.Results> results = pairings(600, new Pairing(N, E), results(700));
+        Map<Pairing, BotMatches.Results> results = pairings(600, Map.of(new Pairing(N, E), results(700)));
 
         assertEquals(300, LadderCheck.wins(Side.FASCIST, results.get(new Pairing(N, E)).pooled()) / 6);
         Step step = LadderCheck.step(Side.FASCIST, E, N, results);
         assertTrue(step.pooledClears());
         assertEquals(List.of(), step.invertedSizes());
         assertTrue(step.passes());
-        assertFalse(LadderCheck.step(Side.LIBERAL, E, N, pairings(600, new Pairing(E, N), results(700))).passes());
+        Map<Pairing, BotMatches.Results> easyLiberalsAhead = pairings(600, Map.of(new Pairing(E, N), results(700)));
+        assertFalse(LadderCheck.step(Side.LIBERAL, E, N, easyLiberalsAhead).passes());
     }
 
     @Test
     public void balanceAllowsTenPointsEitherWay() {
         Pairing allHard = new Pairing(H, H);
-        assertTrue(LadderCheck.balanced(pairings(350, allHard, results(450))));
-        assertTrue(LadderCheck.balanced(pairings(350, allHard, results(250))));
-        assertFalse(LadderCheck.balanced(pairings(350, allHard, results(451))));
-        assertFalse(LadderCheck.balanced(pairings(350, allHard, results(249))));
+        assertTrue(LadderCheck.balanced(pairings(350, Map.of(allHard, results(450)))));
+        assertTrue(LadderCheck.balanced(pairings(350, Map.of(allHard, results(250)))));
+        assertFalse(LadderCheck.balanced(pairings(350, Map.of(allHard, results(451)))));
+        assertFalse(LadderCheck.balanced(pairings(350, Map.of(allHard, results(249)))));
     }
 
     @Test
@@ -122,9 +128,9 @@ public class LadderCheckTest {
 
     @Test
     public void aPassingLadderSaysSo() {
-        Map<Pairing, BotMatches.Results> results = pairings(400, new Pairing(E, N), results(300),
+        Map<Pairing, BotMatches.Results> results = pairings(400, Map.of(new Pairing(E, N), results(300),
                 new Pairing(H, N), results(500), new Pairing(N, E), results(500), new Pairing(N, H), results(300),
-                new Pairing(H, H), results(480));
+                new Pairing(H, H), results(480)));
         String verdicts = LadderCheck.verdicts(results);
 
         assertTrue(verdicts, verdicts.startsWith("Ladder check: PASS\n"));
@@ -132,7 +138,7 @@ public class LadderCheckTest {
                 + "68.8-71.1% pooled, clears; sizes inverted: none\n"));
         assertTrue(verdicts, verdicts.endsWith("Balance check: PASS (all-Hard 48.0%, all-Normal 40.0%, band 10 "
                 + "points)\n"));
-        assertTrue(LadderCheck.verdicts(pairings(400, new Pairing(E, N), results(500)))
+        assertTrue(LadderCheck.verdicts(pairings(400, Map.of(new Pairing(E, N), results(500))))
                 .contains("  Liberal side, Easy < Normal: 50.0% 48.7-51.3% vs 40.0% 38.8-41.2% pooled, inverted;"));
     }
 

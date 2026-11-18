@@ -186,7 +186,7 @@ final class BotScenes {
         Deck draw = draw(game);
         StringBuilder out = new StringBuilder();
         for (int i = 0; i < draw.getSize(); i++) {
-            out.append(draw.peek(i).getType() == Policy.Type.FASCIST ? 'F' : 'L');
+            out.append(Decision.letter(draw.peek(i).getType()));
         }
         return out.toString();
     }
