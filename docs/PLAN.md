@@ -61,7 +61,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 23. One header for the site | `phase-23-site-header` | done |
 | 24. Bot fixes and self-play | `phase-24-bot-fixes` | done |
 | 25A. Bot skill levels | `phase-25a-bot-levels` | done |
-| 25B. Hard's first rules | `phase-25b-hard-reads` | planned |
+| 25B. Hard's first rules | `phase-25b-hard-reads` | done |
 | 25C. Hard's other rules | `phase-25c-hard-bots` | planned |
 | 25D. Ladder and balance | `phase-25d-ladder-balance` | planned |
 | 26A. Bot skill in the lobby | `phase-26a-lobby-bot-skill` | planned |
@@ -1149,16 +1149,16 @@ Breakdown: [`docs/superpowers/plans/2026-11-17-phase-25b-hard-reads.md`](superpo
 
 Issue #72, part 3. Backend only; changes nothing on screen. Starts once 25A has merged.
 
-- [ ] Hard's rule 1 (cleared players), with its own tests and in the no-peeking test
-- [ ] Hard's rule 2 (the chancellor's hand), with its own tests and in the no-peeking test
-- [ ] Hard's rule 4 (the peek), with its own tests and in the no-peeking test
-- [ ] A Hard bot's memory survives a backup, and `-Pladder` shows Hard not below Normal
-- [ ] `CLAUDE.md` updated; the pull request quotes `botMatches -Pladder` before and after
+- [x] Hard's rule 1 (cleared players), with its own tests and in the no-peeking test
+- [x] Hard's rule 2 (the chancellor's hand), with its own tests and in the no-peeking test
+- [x] Hard's rule 4 (the peek), with its own tests and in the no-peeking test
+- [x] A Hard bot's memory survives a backup, and `-Pladder` shows Hard not below Normal
+- [x] `CLAUDE.md` updated; the pull request quotes `botMatches -Pladder` before and after
 
 **Phase 25B acceptance**
 
-- [ ] Backend tests pass
-- [ ] PR merged into `development`
+- [x] Backend tests pass
+- [x] PR merged into `development`
 
 ---
 

@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import game.BotScenes.Played;
 import game.BotScenes.Scene;
 import game.datastructures.Identity;
 import game.datastructures.Player;
@@ -211,5 +212,34 @@ public class BotScenesTest {
         assertEquals(Integer.valueOf(0), bot.playerReputation.get("P0"));
         assertNull(bot.knownPlayerRoles.get("P0"));
         assertEquals(Identity.LIBERAL, bot.knownPlayerRoles.get("P2"));
+    }
+
+    @Test
+    public void clearedWaitsForP2sNominationAtThreeFascistPolicies() {
+        Played played = BotScenes.cleared("P5", BotSkill.NORMAL, 0);
+        SecretHitlerGame game = played.game();
+        assertRoles(game, "FLLFLLH");
+        assertEquals("P5", played.bot().myName);
+        assertEquals(GameState.CHANCELLOR_NOMINATION, game.getState());
+        assertEquals(3, game.getRound());
+        assertEquals("P2", game.getCurrentPresident());
+        assertEquals("P1", game.getLastPresident());
+        assertEquals("P4", game.getLastChancellor());
+        assertEquals(3, game.getNumFascistPolicies());
+        assertEquals(2, game.getNumLiberalPolicies());
+    }
+
+    @Test
+    public void peekedWaitsForP1sNominationOnceTheBotHasPeeked() {
+        Played played = BotScenes.peeked("LLLFH", "LFF", BotSkill.NORMAL, 0);
+        SecretHitlerGame game = played.game();
+        assertRoles(game, "LLLFH");
+        assertEquals("P0", played.bot().myName);
+        assertEquals(GameState.CHANCELLOR_NOMINATION, game.getState());
+        assertEquals(2, game.getRound());
+        assertEquals("P1", game.getCurrentPresident());
+        assertEquals(3, game.getNumFascistPolicies());
+        assertEquals("LFF", BotScenes.drawPile(game).substring(0, 3));
+        assertEquals(12, game.getDrawSize());
     }
 }

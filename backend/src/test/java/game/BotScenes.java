@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
+import java.util.function.Consumer;
 
 /**
  * Games stopped at one of a bot's decisions, with the roles, board and cards a test names, for
@@ -28,6 +29,39 @@ final class BotScenes {
 
     /** A game stopped at a bot's decision, and the seat of the bot that makes it (not yet made). */
     record Scene(SecretHitlerGame game, String bot) {
+    }
+
+    /**
+     * A game and its bot, made before the game's first move and updated after every move since,
+     * as the lobby updates its bots after every command: what a Hard bot remembers comes from
+     * seeing each state.
+     */
+    record Played(SecretHitlerGame game, CpuPlayer bot) {
+        /** {@code move}, then the bot's update. */
+        void then(Consumer<SecretHitlerGame> move) {
+            move.accept(game);
+            bot.update(game);
+        }
+
+        /**
+         * The bot updates again with no move between, as it does on every lobby tick and command
+         * that leaves the game as it was: what it remembers must not count a state twice.
+         */
+        void updateAgain() {
+            bot.update(game);
+        }
+
+        /**
+         * The bot acts, then updates.
+         *
+         * @throws IllegalStateException if the bot did not act.
+         */
+        void botActs() {
+            if (!bot.act(game)) {
+                throw new IllegalStateException(bot.myName + " had nothing to do in " + game.getState() + ".");
+            }
+            bot.update(game);
+        }
     }
 
     /** The role a letter names: {@code L}, {@code F} or {@code H}. */
@@ -181,6 +215,15 @@ final class BotScenes {
         voteAll(game, true);
     }
 
+    /** Cards written as letters ({@code F} and {@code L}), in order. */
+    static List<Policy> policies(String cards) {
+        List<Policy> policies = new ArrayList<>();
+        for (char letter : cards.toCharArray()) {
+            policies.add(new Policy(type(letter)));
+        }
+        return policies;
+    }
+
     /** The draw pile, top first, as letters (for the scenes' own tests). */
     static String drawPile(SecretHitlerGame game) {
         Deck draw = draw(game);
@@ -303,6 +346,62 @@ final class BotScenes {
         game.presidentDiscardPolicy(0);
         game.chancellorEnactPolicy(0);
         return new Scene(game, "P0");
+    }
+
+    /**
+     * Hard's rule 1: {@code FLLFLLH} with 3 fascist policies down and {@code LLLLLL} on top, the bot
+     * of {@code botSeat} made first. Round 1 P0 elects P3, round 2 P1 elects P4, each with every
+     * seat's ja (the bot's too, made by the scene), the president discarding the first card and the
+     * chancellor enacting a liberal policy, then END TERM, the bot updated after every move. It waits
+     * at round 3, P2 to nominate: P3 and P4 are cleared, and P1 (the last president) and P4 (the last
+     * chancellor) may not be nominated.
+     */
+    static Played cleared(String botSeat, BotSkill skill, long seed) {
+        SecretHitlerGame game = clearedStart();
+        Played played = new Played(game, bot(game, botSeat, skill, seed));
+        for (String chancellor : List.of("P3", "P4")) {
+            played.then(g -> g.nominateChancellor(chancellor));
+            played.then(g -> voteAll(g, true));
+            played.then(g -> g.presidentDiscardPolicy(0));
+            played.then(g -> g.chancellorEnactPolicy(0));
+            played.then(SecretHitlerGame::endPresidentialTerm);
+        }
+        return played;
+    }
+
+    /**
+     * Hard's rule 4: {@code roles} with 2 fascist policies down and {@code FFF} then {@code peek} on
+     * top, the bot P0 made first and updated after every move. P0 elects P1 (the scene nominates and
+     * votes for the bot's seat too), the bot discards (it acts, so it remembers what it passed), P1
+     * enacts the third fascist policy, and the bot peeks at {@code peek} and ends its term (acting
+     * twice). It waits at round 2, P1 to nominate.
+     */
+    static Played peeked(String roles, String peek, BotSkill skill, long seed) {
+        SecretHitlerGame game = peekStart(roles, peek);
+        Played played = new Played(game, bot(game, "P0", skill, seed));
+        played.then(g -> g.nominateChancellor("P1"));
+        played.then(g -> voteAll(g, true));
+        played.botActs();
+        played.then(g -> g.chancellorEnactPolicy(0));
+        played.botActs();
+        played.botActs();
+        return played;
+    }
+
+    /** {@link #cleared}'s game before its first move: {@code FLLFLLH}, 3 fascist policies, {@code LLLLLL} on top. */
+    static SecretHitlerGame clearedStart() {
+        SecretHitlerGame game = game("FLLFLLH");
+        board(game, 3, 0);
+        drawTop(game, "LLLLLL");
+        return game;
+    }
+
+    /** {@link #peeked}'s game before its first move: 2 fascist policies, {@code FFF} then {@code peek} on top. */
+    static SecretHitlerGame peekStart(String roles, String peek) {
+        SecretHitlerGame game = game(roles);
+        board(game, 2, 0);
+        drawTop(game, "FFF" + peek);
+        return game;
     }
 
     private static Object field(SecretHitlerGame game, String name) {
