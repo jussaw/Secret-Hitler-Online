@@ -22,7 +22,7 @@ import org.junit.Test;
  * discarded, how others have voted while the election is open), decides the same and remembers
  * the same, at every level and seed.
  *
- * <p>To cover a new rule (Phases 25B and 25C): add a test inside {@link #everyLevelAndSeed} that
+ * <p>To cover a new rule (as Phases 25B, 25C and 25D did): add a test inside {@link #everyLevelAndSeed} that
  * builds both games with {@link BotScenes}, hides a fact in the second (each pair of
  * {@link #swaps} with {@code swapRoles} for a bot that does not know every role,
  * {@code swapUnseenCards}, or {@link Twins#others(Consumer, Consumer)} for a discard or an open

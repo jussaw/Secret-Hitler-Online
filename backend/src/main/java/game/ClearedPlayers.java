@@ -12,10 +12,11 @@ import java.util.Set;
 
 /**
  * Hard's rule 1 (issue #72, the bot skill design's "Cleared players"): the players a Hard liberal
- * CPU has seen proved not to be Hitler, and its vote, which as president is ja for its own nominee. Electing Hitler chancellor with 3 or more fascist policies
- * down ends the game, so a chancellor seen in a legislative session at 3 or more (where the
- * election has passed and nothing has been enacted since) is not Hitler. It reads only what every
- * seat sees: the state, the board and the chancellor.
+ * CPU has seen proved not to be Hitler, and the vote the rule gives it (as president, ja for its
+ * own nominee). Electing Hitler chancellor with 3 or more fascist policies down ends the game, so
+ * a chancellor seen in a legislative session at 3 or more (where the election has passed and
+ * nothing has been enacted since) is not Hitler. It reads only what every seat sees: the state,
+ * the board and the chancellor.
  */
 final class ClearedPlayers implements Serializable {
     private static final long serialVersionUID = 1L;
