@@ -115,12 +115,18 @@ final class LadderCheck {
         return new Step(side, lower, higher, pooledClears, List.copyOf(inverted));
     }
 
-    /** The ladder's four steps: the liberal side's Easy < Normal and Normal < Hard, then the fascist side's. */
+    /**
+     * The ladder's six steps: the liberal side's Easy < Normal, Normal < Hard and Easy < Hard, then
+     * the fascist side's. Easy < Hard's pooled part follows from the other two; its sizes catch an
+     * Easy clearly above Hard where Normal overlaps both, which the spec's per-size rule (any
+     * higher level) forbids.
+     */
     static List<Step> ladder(Map<Pairing, Results> results) {
         List<Step> steps = new ArrayList<>();
         for (Side side : Side.values()) {
             steps.add(step(side, BotSkill.EASY, BotSkill.NORMAL, results));
             steps.add(step(side, BotSkill.NORMAL, BotSkill.HARD, results));
+            steps.add(step(side, BotSkill.EASY, BotSkill.HARD, results));
         }
         return steps;
     }
