@@ -37,7 +37,7 @@ public final class CpuGames {
      *
      * @param stopAtRound stop once {@code getRound()} reaches this round; 0 plays to the end.
      * @throws AssertionError with the timeline as JSON, if the game runs past 2,000 moves, no CPU
-     *                        can move, or a CPU's move throws.
+     *                        can move, or a CPU's move throws or cannot be recorded.
      */
     public static Played play(int seats, LongSupplier clock, long startedAt, int stopAtRound) {
         return play(seats, clock, startedAt, stopAtRound, (name, role) -> new CpuPlayer(name));
@@ -49,7 +49,8 @@ public final class CpuGames {
      * dealt when the game is made, so each bot is made after the deal), then initialized.
      *
      * @throws AssertionError with the timeline as JSON, if the game runs past 2,000 moves, no CPU
-     *                        can move, or a CPU's move throws.
+     *                        can move, a CPU's move throws or cannot be recorded, or a CPU cannot be
+     *                        made.
      */
     public static Played play(int seats, LongSupplier clock, long startedAt, int stopAtRound,
             BiFunction<String, Identity, CpuPlayer> makeBot) {
@@ -61,9 +62,14 @@ public final class CpuGames {
         SecretHitlerGame game = new SecretHitlerGame(names);
         TreeSet<CpuPlayer> cpus = new TreeSet<>();
         for (String name : names) {
-            CpuPlayer cpu = makeBot.apply(name, game.getPlayer(name).getIdentity());
-            cpu.initialize(game);
-            cpus.add(cpu);
+            Identity role = game.getPlayer(name).getIdentity();
+            try {
+                CpuPlayer cpu = makeBot.apply(name, role);
+                cpu.initialize(game);
+                cpus.add(cpu);
+            } catch (RuntimeException e) {
+                throw new AssertionError("The CPU for " + name + ", dealt " + role + ", could not be made: " + e, e);
+            }
         }
 
         Timeline timeline = new Timeline(game, clock, startedAt);
@@ -102,8 +108,15 @@ public final class CpuGames {
             if (++moves > MAX_MOVES) {
                 throw new AssertionError("The game ran past " + MAX_MOVES + " moves: " + json(events));
             }
-            GameSnapshot now = GameSnapshot.of(game);
-            events.addAll(TimelineDiff.between(last, now, clock.getAsLong() - startedAt));
+            GameSnapshot now;
+            try {
+                now = GameSnapshot.of(game);
+                events.addAll(TimelineDiff.between(last, now, clock.getAsLong() - startedAt));
+            } catch (RuntimeException e) {
+                // An AssertionError, so the step's catch does not blame the move on the CPU.
+                throw new AssertionError("A CPU's move could not be recorded in " + game.getState() + ": " + e
+                        + ": " + json(events), e);
+            }
             last = now;
         }
     }

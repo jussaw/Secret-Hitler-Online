@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import game.datastructures.Identity;
+import game.datastructures.Player;
 import java.util.Arrays;
 import java.util.List;
 import java.util.SortedMap;
@@ -104,6 +105,38 @@ public class BotMatchesTest {
         AssertionError error = failure(() -> BotMatches.play(1, "Broken bots", broken));
 
         assertMentions(error.getMessage(), "5 seats", "Broken bots", "boom");
+    }
+
+    @Test
+    public void aBotThatCannotBeMadeFailsTheRun() {
+        BiFunction<String, Identity, CpuPlayer> unmade = (name, role) -> {
+            throw new IllegalStateException("no bot for " + role);
+        };
+
+        AssertionError error = failure(() -> BotMatches.play(1, "Unmade bots", unmade));
+
+        assertMentions(error.getMessage(), "5 seats", "Unmade bots", "no bot for");
+    }
+
+    @Test
+    public void aMoveTheRecordCannotReadFailsTheRun() {
+        // A move no game method makes: the bot changes another seat's role.
+        BiFunction<String, Identity, CpuPlayer> cheating = (name, role) -> new CpuPlayer(name) {
+            @Override
+            public boolean act(SecretHitlerGame game) {
+                for (Player player : game.getPlayerList()) {
+                    if (!player.getUsername().equals(myName)) {
+                        player.setIdentity(player.getIdentity() == Identity.LIBERAL ? Identity.FASCIST : Identity.LIBERAL);
+                        return true;
+                    }
+                }
+                return false;
+            }
+        };
+
+        AssertionError error = failure(() -> BotMatches.play(1, "Cheating bots", cheating));
+
+        assertMentions(error.getMessage(), "5 seats", "Cheating bots", "could not be recorded", "the seats changed");
     }
 
     @Test
