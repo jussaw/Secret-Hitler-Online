@@ -635,7 +635,9 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
    * on the strength of their reputation, interpolated between the fascist and
    * liberal role weights.
    * 
-   * Ignores dead players and self (this CPU).
+   * Only the list's living players other than this CPU can be chosen. Each is
+   * chosen in proportion to its weight: a weight of 0 (or less) is never chosen,
+   * unless every weight is 0, and then each is equally likely.
    * 
    * @param playerList    : List of players to traverse.
    * @param fascistWeight : Relative weight assigned to known or suspected
@@ -649,90 +651,101 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
    *                      players, relative. Positive values increase likelihood
    *                      that players are chosen.
    * @return The name of a player, chosen by weighted random.
+   * @throws IllegalArgumentException if the list holds no living player other
+   *                                  than this CPU.
    */
   public String chooseRandomPlayerWeighted(List<Player> playerList,
       float fascistWeight, float hitlerWeight, float liberalWeight,
       float userBias) {
 
-    // Make a copy of the player list so we can modify, then remove this
-    // CpuPlayer from it for traversal
-    playerList = new ArrayList<Player>(playerList);
-
-    // Traverse player list, calculating weight for each player based on known
-    // or suspected roles
-    float totalWeight = 0f;
-    float[] playerMinThreshold = new float[playerList.size()];
-
-    for (int i = 0; i < playerList.size(); i++) {
-      Player currPlayer = playerList.get(i);
-      String currPlayerName = currPlayer.getUsername();
-      float currWeight = 0f;
-
-      if (!myName.equals(currPlayerName) && currPlayer.isAlive()) {
-        if (knownPlayerRoles.containsKey(currPlayerName)) { // Role is known
-          Identity currId = knownPlayerRoles.get(currPlayerName);
-          if (currId == Identity.FASCIST) {
-            currWeight = fascistWeight;
-          } else if (currId == Identity.HITLER) {
-            currWeight = hitlerWeight;
-          } else {
-            currWeight = liberalWeight;
-          }
-        } else { // Role unknown
-          // Normalize suspicion value to [0, 1] range, where 0 is fascist.
-          int reputation = playerReputation.get(currPlayerName);
-          float t = (reputation + MAX_REPUTATION) / (2f * MAX_REPUTATION);
-          // Interpolate between fascist and liberal weights.
-          currWeight = t * liberalWeight + (1f - t) * fascistWeight;
-        }
-
-        // Add player biases
-        if (!currPlayer.isCpu()) {
-          currWeight += userBias;
-        }
-      } // end if
-
-      // Clamp weight so there are no negative values.
-      currWeight = Math.max(currWeight, 0f);
-
-      // If weight is 0, set threshold to a negative number.
-      if (currWeight < 0.000001f) {
-        currWeight = 0f;
-        playerMinThreshold[i] = -1f;
-      } else {
-        totalWeight += currWeight;
-        playerMinThreshold[i] = totalWeight;
-      }
-
-    } // end for
-
-    // Calculate a random value based on the total weight, then traverse the
-    // thresholds until we find and return the matching player.
-    int index = getWeightedRandomIndex(playerMinThreshold);
-    return playerList.get(index).getUsername();
-  } // end chooseRandomPlayerWeighted()
-
-  private int getWeightedRandomIndex(float[] weights) {
-    // Calculate total weight
-    float totalWeight = 0;
-    for (int i = 0; i < weights.length; i++) {
-      if (weights[i] > 0) {
-        totalWeight += 1;
-      }
+    // Only living players other than this CpuPlayer can be chosen.
+    List<Player> eligible = removeDeadPlayersAndSelf(playerList);
+    if (eligible.isEmpty()) {
+      throw new IllegalArgumentException("There is no living player other than " + myName + " to choose.");
     }
 
-    float t = (float) (totalWeight * random.nextDouble());
-    int lastValidIndex = 0;
+    // Traverse the eligible players, calculating weight for each player based on
+    // known or suspected roles
+    float[] weights = new float[eligible.size()];
+    for (int i = 0; i < eligible.size(); i++) {
+      Player currPlayer = eligible.get(i);
+      String currPlayerName = currPlayer.getUsername();
+      float currWeight;
 
+      if (knownPlayerRoles.containsKey(currPlayerName)) { // Role is known
+        Identity currId = knownPlayerRoles.get(currPlayerName);
+        if (currId == Identity.FASCIST) {
+          currWeight = fascistWeight;
+        } else if (currId == Identity.HITLER) {
+          currWeight = hitlerWeight;
+        } else {
+          currWeight = liberalWeight;
+        }
+      } else { // Role unknown
+        // Normalize suspicion value to [0, 1] range, where 0 is fascist.
+        int reputation = playerReputation.get(currPlayerName);
+        float t = (reputation + MAX_REPUTATION) / (2f * MAX_REPUTATION);
+        // Interpolate between fascist and liberal weights.
+        currWeight = t * liberalWeight + (1f - t) * fascistWeight;
+      }
+
+      // Add player biases
+      if (!currPlayer.isCpu()) {
+        currWeight += userBias;
+      }
+
+      // Clamp weight so there are no negative values, and treat a weight that
+      // is all but 0 as 0.
+      currWeight = Math.max(currWeight, 0f);
+      if (currWeight < 0.000001f) {
+        currWeight = 0f;
+      }
+      weights[i] = currWeight;
+    } // end for
+
+    return eligible.get(getWeightedRandomIndex(weights, random.nextDouble())).getUsername();
+  } // end chooseRandomPlayerWeighted()
+
+  /**
+   * Picks an index in proportion to its weight. A weight at or below 0 counts as
+   * 0 and is never picked, unless every weight is 0: then the draw is split
+   * evenly among the indices.
+   * 
+   * @param weights the weights, one per index.
+   * @param draw    a number in [0, 1), such as {@code Random.nextDouble()}.
+   * @return the first index whose running total of weights (summed in double)
+   *         exceeds {@code draw} times the total weight, or the last index with a
+   *         positive weight if rounding leaves none; with every weight 0,
+   *         {@code min((int) (draw * length), length - 1)}.
+   * @throws IllegalArgumentException if {@code weights} is empty.
+   */
+  static int getWeightedRandomIndex(float[] weights, double draw) {
+    if (weights.length == 0) {
+      throw new IllegalArgumentException("There is nothing to choose from.");
+    }
+    double totalWeight = 0;
+    int lastWeighted = -1;
     for (int i = 0; i < weights.length; i++) {
       if (weights[i] > 0f) {
-        lastValidIndex = i;
-        if (t >= totalWeight - weights[i]) {
+        totalWeight += weights[i];
+        lastWeighted = i;
+      }
+    }
+    if (lastWeighted == -1) { // every weight is 0
+      return Math.min((int) (draw * weights.length), weights.length - 1);
+    }
+
+    double target = draw * totalWeight;
+    double runningTotal = 0;
+    for (int i = 0; i < weights.length; i++) {
+      if (weights[i] > 0f) {
+        runningTotal += weights[i];
+        if (runningTotal > target) {
           return i;
         }
       }
     }
-    return lastValidIndex;
+    return lastWeighted; // the draw rounded up to the total
   }
 
   @Override

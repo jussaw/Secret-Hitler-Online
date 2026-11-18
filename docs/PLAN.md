@@ -1110,7 +1110,7 @@ Breakdown: [`docs/superpowers/plans/2026-11-17-phase-24-bot-fixes.md`](superpowe
 Issue #72, parts 1 and 2. Backend only; changes nothing on screen.
 
 - [x] `CpuPlayer` pins its `serialVersionUID` at the value Java computed before any change (`2392054316009854878L`), and older backups still load
-- [ ] The weighted pick draws in proportion to the weights (#72's cases within a tolerance); a weight of 0 is never picked unless all are, then the pick is uniform
+- [x] The weighted pick draws in proportion to the weights (#72's cases within a tolerance); a weight of 0 is never picked unless all are, then the pick is uniform
 - [ ] A fascist bot or Hitler never executes a known teammate; investigation and execution pick only among allowed players, with no re-pick loop
 - [x] `game.CpuTurn.step` is the one bot step, used by `Lobby`, `CpuGames` and the self-play run
 - [x] `./gradlew botMatches` prints win rates with 95% intervals and each ending's share, per table size 5 to 10 and pooled, and fails a game past 2,000 moves; `BotMatchesTest` keeps `./gradlew test` fast
