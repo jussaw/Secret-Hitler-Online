@@ -138,7 +138,7 @@ The games cannot be seeded, so every run writes a different file.
 ./gradlew botMatches -Pgames=500
 ```
 
-A game still running after 2,000 moves, one no bot can move, or a bot whose move throws fails the run, with a message naming the table size and the bots and the game's timeline. The games cannot be seeded, so every run differs: the intervals say how far a difference between two runs can be trusted (where two intervals do not overlap, the difference is real). A change to the bots quotes the run before and after it in its pull request. `./gradlew test` plays only 3 games a size (`BotMatchesTest`).
+A game still running after 2,000 moves, one no bot can move, a bot whose move throws (or makes a move the game's timeline cannot read), or a bot that cannot be made fails the run, with a message naming the table size and the bots and the game's timeline. The games cannot be seeded, so every run differs: the intervals say how far a difference between two runs can be trusted (where two intervals do not overlap, it can be). A change to the bots quotes the run before and after it in its pull request. `./gradlew test` plays only 3 games a size (`BotMatchesTest`).
 
 ### Browser tests
 

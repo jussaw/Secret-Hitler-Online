@@ -1118,7 +1118,7 @@ Issue #72, parts 1 and 2. Backend only; changes nothing on screen.
 
 **Phase 24 acceptance**
 
-- [ ] Backend tests pass
+- [x] Backend tests pass
 - [ ] PR merged into `development`
 
 ---
