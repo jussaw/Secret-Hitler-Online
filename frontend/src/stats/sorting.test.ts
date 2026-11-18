@@ -29,7 +29,7 @@ const desc = (column: Key): TableSort<Key> => ({ column, direction: "descending"
 
 describe("sorting", () => {
   it("aPressOnAnotherHeadUsesItsFirstDirection", () => {
-    const toGames = nextSort<Key>(NAME_ORDER as TableSort<Key>, { key: "games", first: "descending" });
+    const toGames = nextSort(NAME_ORDER, { key: "games", first: "descending" });
     expect(toGames).toEqual({ column: "games", direction: "descending" });
     const toName = nextSort<Key>(toGames, { key: "name", first: "ascending" });
     expect(toName).toEqual({ column: "name", direction: "ascending" });
@@ -84,9 +84,21 @@ describe("sorting", () => {
 
   it("theOpeningSortGivesTheRowsBack", () => {
     const rows = [row("a", "Ann"), row("b", "Bo"), row("c", "Cy")];
-    const out = sortRows(rows, columns, NAME_ORDER as TableSort<Key>);
+    const out = sortRows(rows, columns, NAME_ORDER);
     expect(out).toEqual(rows);
     expect(out).not.toBe(rows);
+  });
+
+  it("theFrozenOrdersPassWithoutACast", () => {
+    const rows = [row("a", "Ann")];
+    const rankColumns: SortColumn<Row, "rank" | "games">[] = [
+      { key: "rank", first: "ascending", value: () => 1 },
+      { key: "games", first: "descending", value: (r) => r.games },
+    ];
+    expect(sortRows(rows, columns, NAME_ORDER)).toEqual(rows);
+    expect(sortRows(rows, rankColumns, RANK_ORDER)).toEqual(rows);
+    const sort: TableSort<Key> = nextSort(NAME_ORDER, { key: "games", first: "descending" });
+    expect(sort.column).toBe("games");
   });
 
   it("anUnknownColumnThrows", () => {
