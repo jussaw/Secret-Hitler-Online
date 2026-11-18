@@ -240,8 +240,9 @@ keeps credit to upstream and to the board game's creators.
   is gated in `CpuPlayer` by who runs it: `hardLiberal()` (Hard and dealt Liberal) runs rule 1;
   `readsTheGame(game)` (Hard and not knowing every role, `knowsEveryRole`, which `initialize`
   asks too: a liberal, or Hitler at 7 or more) runs rules 2, 3 and 5 and rule 4's blame; every
-  Hard bot runs rule 6 (`trackerAtTwo`) and follows its peek; and only a Hard fascist runs rule 7
-  (`bluffs`) and Phase 25D's two extra fascist-side rules, 8 and 9 (below). Rule 1,
+  Hard bot runs rule 6 (`trackerAtTwo`) and follows its peek; only a Hard fascist runs rule 7
+  (`bluffs`) and Phase 25D's rule 9 (`hardFascist()`); and the Hard fascist side, Hitler too, runs
+  Phase 25D's rule 8 (below). Rule 1,
   `ClearedPlayers`: a chancellor seen in a legislative session (`CpuPlayer.inLegislativeSession`:
   `LEGISLATIVE_PRESIDENT`, `LEGISLATIVE_CHANCELLOR` or `LEGISLATIVE_PRESIDENT_VETO`, which rule 4
   shares) with 3 or more fascist policies down is cleared (not Hitler, or the
@@ -319,14 +320,17 @@ keeps credit to upstream and to the board game's creators.
   `LIBERAL_TRACKER_PUSH` and `FASCIST_TRACKER_PULL` 0.5, and `CHANCELLOR_BLUFF_CHANCE` and
   `PRESIDENT_BLUFF_CHANCE` 0.10 (Phase 25D lowered them from 0.35 to their floor: a bluff costs a
   policy, and Normal liberals, who read no hands, are not fooled by it). Phase 25D's extra
-  fascist-side rules (the spec allows them where the fascist side fails the checks), Hard fascists'
-  only, each reading only the roles a fascist knows: rule 8, fascists vote down liberal
-  governments, keeps only `1 − LIBERAL_GOVERNMENT_PULL` (a `float`, 0.9) of a fascist's yes chance
-  for a government whose president and chancellor it knows are liberal (`liberalGovernmentPull`,
-  after rule 6's pull, so at tracker 2 both apply); rule 9, special elections to the side, hands
-  the special election to a living fascist teammate other than Hitler (Hitler as president
-  nominates a liberal) with `SIDE_ELECTION_CHANCE` (0.9) when it has one, and otherwise picks as
-  Normal (`electsToTheSide`, which draws only when a teammate is there). Every tuned amount stays
+  fascist-side rules (the spec allows them where the fascist side fails the checks), each reading
+  only the roles its seat knows: rule 8, fascists vote down liberal governments, keeps only `1 −
+  LIBERAL_GOVERNMENT_PULL` (a `float`, 0.9) of the yes chance of a Hard bot on the fascist side
+  (a fascist, or Hitler, who knows the liberals at a table of 5 or 6 and at 7 or more only those
+  it investigated) for a government whose president and chancellor it knows are liberal
+  (`liberalGovernmentPull`, on every voting path, after rule 6's pull, so at tracker 2 both
+  apply; Normal's Hitler at 5 or 6 votes yes on known liberals to look liberal); rule 9, special
+  elections to the side, Hard fascists' only, hands the special election to a living fascist
+  teammate other than Hitler (Hitler as president nominates a liberal) with
+  `SIDE_ELECTION_CHANCE` (0.9) when it has one, and otherwise picks as Normal
+  (`electsToTheSide`, which draws only when a teammate is there). Every tuned amount stays
   in a range whose floor keeps its rule on (`HardAmountsTest.everyRuleStaysOn`): `VOTE_DROP`,
   `FF_DROP`, `LL_RISE` and `PeekMemory.DROP` 0.1 to 5, the tracker push and pull and
   `LIBERAL_GOVERNMENT_PULL` 0.1 to 0.9, the bluff chances and `SIDE_ELECTION_CHANCE` 0.10 to 0.90,
@@ -342,10 +346,11 @@ keeps credit to upstream and to the board game's creators.
   `hardRule5PresidentsOwnCards` (its own discard and its chancellor's deduced one),
   `hardRule3Votes`, `hardRule3OpenBallots`, `hardRule6TrackerLiberal`, `…HitlerAtSeven` and
   `…Fascist`, and `hardRule7ChancellorBluffs` and `…PresidentBluffs`; Phase 25D's
-  `HardFascistRulesTest` (rules 8 and 9, alone and against Normal and Easy) and `NoPeekingTest`'s
-  `hardRule8VotesDownLiberalGovernments` and `hardRule9SideElections` (a fascist knows every role,
-  so their twins hide an unseen card), and `HardTrackerTest`'s fascist cases on two liberals carry
-  rule 8's factor. The bot tests build their games with
+  `HardFascistRulesTest` (rules 8 and 9, alone and against Normal and Easy, Hitler at 5 and at 7
+  included) and `NoPeekingTest`'s `hardRule8VotesDownLiberalGovernments`, `hardRule8HitlerAtFive`
+  and `hardRule9SideElections` (each bot knows every role, so their twins hide an unseen card;
+  Hitler at 7, who knows none, is `votesByHitlerAtSeven`'s), and `HardTrackerTest`'s fascist cases
+  on two liberals carry rule 8's factor. The bot tests build their games with
   `BotScenes` (test source): seats `P0`, `P1`, … in seat order, every one a bot, dealt the roles a
   string names (`game("LLLFH")`), the draw pile in one fixed order, and `board`, `drawTop`,
   `swapRoles`, `swapUnseenCards`, `voteAll` and `elect` (by reflection on `SecretHitlerGame`'s
@@ -391,12 +396,12 @@ keeps credit to upstream and to the board game's creators.
   (`--pool`, alone) adds two reports' tallies (`pool`, labelled `…, pooled`) and prints their
   report, playing nothing. A change to the bots is accepted on a full run that passes (`Ladder
   check: PASS`, `Balance target: PASS`), one confirmation on the same code, and the two pooled,
-  whose ladder and balance checks must pass. Phase 25D's acceptance (runs 2 and 2c pooled, 4,000
-  games a size; its log, every run and the explorations, is
-  `docs/pr/phase-25d-ladder-balance/tuning-log.md`): liberal win rates E/N 21.5%, N/N 27.9%, H/N
-  40.2%, N/E 32.3%, N/H 23.5%, E/E 25.3%, H/H 26.6%, so each side rises Easy, Normal, Hard (the
-  liberals 21.5, 27.9, 40.2%; the fascists 67.7, 72.1, 76.5%), no size inverted, and all-Hard is
-  1.3 points from all-Normal. `BotMatchesTest` plays all nine pairings at 3 games a size and reads
+  whose ladder and balance checks must pass; a fix after review that touches `game/` is accepted
+  again. Phase 25D's acceptance (runs 4 and 4c pooled, 4,000 games a size; its log, every run
+  and the explorations, is `docs/pr/phase-25d-ladder-balance/tuning-log.md`): liberal win rates
+  E/N 21.7%, N/N 27.9%, H/N 40.4%, N/E 32.1%, N/H 21.4%, E/E 25.1%, H/H 22.9%, so each side rises
+  Easy, Normal, Hard (the liberals 21.7, 27.9, 40.4%; the fascists 67.9, 72.1, 78.6%), no size
+  inverted, and all-Hard is 5.0 points from all-Normal. `BotMatchesTest` plays all nine pairings at 3 games a size and reads
   a report's tallies back and pools them, and `LadderCheckTest` reads verdicts from tallies made by
   hand. A player's `/game`
   query may carry `rejoinKey`, a random key the page keeps for its lifetime (sent to no client and
