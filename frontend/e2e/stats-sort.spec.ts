@@ -2,21 +2,17 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { routePath, type TabId } from "../src/stats/routes";
 import { NARROW_PHONE } from "./layout";
 import { settle } from "./lobby";
-import { bigStatsData, checkStatsPage, stubStats } from "./stats";
+import { bigStatsData, checkStatsPage, STACKED_QUERY, statsSizesFor, stubStats } from "./stats";
 
 /**
  * The sortable tables in the browser (#109): a ranked card's heads sort its rows while every rank
- * stays its player's (on phones, where its count is a line under the name, its count head is gone),
- * the power ranking sorts by Elo, a best week by player, Enter and Space on a focused head sort it
- * with the focus kept there, a sorted card still fits a 320px phone, and at 320px every ranked
- * table fits inside its card.
+ * stays its player's (where the stacked query matches, its count is a line under the name and its
+ * count head is gone), the power ranking sorts by Elo, a best week by player, Enter and Space on a
+ * focused head sort it with the focus kept there, a sorted card still fits a 320px phone, and every
+ * ranked table fits inside its card at every stats size.
  */
 
 const data = bigStatsData();
-
-/** The game's phone-only query (GameScreen.css), where a ranked card's count goes under the name. */
-const PHONE_ONLY =
-  "((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4)))";
 
 /** Opens `path` with the big response stubbed and the clock an hour after its last game ends. */
 async function open(page: Page, path: string): Promise<void> {
@@ -31,7 +27,8 @@ async function open(page: Page, path: string): Promise<void> {
 const card = (page: Page, name: string) => page.getByRole("region", { name, exact: true });
 const head = (table: Locator, name: string) => table.getByRole("columnheader", { name, exact: true });
 const headButton = (table: Locator, name: string) => head(table, name).getByRole("button");
-const phoneLayout = (page: Page) => page.evaluate((query) => matchMedia(query).matches, PHONE_ONLY);
+/** The stacked query matches (phones, tall and narrow windows): a ranked card's count is under the name. */
+const stacked = (page: Page) => page.evaluate((query) => matchMedia(query).matches, STACKED_QUERY);
 
 /** The body's cells of `cell`'s class, as numbers ("—" as null). */
 function numbers(table: Locator, cell: string): Promise<(number | null)[]> {
@@ -82,10 +79,11 @@ test("a ranked card's heads sort it and its ranks stay", async ({ page }) => {
     for (const [player, rank] of await ranks(table)) expect(rank, `player ${player}'s rank`).toBe(rankOf.get(player));
   };
 
-  const phone = await phoneLayout(page);
-  if (phone) {
-    // On a phone the count is a line under each name, in place of its column and head (as PLAYERS'
-    // Last played), so sorting by it is a desktop thing: the press here is on Player.
+  const under = await stacked(page);
+  if (under) {
+    // Where the stacked query matches (the phones here) the count is a line under each name, in
+    // place of its column and head (as PLAYERS' Last played on phones), so sorting by it is for wide
+    // windows only: the press here is on Player.
     // Hidden, not removed: CSS locators, as a display: none cell is in no role query.
     const countHead = table.locator("thead th.ranked-count");
     await expect(countHead).toHaveCount(1);
@@ -130,8 +128,8 @@ test("a ranked card's heads sort it and its ranks stay", async ({ page }) => {
 
   await headButton(table, "Rank").click();
   await expect(head(table, "Rank")).toHaveAttribute("aria-sort", "ascending");
-  // The pressed head gives up its mark (a hidden head is in no role query, so only on desktop Games).
-  await expect(head(table, phone ? "Player" : "Games")).not.toHaveAttribute("aria-sort", /./);
+  // The pressed head gives up its mark (a hidden head is in no role query, so Games only where shown).
+  await expect(head(table, under ? "Player" : "Games")).not.toHaveAttribute("aria-sort", /./);
   expect(await ranks(table), "the opening order").toEqual(opening);
 });
 
@@ -226,10 +224,12 @@ function rankedTableProblems(page: Page): Promise<{ checked: number; problems: s
   });
 }
 
-test("every ranked table fits inside its card at 320px", async ({ page }) => {
-  test.skip(test.info().project.name !== "phone-360", "the narrowest phone, once");
+test("every ranked table fits inside its card at every size", async ({ page }) => {
+  const project = test.info().project.name;
+  test.skip(project !== "desktop" && project !== "firefox" && project !== "phone-360", "every size in the desktops, 320px once");
   test.slow();
-  const sizes = [NARROW_PHONE];
+  // Every stats size in the desktop browsers, and the narrowest phone, emulated, in phone-360.
+  const sizes = project === "phone-360" ? [NARROW_PHONE] : statsSizesFor(project, page.viewportSize()!);
   const problems: string[] = [];
   for (const path of RANKED_PAGES) {
     await page.setViewportSize(sizes[0]);
