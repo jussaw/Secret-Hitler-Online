@@ -1,6 +1,6 @@
 ---
 name: implement-issue
-description: Use when the user asks to implement, fix, build or close a GitHub issue of this repository by number or link, such as "/implement-issue 43", "fix #43" or "work on issue 51".
+description: Use when the user asks to implement, fix, build or close one GitHub issue of this repository by number or link, such as "/implement-issue 43", "fix #43" or "work on issue 51" (for two or more at once, implement-issues).
 ---
 
 # Implement a GitHub issue
