@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 import { CONTACT_ERROR } from "../src/lobby/joinError";
+import type { BotSkill } from "../src/types";
 import type { Box } from "./layout";
 import {
   LONGEST_DISCORD_NAME,
@@ -262,7 +263,7 @@ export type LobbyViewer = {
   players: number;
   bots: number;
   buttons: string[];
-  skill: "NORMAL" | "HARD";
+  skill: BotSkill;
   note?: string;
 };
 
@@ -431,7 +432,8 @@ export function skillShown(page: Page): Promise<string> {
 
 /**
  * How many lines the host's row (its label and three buttons) or another viewer's line (its
- * label and level) takes: parts whose vertical centres are within 2px share a line. 0 for neither.
+ * label and level) takes: parts whose words' vertical centres are within 2px share a line. 0 for
+ * neither. A part's words, not its box: a button's box holds its shadow below its face.
  */
 export function skillRowLines(page: Page): Promise<number> {
   return page.evaluate(() => {
@@ -439,7 +441,9 @@ export function skillRowLines(page: Page): Promise<number> {
       ".lobby-skill .lobby-skill-label, .lobby-skill .lobby-skill-option, .lobby-skill-line .lobby-skill-label, .lobby-skill-line .lobby-skill-level"
     );
     const centres = Array.from(parts, (part) => {
-      const r = part.getBoundingClientRect();
+      const words = document.createRange();
+      words.selectNodeContents(part);
+      const r = words.getBoundingClientRect();
       return (r.top + r.bottom) / 2;
     }).sort((a, b) => a - b);
     let lines = 0;

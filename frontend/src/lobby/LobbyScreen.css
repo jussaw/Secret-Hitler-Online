@@ -311,7 +311,9 @@
     color: var(--headerTextColor);
 }
 
-.lobby-bots-word {
+/* BOTS, and BOT SKILL's label in the host's row and everyone else's line (#72). */
+.lobby-bots-word,
+.lobby-skill-label {
     font-size: 1.15em;
     letter-spacing: 0.06em;
     color: #b9ab9f;
@@ -338,13 +340,16 @@
     padding: 0.3em 0.45em 0.3em 0.9em;
 }
 
-/* The stepper's BOTS word's look. */
+/* The stepper's BOTS word's look (above), in the header font. */
 .lobby-skill-label {
     font-family: var(--headerFont);
-    font-size: 1.15em;
-    letter-spacing: 0.06em;
-    color: #b9ab9f;
     white-space: nowrap;
+}
+
+/* In the host's row the label's middle is the options' faces' middle: their boxes hold their
+   shadows (App.css's --button-depth, 5px) below the faces, which this margin matches. */
+.lobby-skill > .lobby-skill-label {
+    margin-bottom: 5px;
 }
 
 .lobby-skill-options {
