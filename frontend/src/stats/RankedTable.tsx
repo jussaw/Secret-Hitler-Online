@@ -16,6 +16,10 @@ export interface RankedHeads<T> {
   sortValue: (value: T) => number | null;
   /** The count column's head; no count column without it. */
   countHead?: string;
+  /** The count's nouns on the line under the name, for one and for any other count, where they are
+   *  not the count head's own (`countNouns`): LIBERAL FINDS' "Checks" count investigations, as its
+   *  count always said ("3 investigations"). */
+  countWords?: [string, string];
 }
 
 export interface RankedTableProps<T> extends RankedHeads<T> {
@@ -27,9 +31,9 @@ export interface RankedTableProps<T> extends RankedHeads<T> {
   valueEnd?: boolean;
 }
 
-/** A count head's nouns for the line under the name (`countLabel`): the head lowercased for any
- *  count but 1, and that less its final "s" for 1 ("Games": "1 game", "12 games"). Every count head
- *  is a plural in -s. */
+/** A count head's nouns for the line under the name (`countLabel`) when the card gives no
+ *  `countWords`: the head lowercased for any count but 1, and that less its final "s" for 1
+ *  ("Games": "1 game", "12 games"). Every count head is a plural in -s. */
 export function countNouns(countHead: string): [string, string] {
   const many = countHead.toLowerCase();
   return [many.replace(/s$/, ""), many];
@@ -78,6 +82,7 @@ export function RankedTable<T>({
   valueHead,
   sortValue,
   countHead,
+  countWords,
   valueEnd = true,
 }: RankedTableProps<T>): JSX.Element {
   const columns = useMemo(
@@ -85,7 +90,10 @@ export function RankedTable<T>({
     [names, valueHead, sortValue, countHead, valueEnd]
   );
   const { rows: sorted, sort, press } = useTableSort(rows, columns, RANK_ORDER);
-  const nouns = useMemo(() => (countHead === undefined ? null : countNouns(countHead)), [countHead]);
+  const nouns = useMemo(
+    () => (countHead === undefined ? null : (countWords ?? countNouns(countHead))),
+    [countHead, countWords]
+  );
   return (
     <table className={nouns === null ? "ranked-table" : "ranked-table has-count"}>
       <SortHeadRow columns={columns} sort={sort} onSort={press} />

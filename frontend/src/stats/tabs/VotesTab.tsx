@@ -61,6 +61,11 @@ function byRate(a: Rate, b: Rate): number {
 /** A rate card's heads: every rate sorts by its whole percent (`rateFigure`). */
 type RateHeads = Omit<RankedHeads<Rate>, "sortValue">;
 
+/** The line under the name of the cards whose count head is not their count's noun: "Checks"
+ *  count investigations, and SPECIAL ELECTION PICKS' "Elections" special elections. */
+const INVESTIGATION_WORDS: [string, string] = ["investigation", "investigations"];
+const SPECIAL_ELECTION_WORDS: [string, string] = ["special election", "special elections"];
+
 /** INVESTIGATIONS' sort figure: the number its line starts with. */
 const investigationsFigure = (p: PlayerPowers) => p.investigations;
 
@@ -256,13 +261,13 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
       title: "LIBERAL FINDS",
       definition: "As a Liberal, the share of their investigations that found someone from the Fascist side.",
       line: "No investigations by a Liberal yet with these players.",
-      table: rateTable(powers, (p) => p.liberalFinds, { valueHead: "Finds", countHead: "Checks" }),
+      table: rateTable(powers, (p) => p.liberalFinds, { valueHead: "Finds", countHead: "Checks", countWords: INVESTIGATION_WORDS }),
     },
     {
       title: "CHECKING A TEAMMATE",
       definition: "On the Fascist side, the share of their investigations that looked at a teammate.",
       line: "No investigations by the Fascist side yet with these players.",
-      table: rateTable(powers, (p) => p.teammateChecks, { valueHead: "Teammate", countHead: "Checks" }),
+      table: rateTable(powers, (p) => p.teammateChecks, { valueHead: "Teammate", countHead: "Checks", countWords: INVESTIGATION_WORDS }),
     },
     {
       title: "TIMES INVESTIGATED",
@@ -316,7 +321,11 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
       title: "SPECIAL ELECTION PICKS",
       definition: "The share of their special elections that made a teammate president.",
       line: noSpecial,
-      table: rateTable(powers, (p) => p.specialTeammate, { valueHead: "Teammate", countHead: "Elections" }),
+      table: rateTable(powers, (p) => p.specialTeammate, {
+        valueHead: "Teammate",
+        countHead: "Elections",
+        countWords: SPECIAL_ELECTION_WORDS,
+      }),
     },
     {
       title: "VETOES AS PRESIDENT",

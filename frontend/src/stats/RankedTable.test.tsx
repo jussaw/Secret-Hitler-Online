@@ -38,8 +38,13 @@ const namesAndRanks = () => cells().map((row) => `${row[1]} ${row[0]}`.trim());
 const head = (name: string) => screen.getByRole("button", { name });
 const press = (name: string) => fireEvent.click(head(name));
 
-/** A win-rate table, its count column under "Games" when `countHead` is given. */
-function renderRates(rows: { player: number; value: number; count: number }[], countHead?: string) {
+/** A win-rate table, its count column under "Games" when `countHead` is given, and its line under
+ *  the name in `countWords` when they are given. */
+function renderRates(
+  rows: { player: number; value: number; count: number }[],
+  countHead?: string,
+  countWords?: [string, string]
+) {
   return render(
     <RankedTable
       rows={rankRows(rows, desc, names)}
@@ -48,6 +53,7 @@ function renderRates(rows: { player: number; value: number; count: number }[], c
       valueHead="Win rate"
       sortValue={wholePercent}
       countHead={countHead}
+      countWords={countWords}
     />
   );
 }
@@ -154,6 +160,30 @@ describe("RankedTable", () => {
       );
       // Both below the minimum, so unranked, the larger count first.
       expect(underLines(), countHead).toEqual([many, one]);
+      unmount();
+    }
+  });
+
+  it("countWordsSayTheLineUnderTheNameAsTheCardsCountDid", () => {
+    // VOTES & POWERS' three cards whose count head is not their count's noun: before #109 their
+    // counts said "N investigations" and "N special elections", and the line under the name still
+    // does, while the head keeps its word.
+    const cards: [string, string, [string, string], [string, string]][] = [
+      ["LIBERAL FINDS", "Checks", ["investigation", "investigations"], ["1 investigation", "2 investigations"]],
+      ["CHECKING A TEAMMATE", "Checks", ["investigation", "investigations"], ["1 investigation", "2 investigations"]],
+      ["SPECIAL ELECTION PICKS", "Elections", ["special election", "special elections"], ["1 special election", "2 special elections"]],
+    ];
+    for (const [title, countHead, countWords, [one, many]] of cards) {
+      const { unmount } = renderRates(
+        [
+          { player: 1, value: 0.5, count: 1 },
+          { player: 2, value: 0.4, count: 2 },
+        ],
+        countHead,
+        countWords
+      );
+      expect(underLines(), title).toEqual([many, one]);
+      expect(screen.getAllByRole("columnheader").map((th) => th.textContent), title).toEqual(["#", "Player", "Win rate", countHead]);
       unmount();
     }
   });
