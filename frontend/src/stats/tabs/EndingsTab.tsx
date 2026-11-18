@@ -88,13 +88,53 @@ function MostLine({ label, most }: { label: string; most: GameCount | null }): J
   );
 }
 
+/** An average's cell: the text a Game length cell shows and the figure that text shows, which its
+ *  column sorts by. */
+interface AverageCell {
+  text: string;
+  /** Null exactly when the text is `NO_VALUE`. */
+  value: number | null;
+}
+
+/** The cell of `average`, its text by `text` and its figure by `figure`, or `NO_VALUE` and null
+ *  with no game to average (null). */
+function averageCell(
+  average: number | null,
+  text: (average: number) => string,
+  figure: (average: number) => number
+): AverageCell {
+  return average === null ? { text: NO_VALUE, value: null } : { text: text(average), value: figure(average) };
+}
+
+/** Average rounds to one decimal, as a number: what the Average rounds column sorts by and
+ *  `roundsText` shows, so 7.25 and 7.33, both "7.3", are a tie. */
+function roundsFigure(rounds: number): number {
+  return Number(rounds.toFixed(1));
+}
+
+/** Average rounds as a cell shows them, to one decimal (`roundsFigure`): "7.5", "10.0". */
+function roundsText(rounds: number): string {
+  return roundsFigure(rounds).toFixed(1);
+}
+
+/** A length row's average length: "38 min" (`formatDuration`), its figure the whole minutes it
+ *  shows (`wholeMinutes`). */
+function lengthCell(length: LengthStats): AverageCell {
+  return averageCell(length.averageMs, formatDuration, wholeMinutes);
+}
+
+/** A length row's average rounds: "7.5" (`roundsText`), its figure `roundsFigure`. */
+function roundsCell(length: LengthStats): AverageCell {
+  return averageCell(length.averageRounds, roundsText, roundsFigure);
+}
+
 /** A length row's cells: the games it is over, the average length and the average rounds. */
 function LengthCells({ length }: { length: LengthStats }): JSX.Element {
   return (
     <>
       <td>{length.games}</td>
-      <td>{length.averageMs === null ? NO_VALUE : formatDuration(length.averageMs)}</td>
-      <td>{length.averageRounds === null ? NO_VALUE : length.averageRounds.toFixed(1)}</td>
+      <td>{lengthCell(length).text}</td>
+      <td>{roundsCell(length).text}</td>
     </>
   );
 }
@@ -117,34 +157,33 @@ const SEATS_COLUMN: HeadColumn<SizeEndings, "seats"> = {
   value: (size) => size.seats,
 };
 
+/** A column of either table under `label`, most first by `value`, the figure its cell shows (null
+ *  for a "—", below every figure either way). Its values stand at the left, so it is not `end`. */
+function figureColumn<K extends string>(
+  key: K,
+  label: string,
+  value: (size: SizeEndings) => number | null
+): HeadColumn<SizeEndings, K> {
+  return { key, label, first: "descending", value };
+}
+
 /** The Liberal win rate table's columns, in order: Players, then each by the figure its cell
- *  shows, most first, the "—" of a rate below its minimum below every rate either way. Their values
- *  stand at the left, so no column is `end`. */
+ *  shows, the "—" of a rate below its minimum below every rate either way. */
 const WIN_RATE_COLUMNS: readonly HeadColumn<SizeEndings, WinRateColumn>[] = [
   SEATS_COLUMN,
-  { key: "games", label: "Games", first: "descending", value: (size) => size.games },
-  { key: "liberalWins", label: "Liberal wins", first: "descending", value: (size) => size.liberalWins },
-  { key: "rate", label: "Win rate", first: "descending", value: (size) => rateFigure(size.liberalRate) },
-  { key: "smoothed", label: "Smoothed", first: "descending", value: (size) => wholePercent(size.smoothedLiberalRate) },
+  figureColumn("games", "Games", (size) => size.games),
+  figureColumn("liberalWins", "Liberal wins", (size) => size.liberalWins),
+  figureColumn("rate", "Win rate", (size) => rateFigure(size.liberalRate)),
+  figureColumn("smoothed", "Smoothed", (size) => wholePercent(size.smoothedLiberalRate)),
 ];
 
 /** The Game length table's columns, in order: Players, then each by the figure its cell shows
- *  (`LengthCells`), most first, a "—" below every figure either way. No column is `end`. */
+ *  (`LengthCells`' `lengthCell` and `roundsCell`), a "—" below every figure either way. */
 const LENGTH_COLUMNS: readonly HeadColumn<SizeEndings, LengthColumn>[] = [
   SEATS_COLUMN,
-  { key: "games", label: "Games", first: "descending", value: (size) => size.length.games },
-  {
-    key: "length",
-    label: "Average length",
-    first: "descending",
-    value: ({ length }) => (length.averageMs === null ? null : wholeMinutes(length.averageMs)),
-  },
-  {
-    key: "rounds",
-    label: "Average rounds",
-    first: "descending",
-    value: ({ length }) => (length.averageRounds === null ? null : Number(length.averageRounds.toFixed(1))),
-  },
+  figureColumn("games", "Games", (size) => size.length.games),
+  figureColumn("length", "Average length", (size) => lengthCell(size.length).value),
+  figureColumn("rounds", "Average rounds", (size) => roundsCell(size.length).value),
 ];
 
 /**

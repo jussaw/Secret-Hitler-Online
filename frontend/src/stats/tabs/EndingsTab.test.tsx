@@ -196,6 +196,22 @@ describe("EndingsTab", () => {
     }
   });
 
+  it("averageRoundsThatShowAlikeTie", () => {
+    // 5 players average 7.25 rounds and 6 players 7.33, both shown "7.3"; 7 players 9.0.
+    const games = [
+      ...[7, 7, 7, 8].map((rounds) => ended(5, "LIBERAL_POLICIES", { rounds })),
+      ...[7, 7, 8].map((rounds) => ended(6, "FASCIST_POLICIES", { rounds })),
+      ended(7, "HITLER_EXECUTED", { rounds: 9 }),
+    ];
+    render(<EndingsTab stats={statsOf(games)} />);
+    expect(bodyRows(LENGTHS).map((row) => row[3])).toEqual(["7.3", "7.3", "9.0", "7.5"]);
+    // Most first: 9.0, then the two "7.3"s, a tie in the table's own order, not 7.33 above 7.25.
+    press(LENGTHS, "Average rounds");
+    expect(firstCells(LENGTHS)).toEqual(["7", "5", "6", "All"]);
+    press(LENGTHS, "Average rounds");
+    expect(firstCells(LENGTHS)).toEqual(["5", "6", "7", "All"]);
+  });
+
   it("aTableThatEmptiesOpensAgainInItsOwnOrder", () => {
     const games = lengthGames();
     const { rerender } = render(<EndingsTab stats={statsOf(games)} />);
