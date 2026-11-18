@@ -9,8 +9,8 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * The timeline events between two looks at a game, as format 1 of the record spells them
- * (the spec's "The record"). The two looks are taken either side of one game method, which may
+ * The timeline events between two looks at a game, as formats 1 and 2 of the record spell them
+ * alike (the spec's "The record"). The two looks are taken either side of one game method, which may
  * make several changes at once (a third failed election enacts the top policy, an enact may unlock
  * a power, reshuffle the piles or end the game): {@code between} spells them out in the game's
  * order. Each event is a map of JDK types only ({@code String}, {@code Integer}, {@code Long},

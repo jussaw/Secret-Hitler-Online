@@ -5,16 +5,42 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Format 1 of a game record, as the spec's tables give it ("The record"): the record's keys, a
- * seat's keys and each event's keys, in order. Phase 14B checks the JSON it writes against these.
+ * Formats 1 and 2 of a game record, as the spec's tables give them ("The record"): each format's
+ * record keys, a seat's keys and each event's keys, in order, and format 2's bot levels. Format 2
+ * is format 1 with {@code botSkill} after {@code hasCpu}; seats and events are the same in both.
+ * Phase 14B checks the JSON it writes against these.
  */
 public final class RecordFormat {
     private RecordFormat() {
     }
 
-    /** A record's keys, in order. */
-    public static final List<String> RECORD_KEYS = List.of("id", "format", "startedAt", "endedAt", "outcome",
+    /** A format 1 record's keys, in order: no {@code botSkill}. */
+    public static final List<String> FORMAT_1_KEYS = List.of("id", "format", "startedAt", "endedAt", "outcome",
             "winner", "complete", "hasCpu", "liberalPolicies", "fascistPolicies", "rounds", "seats", "events");
+
+    /** A record's keys, in order, in the format written now (2): {@code botSkill} after {@code hasCpu}. */
+    public static final List<String> RECORD_KEYS = List.of("id", "format", "startedAt", "endedAt", "outcome",
+            "winner", "complete", "hasCpu", "botSkill", "liberalPolicies", "fascistPolicies", "rounds", "seats",
+            "events");
+
+    /**
+     * Format 2's bot levels, written out as the spec gives them rather than read from
+     * {@code BotSkill}, so a renamed level fails the format's tests.
+     */
+    public static final List<String> BOT_SKILLS = List.of("EASY", "NORMAL", "HARD");
+
+    /**
+     * A record's keys in its format, in order.
+     *
+     * @throws IllegalArgumentException for any format but 1 and 2.
+     */
+    public static List<String> recordKeys(int format) {
+        return switch (format) {
+            case 1 -> FORMAT_1_KEYS;
+            case 2 -> RECORD_KEYS;
+            default -> throw new IllegalArgumentException("No record format " + format + ".");
+        };
+    }
 
     /** A seat's keys, in order. */
     public static final List<String> SEAT_KEYS = List.of("player", "name", "cpu", "role", "alive");

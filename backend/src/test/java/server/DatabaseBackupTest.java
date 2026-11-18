@@ -372,6 +372,39 @@ public class DatabaseBackupTest {
         });
     }
 
+    /** The record of a game whose bots were backed up before levels says they were Normal. */
+    @Test
+    public void aBotFromABackupBeforeLevelsIsRecordedNormal() throws Exception {
+        try (InputStream fixture = getClass().getResourceAsStream("/backup-before-recorder.db")) {
+            Files.copy(fixture, new File(dbPath()).toPath());
+        }
+        Lobby lobby = load().get("ABCD");
+
+        assertTrue(lobby.closeIfTimedOut());
+
+        assertEquals(1, records.size());
+        assertTrue(records.get(0).hasCpu());
+        assertEquals(BotSkill.NORMAL, records.get(0).botSkill());
+    }
+
+    /**
+     * A restored game's record names its bots' level, which they keep through the backup, whatever
+     * level the restored lobby itself would choose.
+     */
+    @Test
+    public void aRestoredGameKeepsItsBotsLevel() throws Exception {
+        Lobby.LOBBY_TIMEOUT_DURATION_IN_MIN = 0;
+        Lobby lobby = new Lobby();
+        lobby.startNewGame();
+        RecordedGames.seatBotsAt(lobby, BotSkill.HARD);
+
+        Lobby restored = roundTrip(lobby);
+        assertTrue(restored.closeIfTimedOut());
+
+        assertEquals(1, records.size());
+        assertEquals(BotSkill.HARD, records.get(0).botSkill());
+    }
+
     /**
      * The END TERM countdown changes the game without going through {@code game()}: after a
      * restore that only a spectator has seen, its end of the term is still recorded.

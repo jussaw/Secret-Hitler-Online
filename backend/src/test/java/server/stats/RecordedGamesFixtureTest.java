@@ -23,9 +23,10 @@ import org.junit.Test;
 
 /**
  * The stats pages' contract fixture ({@code frontend/src/stats/fixtures/recorded-games.json}, made
- * by {@code ./gradlew recordedGamesFixture}): the response's format 1, as {@code RecordFormat} gives
- * it and {@code GameRecordJsonTest} holds the Java writer to, with timelines that replay to their
- * records' ends, every outcome, sizes 5 to 10, CPU seats, unfinished games, and no account ID.
+ * by {@code ./gradlew recordedGamesFixture}): the response, each record with its format's keys, as
+ * {@code RecordFormat} gives them and {@code GameRecordJsonTest} holds the Java writer to, with
+ * timelines that replay to their records' ends, every outcome, sizes 5 to 10, CPU seats, unfinished
+ * games, and no account ID.
  */
 public class RecordedGamesFixtureTest {
     private static final File FIXTURE = new File("../frontend/src/stats/fixtures/recorded-games.json");
@@ -50,15 +51,14 @@ public class RecordedGamesFixtureTest {
     }
 
     @Test
-    public void theFixtureIsInFormatOne() {
+    public void everyRecordHasItsFormatsKeys() {
         assertEquals(List.of("players", "games"), new ArrayList<>(fixture.keySet()));
         for (Map<String, Object> player : list(fixture.get("players"))) {
             assertEquals(List.of("number", "name"), new ArrayList<>(player.keySet()));
         }
         assertFalse(games().isEmpty());
         for (Map<String, Object> game : games()) {
-            assertEquals(RecordFormat.RECORD_KEYS, new ArrayList<>(game.keySet()));
-            assertEquals(1, game.get("format"));
+            assertEquals(RecordFormat.recordKeys((Integer) game.get("format")), new ArrayList<>(game.keySet()));
             for (Map<String, Object> seat : list(game.get("seats"))) {
                 assertEquals(RecordFormat.SEAT_KEYS, new ArrayList<>(seat.keySet()));
             }

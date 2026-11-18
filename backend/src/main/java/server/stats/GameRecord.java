@@ -2,6 +2,7 @@ package server.stats;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import game.BotSkill;
 import game.SecretHitlerGame;
 import game.datastructures.Player;
 import java.util.ArrayList;
@@ -13,15 +14,19 @@ import java.util.Map;
 /**
  * The record of one game (#31), as a lobby hands it over when the game ends or its lobby is
  * swept: the header, the seats with their accounts and the timeline, all copied, so nothing a
- * lobby does later changes it. Format 1 (the spec's "The record"). A record holds account IDs,
- * which only the server sees: what is stored and served carries player numbers instead.
+ * lobby does later changes it. Format 2 (the spec's "The record"; since Phase 26B): format 1 with
+ * the bots' level, {@code botSkill}, after {@code hasCpu}. A record holds account IDs, which only
+ * the server sees: what is stored and served carries player numbers instead.
  *
- * @param events the timeline, oldest first, each event's keys in the format's order.
+ * @param botSkill the level the game's bots share, or null exactly when no seat is a CPU player's.
+ * @param events   the timeline, oldest first, each event's keys in the format's order.
  */
 public record GameRecord(String id, long startedAt, long endedAt, String outcome, boolean complete,
-        int liberalPolicies, int fascistPolicies, int rounds, List<Seat> seats, List<Map<String, Object>> events) {
+        BotSkill botSkill, int liberalPolicies, int fascistPolicies, int rounds, List<Seat> seats,
+        List<Map<String, Object>> events) {
 
-    public static final int FORMAT = 1;
+    /** The format a record is written in now. One saved earlier keeps its own (1). */
+    public static final int FORMAT = 2;
     public static final String LIBERAL_POLICIES = "LIBERAL_POLICIES";
     public static final String HITLER_EXECUTED = "HITLER_EXECUTED";
     public static final String FASCIST_POLICIES = "FASCIST_POLICIES";
@@ -43,29 +48,45 @@ public record GameRecord(String id, long startedAt, long endedAt, String outcome
 
     /**
      * Copies the seats and every event, keeping each event's keys in order and copying its card
-     * lists. Checks nothing else.
+     * lists. Checks only the level against the seats.
+     *
+     * @throws IllegalArgumentException if a seat is a CPU player's and {@code botSkill} is null, or
+     *                                  none is and it is not.
      */
     public GameRecord {
         seats = Collections.unmodifiableList(new ArrayList<>(seats));
         events = TimelineDiff.copyEvents(events);
+        if ((botSkill != null) != hasCpu(seats)) {
+            throw new IllegalArgumentException("Game " + id + " has " + (botSkill == null ? "bots and no level."
+                    : "a level, " + botSkill + ", and no bots."));
+        }
     }
 
     /**
-     * The record of {@code game}: its board, last round and seats as they are now.
+     * The record of {@code game}: its board, last round and seats as they are now. It never throws
+     * for the level, so nothing the recorder does stops a game: with a CPU seat and no level it
+     * records {@code NORMAL}, and with no CPU seat it records none, whatever was passed.
      *
      * @param seatAccounts each human seat's account, by seat name ({@code Lobby.seatAccounts()});
      *                     a seat with no entry is a CPU player's.
+     * @param botSkill     the level the game's bots share, or null with none.
      */
     public static GameRecord of(String id, long startedAt, long endedAt, String outcome, boolean complete,
-            SecretHitlerGame game, Map<String, String> seatAccounts, List<? extends Map<String, Object>> events) {
+            SecretHitlerGame game, Map<String, String> seatAccounts, BotSkill botSkill,
+            List<? extends Map<String, Object>> events) {
         List<Seat> seats = new ArrayList<>();
         for (Player player : game.getPlayerList()) {
             String accountId = seatAccounts.get(player.getUsername());
             seats.add(new Seat(accountId, player.getUsername(), accountId == null, player.getIdentity().name(),
                     player.isAlive()));
         }
-        return new GameRecord(id, startedAt, endedAt, outcome, complete, game.getNumLiberalPolicies(),
+        BotSkill level = !hasCpu(seats) ? null : botSkill != null ? botSkill : BotSkill.NORMAL;
+        return new GameRecord(id, startedAt, endedAt, outcome, complete, level, game.getNumLiberalPolicies(),
                 game.getNumFascistPolicies(), game.getRound(), seats, new ArrayList<>(events));
+    }
+
+    private static boolean hasCpu(List<Seat> seats) {
+        return seats.stream().anyMatch(Seat::cpu);
     }
 
     /** {@code LIBERAL} or {@code FASCIST}, the side that won, or null for an unfinished game. */
@@ -80,12 +101,13 @@ public record GameRecord(String id, long startedAt, long endedAt, String outcome
 
     /** Whether any seat was a CPU player's. */
     public boolean hasCpu() {
-        return seats.stream().anyMatch(Seat::cpu);
+        return hasCpu(seats);
     }
 
     /**
-     * The record as it is stored and served (format 1): the spec's keys in order, and each seat's
-     * {@code player} its account's number, or null for a CPU player's seat. It holds no account ID.
+     * The record as it is stored and served ({@code FORMAT}, 2): the spec's keys in order, the
+     * level's name in {@code botSkill} (null without bots), and each seat's {@code player} its
+     * account's number, or null for a CPU player's seat. It holds no account ID.
      *
      * @param playerNumbers each account's player number ({@code GameStore}).
      * @throws IllegalArgumentException if a human seat's account has no number.
@@ -117,6 +139,7 @@ public record GameRecord(String id, long startedAt, long endedAt, String outcome
         json.put("winner", winner());
         json.put("complete", complete);
         json.put("hasCpu", hasCpu());
+        json.put("botSkill", botSkill == null ? null : botSkill.name());
         json.put("liberalPolicies", liberalPolicies);
         json.put("fascistPolicies", fascistPolicies);
         json.put("rounds", rounds);

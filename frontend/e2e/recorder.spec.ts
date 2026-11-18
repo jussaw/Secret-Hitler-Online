@@ -4,7 +4,7 @@ import { isVictory, openTable, play } from "./driveGame";
 
 /**
  * The server records a real game (#31): one played to its end by raw-socket players is served by
- * GET /api/stats/games in the record's format, its keys in the spec's order, with no account ID.
+ * GET /api/stats/games in the record's format (2), its keys in the spec's order, with no account ID.
  */
 
 const RECORD_KEYS = [
@@ -16,6 +16,7 @@ const RECORD_KEYS = [
   "winner",
   "complete",
   "hasCpu",
+  "botSkill",
   "liberalPolicies",
   "fascistPolicies",
   "rounds",
@@ -64,7 +65,9 @@ test("a game played to its end is served by /api/stats/games", async ({ request,
     expect(Object.keys(record!)).toEqual(RECORD_KEYS);
     expect(record!.outcome).toBe(OUTCOMES[victory.state]);
     expect(record!.complete).toBe(true);
+    expect(record!.format).toBe(2);
     expect(record!.hasCpu).toBe(false);
+    expect(record!.botSkill).toBeNull(); // seven people, no bots
     expect(body).not.toContain("test-");
   } finally {
     table.close();

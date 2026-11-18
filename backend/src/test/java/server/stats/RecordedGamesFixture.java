@@ -1,6 +1,7 @@
 package server.stats;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import game.BotSkill;
 import game.SecretHitlerGame;
 import game.datastructures.Player;
 import java.io.File;
@@ -28,7 +29,9 @@ import server.accounts.AccountStore;
  * <p>62 games or more: ten finished games at each size from 5 to 10, then two cut off once round
  * 5 begins (5 and 10 seats), recorded {@code UNFINISHED}; then, if an outcome is missing, more
  * games until each of the four has been seen. Game {@code k} seats the accounts in turn from
- * account {@code k mod 12}, but when {@code k mod 6 == 5} its last two seats stay CPU players'.
+ * account {@code k mod 12}, but when {@code k mod 6 == 5} its last two seats stay CPU players',
+ * recorded at Easy, Normal and Hard in turn ({@code BotSkill.values()[(k / 6) % 3]}). The levels
+ * are labels, as the accounts are: {@code CpuGames} plays every seat with Normal bots.
  * It starts at 2026-11-01 19:00 UTC, plus three days for every four games, plus 50 minutes for
  * each game before it that day, and each move takes 2 to 20 s.
  */
@@ -147,7 +150,10 @@ public final class RecordedGamesFixture {
         }
     }
 
-    /** Game {@code k}'s record, its seats held by accounts in turn from {@code k mod 12}. */
+    /**
+     * Game {@code k}'s record, its seats held by accounts in turn from {@code k mod 12}, and its CPU
+     * seats, if any, labelled with the level of their turn.
+     */
     private GameRecord record(int k, SecretHitlerGame game, long startedAt, long endedAt, String outcome,
             List<? extends Map<String, Object>> events) {
         List<Player> players = game.getPlayerList();
@@ -165,7 +171,8 @@ public final class RecordedGamesFixture {
                         player.isAlive()));
             }
         }
-        return new GameRecord(UUID.randomUUID().toString(), startedAt, endedAt, outcome, true,
+        BotSkill botSkill = cpuSeats > 0 ? BotSkill.values()[(k / 6) % 3] : null;
+        return new GameRecord(UUID.randomUUID().toString(), startedAt, endedAt, outcome, true, botSkill,
                 game.getNumLiberalPolicies(), game.getNumFascistPolicies(), game.getRound(), seats,
                 new ArrayList<>(events));
     }

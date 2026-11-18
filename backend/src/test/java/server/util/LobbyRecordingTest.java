@@ -10,6 +10,7 @@ import static server.util.LobbyTesting.account;
 import static server.util.LobbyTesting.join;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import game.BotSkill;
 import game.GameState;
 import game.SecretHitlerGame;
 import game.datastructures.Player;
@@ -99,6 +100,7 @@ public class LobbyRecordingTest {
         assertEquals(GameSnapshot.outcomeOf(game.getState()), record.outcome());
         assertTrue(record.complete());
         assertFalse(record.hasCpu());
+        assertNull(record.botSkill());
         List<Player> seats = game.getPlayerList();
         assertEquals(seats.size(), record.seats().size());
         for (int i = 0; i < seats.size(); i++) {
@@ -132,6 +134,7 @@ public class LobbyRecordingTest {
         assertEquals(1, records.size());
         GameRecord record = records.get(0);
         assertTrue(record.hasCpu());
+        assertEquals(BotSkill.NORMAL, record.botSkill()); // a new lobby's bots
         for (GameRecord.Seat seat : record.seats()) {
             assertTrue(seat.cpu());
             assertNull(seat.accountId());
@@ -151,6 +154,24 @@ public class LobbyRecordingTest {
             }
         }
         assertFalse(lobby.isInGame());
+    }
+
+    /** The record names the level of the game's own bots. */
+    @Test
+    public void aGameRecordsItsBotsLevel() {
+        for (BotSkill skill : BotSkill.values()) {
+            Lobby lobby = new Lobby();
+            lobby.startNewGame();
+            RecordedGames.seatBotsAt(lobby, skill);
+            int before = records.size();
+
+            stepCpusToTheEnd(lobby);
+
+            assertEquals(skill.name(), before + 1, records.size());
+            GameRecord record = records.get(before);
+            assertTrue(record.hasCpu());
+            assertEquals(skill, record.botSkill());
+        }
     }
 
     @Test
@@ -191,6 +212,22 @@ public class LobbyRecordingTest {
 
         assertFalse(lobby.closeIfTimedOut());
         assertEquals(1, records.size());
+    }
+
+    /** A game with bots swept unfinished keeps their level. */
+    @Test
+    public void aSweptGameRecordsItsBotsLevel() {
+        Lobby.LOBBY_TIMEOUT_DURATION_IN_MIN = 0;
+        Lobby lobby = new Lobby();
+        lobby.startNewGame();
+        RecordedGames.seatBotsAt(lobby, BotSkill.EASY);
+
+        assertTrue(lobby.closeIfTimedOut());
+
+        assertEquals(1, records.size());
+        GameRecord record = records.get(0);
+        assertEquals(GameRecord.UNFINISHED, record.outcome());
+        assertEquals(BotSkill.EASY, record.botSkill());
     }
 
     @Test
