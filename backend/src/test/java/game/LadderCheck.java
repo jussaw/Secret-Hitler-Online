@@ -204,13 +204,18 @@ final class LadderCheck {
                 + percent(hard.liberalWins(), hard.games()) + ", all-Normal "
                 + percent(normal.liberalWins(), normal.games()) + ", band " + BALANCE_BAND + " points)\n"
                 + "Balance target: " + (withinPoints(results, TUNING_BAND) ? "PASS" : "FAIL") + " ("
-                + String.format(Locale.ROOT, "%.1f", 100 * Math.abs(share(hard) - share(normal)))
-                + " points apart, target " + TUNING_BAND + ")\n";
+                + tenthsUp(hard, normal) + " points apart, target " + TUNING_BAND + ")\n";
     }
 
-    /** The liberal side's share of {@code tally}'s games. */
-    private static double share(Tally tally) {
-        return (double) tally.liberalWins() / tally.games();
+    /**
+     * The points between two tallies' liberal rates, rounded up to a tenth in whole numbers, so
+     * the printed gap is at most a band exactly when {@link #withinPoints} holds.
+     */
+    private static String tenthsUp(Tally a, Tally b) {
+        long gap = 1000 * Math.abs((long) a.liberalWins() * b.games() - (long) b.liberalWins() * a.games());
+        long denominator = (long) a.games() * b.games();
+        long tenths = (gap + denominator - 1) / denominator;
+        return (tenths / 10) + "." + (tenths % 10);
     }
 
     /** A rate and its interval, as the run's tables write them: {@code 35.2% 34.3-36.1%}. */

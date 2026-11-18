@@ -209,6 +209,18 @@ public class LadderCheckTest {
                 target(pairings(350, Map.of(allHard, results(451)))));
     }
 
+    /** The gap is printed rounded up to a tenth, so a target that fails never reads as 8.0. */
+    @Test
+    public void theTargetsGapIsRoundedUp() {
+        Pairing allHard = new Pairing(H, H);
+        // 2,581 of 6,000 against 2,100 of 6,000: 8.02 points apart.
+        assertEquals("Balance target: FAIL (8.1 points apart, target 8)",
+                target(pairings(350, Map.of(allHard, results(430, Map.of(5, 431))))));
+        // 2,579 of 6,000: 7.98 points apart.
+        assertEquals("Balance target: PASS (8.0 points apart, target 8)",
+                target(pairings(350, Map.of(allHard, results(430, Map.of(5, 429))))));
+    }
+
     @Test
     public void pairingsComeInPrintOrder() {
         List<String> labels = new ArrayList<>();
