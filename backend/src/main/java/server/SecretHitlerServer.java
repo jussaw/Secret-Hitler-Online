@@ -1,5 +1,6 @@
 package server;
 
+import game.BotSkill;
 import game.datastructures.Identity;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
@@ -85,7 +86,9 @@ public class SecretHitlerServer {
     public static final String PARAM_SPECTATOR_COUNT = "spectatorCount"; // in every lobby and game packet
     public static final String PARAM_YOU = "you"; // in every player's packet: their name, or their seat's in a game
     public static final String PARAM_BOTS = "bots"; // in every lobby packet: the names of the bots a game started now seats
+    public static final String PARAM_BOT_SKILL = "botSkill"; // in every lobby packet: the level of the bots a game started now seats
     public static final String PARAM_BOT_COUNT = "count"; // set-bot-count's number
+    public static final String PARAM_SKILL = "skill"; // set-bot-skill's level: EASY, NORMAL or HARD
     public static final String FASCIST = "FASCIST";
     public static final String LIBERAL = "LIBERAL";
 
@@ -95,6 +98,7 @@ public class SecretHitlerServer {
     public static final String COMMAND_GET_STATE = "get-state";
     public static final String COMMAND_SET_LOBBY_SIZE = "set-lobby-size";
     public static final String COMMAND_SET_BOT_COUNT = "set-bot-count"; // the host's, in the lobby: params PARAM_BOT_COUNT (int)
+    public static final String COMMAND_SET_BOT_SKILL = "set-bot-skill"; // the host's, in the lobby: params PARAM_SKILL (a BotSkill's name)
     public static final String COMMAND_SELECT_ICON = "select-icon";
     public static final String COMMAND_NOMINATE_CHANCELLOR = "nominate-chancellor";
     public static final String COMMAND_REGISTER_VOTE = "register-vote";
@@ -1566,6 +1570,20 @@ public class SecretHitlerServer {
                             break;
                         }
                         lobby.setBotCount(message.getInt(PARAM_BOT_COUNT));
+                        break;
+
+                    case COMMAND_SET_BOT_SKILL: // params: PARAM_SKILL (a BotSkill's name). Any other is refused.
+                        if (!lobby.isHost(accountId)) {
+                            throw new RuntimeException("Only the host chooses how well the bots play.");
+                        }
+                        if (lobby.isInGame()) {
+                            // A press sent just after START GAME, before the game reached the page.
+                            logger.info(logMessage + " DROPPED (the game has started)");
+                            sendOKMessage = false;
+                            updateUsers = false;
+                            break;
+                        }
+                        lobby.setBotSkill(BotSkill.valueOf(message.getString(PARAM_SKILL)));
                         break;
 
                     default: // This is an invalid command.

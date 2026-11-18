@@ -26,6 +26,8 @@ import {
   longestLineViewers,
   longestLogin,
   settle,
+  skillRowLines,
+  skillShown,
   startGame,
   waitForPlayers,
   watchLobby,
@@ -134,8 +136,9 @@ for (const narrow of [false, true]) {
         failed,
       });
       try {
-        for (const { viewer, page: viewerPage, buttons, note } of viewers) {
+        for (const { viewer, page: viewerPage, buttons, skill, note } of viewers) {
           expect(await actionLabels(viewerPage), `the ${viewer}'s buttons`).toEqual(buttons);
+          expect(await skillShown(viewerPage), `the ${viewer}'s bot skill`).toBe(skill);
           if (note !== undefined) await expect(viewerPage.locator("#lobby-note")).toHaveText(note);
           await settle(viewerPage);
           // The 320px phone may scroll down, never sideways, and its status line may take a third
@@ -150,6 +153,8 @@ for (const narrow of [false, true]) {
           expect(await wrappedLabels(viewerPage, ".lobby-screen"), `the ${viewer}'s wrapped button labels`).toEqual([]);
           // A bot's row (#70) is a person's row's size.
           expect(await botRowMismatches(viewerPage), `the ${viewer}'s bot rows`).toEqual([]);
+          // The host's BOT SKILL row, or everyone else's line, is one line (#72).
+          expect(await skillRowLines(viewerPage), `the ${viewer}'s bot skill row's lines`).toBe(1);
           expect(
             await smallFieldText(viewerPage, ".lobby-screen"),
             `small text in the ${viewer}'s text fields`

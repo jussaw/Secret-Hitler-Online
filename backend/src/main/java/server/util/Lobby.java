@@ -1,5 +1,6 @@
 package server.util;
 
+import game.BotSkill;
 import game.CpuPlayer;
 import game.CpuTurn;
 import game.GameState;
@@ -90,6 +91,13 @@ public class Lobby implements Serializable {
     // too. Transient, so backups are as they were: a lobby restored from one takes the fewest.
     transient private Integer chosenBots;
 
+    // How well the bots of the next game play (#72), the host's choice: NORMAL in a new lobby,
+    // kept after a game, and the level startNewGame seats every bot at. The running game's bots
+    // keep the level they were made with, whatever the host chooses next. Transient, as chosenBots
+    // is, so backups are as they were: a lobby restored from one is NORMAL again, while a restored
+    // game's bots, which are backed up, keep theirs.
+    transient private BotSkill chosenSkill;
+
     // The running game's record (#31): its ID, the clock's time when it started, whether its
     // timeline starts at its start and holds every move, and the timeline itself (TimelineDiff's
     // events, then Lobby's own). They are backed up with the game, and hold JDK types only, so a
@@ -162,6 +170,7 @@ public class Lobby implements Serializable {
         accountToIcon = new ConcurrentHashMap<>();
         accountToPreferredIcon = new ConcurrentHashMap<>();
         cpuPlayers = new ConcurrentSkipListSet<>();
+        chosenSkill = BotSkill.NORMAL;
         resetTimeout();
     }
 
@@ -684,7 +693,7 @@ public class Lobby implements Serializable {
 
     /**
      * Returns whether the account is the lobby's host: the first in join order, who starts the
-     * game and chooses how many bots join it.
+     * game and chooses how many bots join it and how well they play.
      */
     synchronized public boolean isHost(String accountId) {
         return accountId != null && accountId.equals(activeAccounts.peek());
@@ -717,6 +726,41 @@ public class Lobby implements Serializable {
         int people = activeAccounts.size();
         int bots = botsFor(count, people);
         chosenBots = bots == botsFor(null, people) ? null : bots;
+    }
+
+    /**
+     * How well the bots of a game started now play (#72): the host's choice, or {@code NORMAL}
+     * before the host has chosen.
+     */
+    synchronized public BotSkill botSkill() {
+        return chosenSkill;
+    }
+
+    /**
+     * Sets how well the bots of the next game play, the host's choice, which stays after a game.
+     * Sends nothing: the caller sends the state.
+     *
+     * @param skill the level the host asked for.
+     * @throws IllegalStateException if a game is running. Nothing changes.
+     * @throws NullPointerException if {@code skill} is null. Nothing changes.
+     */
+    synchronized public void setBotSkill(BotSkill skill) {
+        Objects.requireNonNull(skill, "skill");
+        if (isInGame()) {
+            throw new IllegalStateException("How well the bots play cannot change during a game.");
+        }
+        chosenSkill = skill;
+    }
+
+    /**
+     * For tests: the running game's bots, seat name to level, in name order; empty outside a game.
+     */
+    synchronized Map<String, BotSkill> seatedBotSkills() {
+        Map<String, BotSkill> skills = new TreeMap<>();
+        for (CpuPlayer cpu : cpuPlayers) {
+            skills.put(cpu.myName, cpu.skill());
+        }
+        return skills;
     }
 
     /**
@@ -838,9 +882,9 @@ public class Lobby implements Serializable {
     }
 
     /**
-     * The packet sent outside a game: the names of the accounts in the lobby, in join order, and
-     * the names of the bots a game started now would seat ({@code bots}), so a page never counts
-     * or names them itself.
+     * The packet sent outside a game: the names of the accounts in the lobby, in join order, the
+     * names of the bots a game started now would seat ({@code bots}), so a page never counts or
+     * names them itself, and how well they would play ({@code botSkill}, the level's name).
      */
     private JSONObject lobbyPacket() {
         JSONObject message = new JSONObject();
@@ -848,6 +892,7 @@ public class Lobby implements Serializable {
         List<String> usernames = activeAccounts.stream().map(accountToName::get).collect(Collectors.toList());
         message.put("usernames", usernames);
         message.put(SecretHitlerServer.PARAM_BOTS, botNames(botCount(), usernames));
+        message.put(SecretHitlerServer.PARAM_BOT_SKILL, botSkill().name());
         return message;
     }
 
@@ -958,6 +1003,7 @@ public class Lobby implements Serializable {
         accountToRejoinKey = new ConcurrentHashMap<>();
         pendingRemovals = new ConcurrentHashMap<>();
         chosenBots = null; // the fewest bots again, as in a new lobby
+        chosenSkill = BotSkill.NORMAL; // and Normal bots; a restored game's bots keep their own
         userTimeoutTimer = new Timer();
         cpuTickTimer = new Timer();
         if (game != null) {
@@ -1051,11 +1097,12 @@ public class Lobby implements Serializable {
      * @effects creates and stores a new SecretHitlerGame.
      *          Each connected account is seated under its current name, in a
      *          randomized order, and {@code gameSeats} records the seats, beside the bots the
-     *          lobby packet named ({@code botCount}, worked out again for the people seated). A
-     *          user inside the grace window after a disconnect ({@code PLAYER_TIMEOUT_IN_SEC}) is
-     *          not seated: the lobby drops them at once, as {@code RemoveUserTask} would have,
-     *          keeping their preferred icon. They find the lobby in a game when they return and
-     *          can watch it. A start that throws changes nothing.
+     *          lobby packet named ({@code botCount}, worked out again for the people seated), each
+     *          at the host's level ({@code botSkill}). A user inside the grace window after a
+     *          disconnect ({@code PLAYER_TIMEOUT_IN_SEC}) is not seated: the lobby drops them at
+     *          once, as {@code RemoveUserTask} would have, keeping their preferred icon. They find
+     *          the lobby in a game when they return and can watch it. A start that throws changes
+     *          nothing.
      */
     synchronized public void startNewGame() {
         if (isInGame()) {
@@ -1101,11 +1148,11 @@ public class Lobby implements Serializable {
         }
 
         // The bots the lobby packet named: the host's choice (or the fewest that make
-        // MIN_PLAYERS), in the range for the people seated.
+        // MIN_PLAYERS), in the range for the people seated, each at the host's level.
         List<String> cpuNames = botNames(botsFor(chosenBots, seated.size()), gameSeats.values());
         cpuPlayers.clear();
         for (String botName : cpuNames) {
-            cpuPlayers.add(new CpuPlayer(botName));
+            cpuPlayers.add(new CpuPlayer(botName, chosenSkill));
         }
 
         // Initialize the new game

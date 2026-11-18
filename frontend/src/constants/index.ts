@@ -149,6 +149,8 @@ export const PARAM_USER_COUNT = "user-count";
 export const PARAM_USERNAMES = "usernames";
 /** The lobby packet's bots: the names of the bots a game started now seats (#70). */
 export const PARAM_BOTS = "bots";
+/** The lobby packet's botSkill: the level of the bots a game started now seats (#72). */
+export const PARAM_BOT_SKILL = "botSkill";
 
 // Peek
 export const PARAM_PEEK = "peek";

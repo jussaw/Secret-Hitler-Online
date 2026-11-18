@@ -64,7 +64,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 25B. Hard's first rules | `phase-25b-hard-reads` | done |
 | 25C. Hard's other rules | `phase-25c-hard-bots` | done |
 | 25D. Ladder and balance | `phase-25d-ladder-balance` | done |
-| 26A. Bot skill in the lobby | `phase-26a-lobby-bot-skill` | planned |
+| 26A. Bot skill in the lobby | `phase-26a-lobby-bot-skill` | done |
 | 26B. Bot skill in the records | `phase-26b-record-bot-skill` | planned |
 
 ---
@@ -1203,15 +1203,15 @@ Breakdown: [`docs/superpowers/plans/2026-11-17-phase-26a-lobby-bot-skill.md`](su
 
 Issue #72, part 4. Starts once 25A has merged; merges after 25D.
 
-- [ ] `Lobby` keeps the host's level (Normal in a new lobby, kept after a game, Normal after a restore) and seats bots at it; `set-bot-skill` (host only, known levels, dropped during a game); every lobby packet carries `botSkill`
-- [ ] The host's BOT SKILL row under START GAME's row (EASY, NORMAL, HARD), on even with no bots to seat; guests and spectators see the level on a line in the same place
-- [ ] The lobby still fits one screen for every viewer at every tested size, with 44px targets on phones, checked with Linux fonts too
-- [ ] `CLAUDE.md` (the lobby and the protocol line) and `README.md` updated; the pull request shows the lobby before and after, on desktop and on a phone
+- [x] `Lobby` keeps the host's level (Normal in a new lobby, kept after a game, Normal after a restore) and seats bots at it; `set-bot-skill` (host only, known levels, dropped during a game); every lobby packet carries `botSkill`
+- [x] The host's BOT SKILL row under START GAME's row (EASY, NORMAL, HARD), on even with no bots to seat; guests and spectators see the level on a line in the same place
+- [x] The lobby still fits one screen for every viewer at every tested size, with 44px targets on phones, checked with Linux fonts too
+- [x] `CLAUDE.md` (the lobby and the protocol line) and `README.md` updated; the pull request shows the lobby before and after, on desktop and on a phone
 
 **Phase 26A acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] PR merged into `development`
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] PR merged into `development`
 - [ ] The user plays a game against Hard bots on the deployed build, with a guest who sees the level
 
 ---

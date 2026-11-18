@@ -3,6 +3,7 @@ import { Copy, Eye, Minus, Plus, UserPlus } from "lucide-react";
 import { ABOUT_URL, ISSUES_URL, MAX_PLAYERS, MIN_PLAYERS } from "../constants";
 import SoundControl from "../sound/SoundControl";
 import SpectatorCount from "../spectator/SpectatorCount";
+import { BOT_SKILLS, type BotSkill } from "../types";
 import OutLink from "../util/OutLink";
 import { copyText } from "./copyText";
 import LobbyRoster from "./LobbyRoster";
@@ -18,6 +19,8 @@ export type LobbyScreenProps = {
   usernames: string[];
   /** The bots the game will seat, as the lobby packet names them (`Bot 1`, `Bot 2`, …). */
   bots: string[];
+  /** The level the bots play at, as the lobby packet says. */
+  botSkill: BotSkill;
   icons: Record<string, string>;
   /** The viewer's name (the packets' `you`), "" for a spectator. */
   user: string;
@@ -38,6 +41,8 @@ export type LobbyScreenProps = {
   onStartGame: () => void;
   /** The host's stepper: asks the server for this many bots, which it keeps inside the range. */
   onSetBots: (count: number) => void;
+  /** The host's switch: asks the server for this level. */
+  onSetBotSkill: (skill: BotSkill) => void;
   onChangeName: () => void;
   onChangeLook: () => void;
   onWatchInstead: () => void;
@@ -63,6 +68,18 @@ function spectatorNote(props: LobbyScreenProps, full: boolean): string {
 }
 
 /**
+ * A host's press, held until the next lobby packet answers it: `fromPacket` is what the last
+ * packet says, and `bots` that packet's bots, which App makes anew from every lobby packet. After
+ * `hold(value)` the page shows `value` until `bots` changes, and then the packet's value again,
+ * whatever the server made of the press.
+ */
+function useHeldUntilNextPacket<T>(bots: string[], fromPacket: T): [T, (value: T) => void] {
+  const [held, setHeld] = useState<{ on: string[]; value: T } | null>(null);
+  const shown = held !== null && held.on === bots ? held.value : fromPacket;
+  return [shown, (value: T) => setHeld({ on: bots, value })];
+}
+
+/**
  * The host's stepper, at the left of START GAME: − 2 BOTS +. People and bots together stay between
  * MIN_PLAYERS and MAX_PLAYERS, so − is off at the fewest bots that make a table of five and + at
  * the most that keep it at ten (the server keeps the count inside the same range). A press asks
@@ -72,12 +89,11 @@ function spectatorNote(props: LobbyScreenProps, full: boolean): string {
  */
 function BotStepper(props: { people: number; bots: string[]; onSetBots: (count: number) => void }) {
   const { people, bots, onSetBots } = props;
-  const [asked, setAsked] = useState<{ on: string[]; count: number } | null>(null);
-  const count = asked !== null && asked.on === bots ? asked.count : bots.length;
+  const [count, hold] = useHeldUntilNextPacket(bots, bots.length);
   const fewest = Math.max(0, MIN_PLAYERS - people);
   const most = Math.max(0, MAX_PLAYERS - people);
   const press = (next: number) => {
-    setAsked({ on: bots, count: next });
+    hold(next);
     onSetBots(next);
   };
   return (
@@ -108,11 +124,62 @@ function BotStepper(props: { people: number; bots: string[]; onSetBots: (count: 
 }
 
 /**
+ * The host's BOT SKILL row, under START GAME's row (#72): the label, then EASY, NORMAL and HARD,
+ * the level the bots play at pressed. It stays on with no bots to seat, so the level is ready when
+ * someone leaves. A press shows the new level at once and asks the server for it, and the switch
+ * shows that level until the next lobby packet, a new `bots`, answers, as the stepper does: the
+ * packet then says the server's level, whatever it is. A press of the level shown sends nothing.
+ */
+function BotSkillSwitch(props: { skill: BotSkill; bots: string[]; onSetBotSkill: (skill: BotSkill) => void }) {
+  const { bots, onSetBotSkill } = props;
+  const [shown, hold] = useHeldUntilNextPacket(bots, props.skill);
+  const press = (skill: BotSkill) => {
+    if (skill === shown) return;
+    hold(skill);
+    onSetBotSkill(skill);
+  };
+  return (
+    <div className="lobby-skill" role="group" aria-label="Bot skill">
+      <span className="lobby-skill-label" aria-hidden="true">
+        BOT SKILL
+      </span>
+      <div className="lobby-skill-options">
+        {BOT_SKILLS.map((skill) => (
+          <button
+            key={skill}
+            type="button"
+            className="lobby-skill-option"
+            aria-pressed={skill === shown}
+            onClick={() => press(skill)}
+          >
+            {skill}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Everyone else's line in the same place as the host's BOT SKILL row: the label, then the level
+ * the bots play at, without buttons.
+ */
+function BotSkillLine(props: { skill: BotSkill }) {
+  return (
+    <p className="lobby-skill-line">
+      <span className="lobby-skill-label">BOT SKILL</span> <span className="lobby-skill-level">{props.skill}</span>
+    </p>
+  );
+}
+
+/**
  * The lobby page below the prompts: the game's header, the roster of players and bots beside (or,
  * in tall windows and on phones, above) the code card, the status line, the buttons and the footer
  * links. A player gets CHANGE NAME, CHANGE LOOK, WATCH INSTEAD and LEAVE LOBBY (the host the bot
- * stepper and START GAME above them); a spectator PLAY INSTEAD signed in, SIGN IN TO PLAY signed
- * out, and LEAVE LOBBY, with a note under them when there is something to say.
+ * stepper and START GAME above them, with the BOT SKILL row under those); a spectator PLAY INSTEAD
+ * signed in, SIGN IN TO PLAY signed out, and LEAVE LOBBY, with a note under them when there is
+ * something to say. Everyone but the host sees the bots' level on a line above their buttons, where
+ * the host's BOT SKILL row is.
  */
 export default function LobbyScreen(props: LobbyScreenProps) {
   const { usernames, bots, icons, user, spectator } = props;
@@ -180,18 +247,24 @@ export default function LobbyScreen(props: LobbyScreenProps) {
           </div>
 
           <div className="lobby-actions">
-            {isHost && (
-              <div className="lobby-start-row">
-                <BotStepper people={usernames.length} bots={bots} onSetBots={props.onSetBots} />
-                <button
-                  type="button"
-                  className="lobby-start"
-                  disabled={!everyonePicked}
-                  onClick={props.onStartGame}
-                >
-                  START GAME
-                </button>
+            {isHost ? (
+              // START GAME's row and the BOT SKILL row under it, in a column as wide as the wider.
+              <div className="lobby-host-controls">
+                <div className="lobby-start-row">
+                  <BotStepper people={usernames.length} bots={bots} onSetBots={props.onSetBots} />
+                  <button
+                    type="button"
+                    className="lobby-start"
+                    disabled={!everyonePicked}
+                    onClick={props.onStartGame}
+                  >
+                    START GAME
+                  </button>
+                </div>
+                <BotSkillSwitch skill={props.botSkill} bots={bots} onSetBotSkill={props.onSetBotSkill} />
               </div>
+            ) : (
+              <BotSkillLine skill={props.botSkill} />
             )}
             {/* A player's four make two rows of two on phones (lobby-player-buttons). */}
             <div className={spectator ? "lobby-secondary" : "lobby-secondary lobby-player-buttons"}>

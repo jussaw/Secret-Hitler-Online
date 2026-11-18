@@ -259,17 +259,24 @@
     white-space: nowrap;
 }
 
-/* − 2 BOTS +, in a card of the status line's colour. */
+/* The host's controls under the status line (#70, #72) and everyone else's BOT SKILL line, in
+   cards of the status line's colour. */
+.lobby-bots,
+.lobby-skill,
+.lobby-skill-line {
+    box-sizing: border-box;
+    background-color: var(--backgroundDark);
+    border-radius: 0.6em;
+    box-shadow: 0 0.4vh 0 rgba(0, 0, 0, 0.25);
+}
+
+/* − 2 BOTS +. */
 .lobby-bots {
     flex: none;
     display: flex;
     align-items: center;
     gap: 0.5em;
-    box-sizing: border-box;
     padding: 0 0.45em;
-    background-color: var(--backgroundDark);
-    border-radius: 0.6em;
-    box-shadow: 0 0.4vh 0 rgba(0, 0, 0, 0.25);
 }
 
 /* 44px targets at every size, as every button under the status line is. */
@@ -304,10 +311,115 @@
     color: var(--headerTextColor);
 }
 
-.lobby-bots-word {
+/* BOTS, and BOT SKILL's label in the host's row and everyone else's line (#72). */
+.lobby-bots-word,
+.lobby-skill-label {
     font-size: 1.15em;
     letter-spacing: 0.06em;
     color: #b9ab9f;
+}
+
+/* START GAME's row and the host's BOT SKILL row under it (#72), in a column as wide as the wider
+   of the two, which .lobby-actions centres: the BOT SKILL row stretches across it. */
+.lobby-host-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1em;
+    max-width: 100%;
+}
+
+/* BOT SKILL, then EASY, NORMAL and HARD on a darker track, on one line, centred. A row too
+   narrow for them wraps rather than overflowing (the browser tests check it never does). */
+.lobby-skill {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.4em 0.7em;
+    padding: 0.3em 0.45em 0.3em 0.9em;
+}
+
+/* The stepper's BOTS word's look (above), in the header font. */
+.lobby-skill-label {
+    font-family: var(--headerFont);
+    white-space: nowrap;
+}
+
+/* In the host's row the label's middle is the options' faces' middle: their boxes hold their
+   shadows (App.css's --button-depth, 5px) below the faces, which this margin matches. */
+.lobby-skill > .lobby-skill-label {
+    margin-bottom: 5px;
+}
+
+.lobby-skill-options {
+    display: flex;
+    gap: 3px;
+    padding: 3px;
+    background-color: rgba(0, 0, 0, 0.25);
+    border-radius: 0.5em;
+}
+
+/* 44px targets at every size, as every button under the status line is. Each option's whole box,
+   its shadow too, is inside the track. Not pressed: a dark face with a grey label; pressed: App.css's
+   orange face, START GAME's, with a white label. Only colours change. */
+.lobby-main .lobby-skill-option {
+    --button-face: #2b231c;
+    --button-shadow: #1e1813;
+    min-width: 44px;
+    min-height: calc(44px + var(--button-depth));
+    margin: 0;
+    padding: 0.35em 0.7em;
+    font-size: 1.3em;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    color: #b9ab9f;
+}
+
+.lobby-main .lobby-skill-option:hover,
+.lobby-main .lobby-skill-option:focus,
+.lobby-main .lobby-skill-option:focus-visible {
+    --button-face: #4a3f35;
+}
+
+.lobby-main .lobby-skill-option:active {
+    --button-face: #2b231c;
+}
+
+.lobby-main .lobby-skill-option[aria-pressed="true"] {
+    --button-face: var(--buttonFill);
+    --button-shadow: var(--buttonShadowFill);
+    color: var(--headerTextColor);
+}
+
+.lobby-main .lobby-skill-option[aria-pressed="true"]:hover,
+.lobby-main .lobby-skill-option[aria-pressed="true"]:focus,
+.lobby-main .lobby-skill-option[aria-pressed="true"]:focus-visible {
+    --button-face: var(--buttonHoverFill);
+}
+
+.lobby-main .lobby-skill-option[aria-pressed="true"]:active {
+    --button-face: var(--buttonFill);
+}
+
+/* Everyone else's line, where the host's BOT SKILL row is: the label, then the level in white,
+   their middles in line (the level's word is the larger), centred. */
+.lobby-skill-line {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0 0.4em;
+    margin: 0;
+    padding: 0.5em 1.1em;
+    line-height: 1.2;
+}
+
+.lobby-skill-level {
+    font-family: var(--headerFont);
+    font-size: 1.45em;
+    letter-spacing: 0.04em;
+    color: #ffffff;
 }
 
 .lobby-secondary {
@@ -444,6 +556,29 @@
     .lobby-actions {
         align-items: stretch;
         gap: 10px;
+    }
+
+    .lobby-host-controls {
+        gap: 10px;
+    }
+
+    /* BOT SKILL across the column, its label at the left and the options sharing the rest in equal
+       columns. */
+    .lobby-skill {
+        justify-content: flex-start;
+        gap: 6px 0.6em;
+        padding: 4px 4px 4px 0.8em;
+    }
+
+    .lobby-skill-options {
+        flex: 1 1 auto;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .lobby-main .lobby-skill-option {
+        padding: 0 0.3em;
+        font-size: 1.15em;
     }
 
     .lobby-main .lobby-start {
