@@ -1169,11 +1169,11 @@ Breakdown: [`docs/superpowers/plans/2026-11-17-phase-25c-hard-bots.md`](superpow
 Issue #72, part 3. Backend only; changes nothing on screen. Starts once 25B has merged.
 
 - [x] Hard's rules 3 (votes), 5 (deck odds, which also scales rule 2), 6 (the election tracker) and 7 (fascists bluff), each with its own tests and in the no-peeking test; deck odds hold through a reshuffle
-- [x] `CLAUDE.md` updated; the pull request quotes `botMatches -Pladder` before and after, with the checks' verdicts
+- [ ] `CLAUDE.md` updated; the pull request quotes `botMatches -Pladder` before and after, with the checks' verdicts
 
 **Phase 25C acceptance**
 
-- [ ] Backend tests pass
+- [x] Backend tests pass
 - [ ] PR merged into `development`
 
 ---
