@@ -88,39 +88,39 @@ test("the numbers follow the filter and the toggle", async ({ page }) => {
     await page.setViewportSize(size);
     await open(page, FILTERED, "/stats");
     await expect.poll(() => rows(gamesPlayed), at).toEqual([
-      ["1.", "Ann", "6", ""],
-      ["1.", "Cy", "6", ""],
-      ["3.", "Bo", "4", ""],
+      ["1.", "Ann", "6"],
+      ["1.", "Cy", "6"],
+      ["3.", "Bo", "4"],
     ]);
 
     await openPanel();
     await page.getByRole("switch", { name: "Include games with Bots" }).click();
     await expect(page, at).toHaveURL(/\/stats\?cpu=1$/);
     await expect.poll(() => rows(gamesPlayed), at).toEqual([
-      ["1.", "Ann", "8", ""],
-      ["2.", "Bo", "6", ""],
-      ["2.", "Cy", "6", ""],
+      ["1.", "Ann", "8"],
+      ["2.", "Bo", "6"],
+      ["2.", "Cy", "6"],
     ]);
 
     await openPanel();
     await page.getByRole("group", { name: "Players" }).getByRole("button", { name: "Bo", exact: true }).click();
     await expect(page, at).toHaveURL(/\/stats\?players=1,3&cpu=1$/);
     await expect.poll(() => rows(gamesPlayed), at).toEqual([
-      ["1.", "Ann", "2", ""],
-      ["1.", "Cy", "2", ""],
+      ["1.", "Ann", "2"],
+      ["1.", "Cy", "2"],
     ]);
     await expect(card(page, "Liberal / Fascist wins"), at).toContainText("0 / 2");
 
     // Review Focus 3: back follows the address, and so does every number.
     await page.goBack();
     await expect(page, at).toHaveURL(/\/stats\?cpu=1$/);
-    await expect.poll(async () => (await rows(gamesPlayed))[0], at).toEqual(["1.", "Ann", "8", ""]);
+    await expect.poll(async () => (await rows(gamesPlayed))[0], at).toEqual(["1.", "Ann", "8"]);
     await expect(card(page, "Liberal / Fascist wins"), at).toContainText("6 / 2");
 
     // A fresh load of the filtered address.
     await page.goto("/stats?players=1,3&cpu=1");
     await expect(page.getByRole("region", { name: "At a glance" })).toBeVisible();
-    await expect.poll(async () => (await rows(gamesPlayed))[0], at).toEqual(["1.", "Ann", "2", ""]);
+    await expect.poll(async () => (await rows(gamesPlayed))[0], at).toEqual(["1.", "Ann", "2"]);
   }
 });
 
