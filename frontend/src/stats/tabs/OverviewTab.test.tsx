@@ -25,11 +25,11 @@ function tab(data: StatsData = fixture.data, filter: StatsFilter = DEFAULT_FILTE
 }
 
 const card = (name: string) => screen.getByRole("region", { name });
-/** A card's table rows, each as its cells' text. */
+/** A card's table body rows (the head row left out), each as its cells' text. */
 const rows = (name: string) =>
-  within(card(name))
-    .getAllByRole("row")
-    .map((row) => Array.from(row.querySelectorAll("td, th")).map((cell) => cell.textContent ?? ""));
+  Array.from(card(name).querySelectorAll("tbody tr")).map((row) =>
+    Array.from(row.querySelectorAll("td, th")).map((cell) => cell.textContent ?? "")
+  );
 /** The names a card shows, in order. */
 const names = (el: HTMLElement) => Array.from(el.querySelectorAll(".player-name")).map((n) => n.textContent);
 
@@ -140,14 +140,14 @@ describe("OverviewTab", () => {
   it("theHeadline", () => {
     tab();
     expect(rows("Wins").slice(0, 2)).toEqual([
-      ["1.", "Ann", "4", ""],
-      ["2.", "Zed", "1", ""],
+      ["1.", "Ann", "4"],
+      ["2.", "Zed", "1"],
     ]);
-    expect(rows("Games played")[0]).toEqual(["1.", "Ann", "5", ""]);
-    expect(rows("Win rate")).toContainEqual(["", "Bo", "—", "2 games"]);
-    expect(rows("Win rate")[0]).toEqual(["1.", "Ann", "80%", "5 games"]);
-    expect(rows("Current streak")[0]).toEqual(["1.", "Ann", "4", ""]);
-    expect(rows("Longest streak")[0]).toEqual(["1.", "Ann", "4", ""]);
+    expect(rows("Games played")[0]).toEqual(["1.", "Ann", "5"]);
+    expect(rows("Win rate")).toContainEqual(["", "Bo", "—", "2"]);
+    expect(rows("Win rate")[0]).toEqual(["1.", "Ann", "80%", "5"]);
+    expect(rows("Current streak")[0]).toEqual(["1.", "Ann", "4"]);
+    expect(rows("Longest streak")[0]).toEqual(["1.", "Ann", "4"]);
     const sides = within(card("Liberal / Fascist wins"));
     expect(card("Liberal / Fascist wins")).toHaveTextContent("5 / 2");
     expect(sides.getByText("5")).toHaveClass("stats-liberal");

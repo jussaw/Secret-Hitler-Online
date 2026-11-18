@@ -3,8 +3,8 @@ import { computeCards, HAND_LABELS, type CardStats } from "../cards";
 import { MIN_CHANCES, MIN_GAMES, rankRows, rate, type Rate } from "../counting";
 import { plural } from "../format";
 import { ROLE_WORDS } from "../game/text";
-import { formatPercent, formatSigned } from "../numbers";
-import { RankedTable } from "../RankedTable";
+import { formatPercent, formatSigned, wholePercent } from "../numbers";
+import { RankedTable, type RankedTableProps } from "../RankedTable";
 import { ROLES, type Role } from "../record";
 import { byRole, computeRoles, TABLE_SIZES, type RoleStats } from "../roles";
 import { SplitTable, type SplitCell, type SplitColumn } from "../SplitTable";
@@ -22,6 +22,10 @@ function larger(a: number | null, b: number | null): number {
 const more = (a: number, b: number) => b - a;
 const byValue = (a: Rate, b: Rate) => larger(a.value, b.value);
 const percent = (r: Rate) => (r.value === null ? "—" : formatPercent(r.value));
+/** What a rate sorts by: the whole percent it shows. */
+const byPercent = (r: Rate) => (r.value === null ? null : wholePercent(r.value));
+/** What a count sorts by: itself. */
+const byNumber = (n: number) => n;
 const handsLabel = (n: number) => plural(n, "hand");
 const sum = (counts: readonly number[]) => counts.reduce((total, n) => total + n, 0);
 /** Each player's stats in a module's `byPlayer`, as rows to filter and map. */
@@ -62,6 +66,9 @@ interface CardSpec {
   body: ReactNode;
 }
 
+/** A ranked table's heads: the value's, what it sorts by, and the count's (no count column without it). */
+type Heads<T> = Pick<RankedTableProps<T>, "valueHead" | "sortValue" | "countHead">;
+
 /** The card's ranked table of one value per player, for `rows` with a count above zero. */
 function ranked<T>(
   names: Map<number, string>,
@@ -69,14 +76,12 @@ function ranked<T>(
   compare: (a: T, b: T) => number,
   format: (value: T) => string,
   min: number,
-  countLabel?: (n: number) => string
+  heads: Heads<T>
 ): { rows: number; body: ReactNode } {
   const shown = rows.filter((row) => row.count > 0);
   return {
     rows: shown.length,
-    body: (
-      <RankedTable rows={rankRows(shown, compare, names, min)} format={format} names={names} countLabel={countLabel} />
-    ),
+    body: <RankedTable rows={rankRows(shown, compare, names, min)} format={format} names={names} {...heads} />,
   };
 }
 
@@ -109,7 +114,8 @@ function rolesCards(stats: StatsContext, roles: RoleStats): CardSpec[] {
       players.map(({ player, p }) => ({ player, value: p.winAs[role], count: p.winAs[role].chances })),
       byValue,
       percent,
-      MIN_GAMES
+      MIN_GAMES,
+      { valueHead: "Win rate", sortValue: byPercent, countHead: "Games" }
     ),
   });
   return [
@@ -134,7 +140,8 @@ function rolesCards(stats: StatsContext, roles: RoleStats): CardSpec[] {
         players.map(({ player, p }) => ({ player, value: p.luck, count: p.games })),
         larger,
         (luck) => (luck === null ? "—" : `${formatSigned(luck * 100)}%`),
-        MIN_GAMES
+        MIN_GAMES,
+        { valueHead: "Luck", sortValue: (luck) => (luck === null ? null : Math.round(luck * 100)), countHead: "Games" }
       ),
     },
     {
@@ -145,7 +152,8 @@ function rolesCards(stats: StatsContext, roles: RoleStats): CardSpec[] {
         players.map(({ player, p }) => ({ player, value: p.split.HITLER.hits, count: p.games })),
         more,
         String,
-        1
+        1,
+        { valueHead: "Times", sortValue: byNumber }
       ),
     },
     {
@@ -156,7 +164,8 @@ function rolesCards(stats: StatsContext, roles: RoleStats): CardSpec[] {
         players.map(({ player, p }) => ({ player, value: p.longestRun, count: p.games })),
         (a, b) => more(a.length, b.length),
         (run) => `${run.length} as ${ROLE_WORDS[run.role]}`,
-        1
+        1,
+        { valueHead: "Run", sortValue: (run) => run.length }
       ),
     },
     winAs("LIBERAL", "Win rate as Liberal", "Games won as a Liberal, of their games as one.", "No games as a Liberal yet with these players."),
@@ -197,7 +206,8 @@ function rolesCards(stats: StatsContext, roles: RoleStats): CardSpec[] {
         players.map(({ player, p }) => ({ player, value: p.firstPresident, count: p.firstPresident.chances })),
         byValue,
         percent,
-        MIN_GAMES
+        MIN_GAMES,
+        { valueHead: "Win rate", sortValue: byPercent, countHead: "Games" }
       ),
     },
   ];
@@ -254,7 +264,7 @@ function presidentCards(names: Map<number, string>, cards: CardStats): CardSpec[
         byValue,
         percent,
         MIN_CHANCES,
-        handsLabel
+        { valueHead: "Accuracy", sortValue: byPercent, countHead: "Hands" }
       ),
     },
     {
@@ -268,7 +278,8 @@ function presidentCards(names: Map<number, string>, cards: CardStats): CardSpec[
         // The second share is what the first leaves after rounding, so the two add up to 100%.
         (r) => (r.value === null ? "—" : `${formatPercent(r.value)} · ${100 - Math.round(r.value * 100)}%`),
         MIN_CHANCES,
-        handsLabel
+        // Sorted by the first share: how often they discarded a Fascist.
+        { valueHead: "Discards", sortValue: byPercent, countHead: "Hands" }
       ),
     },
   ];
@@ -341,7 +352,8 @@ function blameCards(names: Map<number, string>, roles: RoleStats, cards: CardSta
         players.filter(({ p }) => p.fascistChoices > 0).map(({ player, p }) => ({ player, value: p.fascistChoices, count: games(player) })),
         more,
         String,
-        1
+        1,
+        { valueHead: "Choices", sortValue: byNumber }
       ),
     },
     {

@@ -1,5 +1,6 @@
-/* A ranked table: rank, name, value and count. The name column takes what is left and its name
-   wraps there (PlayerName's overflow-wrap), so the table never needs to scroll sideways. */
+/* A ranked table: rank, name, value and count under a head row. The name column takes what is
+   left and its name wraps there (PlayerName's overflow-wrap), so the table never needs to scroll
+   sideways. */
 .ranked-table {
     width: 100%;
     border-collapse: collapse;
@@ -18,6 +19,37 @@
 
 .ranked-table tr:first-child td {
     border-top: none;
+}
+
+/* The head row (#109, the power ranking's look): small, bold and grey, at the right but for the
+   name's. Only the head's cells: Trophy holders' row heads (th scope="row") keep their own rules. */
+.ranked-table thead th {
+    padding: 0 6px 4px;
+    font-weight: 600;
+    font-size: 12px;
+    text-align: right;
+    white-space: nowrap;
+    color: var(--textColorOnDark);
+}
+
+/* The table's edges, as its cells' (.ranked-table td:first-child). :where() keeps these at the head
+   rule's weight, so a table's own padding (the power ranking's 3px on phones) reaches its edge
+   heads as it reaches its edge cells. */
+.ranked-table thead th:where(:first-child) {
+    padding-left: 0;
+}
+
+.ranked-table thead th:where(:last-child) {
+    padding-right: 0;
+}
+
+.ranked-table thead th.ranked-name {
+    text-align: left;
+}
+
+/* A line under the head row too. */
+.ranked-table thead ~ tbody tr:first-child td {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .ranked-table td:first-child {

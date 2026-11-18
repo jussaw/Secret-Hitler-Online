@@ -34,6 +34,8 @@ const DOT = " · ";
 
 /** A current streak: "3 wins", or "2 losses" for a negative one. */
 const streakText = (current: number) => (current < 0 ? countLabel(-current, LOSS_NOUNS) : countLabel(current, WIN_NOUNS));
+/** What a current streak sorts by: the signed run, losses negative. */
+const byStreak = (current: number) => current;
 
 /** One card in the tab's grid, named by its slug. */
 function Cell({ slug, children }: { slug: string; children: ReactNode }): JSX.Element {
@@ -186,7 +188,7 @@ export function RecordsTab(props: { stats: StatsContext; now?: number; timeZone?
       </Cell>
       <Cell slug="current-streaks">
         <StatCard title="Current streaks" definition="Each player's run as of their last counted game." empty={empty}>
-          <RankedTable rows={current} format={streakText} names={names} />
+          <RankedTable rows={current} format={streakText} names={names} valueHead="Streak" sortValue={byStreak} />
         </StatCard>
       </Cell>
 

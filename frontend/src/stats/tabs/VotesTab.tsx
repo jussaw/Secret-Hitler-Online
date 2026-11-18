@@ -1,7 +1,6 @@
 import { useId, useMemo } from "react";
 import { compareNames, MIN_CHANCES, nameOf, rankRows, type Rate } from "../counting";
-import { plural } from "../format";
-import { formatPercent } from "../numbers";
+import { formatPercent, wholePercent } from "../numbers";
 import { computePowers, type PlayerPowers, type VetoAnswers } from "../powers";
 import { RankedTable } from "../RankedTable";
 import type { Role, Side } from "../record";
@@ -59,21 +58,39 @@ function byRate(a: Rate, b: Rate): number {
   return (b.value ?? -1) - (a.value ?? -1);
 }
 
+/** What a rate sorts by: the whole percent it shows. */
+const byPercent = (r: Rate) => (r.value === null ? null : wholePercent(r.value));
+/** What a count sorts by: itself. */
+const byNumber = (n: number) => n;
+/** What INVESTIGATIONS sorts by: the number its line starts with. */
+const byInvestigations = (p: PlayerPowers) => p.investigations;
+
 /** Every player's entry, by number. */
 type Entries<T> = [number, T][];
 
 /** The tab's cards, in order in their sections, from the two modules' entries. */
 function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, names: Map<number, string>): Sections {
-  /** Players ranked by a count, higher first, ties by name; only counts above zero. */
-  const countTable = <T extends { games: number }>(entries: Entries<T>, value: (entry: T) => number) => {
+  /** Players ranked by a count, higher first, ties by name; only counts above zero. The count is
+   *  the value, under `valueHead`, with no count column, as every row is ranked. */
+  const countTable = <T extends { games: number }>(entries: Entries<T>, value: (entry: T) => number, valueHead: string) => {
     const rows = entries
       .map(([player, entry]) => ({ player, value: value(entry), count: entry.games }))
       .filter((row) => row.value > 0);
-    return rows.length === 0 ? null : <RankedTable rows={rankRows(rows, (a, b) => b - a, names, 0)} format={String} names={names} />;
+    if (rows.length === 0) return null;
+    return (
+      <RankedTable
+        rows={rankRows(rows, (a, b) => b - a, names, 0)}
+        format={String}
+        names={names}
+        valueHead={valueHead}
+        sortValue={byNumber}
+      />
+    );
   };
 
-  /** Players ranked by a rate, from `MIN_CHANCES` chances; only players with a chance. */
-  const rateTable = <T,>(entries: Entries<T>, value: (entry: T) => Rate, noun: string) => {
+  /** Players ranked by a rate, from `MIN_CHANCES` chances; only players with a chance. The rate is
+   *  under `valueHead`, its chances under `countHead`. */
+  const rateTable = <T,>(entries: Entries<T>, value: (entry: T) => Rate, valueHead: string, countHead: string) => {
     const rows = entries
       .map(([player, entry]) => ({ player, value: value(entry), count: value(entry).chances }))
       .filter((row) => row.count > 0);
@@ -83,8 +100,9 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
         rows={rankRows(rows, byRate, names, MIN_CHANCES)}
         format={(r) => formatPercent(r.value!)}
         names={names}
-        showCount
-        countLabel={(n) => plural(n, noun)}
+        valueHead={valueHead}
+        sortValue={byPercent}
+        countHead={countHead}
       />
     );
   };
@@ -139,6 +157,9 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
         rows={rankRows(investigationRows, (a, b) => b.investigations - a.investigations, names, 0)}
         format={investigations}
         names={names}
+        valueHead="Investigations"
+        sortValue={byInvestigations}
+        valueEnd={false}
       />
     );
 
@@ -154,19 +175,19 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
       title: "NOMINATED AS CHANCELLOR",
       definition: "Times a president named them chancellor.",
       line: noNominations,
-      table: countTable(votes, (v) => v.nominatedChancellor),
+      table: countTable(votes, (v) => v.nominatedChancellor, "Times"),
     },
     {
       title: "NOMINATIONS PASSED",
       definition: "As president, the share of their nominations the vote passed.",
       line: noNominations,
-      table: rateTable(votes, (v) => v.presidentPassed, "nomination"),
+      table: rateTable(votes, (v) => v.presidentPassed, "Passed", "Nominations"),
     },
     {
       title: "ELECTED AS CHANCELLOR",
       definition: "As a nominated chancellor, the share of their elections that passed.",
       line: noNominations,
-      table: rateTable(votes, (v) => v.chancellorPassed, "election"),
+      table: rateTable(votes, (v) => v.chancellorPassed, "Elected", "Elections"),
     },
     {
       title: "PICKING A TEAMMATE",
@@ -185,43 +206,43 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
       definition:
         "As a Liberal, the share of votes that were right: Ja on a government with no one from the Fascist side, Nein on one with someone from it.",
       line: noVotes,
-      table: rateTable(votes, (v) => v.liberalAccuracy, "vote"),
+      table: rateTable(votes, (v) => v.liberalAccuracy, "Accuracy", "Votes"),
     },
     {
       title: "FASCIST LOYALTY",
       definition: "On the Fascist side, the share of Ja votes on governments with a teammate in them, not counting themselves.",
       line: "No votes on a teammate's government yet with these players.",
-      table: rateTable(votes, (v) => v.fascistLoyalty, "vote"),
+      table: rateTable(votes, (v) => v.fascistLoyalty, "Loyalty", "Votes"),
     },
     {
       title: "VOTED HITLER IN",
       definition: "As a Liberal, Ja votes on the election that made Hitler chancellor and ended the game.",
       line: "No Liberal has voted Hitler in yet with these players.",
-      table: countTable(votes, (v) => v.votedHitlerIn),
+      table: countTable(votes, (v) => v.votedHitlerIn, "Votes"),
     },
     {
       title: "SWING VOTES",
       definition: "Votes that alone would have flipped the result, had they gone the other way.",
       line: "No swing votes yet with these players.",
-      table: countTable(votes, (v) => v.swing),
+      table: countTable(votes, (v) => v.swing, "Votes"),
     },
     {
       title: "LONE DISSENT",
       definition: "The only vote against all the others in an election.",
       line: "No lone dissent yet with these players.",
-      table: countTable(votes, (v) => v.loneDissent),
+      table: countTable(votes, (v) => v.loneDissent, "Votes"),
     },
     {
       title: "FAILED ELECTIONS",
       definition: "As president, nominations the vote turned down.",
       line: "No failed elections yet with these players.",
-      table: countTable(votes, (v) => v.failedAsPresident),
+      table: countTable(votes, (v) => v.failedAsPresident, "Failed"),
     },
     {
       title: "CHAOS",
       definition: "As president, terms whose failed election or accepted veto put the top policy on the board.",
       line: "No chaos policies yet with these players.",
-      table: countTable(votes, (v) => v.chaos),
+      table: countTable(votes, (v) => v.chaos, "Chaos"),
     },
   ];
   const powerCards: CardSpec[] = [
@@ -237,13 +258,13 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
       title: "LIBERAL FINDS",
       definition: "As a Liberal, the share of their investigations that found someone from the Fascist side.",
       line: "No investigations by a Liberal yet with these players.",
-      table: rateTable(powers, (p) => p.liberalFinds, "investigation"),
+      table: rateTable(powers, (p) => p.liberalFinds, "Finds", "Checks"),
     },
     {
       title: "CHECKING A TEAMMATE",
       definition: "On the Fascist side, the share of their investigations that looked at a teammate.",
       line: "No investigations by the Fascist side yet with these players.",
-      table: rateTable(powers, (p) => p.teammateChecks, "investigation"),
+      table: rateTable(powers, (p) => p.teammateChecks, "Teammate", "Checks"),
     },
     {
       title: "TIMES INVESTIGATED",
@@ -255,13 +276,13 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
       title: "PEEKS",
       definition: "Times they looked at the top three policies as president.",
       line: "No peeks yet with these players.",
-      table: countTable(powers, (p) => p.peeks),
+      table: countTable(powers, (p) => p.peeks, "Peeks"),
     },
     {
       title: "EXECUTIONS",
       definition: "Players they executed as president.",
       line: noneExecuting,
-      table: countTable(powers, (p) => p.executions),
+      table: countTable(powers, (p) => p.executions, "Executions"),
     },
     {
       title: "EXECUTION TARGETS",
@@ -273,31 +294,31 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
       title: "HITLER EXECUTED",
       definition: "Times they executed Hitler.",
       line: "No one has executed Hitler yet with these players.",
-      table: countTable(powers, (p) => p.hitlerExecuted),
+      table: countTable(powers, (p) => p.hitlerExecuted, "Times"),
     },
     {
       title: "TIMES EXECUTED",
       definition: "Times they were executed.",
       line: noneExecuted,
-      table: countTable(powers, (p) => p.timesExecuted),
+      table: countTable(powers, (p) => p.timesExecuted, "Times"),
     },
     {
       title: "FIRST TO GO",
       definition: "Games where they were the first player executed.",
       line: noneExecuted,
-      table: countTable(powers, (p) => p.executedFirst),
+      table: countTable(powers, (p) => p.executedFirst, "Games"),
     },
     {
       title: "SPECIAL ELECTIONS",
       definition: "Times they chose the next president.",
       line: noSpecial,
-      table: countTable(powers, (p) => p.specialElections),
+      table: countTable(powers, (p) => p.specialElections, "Times"),
     },
     {
       title: "SPECIAL ELECTION PICKS",
       definition: "The share of their special elections that made a teammate president.",
       line: noSpecial,
-      table: rateTable(powers, (p) => p.specialTeammate, "special election"),
+      table: rateTable(powers, (p) => p.specialTeammate, "Teammate", "Elections"),
     },
     {
       title: "VETOES AS PRESIDENT",

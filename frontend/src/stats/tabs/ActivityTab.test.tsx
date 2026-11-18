@@ -127,11 +127,11 @@ describe("ActivityTab", () => {
 
   it("participationRanksEachPlayersShare", () => {
     tab(NOVEMBER);
-    const rows = Array.from(card("participation").querySelectorAll("tr")).map((tr) =>
+    const rows = Array.from(card("participation").querySelectorAll("tbody tr")).map((tr) =>
       Array.from(tr.querySelectorAll("td")).map((td) => td.textContent)
     );
-    expect(rows[0]).toEqual(["1.", "Bo", "100%", "6 games"]);
-    expect(rows[rows.length - 1]).toEqual(["6.", "Flo", "50%", "3 games"]);
+    expect(rows[0]).toEqual(["1.", "Bo", "100%", "6"]);
+    expect(rows[rows.length - 1]).toEqual(["6.", "Flo", "50%", "3"]);
   });
 
   it("theSwitchRedrawsGamesCumulativeAndAttendance", () => {
@@ -227,10 +227,10 @@ describe("ActivityTab", () => {
     expect(card("slowest-president")).toHaveTextContent("Ann, Bo and Cy · 4.3 s a choice");
     expect(within(card("countdown")).getByText("Ended by the countdown: 25% (8 of 32 terms)")).toBeInTheDocument();
     expect(within(card("countdown")).getByText("Pauses: 8")).toBeInTheDocument();
-    const presidents = Array.from(card("countdown").querySelectorAll("tr")).map((tr) => tr.textContent);
-    expect(presidents[0]).toBe("1.Di100%8 terms");
-    const drops = Array.from(card("dropped-connections").querySelectorAll("tr")).map((tr) => tr.textContent);
-    expect(drops).toEqual(["1.Ed8 times8 games"]);
+    const presidents = Array.from(card("countdown").querySelectorAll("tbody tr")).map((tr) => tr.textContent);
+    expect(presidents[0]).toBe("1.Di100%8");
+    const drops = Array.from(card("dropped-connections").querySelectorAll("tbody tr")).map((tr) => tr.textContent);
+    expect(drops).toEqual(["1.Ed8 times8"]);
   });
 
   it("aCountdownShareBelowTheMinimumIsADash", () => {
