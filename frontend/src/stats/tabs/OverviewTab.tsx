@@ -3,7 +3,7 @@ import { LineChart, SERIES_COLORS, type LineSeries } from "../charts/LineChart";
 import { MIN_GAMES, nameOf, type Rate } from "../counting";
 import { PROVISIONAL_GAMES } from "../elo";
 import { formatLocalDateTime, outcomeLabel, plural, sideWord } from "../format";
-import { formatDays, formatPercent } from "../numbers";
+import { countFigure, formatDays, formatPercent, rateFigure } from "../numbers";
 import {
   computeOverview,
   HOT_HAND_GAMES,
@@ -158,31 +158,38 @@ export function OverviewTab(props: { stats: StatsContext; now?: number; timeZone
       <h2 className="overview-heading">Headline</h2>
       <div className="overview-grid overview-headline">
         <StatCard title="Games played" definition="Counted games each player played." empty={headline.games.length === 0}>
-          <RankedTable rows={headline.games} format={showNumber} names={names} />
+          <RankedTable rows={headline.games} format={showNumber} names={names} valueHead="Games" sortValue={countFigure} />
         </StatCard>
         <StatCard title="Wins" definition="Counted games each player won." empty={headline.wins.length === 0}>
-          <RankedTable rows={headline.wins} format={showNumber} names={names} />
+          <RankedTable rows={headline.wins} format={showNumber} names={names} valueHead="Wins" sortValue={countFigure} />
         </StatCard>
         <StatCard
           title="Win rate"
           definition={COPY.winRate}
           empty={headline.winRate.length === 0}
         >
-          <RankedTable rows={headline.winRate} format={showRate} names={names} showCount />
+          <RankedTable
+            rows={headline.winRate}
+            format={showRate}
+            names={names}
+            valueHead="Win rate"
+            sortValue={rateFigure}
+            countHead="Games"
+          />
         </StatCard>
         <StatCard
           title="Current streak"
           definition="Wins in a row up to each player's latest game."
           empty={headline.currentStreak.length === 0}
         >
-          <RankedTable rows={headline.currentStreak} format={showNumber} names={names} />
+          <RankedTable rows={headline.currentStreak} format={showNumber} names={names} valueHead="Streak" sortValue={countFigure} />
         </StatCard>
         <StatCard
           title="Longest streak"
           definition="The most wins in a row each player has had."
           empty={headline.longestStreak.length === 0}
         >
-          <RankedTable rows={headline.longestStreak} format={showNumber} names={names} />
+          <RankedTable rows={headline.longestStreak} format={showNumber} names={names} valueHead="Streak" sortValue={countFigure} />
         </StatCard>
         <StatCard title="Liberal / Fascist wins" definition="Counted games won by each side." empty={none}>
           <p className="overview-value">

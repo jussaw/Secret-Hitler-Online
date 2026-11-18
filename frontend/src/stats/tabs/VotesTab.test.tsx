@@ -68,6 +68,29 @@ describe("VotesTab", () => {
       .toEqual([expect.stringMatching(/^60%\s*5$/), expect.stringMatching(/^—\s*0$/), expect.stringMatching(/^—\s*1$/)]);
   });
 
+  it("says under each name what each rate card's count counts, as it did before #109", () => {
+    // Ann (Liberal) investigates once and Di (Fascist) twice, and Bo calls two special elections.
+    show([gameOf(FIVE, [
+      term(1, 0, 1, ALL, [], investigate(0, 3, "FASCIST")),
+      term(2, 3, 0, ALL, [], investigate(3, 4, "FASCIST")),
+      term(3, 3, 0, ALL, [], investigate(3, 1, "LIBERAL")),
+      term(4, 1, 0, ALL, [], { power: { type: "specialElection", seat: 1, target: 2 } }),
+      term(5, 1, 0, ALL, [], { power: { type: "specialElection", seat: 1, target: 3 } }),
+    ])]);
+    const lines = (title: string) =>
+      Array.from(card(title).querySelectorAll("tbody tr"), (tr) => [
+        tr.querySelector(".player-name")?.textContent,
+        tr.querySelector(".ranked-count-under")?.textContent,
+      ]);
+    expect(lines("LIBERAL FINDS")).toEqual([["Ann", "1 investigation"]]);
+    expect(lines("CHECKING A TEAMMATE")).toEqual([["Di", "2 investigations"]]);
+    expect(lines("SPECIAL ELECTION PICKS")).toEqual([["Bo", "2 special elections"]]);
+    // The other rate cards' counts keep their heads' nouns.
+    expect(lines("NOMINATIONS PASSED").map(([, line]) => line)).toContain("2 nominations");
+    expect(lines("ELECTED AS CHANCELLOR").map(([, line]) => line)).toContain("4 elections");
+    expect(lines("LIBERAL VOTE ACCURACY").map(([, line]) => line)).toContain("5 votes");
+  });
+
   it("says whom each player investigated, Bots last", () => {
     show([gameOf(FIVE, [term(1, 0, 1, ALL, [], investigate(0, 3, "FASCIST")), term(2, 0, 1, ALL, [], investigate(0, 4, "FASCIST")),
       term(3, 0, 2, ALL, [], investigate(0, 1, "LIBERAL")), term(4, 0, 2, ALL, [], investigate(0, 3, "FASCIST"))],

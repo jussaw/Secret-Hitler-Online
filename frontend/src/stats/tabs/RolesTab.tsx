@@ -3,8 +3,8 @@ import { computeCards, HAND_LABELS, type CardStats } from "../cards";
 import { MIN_CHANCES, MIN_GAMES, rankRows, rate, type Rate } from "../counting";
 import { plural } from "../format";
 import { ROLE_WORDS } from "../game/text";
-import { formatPercent, formatSigned } from "../numbers";
-import { RankedTable } from "../RankedTable";
+import { countFigure, formatPercent, formatSigned, rateFigure, wholePercent } from "../numbers";
+import { RankedTable, type RankedHeads } from "../RankedTable";
 import { ROLES, type Role } from "../record";
 import { byRole, computeRoles, TABLE_SIZES, type RoleStats } from "../roles";
 import { SplitTable, type SplitCell, type SplitColumn } from "../SplitTable";
@@ -69,14 +69,12 @@ function ranked<T>(
   compare: (a: T, b: T) => number,
   format: (value: T) => string,
   min: number,
-  countLabel?: (n: number) => string
+  heads: RankedHeads<T>
 ): { rows: number; body: ReactNode } {
   const shown = rows.filter((row) => row.count > 0);
   return {
     rows: shown.length,
-    body: (
-      <RankedTable rows={rankRows(shown, compare, names, min)} format={format} names={names} countLabel={countLabel} />
-    ),
+    body: <RankedTable rows={rankRows(shown, compare, names, min)} format={format} names={names} {...heads} />,
   };
 }
 
@@ -109,7 +107,8 @@ function rolesCards(stats: StatsContext, roles: RoleStats): CardSpec[] {
       players.map(({ player, p }) => ({ player, value: p.winAs[role], count: p.winAs[role].chances })),
       byValue,
       percent,
-      MIN_GAMES
+      MIN_GAMES,
+      { valueHead: "Win rate", sortValue: rateFigure, countHead: "Games" }
     ),
   });
   return [
@@ -134,7 +133,8 @@ function rolesCards(stats: StatsContext, roles: RoleStats): CardSpec[] {
         players.map(({ player, p }) => ({ player, value: p.luck, count: p.games })),
         larger,
         (luck) => (luck === null ? "—" : `${formatSigned(luck * 100)}%`),
-        MIN_GAMES
+        MIN_GAMES,
+        { valueHead: "Luck", sortValue: (luck) => (luck === null ? null : wholePercent(luck)), countHead: "Games" }
       ),
     },
     {
@@ -145,7 +145,8 @@ function rolesCards(stats: StatsContext, roles: RoleStats): CardSpec[] {
         players.map(({ player, p }) => ({ player, value: p.split.HITLER.hits, count: p.games })),
         more,
         String,
-        1
+        1,
+        { valueHead: "Times", sortValue: countFigure }
       ),
     },
     {
@@ -156,7 +157,8 @@ function rolesCards(stats: StatsContext, roles: RoleStats): CardSpec[] {
         players.map(({ player, p }) => ({ player, value: p.longestRun, count: p.games })),
         (a, b) => more(a.length, b.length),
         (run) => `${run.length} as ${ROLE_WORDS[run.role]}`,
-        1
+        1,
+        { valueHead: "Run", sortValue: (run) => run.length }
       ),
     },
     winAs("LIBERAL", "Win rate as Liberal", "Games won as a Liberal, of their games as one.", "No games as a Liberal yet with these players."),
@@ -197,7 +199,8 @@ function rolesCards(stats: StatsContext, roles: RoleStats): CardSpec[] {
         players.map(({ player, p }) => ({ player, value: p.firstPresident, count: p.firstPresident.chances })),
         byValue,
         percent,
-        MIN_GAMES
+        MIN_GAMES,
+        { valueHead: "Win rate", sortValue: rateFigure, countHead: "Games" }
       ),
     },
   ];
@@ -254,7 +257,7 @@ function presidentCards(names: Map<number, string>, cards: CardStats): CardSpec[
         byValue,
         percent,
         MIN_CHANCES,
-        handsLabel
+        { valueHead: "Accuracy", sortValue: rateFigure, countHead: "Hands" }
       ),
     },
     {
@@ -268,7 +271,8 @@ function presidentCards(names: Map<number, string>, cards: CardStats): CardSpec[
         // The second share is what the first leaves after rounding, so the two add up to 100%.
         (r) => (r.value === null ? "—" : `${formatPercent(r.value)} · ${100 - Math.round(r.value * 100)}%`),
         MIN_CHANCES,
-        handsLabel
+        // Sorted by the first share: how often they discarded a Fascist.
+        { valueHead: "Discards", sortValue: rateFigure, countHead: "Hands" }
       ),
     },
   ];
@@ -341,7 +345,8 @@ function blameCards(names: Map<number, string>, roles: RoleStats, cards: CardSta
         players.filter(({ p }) => p.fascistChoices > 0).map(({ player, p }) => ({ player, value: p.fascistChoices, count: games(player) })),
         more,
         String,
-        1
+        1,
+        { valueHead: "Choices", sortValue: countFigure }
       ),
     },
     {

@@ -6,7 +6,7 @@ import { SERIES_COLORS } from "../charts/LineChart";
 import { StackedBarChart } from "../charts/StackedBarChart";
 import { compareNames, MIN_CHANCES, nameOf, rankRows, rate, type Rate } from "../counting";
 import { viewerTimeZone } from "../format";
-import { formatPercent } from "../numbers";
+import { countFigure, formatPercent, wholePercent } from "../numbers";
 import PlayerName from "../PlayerName";
 import { RankedTable } from "../RankedTable";
 import { SplitTable, type SplitCell } from "../SplitTable";
@@ -15,6 +15,9 @@ import { computeTiming, DECISIONS, fastestVoter, formatAverageTime, type Decisio
 import type { StatsContext } from "../useStats";
 import "./sectionGrid.css";
 import "./ActivityTab.css";
+
+/** The countdown card's sort figure: the whole percent it shows, 0% for a rate with no value. */
+const countdownFigure = (r: Rate) => wholePercent(r.value ?? 0);
 
 const GRAINS: { id: Grain; label: string }[] = [
   { id: "week", label: "PER WEEK" },
@@ -193,7 +196,14 @@ export function ActivityTab({ stats, now, timeZone }: { stats: StatsContext; now
         </Cell>
         <Cell slug="participation">
           <StatCard title="Participation" definition="A player's share of all counted games." empty={empty}>
-            <RankedTable rows={participation} format={formatPercent} names={names} showCount />
+            <RankedTable
+              rows={participation}
+              format={formatPercent}
+              names={names}
+              valueHead="Share"
+              sortValue={wholePercent}
+              countHead="Games"
+            />
           </StatCard>
         </Cell>
       </Section>
@@ -328,8 +338,9 @@ export function ActivityTab({ stats, now, timeZone }: { stats: StatsContext; now
               rows={presidents}
               format={(r: Rate) => formatPercent(r.value ?? 0)}
               names={names}
-              countLabel={termCount}
-              showCount
+              valueHead="Countdown"
+              sortValue={countdownFigure}
+              countHead="Terms"
             />
           </StatCard>
         </Cell>
@@ -339,7 +350,14 @@ export function ActivityTab({ stats, now, timeZone }: { stats: StatsContext; now
             definition="Times a player's connection dropped during counted games."
             empty={empty || (drops.length === 0 && "No dropped connections in these games.")}
           >
-            <RankedTable rows={drops} format={(n: number) => countLabel(n, ["time", "times"])} names={names} showCount />
+            <RankedTable
+              rows={drops}
+              format={(n: number) => countLabel(n, ["time", "times"])}
+              names={names}
+              valueHead="Drops"
+              sortValue={countFigure}
+              countHead="Games"
+            />
           </StatCard>
         </Cell>
       </Section>

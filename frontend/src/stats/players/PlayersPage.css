@@ -85,69 +85,14 @@
     outline-offset: 1px;
 }
 
-/* A column's head: a button in the head's own look (PowerRanking.css's th: small, bold, grey), its
-   arrow dimmed until it sorts the table, and the sorted head white. App.css gives every button the
-   game's look, which this undoes, as the login page's Sign out does. */
-.stats-screen .players-table .players-sort {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    margin: 0;
-    padding: 0;
-    border: 0;
-    font: inherit;
-    line-height: inherit;
-    color: inherit;
-    text-align: inherit;
-    white-space: nowrap;
-    vertical-align: bottom;
-}
+/* The column heads are SortHead.css's, as every sortable stats table's are. */
 
-.stats-screen .players-table .players-sort:active {
-    border-width: 0;
-}
-
-.stats-screen .players-table .players-sort::before {
-    content: none;
-}
-
-.stats-screen .players-table .players-sort:hover,
-.stats-screen .players-table .players-sort.is-sorted {
-    color: var(--headerTextColor);
-}
-
-.stats-screen .players-table .players-sort:focus-visible {
-    outline: 2px solid var(--selectionHover);
-    outline-offset: 2px;
-    border-radius: 2px;
-}
-
-.players-sort-arrow {
-    flex: none;
-    width: 12px;
-    height: 12px;
-}
-
-.players-sort:not(.is-sorted) .players-sort-arrow {
-    opacity: 0.45;
-}
-
-/* Wherever the game's stacked query matches, the search box and each head are 44px targets, and
-   the box's text 16px. A head whose word and arrow are narrower than 44px (Elo) keeps them at the
-   right of its button, as its column's values are. */
+/* Wherever the game's stacked query matches, the search box is a 44px target, and its text 16px
+   (SortHead.css makes each head one too). */
 @media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
     .stats-screen .players-search input {
         min-height: 44px;
         font-size: 16px;
-    }
-
-    .stats-screen .players-table .players-sort {
-        min-width: 44px;
-        min-height: 44px;
-    }
-
-    .players-table th.power-number .players-sort {
-        justify-content: flex-end;
     }
 }
 

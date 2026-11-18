@@ -31,24 +31,34 @@ const TITLES = [
 
 const SECTIONS = ["Roles", "As president", "As chancellor", "Blame"];
 
-/** Opens `path` against the big stubbed response and waits for the tab. */
-async function open(page: Page, path = "/stats/roles"): Promise<void> {
-  await stubStats(page, bigStatsData());
+/** Goes to `path` (the response already stubbed) and waits for the tab. */
+async function show(page: Page, path = "/stats/roles"): Promise<void> {
   await page.goto(path);
   await expect(page.locator(".roles-tab")).toBeVisible();
   await settle(page);
 }
 
+/** Opens `path` against the big stubbed response and waits for the tab. */
+async function open(page: Page, path = "/stats/roles"): Promise<void> {
+  await stubStats(page, bigStatsData());
+  await show(page, path);
+}
+
 test("ROLES & CARDS fits every stats size", async ({ page }) => {
-  test.slow();
-  await open(page);
-  for (const size of statsSizesFor(test.info().project.name, page.viewportSize()!)) {
-    await page.setViewportSize(size);
-    await checkStatsPage(page, size);
-    for (const title of TITLES) {
-      await expect(page.getByRole("region", { name: title, exact: true }), `${title} at ${size.width}x${size.height}`).toHaveCount(1);
+  test.slow(); // the tab at every size, twice
+  await stubStats(page, bigStatsData());
+  // Without CPU games and with them, which make the counts larger.
+  for (const path of ["/stats/roles", "/stats/roles?cpu=1"]) {
+    await show(page, path);
+    for (const size of statsSizesFor(test.info().project.name, page.viewportSize()!)) {
+      await page.setViewportSize(size);
+      await checkStatsPage(page, size);
+      const at = `${path} at ${size.width}x${size.height}`;
+      for (const title of TITLES) {
+        await expect(page.getByRole("region", { name: title, exact: true }), `${title} on ${at}`).toHaveCount(1);
+      }
+      await expect(page.getByText(NO_GAMES), `no card without games on ${at}`).toHaveCount(0);
     }
-    await expect(page.getByText(NO_GAMES)).toHaveCount(0);
   }
 });
 

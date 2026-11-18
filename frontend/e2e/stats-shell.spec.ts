@@ -167,6 +167,30 @@ test("the page check catches what it should", async ({ page }) => {
   const desktop = await at(1600, 900, controls);
   expect(desktop.smallTargets).toEqual([]);
   expect(desktop.smallText).toEqual([]);
+
+  // A ranked table past its card's content box: the card is 300px wide with 16px of padding and a
+  // 2px border each side, so its content box is 264px wide, from 18px to 282px.
+  const card = (table: string) => `
+    <section class="stats-card" style="box-sizing: border-box; width: 300px; padding: 12px 16px; border: 2px solid">
+      <h3>Wins</h3>${table}
+    </section>`;
+  const ranked = (width: number, style = "") =>
+    `<table class="ranked-table" style="width: ${width}px; border-collapse: collapse; ${style}"><tr><td>Ann</td></tr></table>`;
+  for (const [width, height] of [
+    [360, 740],
+    [1600, 900],
+  ]) {
+    expect((await at(width, height, card(ranked(264)))).outsideCards, "a table that fills its card").toEqual([]);
+    expect((await at(width, height, card(ranked(265)))).outsideCards, "within the 1px slack").toEqual([]);
+    const over = await at(width, height, card(ranked(270)));
+    expect(over.outsideCards, "a table over the card's padding").toEqual(["Wins: [18.0, 288.0] outside [18.0, 282.0]"]);
+    expect(over.sideways, "still inside the window").toEqual([]);
+    const scrolls = await at(width, height, card(`<div style="overflow-x: auto">${ranked(400)}</div>`));
+    expect(scrolls.outsideCards.join(" "), "a table that makes its scroll region scroll").toContain("Wins: ");
+    expect(scrolls.sideways, "inside a box that scrolls sideways").toEqual([]);
+    expect((await at(width, height, card(ranked(400, "display: none")))).outsideCards, "a hidden table").toEqual([]);
+    expect((await at(width, height, ranked(400))).outsideCards, "a table in no card").toEqual([]);
+  }
 });
 
 test.describe("every page fits every size", () => {
