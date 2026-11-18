@@ -146,3 +146,9 @@ these runs.
     25.2, 39.6, … (22.6%), H/H 25.8%; both: 23.0, 34.0, … (21.3%), H/H 22.5%. Rule 8 for Hitler
     alone is the smaller change and gains nearly as much as both (5 seats 22.7% against 23.0%,
     6 seats 36.0% against 34.0%), with all-Hard games well inside the band, so it goes in.
+12. **Easy and Normal unchanged** (Review Focus 5). Of the 28 Easy and Normal intervals (E/N,
+    N/N, N/E, E/E at each size and pooled), the acceptance A4's all overlap run 0's but one: N/N
+    at 6 seats, 39.8% 37.7-42.0% in run 0 against 43.8% 42.2-45.3%. Normal against Normal at
+    10,000 games a size on the final code gives 44.6% 43.6-45.6% at 6 seats (27.9% 27.5-28.2%
+    pooled): run 0's 6 seats ran low by chance, as `NormalBaselineTest`, unchanged and passing at
+    every commit, says Normal's decisions are as they were.
