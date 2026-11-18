@@ -84,6 +84,17 @@ task recordedGamesFixture(type: JavaExec) {
     args file('../frontend/src/stats/fixtures/recorded-games.json').absolutePath
 }
 
+// Plays games with a bot in every seat and prints who wins, for each table size from 5 to 10
+// and pooled (game.BotMatches, in the test source set). -Pgames=N plays N games a size (2,000 by
+// default). The games cannot be seeded, so every run differs. Neither build nor test runs it.
+task botMatches(type: JavaExec) {
+    mainClass = 'game.BotMatches'
+    classpath = sourceSets.test.runtimeClasspath
+    if (project.hasProperty('games')) {
+        args "--games=${project.property('games')}"
+    }
+}
+
 task stage(dependsOn: ['build', 'clean', 'jar'])
 build.mustRunAfter clean
 

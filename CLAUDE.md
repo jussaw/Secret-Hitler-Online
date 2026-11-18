@@ -177,9 +177,42 @@ keeps credit to upstream and to the board game's creators.
   a lobby restored from a backup starts a fresh countdown with its first packet. An END TERM, pause
   or resume from the president whose term the countdown has just ended is dropped instead of
   refused (`Lobby.isLateForTerm`), so that race never closes their socket (`LobbyTermTimerTest`,
-  `TermTimerServerTest`). `SecretHitlerGame` and `CpuPlayer` do not pin a `serialVersionUID`, so a
-  new field or non-private method on either would stop older backups loading: game-side state that
-  is not part of the rules (accounts and seats included) belongs in `Lobby`. A player's `/game`
+  `TermTimerServerTest`). `SecretHitlerGame` pins no `serialVersionUID`, so a new field or
+  non-private method on it would stop older backups loading: game-side state that is not part of
+  the rules (accounts and seats included) belongs in `Lobby`. `CpuPlayer` pins
+  `2392054316009854878L`, the value Java computed for it before Phase 24, which both backup
+  fixtures' CPU players carry, so its methods may change, and a field added later comes back empty
+  from an older backup and is filled in `readObject`, as `random` is
+  (`testCpuPlayer.cpuPlayerPinsItsSerialVersionUid`). The bots (#72, which Phases 25A to 25D
+  extend): each CPU tick is `game.CpuTurn.step(game, cpus, afterMove)`, every bot's `update`, then
+  `act` in the collection's order (name order: the lobby's `ConcurrentSkipListSet`, a `TreeSet` in
+  `CpuGames`; `step` does not sort) until a move moves the game on, a vote that leaves the election
+  open going on to the next bot, so every bot votes in one step. `afterMove` runs after each move,
+  each vote too, and `step` is true when the bots moved the game on, false when none acted or
+  every act was a vote and the election still waits for people. `Lobby.updateAllUsers` calls it
+  with `observeGame(false)` and schedules the next tick only on true; `CpuGames` calls it with its
+  snapshots and guards (`CpuTurnTest`). A bot picks a player with `chooseRandomPlayerWeighted`,
+  whose weights (a known role's, or the reputation interpolated between the fascist and liberal
+  weights, plus `userBias` for a person, never below 0) `getWeightedRandomIndex(weights, draw)`
+  draws from: among the list's living players other than the bot, each in proportion to its
+  weight, a weight of 0 never unless every weight is 0, and then evenly; a list with no one else
+  alive is refused. Investigation and execution pick once, among `investigationTargets` (living,
+  not the bot, not investigated before) and `executionTargets` (living, not the bot, and for a
+  fascist or Hitler no player it knows to be on its side; Hitler at 7 or more knows one only by
+  investigating them), with no re-pick loop. `./gradlew botMatches` (`game.BotMatches`, in the test
+  source set) plays all-bot games through `CpuGames` at each table size from 5 to 10, 2,000 a size
+  or `-Pgames=N`, and prints a row per size and `All` (pooled): the games, the liberal side's win
+  rate with its 95% interval (Wilson's, clamped to [0, 1]) and each ending's share (5 liberal
+  policies, Hitler shot, 6 fascist policies, Hitler elected). A game past 2,000 moves, one no bot
+  can move, a move that throws or that the timeline cannot read, or a bot that cannot be made fails
+  the run, naming the size and the bots, with the game's timeline. The deck cannot be seeded, so runs differ: a change to the bots quotes the run before
+  and after in its pull request. `CpuGames.play(seats, clock, startedAt, stopAtRound, makeBot)`
+  makes each seat's bot after the deal, from its name and the role it was dealt (the four-argument
+  `play` makes `new CpuPlayer(name)`). The tests: `CpuTurnTest`, `BotMatchesTest` (3 games a size,
+  the guards, the interval, the table and the options) and `testCpuPlayer`'s pick cases (#72's
+  shares within 0.01, every weight 0, no known teammate executed, a teammate Hitler found by
+  investigating included, and investigation and execution with everyone left at +3), which reach a state with `GameDriver.playUntil` and pick on copies of
+  it (`SerializationUtils.clone`). A player's `/game`
   query may carry `rejoinKey`, a random key the page keeps for its lifetime (sent to no client and
   not backed up). A connection that brings the key its account's live connection was opened with
   takes that connection's place, keeping the seat and portrait, and the old one is closed with
@@ -1384,6 +1417,7 @@ fields from `package-lock.json`.
 | Run frontend dev server (`localhost:3000`, against the local backend) | `cd frontend && npm install && npm run dev` |
 | Backend tests | `cd backend && ./gradlew test` |
 | Remake the stats pages' contract fixture after a change to the record's format (a new file every run; commit it with the change) | `cd backend && ./gradlew recordedGamesFixture` |
+| Play all-bot games and print who wins at each table size (2,000 games a size, `-Pgames=N` for another count; runs differ) | `cd backend && ./gradlew botMatches` |
 | Frontend tests (single run) | `cd frontend && npm test -- --run` |
 | Browser tests (build the frontend and the jar, serve them on `localhost:4545` with test sign-in, or `E2E_PORT` beside another run; Java 17 active) | `cd frontend && npx playwright install chromium firefox && npm run e2e` (one project: `-- --project=phone-360`) |
 | Browser tests on Linux (Firefox, or CI's font widths), against the jar serving on the host with `TEST_SIGN_IN=true` | `docker run … mcr.microsoft.com/playwright:v<version>-noble … npx playwright test --config playwright.linux.config.ts`, written out in `DEVELOPMENT.md` |
@@ -1467,7 +1501,10 @@ no trailing period, at most 72 characters. Scopes in use: `frontend`, `backend`,
 - Design spec: `docs/superpowers/specs/2026-11-11-self-hosted-fork-design.md`; accounts:
   `docs/superpowers/specs/2026-11-15-accounts-design.md`; game records and stats (#31, Phases 13
   to 22): `docs/superpowers/specs/2026-11-15-game-stats-design.md`, with the names and file owners
-  the phases share in `docs/superpowers/plans/2026-11-15-game-stats-interfaces.md`.
+  the phases share in `docs/superpowers/plans/2026-11-15-game-stats-interfaces.md`; the bots'
+  fixes, self-play run and skill levels (#72, Phases 24 to 26B):
+  `docs/superpowers/specs/2026-11-17-bot-skill-design.md`, whose "Names the phases share" pins the
+  names and file owners those phases share.
 
 ## Constraints
 

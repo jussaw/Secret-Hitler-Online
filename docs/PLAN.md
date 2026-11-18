@@ -59,7 +59,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 22A. Trophies and name links | `phase-22a-trophies-links` | done |
 | 22B. Player pages | `phase-22b-player-pages` | done |
 | 23. One header for the site | `phase-23-site-header` | done |
-| 24. Bot fixes and self-play | `phase-24-bot-fixes` | planned |
+| 24. Bot fixes and self-play | `phase-24-bot-fixes` | done |
 | 25A. Bot skill levels | `phase-25a-bot-levels` | planned |
 | 25B. Hard's first rules | `phase-25b-hard-reads` | planned |
 | 25C. Hard's other rules | `phase-25c-hard-bots` | planned |
@@ -1109,17 +1109,17 @@ Breakdown: [`docs/superpowers/plans/2026-11-17-phase-24-bot-fixes.md`](superpowe
 
 Issue #72, parts 1 and 2. Backend only; changes nothing on screen.
 
-- [ ] `CpuPlayer` pins its `serialVersionUID` at the value Java computed before any change (`2392054316009854878L`), and older backups still load
-- [ ] The weighted pick draws in proportion to the weights (#72's cases within a tolerance); a weight of 0 is never picked unless all are, then the pick is uniform
-- [ ] A fascist bot or Hitler never executes a known teammate; investigation and execution pick only among allowed players, with no re-pick loop
-- [ ] `game.CpuTurn.step` is the one bot step, used by `Lobby`, `CpuGames` and the self-play run
-- [ ] `./gradlew botMatches` prints win rates with 95% intervals and each ending's share, per table size 5 to 10 and pooled, and fails a game past 2,000 moves; `BotMatchesTest` keeps `./gradlew test` fast
-- [ ] `CLAUDE.md` and `DEVELOPMENT.md` updated; the pull request quotes `botMatches` before and after the fixes
+- [x] `CpuPlayer` pins its `serialVersionUID` at the value Java computed before any change (`2392054316009854878L`), and older backups still load
+- [x] The weighted pick draws in proportion to the weights (#72's cases within a tolerance); a weight of 0 is never picked unless all are, then the pick is uniform
+- [x] A fascist bot or Hitler never executes a known teammate; investigation and execution pick only among allowed players, with no re-pick loop
+- [x] `game.CpuTurn.step` is the one bot step, used by `Lobby`, `CpuGames` and the self-play run
+- [x] `./gradlew botMatches` prints win rates with 95% intervals and each ending's share, per table size 5 to 10 and pooled, and fails a game past 2,000 moves; `BotMatchesTest` keeps `./gradlew test` fast
+- [x] `CLAUDE.md` and `DEVELOPMENT.md` updated; the pull request quotes `botMatches` before and after the fixes
 
 **Phase 24 acceptance**
 
-- [ ] Backend tests pass
-- [ ] PR merged into `development`
+- [x] Backend tests pass
+- [x] PR merged into `development`
 
 ---
 
