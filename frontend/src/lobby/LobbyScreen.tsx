@@ -68,6 +68,18 @@ function spectatorNote(props: LobbyScreenProps, full: boolean): string {
 }
 
 /**
+ * A host's press, held until the next lobby packet answers it: `fromPacket` is what the last
+ * packet says, and `bots` that packet's bots, which App makes anew from every lobby packet. After
+ * `hold(value)` the page shows `value` until `bots` changes, and then the packet's value again,
+ * whatever the server made of the press.
+ */
+function useHeldUntilNextPacket<T>(bots: string[], fromPacket: T): [T, (value: T) => void] {
+  const [held, setHeld] = useState<{ on: string[]; value: T } | null>(null);
+  const shown = held !== null && held.on === bots ? held.value : fromPacket;
+  return [shown, (value: T) => setHeld({ on: bots, value })];
+}
+
+/**
  * The host's stepper, at the left of START GAME: − 2 BOTS +. People and bots together stay between
  * MIN_PLAYERS and MAX_PLAYERS, so − is off at the fewest bots that make a table of five and + at
  * the most that keep it at ten (the server keeps the count inside the same range). A press asks
@@ -77,12 +89,11 @@ function spectatorNote(props: LobbyScreenProps, full: boolean): string {
  */
 function BotStepper(props: { people: number; bots: string[]; onSetBots: (count: number) => void }) {
   const { people, bots, onSetBots } = props;
-  const [asked, setAsked] = useState<{ on: string[]; count: number } | null>(null);
-  const count = asked !== null && asked.on === bots ? asked.count : bots.length;
+  const [count, hold] = useHeldUntilNextPacket(bots, bots.length);
   const fewest = Math.max(0, MIN_PLAYERS - people);
   const most = Math.max(0, MAX_PLAYERS - people);
   const press = (next: number) => {
-    setAsked({ on: bots, count: next });
+    hold(next);
     onSetBots(next);
   };
   return (
@@ -121,11 +132,10 @@ function BotStepper(props: { people: number; bots: string[]; onSetBots: (count: 
  */
 function BotSkillSwitch(props: { skill: BotSkill; bots: string[]; onSetBotSkill: (skill: BotSkill) => void }) {
   const { bots, onSetBotSkill } = props;
-  const [asked, setAsked] = useState<{ on: string[]; skill: BotSkill } | null>(null);
-  const shown = asked !== null && asked.on === bots ? asked.skill : props.skill;
+  const [shown, hold] = useHeldUntilNextPacket(bots, props.skill);
   const press = (skill: BotSkill) => {
     if (skill === shown) return;
-    setAsked({ on: bots, skill });
+    hold(skill);
     onSetBotSkill(skill);
   };
   return (
