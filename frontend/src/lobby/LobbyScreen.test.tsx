@@ -143,12 +143,18 @@ describe("LobbyScreen", () => {
     expect(props.onLeave).toHaveBeenCalledTimes(1);
   });
 
-  it("a player's grey buttons are the ones phones lay out two by two; a spectator's are not", () => {
-    renderLobby({ user: lg(1) });
-    const grey = document.querySelector(".lobby-secondary")!;
-    expect(grey).toHaveClass("lobby-player-buttons");
-    expect(grey.children).toHaveLength(4);
-    cleanup();
+  it("a player's grey buttons come in two pairs, the row's only places to wrap; a spectator's do not", () => {
+    for (const user of [HOST, lg(1)]) {
+      renderLobby({ user });
+      const grey = document.querySelector(".lobby-secondary")!;
+      expect(grey).toHaveClass("lobby-player-buttons");
+      expect(Array.from(grey.children, (pair) => pair.className)).toEqual(["lobby-button-pair", "lobby-button-pair"]);
+      expect(Array.from(grey.children, (pair) => Array.from(pair.children, (b) => b.textContent))).toEqual([
+        ["CHANGE NAME", "CHANGE LOOK"],
+        ["WATCH INSTEAD", "LEAVE LOBBY"],
+      ]);
+      cleanup();
+    }
 
     for (const signedIn of [true, false]) {
       watching({ signedIn });

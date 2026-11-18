@@ -1256,8 +1256,12 @@ keeps credit to upstream and to the board game's creators.
   player gets
   CHANGE NAME (the CHANGE NAME prompt,
   which starts from the roster's name, `nameToChange`), CHANGE LOOK, WATCH INSTEAD and LEAVE LOBBY
-  (`.lobby-player-buttons`: a wrapping centred row on desktop and in tall windows, two rows of two
-  on phones); a signed-in spectator gets PLAY INSTEAD (off when the lobby is full) and LEAVE LOBBY;
+  (`.lobby-player-buttons`: one row of four where all four fit the column at their own widths, as
+  in every tested tall window, and otherwise two rows of two in equal columns across it, as at
+  every desktop size; never three and one. They come in two pairs, `.lobby-button-pair`, so the row
+  wraps only between the pairs and the browser decides it by their widths, not by the window's
+  size; on phones, held sideways too, the pairs draw no box and the four are always two rows of
+  two); a signed-in spectator gets PLAY INSTEAD (off when the lobby is full) and LEAVE LOBBY;
   and a signed-out spectator gets SIGN IN TO PLAY (a `.button-link` to `/auth/discord?lobby=CODE`,
   off where `/me` says there is no Discord sign-in) and LEAVE LOBBY. Under a spectator's buttons the
   note (`#lobby-note`, `.lobby-note`, `role="status"`) is always mounted, empty and out of the flow
@@ -1388,7 +1392,8 @@ keeps credit to upstream and to the board game's creators.
   `smallLinks` in `e2e/layout.ts`), 16px field text and unwrapped button labels; the lobby tests (the lobby fits without scrolling for each of
   `longestLineViewers`' seven viewers, each with its note, with 44px targets, 16px field text,
   bot rows a person's row's size (`botRowMismatches`), the bots' level it should see
-  (`skillShown`) and its BOT SKILL row or line on one line (`skillRowLines`),
+  (`skillShown`), its BOT SKILL row or line on one line (`skillRowLines`) and, for a player, the
+  four buttons two rows of two (`playerButtonRows`), held sideways too, where one row would fit,
   the roster first, the busy bubble at 320px, and `checkNamePrompt` for CHOOSE A NAME on the login
   page and over the lobby, after which PLAY INSTEAD takes a seat at once, and for CHANGE NAME on the
   login page and in the lobby: 44px targets, 16px field text, unwrapped labels, both buttons on one
@@ -1396,8 +1401,11 @@ keeps credit to upstream and to the board game's creators.
   `no-scroll.spec.ts` also has a lobby test, for the same seven viewers, each one's buttons checked
   by label (`actionLabels`, an icon-only button by its accessible name), a spectator's note by its
   text, its roster rows and bot rows (`botRowMismatches`), the buttons 44px targets at every
-  size, the level it sees (`skillShown`) and the BOT SKILL row or line on one line at every size
-  (`skillRowLines`), and a login page test per state (the header, the cards and the footer in order, 44px
+  size, the level it sees (`skillShown`), the BOT SKILL row or line on one line at every size
+  (`skillRowLines`) and a player's four buttons one row exactly where they fit and two rows of two
+  everywhere else (`playerButtonRows`: today one row in every narrow window and two rows of two at
+  every desktop size, and a column a px wider than the four makes one row and a px narrower two
+  rows of two), and a login page test per state (the header, the cards and the footer in order, 44px
   targets, the header's links among them, and 16px field text, and Sign out's box clear of CHANGE
   NAME's, `accountTargets`), both at
   `DESKTOP_SIZES`, `SQUARE_DESKTOPS` and the `NARROW_WINDOWS`. The viewers are the host (the bot
@@ -1606,8 +1614,11 @@ keeps credit to upstream and to the board game's creators.
   bots too, `botRowMismatches`, `joinGuests`, with `pickLooks` false for guests who stay on the
   default portrait, `joinLobby`, `pickPortrait`, `longestLineLobby`, `longestLineViewers`,
   `actionLabels`, `skillShown` (the level the lobby shows: the host's pressed button or the line's
-  level) and `skillRowLines` (the lines the BOT SKILL row or line takes, by the middles of its
-  parts' words, as a button's box holds its shadow below its face),
+  level), `skillRowLines` (the lines the BOT SKILL row or line takes, by the middles of its
+  parts' words, as a button's box holds its shadow below its face), `playerButtonRows` (the player
+  buttons on each line, by their tops, and the room their column leaves beside the four at their
+  own widths, or with `setRoom` the column first made to leave that room), each `LobbyViewer`'s
+  `player` saying whether it has them,
   `longestLogin`, `accountTargets`, `lobbyStatusCard`, `waitForPrompt`, `watchLobby`, and
   `codeField`, the login page's one field), `e2e/accounts.ts`, `e2e/layout.ts` (`wrappedLabels` and
   `smallTargets`, which measure links drawn as buttons, `.button-link`, too, `smallLinks` for plain

@@ -430,6 +430,28 @@
     margin-bottom: 5px; /* room for the buttons' shadow */
 }
 
+/* A player's four: one row where all four fit the column at their own widths, otherwise two rows
+   of two in equal columns across it, as on phones, never three and one. They come in two pairs,
+   so the row wraps only between the pairs, whose widths decide it; a pair alone on its line takes
+   the whole line, its two buttons sharing it equally, and a label never wraps. A shadow takes no
+   room (App.css's --button-depth, 5px), so the rows are 5px further apart than the columns,
+   leaving the columns' gap, --pair-gap, between a shadow and the face below. */
+.lobby-player-buttons {
+    --pair-gap: 0.9em;
+    gap: calc(var(--pair-gap) + 5px) var(--pair-gap);
+}
+
+.lobby-button-pair {
+    flex: 1 0 auto;
+    display: flex;
+    gap: var(--pair-gap);
+}
+
+.lobby-button-pair > button {
+    flex: 1 1 0;
+    white-space: nowrap;
+}
+
 /* A neutral grey variant of App.css's button, which the login page's CHANGE NAME and TEST SIGN-IN
    share, and SIGN IN TO PLAY, a link. */
 .lobby-secondary button,
@@ -629,6 +651,16 @@
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 11px 6px;
+    }
+
+    /* The four are the grid's own cells here, whatever the width: the pairs (above) draw no box,
+       and leave the labels as every other button's. */
+    .lobby-button-pair {
+        display: contents;
+    }
+
+    .lobby-button-pair > button {
+        white-space: normal;
     }
 
     .lobby-secondary button,
