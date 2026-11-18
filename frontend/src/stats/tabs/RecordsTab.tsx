@@ -6,7 +6,7 @@ import { countFigure, formatPercent, formatRating, formatSigned } from "../numbe
 import PlayerName, { roleClass } from "../PlayerName";
 import { RankedTable } from "../RankedTable";
 import "../RankedTable.css";
-import { playerColumn, rankColumn, SortHeadRow, useTableSort, type HeadColumn } from "../SortHead";
+import { numberColumn, playerColumn, rankColumn, SortHeadRow, useTableSort, type HeadColumn } from "../SortHead";
 import { RANK_ORDER } from "../sorting";
 import {
   computeRecords,
@@ -114,7 +114,7 @@ function periodColumns(names: Map<number, string>): HeadColumn<Row<BestPeriod>, 
   return [
     rankColumn<Row<BestPeriod>>((row) => row.rank),
     playerColumn<Row<BestPeriod>>((row) => nameOf(names, row.player)),
-    { key: "wins", label: "Wins", className: "ranked-value", end: true, first: "descending", value: (row) => row.value.wins },
+    numberColumn<Row<BestPeriod>, PeriodColumn>("wins", "Wins", (row) => row.value.wins, "ranked-value"),
   ];
 }
 

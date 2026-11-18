@@ -5,7 +5,7 @@ import type { PowerRow } from "../overview";
 import PlayerName from "../PlayerName";
 import "../RankedTable.css";
 import { ScrollRegion } from "../ScrollRegion";
-import { playerColumn, rankColumn, SortHeadRow, useTableSort, type HeadColumn } from "../SortHead";
+import { numberColumn, playerColumn, rankColumn, SortHeadRow, useTableSort, type HeadColumn } from "../SortHead";
 import { RANK_ORDER } from "../sorting";
 import "./PowerRanking.css";
 
@@ -19,9 +19,9 @@ function powerColumns(names: Map<number, string>): HeadColumn<PowerRow, PowerCol
   return [
     rankColumn<PowerRow>((row) => row.rank),
     playerColumn<PowerRow>((row) => nameOf(names, row.player)),
-    { key: "rating", label: "Elo", className: "power-number", end: true, first: "descending", value: (row) => wholeRating(row.rating) },
-    { key: "change", label: "Last", className: "power-number", end: true, first: "descending", value: (row) => Math.round(row.lastChange) },
-    { key: "games", label: "Games", className: "power-number", end: true, first: "descending", value: (row) => row.games },
+    numberColumn<PowerRow, PowerColumn>("rating", "Elo", (row) => wholeRating(row.rating), "power-number"),
+    numberColumn<PowerRow, PowerColumn>("change", "Last", (row) => Math.round(row.lastChange), "power-number"),
+    numberColumn<PowerRow, PowerColumn>("games", "Games", (row) => row.games, "power-number"),
   ];
 }
 

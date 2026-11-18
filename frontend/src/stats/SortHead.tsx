@@ -101,3 +101,15 @@ export function rankColumn<R>(rank: (row: R) => number | null): HeadColumn<R, "r
 export function playerColumn<R>(name: (row: R) => string, className = "ranked-name"): HeadColumn<R, "name"> {
   return { key: "name", label: "Player", className, first: "ascending", value: name };
 }
+
+/** A column of numbers under `label`, with the class its cells share: its values stand at the
+ *  right (`end`, the arrow before the words) and it sorts most first, by `value`, the figure its
+ *  cell shows (null for a missing one, shown "—"). */
+export function numberColumn<R, K extends string>(
+  key: K,
+  label: string,
+  value: (row: R) => number | null,
+  className: string
+): HeadColumn<R, K> {
+  return { key, label, className, end: true, first: "descending", value };
+}

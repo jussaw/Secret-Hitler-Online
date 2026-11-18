@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { countLabel } from "./countLabel";
 import { nameOf, type Row } from "./counting";
 import PlayerName from "./PlayerName";
-import { playerColumn, rankColumn, SortHeadRow, useTableSort, type HeadColumn } from "./SortHead";
+import { numberColumn, playerColumn, rankColumn, SortHeadRow, useTableSort, type HeadColumn } from "./SortHead";
 import { RANK_ORDER } from "./sorting";
 import "./RankedTable.css";
 
@@ -41,20 +41,16 @@ function rankedColumns<T>(
   countHead: string | undefined,
   valueEnd: boolean
 ): HeadColumn<Row<T>, RankedColumn>[] {
+  /** A ranked row's figure under the value; an unranked row has none, so it goes last either way. */
+  const value = (row: Row<T>) => (row.rank === null ? null : sortValue(row.value));
   const columns: HeadColumn<Row<T>, RankedColumn>[] = [
     rankColumn<Row<T>>((row) => row.rank),
     playerColumn<Row<T>>((row) => nameOf(names, row.player)),
-    {
-      key: "value",
-      label: valueHead,
-      className: "ranked-value",
-      end: valueEnd,
-      first: "descending",
-      value: (row) => (row.rank === null ? null : sortValue(row.value)),
-    },
+    // INVESTIGATIONS' value stands at the left (`valueEnd` false); it still sorts most first.
+    { ...numberColumn<Row<T>, RankedColumn>("value", valueHead, value, "ranked-value"), end: valueEnd },
   ];
   if (countHead !== undefined) {
-    columns.push({ key: "count", label: countHead, className: "ranked-count", end: true, first: "descending", value: (row) => row.count });
+    columns.push(numberColumn<Row<T>, RankedColumn>("count", countHead, (row) => row.count, "ranked-count"));
   }
   return columns;
 }

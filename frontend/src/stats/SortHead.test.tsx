@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { playerColumn, rankColumn, SortHeadRow, useTableSort, type HeadColumn } from "./SortHead";
+import { numberColumn, playerColumn, rankColumn, SortHeadRow, useTableSort, type HeadColumn } from "./SortHead";
 import { RANK_ORDER } from "./sorting";
 
 interface TestRow {
@@ -15,7 +15,7 @@ type Key = "rank" | "name" | "games";
 const COLUMNS: readonly HeadColumn<TestRow, Key>[] = [
   rankColumn<TestRow>((row) => row.rank),
   playerColumn<TestRow>((row) => row.name),
-  { key: "games", label: "Games", className: "games", end: true, first: "descending", value: (row) => row.games },
+  numberColumn<TestRow, "games">("games", "Games", (row) => row.games, "games"),
 ];
 
 /** Rows out of rank order, so the opening sort has something to do: Bo is unranked. */
@@ -163,6 +163,17 @@ describe("SortHead", () => {
     expect(shownNames()).toEqual(["Ann", "Di", "Cy", "Bo"]);
     expect(head("Games")).toBe(games);
     expect(document.activeElement).toBe(games);
+  });
+
+  it("aNumberColumnStandsAtTheRightAndSortsMostFirst", () => {
+    const value = (row: TestRow) => row.games;
+    const column = numberColumn<TestRow, "games">("games", "Games", value, "power-number");
+    expect(column).toEqual({ key: "games", label: "Games", className: "power-number", end: true, first: "descending", value });
+    expect(column.name).toBeUndefined();
+    render(<Harness rows={ROWS} />);
+    fireEvent.click(head("Games"));
+    expect(sortedHeads()).toEqual({ Games: "descending" });
+    expect(screen.getByRole("columnheader", { name: "Games" })).toHaveClass("games");
   });
 
   it("noLinkSitsInAHead", () => {
