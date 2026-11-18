@@ -66,6 +66,8 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 25D. Ladder and balance | `phase-25d-ladder-balance` | done |
 | 26A. Bot skill in the lobby | `phase-26a-lobby-bot-skill` | done |
 | 26B. Bot skill in the records | `phase-26b-record-bot-skill` | done |
+| 27A. Sortable ranked tables | `phase-27a-sortable-tables` | not started |
+| 27B. Sortable split and other tables | `phase-27b-other-tables` | not started |
 
 ---
 
@@ -1232,6 +1234,51 @@ Issue #72's records, decided in the design. Starts once 25A has merged; merges a
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
 - [x] PR merged into `development`
 - [x] The user closes issue #72 once every phase (24 to 26B) is merged
+
+---
+
+## Phases 27A and 27B: Sortable stats tables
+
+Spec: [`docs/superpowers/specs/2026-11-18-sortable-tables-design.md`](superpowers/specs/2026-11-18-sortable-tables-design.md)
+
+Issue #109: every stats table but the RIVALS matrices sorts by any of its columns, as PLAYERS does since #100, through one shared set of rules and heads. Two phases, each its own branch, session and pull request, one after the other, since both edit the same tabs: **27A** builds the shared pieces and the ranked tables; **27B**, from the `development` 27A's merge makes, the rest. Neither is a bug, so each merges on the user's yes in chat.
+
+---
+
+## Phase 27A: Sortable ranked tables
+
+Breakdown: [`docs/superpowers/plans/2026-11-18-phase-27a-sortable-tables.md`](superpowers/plans/2026-11-18-phase-27a-sortable-tables.md) · Spec: [`docs/superpowers/specs/2026-11-18-sortable-tables-design.md`](superpowers/specs/2026-11-18-sortable-tables-design.md), "The rules", "The heads" and "Each table"
+
+Issue #109, first part. Its branch holds the spec and both phases' plans.
+
+- [ ] The shared sort rules (`sorting.ts`) and heads (`SortHead.tsx`): a press sorts, a second turns it round, missing values last either way, ties in the table's own order, each table opening as it does today with its opening head marked
+- [ ] PLAYERS on the shared pieces, with nothing anyone can see or a test can tell changed
+- [ ] The 39 `RankedTable` cards sort by `#`, Player, their value and, on the 18 that have one, their count, each row keeping its rank; the power ranking and RECORDS' best weeks and months sort by any column
+- [ ] Every stats page still passes `checkStatsPage` at every size in all four projects, a ranked table never scrolls sideways at 320px, checked with Linux fonts too
+- [ ] `CLAUDE.md` and `README.md` updated; the pull request shows the power ranking, OVERVIEW's headline cards, a best week and PLAYERS before and after, on desktop and on a phone
+
+**Phase 27A acceptance**
+
+- [ ] Frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [ ] PR merged into `development`
+
+---
+
+## Phase 27B: Sortable split and other tables
+
+Breakdown: [`docs/superpowers/plans/2026-11-18-phase-27b-other-tables.md`](superpowers/plans/2026-11-18-phase-27b-other-tables.md) · Spec: [`docs/superpowers/specs/2026-11-18-sortable-tables-design.md`](superpowers/specs/2026-11-18-sortable-tables-design.md), "The rules", "The heads" and "Each table"
+
+Issue #109, second part. Starts once 27A has merged.
+
+- [ ] The 14 split tables sort by Player and by each role's or side's column, every cell carrying the figure its text shows, coloured heads keeping their colour
+- [ ] RIVALS' People table, RECORDS' Players of the month and ENDINGS' two tables sort by any column, Game length's All row staying last; the RIVALS matrices stay as they are
+- [ ] Every stats page still passes `checkStatsPage` at every size in all four projects, checked with Linux fonts too
+- [ ] `CLAUDE.md` updated; the pull request shows a split table, People, Players of the month and ENDINGS' tables before and after, on desktop and on a phone
+
+**Phase 27B acceptance**
+
+- [ ] Frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [ ] PR merged into `development`, closing issue #109
 
 ---
 
