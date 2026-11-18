@@ -262,8 +262,9 @@ public class NoPeekingTest {
 
     /**
      * Rule 1: the bot of P2 votes while P3 and then P4 are elected at 3 fascist policies, then
-     * nominates and votes, with every pair of other seats' roles that keeps P3 and P4 from Hitler
-     * swapped (a rule that cleared a chancellor by their role would tell them apart).
+     * nominates and votes on its own nominee (Phase 25D's ja), with every pair of other seats'
+     * roles that keeps P3 and P4 from Hitler swapped (a rule that cleared a chancellor by their
+     * role would tell them apart).
      */
     @Test
     public void hardRule1ClearedPlayers() {

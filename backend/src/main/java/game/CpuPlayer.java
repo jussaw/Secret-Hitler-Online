@@ -646,14 +646,15 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   }
 
   /**
-   * Hard's rule 1's vote on the open election, or empty where it leaves the vote to Normal's (and
-   * always below Hard, or for a CPU not dealt Liberal).
+   * Hard's rule 1's vote on the open election (ja for its own nominee as president), or empty where
+   * it leaves the vote to Normal's (and always below Hard, or for a CPU not dealt Liberal).
    */
   private Optional<Boolean> clearedVote(SecretHitlerGame game) {
     if (!hardLiberal()) {
       return Optional.empty();
     }
-    return clearedPlayers.vote(game, getPlayerReputationWithIdentity(game.getCurrentChancellor()), knownPlayerRoles);
+    return clearedPlayers.vote(game, myName, getPlayerReputationWithIdentity(game.getCurrentChancellor()),
+        knownPlayerRoles);
   }
 
   /**
