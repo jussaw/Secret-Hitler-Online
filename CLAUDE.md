@@ -717,8 +717,11 @@ keeps credit to upstream and to the board game's creators.
   come, with the filter from `useLocation().search`: one `StatsContext` per records and filter
   however the address spells it, the last 8 filters kept per set of records), `numbers.ts`
   (`formatPercent`, and `wholePercent`, the whole percent it shows, which a percent column sorts
-  by; `formatSigned` with U+2212 and `0` for anything that rounds to zero,
-  `formatRating`, `formatDays`; counts are `format.ts`'s `plural`), `StatCard` (a `section.stats-card`
+  by; `formatSigned` with U+2212 and `0` for anything that rounds to zero;
+  `formatRating`, and `wholeRating`, the whole number it shows, which an Elo column sorts by;
+  `formatDays`; and, each beside the format it mirrors so a column sorts by what its cells show
+  (#109), `countFigure`, a count itself, and `rateFigure`, a `Rate`'s whole percent, null for one
+  with no value; counts are `format.ts`'s `plural`), `StatCard` (a `section.stats-card`
   region named by its `h3` title, the definition, then the stat, or for `empty` `NO_GAMES`, "No
   games yet with these players.", or `empty`'s own line), `sorting.ts` (#109, Phase 27A: the rules
   every sortable stats table shares, pure, importing only `compareNames`: `SortDirection`,
@@ -726,10 +729,12 @@ keeps credit to upstream and to the board game's creators.
   shown "—"), `SortColumn` (its `key`, the direction a first press sorts in, `first`, and `value`,
   the figure a row's cell shows), `TableSort`, the frozen `NAME_ORDER` (`name`, A to Z) and
   `RANK_ORDER` (`rank`, 1 first), `nextSort` (a press on the sorted head turns it round, on another
-  sorts by its column in its first direction) and `sortRows`, a stable sort into a new array: a
-  missing value goes below every value whichever way it runs, ties, the missing values too, keep
-  the order the rows came in (each table passes its own order), and a column it does not have
-  throws), `SortHead.tsx` and `SortHead.css` (the heads: `HeadColumn`, a `SortColumn` with its
+  sorts by its column in its first direction), `columnFor(columns, key)` (the one lookup of a
+  column by its key, which throws `No column "<key>"` for a key none has; `sortRows` and
+  `useTableSort`'s press both find their column with it) and `sortRows`, a stable sort into a new
+  array: a missing value goes below every value whichever way it runs, ties, the missing values
+  too, keep the order the rows came in (each table passes its own order), and a column it does
+  not have throws), `SortHead.tsx` and `SortHead.css` (the heads: `HeadColumn`, a `SortColumn` with its
   `label`, `className`, `end` (its values stand at the right: the arrow before the words) and
   `name` (the `aria-label` of its button and its `th`); `SortHead`, a `th scope="col"` holding a
   `button.stats-sort` with Lucide's `ArrowUpDown`, dimmed, until it sorts the table, then `ArrowUp`
@@ -737,31 +742,41 @@ keeps credit to upstream and to the board game's creators.
   `useTableSort(rows, columns, opening)`, the sort kept in the table's own state (never the
   address, nor stored) and the rows in its order, keeping its column and direction when a filter
   brings new rows; `rankColumn`, `#`, named Rank, 1 first, a row with no rank missing;
-  `playerColumn`, A to Z; and `.stats-sort`, which PLAYERS' `.players-sort` became, undoing
-  App.css's button look under `.stats-screen thead`: the head's own size and weight, the sorted
-  head and a hovered one in `--headerTextColor`, a focus outline, words that never wrap, and a 44px
-  target wherever the stacked query matches, an `end` head's content at its right),
+  `playerColumn`, A to Z; `numberColumn(key, label, value, className)`, a column of numbers, its
+  values at the right (`end`) and most first, which the ranked tables' value and count columns,
+  the power ranking's Elo, Last and Games and a best week's Wins are (PLAYERS' columns are not:
+  their sorts are `playersOrder.ts`' and their looks `HEADS`'); and `.stats-sort`, which PLAYERS'
+  `.players-sort` became, undoing App.css's button look under `.stats-screen thead`: the head's
+  own size and weight, the sorted head and a hovered one in `--headerTextColor`, a focus outline,
+  words that never wrap, and a 44px target wherever the stacked query matches, an `end` head's
+  content at its right),
   `RankedTable` (a head row of `#`, Player, the card's `valueHead` and, with `countHead`, the
   count's, each sorting by its column, the value by `sortValue`, the number a ranked row's shown
-  value says, an unranked row's value missing; it takes its rows in `rankRows`' order and opens in
-  it (`RANK_ORDER`, `#` marked), which ties keep under any other sort, and a row keeps its rank
-  under every sort; then rank, `PlayerName`, the value or "—" below the minimum, and with
+  value says (`numbers.ts`' `countFigure`, `rateFigure` or `wholePercent`), an unranked row's
+  value missing; it takes its rows in `rankRows`' order and opens in it (`RANK_ORDER`, `#`
+  marked), which ties keep under any other sort, and a row keeps its rank under every sort; then
+  rank, `PlayerName`, the value or "—" below the minimum, and with
   `countHead` the count as a bare number on every row; `valueEnd={false}` for INVESTIGATIONS'
-  left-standing value; `countFigure` and `rateFigure`, the whole percent, the cards' shared sort
-  figures; three columns, four with a count, that fit 320px, rows 44px tall and heads 44px
+  left-standing value; `RankedHeads`, the head props that travel together (`valueHead`,
+  `sortValue`, `countHead` and `countWords`), which a card's helper takes as one object
+  (ROLES & CARDS' `ranked`, VOTES & POWERS' `rateTable`) and `RankedTable` takes flat among its
+  props; three columns, four with a count, that fit 320px, rows 44px tall and heads 44px
   targets in the stacked query; the power ranking's head look, `.ranked-table thead th`, which
   never reaches Trophy holders' row heads; each card's head words as Phase 27A's plan, Task 4,
   lists them. The 18 cards with a count column are those whose rows could show a count before
   issue #109: OVERVIEW's Win rate, ACTIVITY's Participation, END TERM countdown and Dropped
   connections, ROLES & CARDS' three Win rate as … cards, Role luck, First president, Liberal
   accuracy and Deep cover, and VOTES & POWERS' seven rate cards. Wherever the stacked query
-  matches, phones and tall windows alike, a count column's head and cells are hidden and
-  `span.ranked-count-under` shows the count under the name ("12 games", its nouns from the head,
-  `countNouns`), as PLAYERS' Last played does on phones, so sorting by the count is for wide
-  windows only: the spec says phones only, and the user chose the whole stacked query once four
-  count cards were seen running past their cards in tall windows), `ScrollRegion` (a focusable
-  region that scrolls sideways inside its card, named
-  "<card title> table"), `SplitTable` (players down by name, roles or sides across, heads in their
+  matches, phones and tall windows alike (`RankedTable.css`'s one stacked-query block, which also
+  makes the rows 44px tall), a count column's head and cells are hidden and
+  `span.ranked-count-under` shows the count under the name ("12 games"), as PLAYERS' Last played
+  does on phones, so sorting by the count is for wide windows only: the spec says phones only,
+  and the user chose the whole stacked query once four count cards were seen running past their
+  cards in tall windows. The line says each card's count in the nouns it had before #109: the
+  head's own (`countNouns`), unless the card gives `countWords`, as LIBERAL FINDS and CHECKING A
+  TEAMMATE do ("Checks", "3 investigations") and SPECIAL ELECTION PICKS does ("Elections", "3
+  special elections")), `ScrollRegion` (a focusable region that scrolls sideways inside its card,
+  named "<card title> table"), `SplitTable` (players down by name, roles or sides across, heads in their
   colours, a sticky name column capped at 9em in which a long name wraps whole (never cut short)
   with the full name as its title, each cell its text then its count,
   a 0 too, and "—" for a cell the row lacks, in a `ScrollRegion`; rows 44px in the stacked query),
@@ -819,10 +834,10 @@ keeps credit to upstream and to the board game's creators.
   `RankedTable.css`, head row included, with `PowerRanking.css` adding provisional rows,
   `.is-provisional`, in italics, and tighter columns on phones (the left padding of its `#` and
   number heads dropped, `:not(.players-table)`, so it fits a 320px phone's card with Linux's
-  fonts); its heads (`SortHeadRow`: `#`, Player, Elo, Last and Games) each sort by the figure its
-  cell shows, the rounded rating and change, and it opens at `RANK_ORDER`, the one way back to its
-  own order, under which provisional rows stay at the bottom either way, while under any other
-  column they take their place; and
+  fonts); its heads (`SortHeadRow`: `#`, Player, and Elo, Last and Games, `numberColumn`s) each
+  sort by the figure its cell shows, the rounded rating (`wholeRating`) and change, and it opens
+  at `RANK_ORDER`, the one way back to its own order, under which provisional rows stay at the
+  bottom either way, while under any other column they take their place; and
   the rating history's `LineChart`, a colour per player by number so a filter never changes it),
   Headline (five `RankedTable`s and Liberal / Fascist wins) and Games (the latest games, each a
   link of its start and result, no names in it). Each card says `NO_GAMES` with no counted games,
@@ -957,7 +972,9 @@ keeps credit to upstream and to the board game's creators.
   election of a `HITLER_ELECTED` game that made Hitler chancellor. A count card ranks the players
   above zero (`RankedTable`, through `countTable(entries, value, valueHead)`, with no count
   column), a rate card those with a chance, unranked below `MIN_CHANCES` (`rateTable(entries,
-  value, valueHead, countHead)`, its chances in the count column), and a split card
+  value, heads)`, `heads` a `RankedHeads` less its `sortValue`, as every rate sorts by
+  `rateFigure`: the rate under `valueHead`, its chances in the count column under `countHead`,
+  and `countWords` where the count's nouns are not the head's), and a split card
   (`SplitTable`, by role or by side) lists every player with a chance in any column,
   every cell given; a card with no row shows its own line, and every card `NO_GAMES` when no game
   counts. A power's two sides can differ with CPU seats in, so the lines say whom: "None of these
@@ -994,11 +1011,12 @@ keeps credit to upstream and to the board game's creators.
   though not packed `dense`, which could lift a card above its heading) under five
   `h2.records-heading`s (Streaks, Wins, Sessions, Ratings, Trophies): the longest win and losing streaks (a
   line per first and last day naming every tied holder), current streaks (a `RankedTable`, "3
-  wins" or "2 losses", under Streak, sorting by the signed run, losses below 0), the most wins in
-  a week and in a month (`PeriodTable`, a table in `RankedTable`'s classes, as `PowerRanking` does,
-  of the rank, the name over its period and the wins, so a long name keeps its width, under
-  `SortHeadRow`'s `#`, Player and Wins, opening at `RANK_ORDER`, with the period, which does not
-  sort, staying under its name), the player of the month (every tied player) and the players of
+  wins" or "2 losses", under Streak, sorting by the signed run (`countFigure`), losses below 0),
+  the most wins in a week and in a month (`PeriodTable`, a table in `RankedTable`'s classes, as
+  `PowerRanking` does, of the rank, the name over its period and the wins, so a long name keeps
+  its width, under `SortHeadRow`'s `#`, Player and Wins (a `numberColumn`), opening at
+  `RANK_ORDER`, with the period, which does not sort, staying under its name), the player of the
+  month (every tied player) and the players of
   the month (the month over its holders, one a line, and the wins), the most games in one session
   (up to five lines of games, day and length), and
   the rating records (the highest peak, then the upset, its winners' gain and its losers' loss, a
@@ -1061,7 +1079,8 @@ keeps credit to upstream and to the board game's creators.
   `Record<PlayersColumn, …>`, names each column's word, class and `end`) that sorts by its
   column, with `aria-sort` on the sorted head; a second press turns the order round.
   `players/playersOrder.ts` holds the columns and the search on `sorting.ts`' rules
-  (`playersColumns(timeZone)`, each column's first direction and the figure it sorts by;
+  (`playersColumns(timeZone)`, each column's first direction and the figure it sorts by, the win
+  rate's `rateFigure` and the Elo's `wholeRating` among them;
   `NAME_ORDER`, re-exported from `sorting.ts`; `PlayersSort`, a `TableSort<PlayersColumn>`;
   `pressHead`, `nextSort` with each column's first direction, and `sortPlayers`, `sortRows` over
   the rows put in name order first; `searchPlayers`, `noMatchLine`), and `PlayersList` sorts with
@@ -1588,13 +1607,18 @@ keeps credit to upstream and to the board game's creators.
   format 1 with no `botSkill` key, `big-201` to `big-400` format 2, `botSkill` null without bots
   and otherwise `BOT_SKILLS[floor(number / 42) % 3]`, the levels in turn by sixes of CPU games,
   drawing nothing from the random source; later phases assume nothing else about it), `statsPageProblems(page)` (what is wrong at
-  the current size: anything past either side but inside a box that scrolls sideways itself, never
-  `body`, `.stats-screen` or `.stats-main`; and in the stacked query, controls under 44px, but for a
+  the current size: `sideways`, anything past either side but inside a box that scrolls sideways
+  itself, never `body`, `.stats-screen` or `.stats-main`; `outsideCards` (#109), every shown
+  `table.ranked-table` in a `.stats-card` more than 1px past that card's content box (its box less
+  its border and padding), which no scroll region excuses, so a ranked table that makes one scroll
+  counts too; and in the stacked query, controls under 44px, but for a
   link inline in a sentence of a `p` and never one in a table cell, and field text under 16px),
   `checkStatsPage(page, size)` (sets the size, waits two frames, and expects none; every stats spec
-  checks its pages with it and writes no sideways check of its own), `STATS_ONLY_STRINGS` and
+  checks its pages with it and writes no sideways or fit check of its own), `STATS_ONLY_STRINGS` and
   `downloads(page, path)` (every same-origin response of a load, with scripts' and stylesheets'
-  text). `stats-shell.spec.ts` checks `bigStatsData` (its formats and levels too) and the page check itself, every shell page at
+  text). `stats-shell.spec.ts` checks `bigStatsData` (its formats and levels too) and the page
+  check itself (a ranked table over its card's padding or in a scroll region it makes scroll
+  among what it catches, one within 1px of its card's content box, hidden or in no card not), every shell page at
   every size (the loading and error lines too), a twelve-character name of wide letters inside its
   line at 320px, that the game's first download holds no stats code and fetches the clips while the
   stats fetch their chunk and no clip, the header moving in place, the login page's header
@@ -1668,11 +1692,10 @@ keeps credit to upstream and to the board game's creators.
   with every row keeping its rank (by Games where the count has its column, by Player where the
   stacked query matches, whose count head and cells are hidden and whose lines under the names
   show), the power ranking sorts by Elo and a best week by Player; Enter and Space on a focused
-  head sort it and the focus stays there (`desktop` and `firefox`); a sorted card passes
-  `checkStatsPage` at 320x568 (`phone-360`); and every shown `table.ranked-table` stays inside its
-  card's content box, which `checkStatsPage` does not check, with the power ranking's
-  `ScrollRegion` never scrolling, on every tab with ranked tables and on PLAYERS, with CPU games and
-  without, at every `statsSizesFor` size in `desktop` and `firefox` and at 320x568 in `phone-360`.
+  head sort it and the focus stays there (`desktop` and `firefox`); and a sorted card passes
+  `checkStatsPage` at 320x568 (`phone-360`). That every ranked table stays inside its card's
+  content box is `checkStatsPage`'s (`outsideCards`), which each tab's own spec and PLAYERS' run
+  at every `statsSizesFor` size in all four projects.
   No `e2e/` file imports `src/constants` or anything that does (`api.ts`, `App`): it
   reads `window` when it loads, which throws in Playwright's Node process; specs build stats paths
   with `routePath`. Shared helpers are `e2e/lobby.ts`
