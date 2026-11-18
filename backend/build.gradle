@@ -89,7 +89,9 @@ task recordedGamesFixture(type: JavaExec) {
 // default). -Pliberals=LEVEL and -Pfascists=LEVEL set the level (EASY, NORMAL or HARD, in any
 // case; NORMAL by default) of the bots dealt liberal and of those dealt fascist or Hitler.
 // -Pladder plays the ladder and balance pairings side by side, with their verdicts, and takes no
-// level. The games cannot be seeded, so every run differs. Neither build nor test runs it.
+// level. -Ppool=<file>,<file> reads two -Pladder reports' tallies and prints the report of their
+// games together, playing none. The games cannot be seeded, so every run differs. Neither build
+// nor test runs it.
 task botMatches(type: JavaExec) {
     mainClass = 'game.BotMatches'
     classpath = sourceSets.test.runtimeClasspath
@@ -104,6 +106,9 @@ task botMatches(type: JavaExec) {
     }
     if (project.hasProperty('ladder')) {
         args '--ladder'
+    }
+    if (project.hasProperty('pool')) {
+        args "--pool=${project.property('pool')}"
     }
 }
 

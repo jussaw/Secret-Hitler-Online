@@ -21,6 +21,12 @@ final class LadderCheck {
     /** Most percentage points between the all-Hard and all-Normal pooled liberal rates. */
     static final int BALANCE_BAND = 10;
 
+    /**
+     * Phase 25D's tuning target for the balance, in percentage points: a full run aims within it,
+     * so the acceptance's {@link #BALANCE_BAND} leaves room for chance.
+     */
+    static final int TUNING_BAND = 8;
+
     /** The levels of the bots dealt liberal and of those dealt fascist or Hitler. */
     record Pairing(BotSkill liberals, BotSkill fascists) {
         /** {@code E/N}: the liberals' level, then the fascists', by first letter. */
@@ -136,6 +142,14 @@ final class LadderCheck {
      * points apart, compared in whole numbers.
      */
     static boolean balanced(Map<Pairing, Results> results) {
+        return withinPoints(results, BALANCE_BAND);
+    }
+
+    /**
+     * Whether all-Hard and all-Normal games' pooled liberal rates are at most {@code points}
+     * percentage points apart, compared in whole numbers.
+     */
+    private static boolean withinPoints(Map<Pairing, Results> results, int points) {
         Tally hard = resultsOf(results, new Pairing(BotSkill.HARD, BotSkill.HARD)).pooled();
         Tally normal = resultsOf(results, new Pairing(BotSkill.NORMAL, BotSkill.NORMAL)).pooled();
         long hardWins = hard.liberalWins();
@@ -143,13 +157,14 @@ final class LadderCheck {
         long normalWins = normal.liberalWins();
         long normalGames = normal.games();
         return 100 * Math.abs(hardWins * normalGames - normalWins * hardGames)
-                <= BALANCE_BAND * hardGames * normalGames;
+                <= points * hardGames * normalGames;
     }
 
     /**
      * The two verdicts as lines: {@code Ladder check: PASS} or {@code FAIL (…)} naming each failing
      * step and why, a line per step, then {@code Balance check: PASS} or {@code FAIL} with both
-     * rates. Each line ends in a newline.
+     * rates, and {@code Balance target: PASS} or {@code FAIL} with the points between them against
+     * {@link #TUNING_BAND}. Each line ends in a newline.
      */
     static String verdicts(Map<Pairing, Results> results) {
         List<Step> steps = ladder(results);
@@ -187,7 +202,15 @@ final class LadderCheck {
                 + lines
                 + "Balance check: " + (balanced(results) ? "PASS" : "FAIL") + " (all-Hard "
                 + percent(hard.liberalWins(), hard.games()) + ", all-Normal "
-                + percent(normal.liberalWins(), normal.games()) + ", band " + BALANCE_BAND + " points)\n";
+                + percent(normal.liberalWins(), normal.games()) + ", band " + BALANCE_BAND + " points)\n"
+                + "Balance target: " + (withinPoints(results, TUNING_BAND) ? "PASS" : "FAIL") + " ("
+                + String.format(Locale.ROOT, "%.1f", 100 * Math.abs(share(hard) - share(normal)))
+                + " points apart, target " + TUNING_BAND + ")\n";
+    }
+
+    /** The liberal side's share of {@code tally}'s games. */
+    private static double share(Tally tally) {
+        return (double) tally.liberalWins() / tally.games();
     }
 
     /** A rate and its interval, as the run's tables write them: {@code 35.2% 34.3-36.1%}. */

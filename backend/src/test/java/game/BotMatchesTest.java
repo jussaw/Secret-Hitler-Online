@@ -9,7 +9,9 @@ import game.datastructures.Identity;
 import game.datastructures.Player;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.BiFunction;
@@ -298,8 +300,145 @@ public class BotMatchesTest {
         Throwable unknown = thrown(() -> BotMatches.Options.parse("--seed=1"));
         assertNotNull(unknown);
         assertTrue(unknown instanceof IllegalArgumentException);
-        assertEquals("Unknown option \"--seed=1\". botMatches takes -Pgames=N, -Pliberals=LEVEL, -Pfascists=LEVEL "
-                + "and -Pladder.", unknown.getMessage());
+        assertEquals("Unknown option \"--seed=1\". botMatches takes -Pgames=N, -Pliberals=LEVEL, -Pfascists=LEVEL, "
+                + "-Pladder and -Ppool=<file>,<file>.", unknown.getMessage());
+    }
+
+    @Test
+    public void optionsReadThePool() {
+        BotMatches.Options pool = BotMatches.Options.parse("--pool=a.txt,b.txt");
+        assertEquals(List.of("a.txt", "b.txt"), pool.pool());
+        assertFalse(pool.ladder());
+        assertEquals(List.of(), BotMatches.Options.parse().pool());
+        assertEquals(List.of(), BotMatches.Options.parse("--ladder").pool());
+
+        String message = "-Ppool takes two ladder reports: -Ppool=<file>,<file>.";
+        for (String[] args : new String[][] {{"--pool=a.txt"}, {"--pool="}, {"--pool=a.txt,"}, {"--pool=,b.txt"},
+                {"--pool=a.txt,b.txt,c.txt"}, {"--pool=a.txt,b.txt", "--ladder"}, {"--ladder", "--pool=a.txt,b.txt"},
+                {"--pool=a.txt,b.txt", "--games=50"}, {"--liberals=HARD", "--pool=a.txt,b.txt"}}) {
+            Throwable refused = thrown(() -> BotMatches.Options.parse(args));
+            assertNotNull(Arrays.toString(args), refused);
+            assertTrue(refused instanceof IllegalArgumentException);
+            assertEquals(Arrays.toString(args), message, refused.getMessage());
+        }
+    }
+
+    /** Each pairing's tallies by size, every size from 5 to 10, built from {@code counts} (one array a size). */
+    private static Map<LadderCheck.Pairing, BotMatches.Results> run(int gamesPerSize, int[][] counts,
+            LadderCheck.Pairing... pairings) {
+        Map<LadderCheck.Pairing, BotMatches.Results> results = new LinkedHashMap<>();
+        for (LadderCheck.Pairing pairing : pairings) {
+            SortedMap<Integer, BotMatches.Tally> bySize = new TreeMap<>();
+            for (int seats = 5; seats <= 10; seats++) {
+                int[] c = counts[seats - 5];
+                bySize.put(seats, tallyOf(c[0], c[1], c[2], c[3]));
+            }
+            results.put(pairing, new BotMatches.Results(
+                    BotMatches.label(pairing.liberals(), pairing.fascists()), gamesPerSize, bySize));
+        }
+        return results;
+    }
+
+    private static final LadderCheck.Pairing EN = new LadderCheck.Pairing(BotSkill.EASY, BotSkill.NORMAL);
+    private static final LadderCheck.Pairing HH = new LadderCheck.Pairing(BotSkill.HARD, BotSkill.HARD);
+
+    @Test
+    public void aReportsTalliesReadBack() {
+        Map<LadderCheck.Pairing, BotMatches.Results> played = BotMatches.ladder(2);
+        String report = BotMatches.ladderReport(played);
+        List<String> lines = List.of(report.split("\n"));
+        assertTrue(lines.contains("Tallies: 2 games at each table size"));
+        assertTrue(report, lines.contains(talliesLine("E/N", 5, played.get(EN).bySize().get(5))));
+
+        Map<LadderCheck.Pairing, BotMatches.Results> read = BotMatches.readTallies(lines);
+
+        assertEquals(LadderCheck.PAIRINGS, List.copyOf(read.keySet()));
+        for (LadderCheck.Pairing pairing : LadderCheck.PAIRINGS) {
+            BotMatches.Results was = played.get(pairing);
+            BotMatches.Results is = read.get(pairing);
+            assertEquals(2, is.gamesPerSize());
+            assertEquals(BotMatches.label(pairing.liberals(), pairing.fascists()), is.label());
+            assertEquals(List.of(5, 6, 7, 8, 9, 10), List.copyOf(is.bySize().keySet()));
+            for (int seats = 5; seats <= 10; seats++) {
+                for (GameState ending : BotMatches.ENDINGS) {
+                    assertEquals(pairing.label() + " " + seats + " " + ending, was.bySize().get(seats).count(ending),
+                            is.bySize().get(seats).count(ending));
+                }
+            }
+        }
+    }
+
+    /** A tally block's line: the pairing, the seats and each ending's count, in {@code ENDINGS}' order. */
+    private static String talliesLine(String pairing, int seats, BotMatches.Tally tally) {
+        StringBuilder line = new StringBuilder(pairing + " " + seats);
+        for (GameState ending : BotMatches.ENDINGS) {
+            line.append(' ').append(tally.count(ending));
+        }
+        return line.toString();
+    }
+
+    @Test
+    public void poolingAddsTheTallies() {
+        int[][] first = {{1, 2, 3, 4}, {5, 0, 5, 0}, {0, 0, 0, 10}, {10, 0, 0, 0}, {2, 2, 3, 3}, {4, 1, 4, 1}};
+        int[][] second = {{4, 3, 2, 1}, {0, 5, 0, 5}, {10, 0, 0, 0}, {1, 2, 3, 4}, {3, 3, 2, 2}, {1, 4, 1, 4}};
+        Map<LadderCheck.Pairing, BotMatches.Results> a = run(10, first, EN, HH);
+        Map<LadderCheck.Pairing, BotMatches.Results> b = run(10, second, EN, HH);
+
+        Map<LadderCheck.Pairing, BotMatches.Results> pooled = BotMatches.pool(a, b);
+
+        assertEquals(List.of(EN, HH), List.copyOf(pooled.keySet()));
+        for (LadderCheck.Pairing pairing : List.of(EN, HH)) {
+            BotMatches.Results results = pooled.get(pairing);
+            assertEquals(20, results.gamesPerSize());
+            assertEquals(BotMatches.label(pairing.liberals(), pairing.fascists()) + ", pooled", results.label());
+            for (int seats = 5; seats <= 10; seats++) {
+                BotMatches.Tally tally = results.bySize().get(seats);
+                assertEquals(20, tally.games());
+                for (int i = 0; i < BotMatches.ENDINGS.size(); i++) {
+                    assertEquals(first[seats - 5][i] + second[seats - 5][i], tally.count(BotMatches.ENDINGS.get(i)));
+                }
+            }
+            assertEquals(120, results.pooled().games());
+        }
+    }
+
+    @Test
+    public void poolRefusesRunsThatDoNotMatch() {
+        int[][] counts = {{1, 0, 0, 0}, {1, 0, 0, 0}, {1, 0, 0, 0}, {1, 0, 0, 0}, {1, 0, 0, 0}, {1, 0, 0, 0}};
+        Map<LadderCheck.Pairing, BotMatches.Results> both = run(1, counts, EN, HH);
+        Map<LadderCheck.Pairing, BotMatches.Results> one = run(1, counts, EN);
+        Map<LadderCheck.Pairing, BotMatches.Results> shortOfASize = run(1, counts, EN, HH);
+        SortedMap<Integer, BotMatches.Tally> fewer = new TreeMap<>(shortOfASize.get(HH).bySize());
+        fewer.remove(10);
+        shortOfASize.put(HH, new BotMatches.Results("Short", 1, fewer));
+
+        for (Runnable call : List.<Runnable>of(() -> BotMatches.pool(both, one), () -> BotMatches.pool(one, both),
+                () -> BotMatches.pool(both, shortOfASize))) {
+            Throwable refused = thrown(call);
+            assertNotNull(refused);
+            assertTrue(refused instanceof IllegalArgumentException);
+            assertEquals("The two runs do not match.", refused.getMessage());
+        }
+    }
+
+    @Test
+    public void aReportWithoutTalliesIsRefused() {
+        Throwable none = thrown(() -> BotMatches.readTallies(List.of("Ladder check: PASS", "Balance check: PASS")));
+        assertNotNull(none);
+        assertTrue(none instanceof IllegalArgumentException);
+        assertEquals("No tally block in the report.", none.getMessage());
+
+        for (String bad : List.of("E/N 5 1 0 0", "X/Y 5 1 0 0 1", "E/N five 1 0 0 1", "E/N 5 1 0 0 0",
+                "Liberals EASY, fascists NORMAL")) {
+            Throwable unread = thrown(() -> BotMatches.readTallies(List.of("Tallies: 2 games at each table size", bad)));
+            assertNotNull(bad, unread);
+            assertTrue(unread instanceof IllegalArgumentException);
+            assertMentions(unread.getMessage(), bad);
+        }
+        Throwable twice = thrown(() -> BotMatches.readTallies(
+                List.of("Tallies: 1 games at each table size", "E/N 5 1 0 0 0", "E/N 5 0 1 0 0")));
+        assertNotNull(twice);
+        assertMentions(twice.getMessage(), "E/N 5 0 1 0 0");
     }
 
     @Test

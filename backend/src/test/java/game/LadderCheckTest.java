@@ -164,8 +164,9 @@ public class LadderCheckTest {
             assertEquals("  " + steps.get(i) + ": 50.0% 48.7-51.3% vs 50.0% 48.7-51.3% pooled, overlaps; "
                     + "sizes inverted: none", lines.get(i + 1));
         }
-        assertEquals(8, lines.size());
+        assertEquals(9, lines.size());
         assertEquals("Balance check: PASS (all-Hard 50.0%, all-Normal 50.0%, band 10 points)", lines.get(7));
+        assertEquals("Balance target: PASS (0.0 points apart, target 8)", lines.get(8));
     }
 
     @Test
@@ -179,9 +180,33 @@ public class LadderCheckTest {
         assertTrue(verdicts, verdicts.contains("  Fascist side, Normal < Hard: 60.0% 58.8-61.2% vs 70.0% "
                 + "68.8-71.1% pooled, clears; sizes inverted: none\n"));
         assertTrue(verdicts, verdicts.endsWith("Balance check: PASS (all-Hard 48.0%, all-Normal 40.0%, band 10 "
-                + "points)\n"));
+                + "points)\nBalance target: PASS (8.0 points apart, target 8)\n"));
         assertTrue(LadderCheck.verdicts(pairings(400, Map.of(new Pairing(E, N), results(500))))
                 .contains("  Liberal side, Easy < Normal: 50.0% 48.7-51.3% vs 40.0% 38.8-41.2% pooled, inverted;"));
+    }
+
+    /** The balance's last line, {@code Balance target: …}, of {@code results}' verdicts. */
+    private static String target(Map<Pairing, BotMatches.Results> results) {
+        List<String> lines = List.of(LadderCheck.verdicts(results).split("\n"));
+        return lines.get(lines.size() - 1);
+    }
+
+    @Test
+    public void theTuningTargetIsEightPoints() {
+        assertEquals(8, LadderCheck.TUNING_BAND);
+        Pairing allHard = new Pairing(H, H);
+        Map<Pairing, BotMatches.Results> eight = pairings(350, Map.of(allHard, results(430)));
+        Map<Pairing, BotMatches.Results> past = pairings(350, Map.of(allHard, results(431)));
+        Map<Pairing, BotMatches.Results> below = pairings(350, Map.of(allHard, results(270)));
+
+        assertEquals("Balance target: PASS (8.0 points apart, target 8)", target(eight));
+        assertEquals("Balance target: FAIL (8.1 points apart, target 8)", target(past));
+        assertEquals("Balance target: PASS (8.0 points apart, target 8)", target(below));
+        assertTrue(LadderCheck.verdicts(eight).contains("Balance check: PASS"));
+        assertTrue(LadderCheck.verdicts(past).contains("Balance check: PASS"));
+        assertTrue(LadderCheck.balanced(past));
+        assertEquals("Balance target: FAIL (10.1 points apart, target 8)",
+                target(pairings(350, Map.of(allHard, results(451)))));
     }
 
     @Test
