@@ -56,7 +56,7 @@ public final class BotMatches {
 
     /** A tally block's line: the pairing's label, the seats, then each ending's count in {@link #ENDINGS}' order. */
     private static final Pattern TALLIES_LINE =
-            Pattern.compile("(\\S+) ([0-9]{1,2}) ([0-9]{1,9}) ([0-9]{1,9}) ([0-9]{1,9}) ([0-9]{1,9})");
+            Pattern.compile("(\\S+) ([0-9]{1,2})" + " ([0-9]{1,9})".repeat(ENDINGS.size()));
 
     private BotMatches() {
     }
