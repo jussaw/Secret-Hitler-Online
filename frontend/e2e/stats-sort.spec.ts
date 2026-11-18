@@ -86,11 +86,17 @@ test("a ranked card's heads sort it and its ranks stay", async ({ page }) => {
   if (phone) {
     // On a phone the count is a line under each name, in place of its column and head (as PLAYERS'
     // Last played), so sorting by it is a desktop thing: the press here is on Player.
-    await expect(head(table, "Games")).toBeHidden();
-    await expect(table.locator("tbody td.ranked-count").first()).toBeHidden();
+    // Hidden, not removed: CSS locators, as a display: none cell is in no role query.
+    const countHead = table.locator("thead th.ranked-count");
+    await expect(countHead).toHaveCount(1);
+    await expect(countHead).toHaveText("Games");
+    await expect(countHead).toBeHidden();
+    const countCells = table.locator("tbody td.ranked-count");
+    await expect(countCells).toHaveCount(opening.length);
+    for (const cell of await countCells.all()) await expect(cell).toBeHidden();
     const lines = table.locator("tbody .ranked-count-under");
     await expect(lines).toHaveCount(opening.length);
-    await expect(lines.first()).toBeVisible();
+    for (const line of await lines.all()) await expect(line).toBeVisible();
     for (const line of await lines.allTextContents()) expect(line).toMatch(/^\d+ games?$/);
 
     await headButton(table, "Player").click();
@@ -103,7 +109,10 @@ test("a ranked card's heads sort it and its ranks stay", async ({ page }) => {
     expect(await names(table), "names Z to A").toEqual([...aToZ].reverse());
     await ranksStay();
   } else {
-    await expect(table.locator("tbody .ranked-count-under").first()).toBeHidden();
+    // The count's line under the name is there, and hidden: the count has its column here.
+    const lines = table.locator("tbody .ranked-count-under");
+    await expect(lines).toHaveCount(opening.length);
+    for (const line of await lines.all()) await expect(line).toBeHidden();
     await headButton(table, "Games").click();
     await expect(head(table, "Games")).toHaveAttribute("aria-sort", "descending");
     await expect(head(table, "Rank")).not.toHaveAttribute("aria-sort", /./);
@@ -177,45 +186,62 @@ test("a sorted ranked card still fits", async ({ page }) => {
   await checkStatsPage(page, NARROW_PHONE);
 });
 
-/** Every tab with ranked tables. */
+/** Every page with ranked tables (`table.ranked-table`): the tabs that have them and PLAYERS, each
+ *  with and without CPU games. */
 const RANKED_TABS: TabId[] = ["overview", "roles", "votes", "activity", "records"];
+const RANKED_PAGES: string[] = [...RANKED_TABS.map((tab) => routePath({ page: "tab", tab })), routePath({ page: "players" })].flatMap(
+  (path) => [path, `${path}?cpu=1`]
+);
+
+/**
+ * Every shown ranked table on the page that is not inside its nearest card's content box (padding
+ * and border taken off), with 1px of slack as `statsPageProblems` allows, as `title: [left, right]
+ * outside [left, right]`. A table that sits in a scroll region of its own by design (the power
+ * ranking) is measured by its region, which must not scroll either. Also how many it checked.
+ */
+function rankedTableProblems(page: Page): Promise<{ checked: number; problems: string[] }> {
+  return page.evaluate(() => {
+    const out: string[] = [];
+    let checked = 0;
+    for (const table of Array.from(document.querySelectorAll("table.ranked-table"))) {
+      const card = table.closest(".stats-card");
+      if (!card || table.getBoundingClientRect().width === 0) continue;
+      checked++;
+      const title = (card.querySelector("h3")?.textContent ?? "?").trim();
+      const region = table.closest(".scroll-region");
+      const box = region ?? table;
+      const style = getComputedStyle(card);
+      const edges = card.getBoundingClientRect();
+      const left = edges.left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft);
+      const right = edges.right - parseFloat(style.borderRightWidth) - parseFloat(style.paddingRight);
+      const r = box.getBoundingClientRect();
+      if (r.left < left - 1 || r.right > right + 1) {
+        out.push(`${title}: [${r.left.toFixed(1)}, ${r.right.toFixed(1)}] outside [${left.toFixed(1)}, ${right.toFixed(1)}]`);
+      }
+      if (region && region.scrollWidth > region.clientWidth) {
+        out.push(`${title}: its region scrolls, ${region.scrollWidth} of ${region.clientWidth}`);
+      }
+    }
+    return { checked, problems: out };
+  });
+}
 
 test("every ranked table fits inside its card at 320px", async ({ page }) => {
   test.skip(test.info().project.name !== "phone-360", "the narrowest phone, once");
   test.slow();
-  await page.setViewportSize(NARROW_PHONE);
-  for (const tab of RANKED_TABS) {
-    for (const search of ["", "?cpu=1"]) {
-      const path = `${routePath({ page: "tab", tab })}${search}`;
-      await open(page, path);
-      const { checked, problems } = await page.evaluate(() => {
-        const out: string[] = [];
-        let count = 0;
-        for (const table of Array.from(document.querySelectorAll("table.ranked-table"))) {
-          const card = table.closest(".stats-card");
-          if (!card || table.getBoundingClientRect().width === 0) continue;
-          count++;
-          const title = (card.querySelector("h3")?.textContent ?? "?").trim();
-          // A table that scrolls inside a region of its own by design (the power ranking) is
-          // measured by its region, which must not scroll either.
-          const region = table.closest(".scroll-region");
-          const box = region ?? table;
-          const style = getComputedStyle(card);
-          const edges = card.getBoundingClientRect();
-          const left = edges.left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft);
-          const right = edges.right - parseFloat(style.borderRightWidth) - parseFloat(style.paddingRight);
-          const r = box.getBoundingClientRect();
-          if (r.left < left - 1 || r.right > right + 1) {
-            out.push(`${title}: [${r.left.toFixed(1)}, ${r.right.toFixed(1)}] outside [${left.toFixed(1)}, ${right.toFixed(1)}]`);
-          }
-          if (region && region.scrollWidth > region.clientWidth) {
-            out.push(`${title}: its region scrolls, ${region.scrollWidth} of ${region.clientWidth}`);
-          }
-        }
-        return { checked: count, problems: out };
-      });
-      expect(checked, `ranked tables on ${path}`).toBeGreaterThan(0);
-      expect(problems, `ranked tables outside their cards on ${path} at 320x568`).toEqual([]);
+  const sizes = [NARROW_PHONE];
+  const problems: string[] = [];
+  for (const path of RANKED_PAGES) {
+    await page.setViewportSize(sizes[0]);
+    await open(page, path);
+    for (const size of sizes) {
+      await page.setViewportSize(size);
+      await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+      const found = await rankedTableProblems(page);
+      const at = `${path} at ${size.width}x${size.height}`;
+      expect(found.checked, `ranked tables on ${at}`).toBeGreaterThan(0);
+      problems.push(...found.problems.map((problem) => `${at}: ${problem}`));
     }
   }
+  expect(problems, "ranked tables outside their cards").toEqual([]);
 });
