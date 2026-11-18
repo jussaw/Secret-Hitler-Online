@@ -66,7 +66,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 25D. Ladder and balance | `phase-25d-ladder-balance` | done |
 | 26A. Bot skill in the lobby | `phase-26a-lobby-bot-skill` | done |
 | 26B. Bot skill in the records | `phase-26b-record-bot-skill` | done |
-| 27A. Sortable ranked tables | `phase-27a-sortable-tables` | in progress |
+| 27A. Sortable ranked tables | `phase-27a-sortable-tables` | done |
 | 27B. Sortable split and other tables | `phase-27b-other-tables` | not started |
 
 ---
@@ -1259,8 +1259,8 @@ Issue #109, first part. Its branch holds the spec and both phases' plans.
 
 **Phase 27A acceptance**
 
-- [ ] Frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] PR merged into `development`
+- [x] Frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] PR merged into `development`
 
 ---
 
