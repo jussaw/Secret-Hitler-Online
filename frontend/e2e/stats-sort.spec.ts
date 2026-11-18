@@ -184,3 +184,239 @@ test("a sorted ranked card still fits", async ({ page }) => {
   await expect(head(table, "Win rate")).toHaveAttribute("aria-sort", "descending");
   await checkStatsPage(page, NARROW_PHONE);
 });
+
+// ---------------------------------------------------------------------------------------------
+// The other sortable tables (#109, Phase 27B): a split table's heads sort it with its dashes last
+// and Player giving its first order back, a side's head keeps its colour (and Hitler's its
+// underline), a held head's focus ring stays inside its region, RIVALS' People table sorts by its
+// counts, the players of the month by wins and by month, ENDINGS' two tables by their figures with
+// the All row last, and each still fits a 320px phone sorted. That each fits at every stats size is
+// `checkStatsPage`'s in the tabs' own specs, and ENDINGS' tables whole in their cards
+// `stats-rivals.spec.ts`'.
+
+/** The text of each body row's `n`th `td` (1 first), in the rows `rows` picks, as `figure` reads
+ *  it ("—" as null). */
+function figures(table: Locator, rows: string, n: number, figure: (text: string) => number): Promise<(number | null)[]> {
+  return table
+    .locator(`tbody ${rows} > td:nth-of-type(${n})`)
+    .allTextContents()
+    .then((texts) =>
+      texts.map((raw) => {
+        const text = raw.trim();
+        return text === "—" ? null : figure(text);
+      })
+    );
+}
+
+/** A figure out of a cell's text by `pattern`'s first group, failing the test for text it does not
+ *  match. */
+function matched(pattern: RegExp): (text: string) => number {
+  return (text) => {
+    const found = pattern.exec(text);
+    if (!found) throw new Error(`"${text}" is not a figure ${pattern}`);
+    return Number(found[1]);
+  };
+}
+
+/** A percent's figure ("60%" is 60). */
+const percent = matched(/^(\d+)%$/);
+
+/** A length's minutes: "38 min" is 38, "1 h 15 min" is 75. */
+function minutes(text: string): number {
+  const found = /^(?:(\d+) h )?(\d+) min$/.exec(text);
+  if (!found) throw new Error(`"${text}" is not a length`);
+  return Number(found[1] ?? 0) * 60 + Number(found[2]);
+}
+
+/** `values` run `direction` (most first for "descending"), with every "—" (null) after every figure. */
+function inOrder(values: (number | null)[], direction: "ascending" | "descending"): boolean {
+  const firstDash = values.indexOf(null);
+  const shown = firstDash === -1 ? values : values.slice(0, firstDash);
+  if (firstDash !== -1 && values.slice(firstDash).some((value) => value !== null)) return false;
+  return direction === "descending" ? nonIncreasing(shown) : nonDecreasing(shown);
+}
+
+/** A split table's rows by their players' numbers, in the rows' order. */
+function splitPlayers(table: Locator): Promise<string[]> {
+  return table
+    .locator("tbody tr > th .player-name")
+    .evaluateAll((all) => all.map((el) => el.getAttribute("data-player") ?? ""));
+}
+
+/** The colour `value` (a CSS colour, or a `var(…)`) computes to inside the stats page. */
+function colourOf(page: Page, value: string): Promise<string> {
+  return page.evaluate((color) => {
+    const probe = document.createElement("span");
+    probe.style.color = color;
+    document.querySelector(".stats-screen")!.append(probe);
+    const computed = getComputedStyle(probe).color;
+    probe.remove();
+    return computed;
+  }, value);
+}
+
+test("a split table's heads sort it, its dashes last", async ({ page }) => {
+  await open(page, routePath({ page: "tab", tab: "roles" }));
+  const table = card(page, "Role split table").locator("table.split-table");
+  await expect(head(table, "Player")).toHaveAttribute("aria-sort", "ascending");
+  const opening = await splitPlayers(table);
+  expect(opening.length, "rows").toBeGreaterThan(1);
+  // Liberal's shares: each cell's text, without the count beside it.
+  const shares = () =>
+    table
+      .locator("tbody tr > td:nth-of-type(1) .split-text")
+      .allTextContents()
+      .then((texts) => texts.map((text) => (text.trim() === "—" ? null : percent(text.trim()))));
+
+  await headButton(table, "Liberal").click();
+  await expect(head(table, "Liberal")).toHaveAttribute("aria-sort", "descending");
+  await expect(head(table, "Player")).not.toHaveAttribute("aria-sort", /./);
+  const most = await shares();
+  expect(most.length, "rows").toBe(opening.length);
+  expect(inOrder(most, "descending"), `Liberal shares most first, dashes last: ${most.join(", ")}`).toBe(true);
+
+  await headButton(table, "Liberal").click();
+  await expect(head(table, "Liberal")).toHaveAttribute("aria-sort", "ascending");
+  const least = await shares();
+  expect(inOrder(least, "ascending"), `Liberal shares least first, dashes last: ${least.join(", ")}`).toBe(true);
+
+  await headButton(table, "Player").click();
+  await expect(head(table, "Player")).toHaveAttribute("aria-sort", "ascending");
+  await expect(head(table, "Liberal")).not.toHaveAttribute("aria-sort", /./);
+  expect(await splitPlayers(table), "the opening order").toEqual(opening);
+});
+
+test("a side's head keeps its colour", async ({ page }) => {
+  const project = test.info().project.name;
+  await open(page, routePath({ page: "tab", tab: "roles" }));
+  const table = card(page, "Role split table").locator("table.split-table");
+  const liberal = headButton(table, "Liberal");
+  const hitler = headButton(table, "Hitler");
+  // The side's colours, which the heads' words are drawn in (the buttons' own colour, as the words
+  // are the buttons').
+  const blue = await colourOf(page, "var(--textColorLiberal)");
+  const red = await colourOf(page, "var(--textColorFascist)");
+
+  await expect(liberal, "Liberal's head before a press").toHaveCSS("color", blue);
+  await expect(hitler, "Hitler's head before a press").toHaveCSS("color", red);
+  await expect(hitler, "Hitler's head underlined").toHaveCSS("text-decoration-line", "underline");
+
+  await liberal.click();
+  await expect(head(table, "Liberal")).toHaveAttribute("aria-sort", "descending");
+  await expect(liberal, "Liberal's head sorted").toHaveCSS("color", blue);
+  await hitler.click();
+  await expect(head(table, "Hitler")).toHaveAttribute("aria-sort", "descending");
+  await expect(hitler, "Hitler's head sorted").toHaveCSS("color", red);
+  await expect(hitler, "Hitler's head sorted, underlined").toHaveCSS("text-decoration-line", "underline");
+
+  if (project === "desktop" || project === "firefox") {
+    await liberal.hover();
+    await expect(liberal, "Liberal's head hovered").toHaveCSS("color", blue);
+    await hitler.hover();
+    await expect(hitler, "Hitler's head hovered").toHaveCSS("color", red);
+    await expect(hitler, "Hitler's head hovered, underlined").toHaveCSS("text-decoration-line", "underline");
+  }
+});
+
+test("a held head's focus ring stays inside its region", async ({ page }) => {
+  const project = test.info().project.name;
+  test.skip(project !== "desktop" && project !== "firefox", "a keyboard's matter");
+  await open(page, routePath({ page: "tab", tab: "roles" }));
+  const region = card(page, "Role split table");
+  const player = headButton(region.locator("table.split-table"), "Player");
+  await region.focus();
+  await page.keyboard.press("Tab");
+  await expect(player).toBeFocused();
+  expect(await player.evaluate((button) => button.matches(":focus-visible")), "Player's head shows its ring").toBe(true);
+  await expect(player).toHaveCSS("outline-offset", "-2px");
+});
+
+test("the People table sorts by its counts", async ({ page }) => {
+  await open(page, routePath({ page: "tab", tab: "rivals" }));
+  const table = card(page, "People table").locator("table.rivals-people");
+  await expect(head(table, "Player")).toHaveAttribute("aria-sort", "ascending");
+  // Nemesis's cells: "Bo · lost 3", or "—".
+  const lost = () => figures(table, "tr", 2, matched(/ · lost (\d+)$/));
+
+  await headButton(table, "Nemesis").click();
+  await expect(head(table, "Nemesis")).toHaveAttribute("aria-sort", "descending");
+  const most = await lost();
+  expect(most.length, "rows").toBeGreaterThan(1);
+  expect(inOrder(most, "descending"), `most losses first, dashes last: ${most.join(", ")}`).toBe(true);
+
+  await headButton(table, "Nemesis").click();
+  await expect(head(table, "Nemesis")).toHaveAttribute("aria-sort", "ascending");
+  const fewest = await lost();
+  expect(inOrder(fewest, "ascending"), `fewest losses first, dashes last: ${fewest.join(", ")}`).toBe(true);
+});
+
+test("the players of the month sort by wins and by month", async ({ page }) => {
+  await open(page, routePath({ page: "tab", tab: "records" }));
+  const table = page.locator('[data-card="players-of-the-month"] table.ranked-table');
+  const months = () => table.locator("tbody td.ranked-name .records-sub").allTextContents();
+  await expect(head(table, "Month")).toHaveAttribute("aria-sort", "descending");
+  const opening = await months();
+  expect(opening.length, "months").toBeGreaterThan(1);
+
+  await headButton(table, "Wins").click();
+  await expect(head(table, "Wins")).toHaveAttribute("aria-sort", "descending");
+  await expect(head(table, "Month")).not.toHaveAttribute("aria-sort", /./);
+  const wins = await numbers(table, "ranked-value");
+  expect(wins.every((count) => count !== null), "every month's wins shown").toBe(true);
+  expect(nonIncreasing(wins), `most wins first: ${wins.join(", ")}`).toBe(true);
+
+  await headButton(table, "Month").click();
+  await expect(head(table, "Month")).toHaveAttribute("aria-sort", "descending");
+  expect(await months(), "the latest month first again").toEqual(opening);
+  await headButton(table, "Month").click();
+  await expect(head(table, "Month")).toHaveAttribute("aria-sort", "ascending");
+  expect(await months(), "the earliest month first").toEqual([...opening].reverse());
+});
+
+test("ENDINGS' tables sort, the All row last", async ({ page }) => {
+  await open(page, routePath({ page: "tab", tab: "endings" }));
+  const length = card(page, "Game length table").locator("table");
+  const lastRow = () => length.locator("tbody tr").last().locator("th");
+  // The sizes' Average length cells, the All row left out.
+  const averages = () => figures(length, "tr:not(.endings-all)", 2, minutes);
+  await expect(head(length, "Players")).toHaveAttribute("aria-sort", "ascending");
+
+  await headButton(length, "Average length").click();
+  await expect(head(length, "Average length")).toHaveAttribute("aria-sort", "descending");
+  const longest = await averages();
+  expect(longest.length, "sizes").toBeGreaterThan(1);
+  expect(inOrder(longest, "descending"), `longest first, dashes last: ${longest.join(", ")}`).toBe(true);
+  await expect(lastRow()).toHaveText("All");
+
+  await headButton(length, "Average length").click();
+  await expect(head(length, "Average length")).toHaveAttribute("aria-sort", "ascending");
+  const shortest = await averages();
+  expect(inOrder(shortest, "ascending"), `shortest first, dashes last: ${shortest.join(", ")}`).toBe(true);
+  await expect(lastRow()).toHaveText("All");
+
+  const rates = card(page, "Liberal win rate by player count table").locator("table");
+  await headButton(rates, "Win rate").click();
+  await expect(head(rates, "Win rate")).toHaveAttribute("aria-sort", "descending");
+  // Win rate's cells, the third after the size's head: "54%", or "—" below 5 games.
+  const highest = await figures(rates, "tr", 3, percent);
+  expect(highest.length, "sizes").toBeGreaterThan(1);
+  expect(inOrder(highest, "descending"), `highest rate first, dashes last: ${highest.join(", ")}`).toBe(true);
+});
+
+test("the other sorted tables still fit", async ({ page }) => {
+  test.skip(test.info().project.name !== "phone-360", "the narrowest phone, once");
+  await page.setViewportSize(NARROW_PHONE);
+  // Each tab's table and the head pressed once (each column's first press is most first).
+  const sorted: ["roles" | "rivals" | "records" | "endings", (page: Page) => Locator, string][] = [
+    ["roles", (p) => card(p, "Role split table"), "Liberal"],
+    ["rivals", (p) => card(p, "People table"), "Nemesis"],
+    ["records", (p) => p.locator('[data-card="players-of-the-month"]'), "Wins"],
+    ["endings", (p) => card(p, "Game length table"), "Average length"],
+  ];
+  for (const [tab, table, column] of sorted) {
+    await open(page, routePath({ page: "tab", tab }));
+    await headButton(table(page), column).click();
+    await expect(head(table(page), column), `${tab}: ${column} sorted`).toHaveAttribute("aria-sort", "descending");
+    await checkStatsPage(page, NARROW_PHONE);
+  }
+});
