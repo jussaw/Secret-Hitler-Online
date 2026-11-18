@@ -157,6 +157,49 @@ describe("RecordsTab", () => {
     ]);
   });
 
+  it("theBestWeekSortsByPlayerAndWins", () => {
+    // Cy's best week has 3 wins, Bo's 2 and Ann's 1: rank order is the reverse of name order.
+    tab([
+      ...[12, 13, 14].map((d) => played(`c${d}`, `2026-10-${d}T20:00:00Z`, [3])),
+      ...[19, 20].map((d) => played(`b${d}`, `2026-10-${d}T20:00:00Z`, [1])),
+      played("a26", "2026-10-26T20:00:00Z", [2]),
+    ]);
+    const week = within(card("most-wins-week"));
+    expect(week.getAllByRole("columnheader").map((th) => th.textContent)).toEqual(["#", "Player", "Wins"]);
+    for (const name of ["Rank", "Player", "Wins"]) {
+      expect(week.getByRole("columnheader", { name }).querySelector("button")).toHaveAttribute("type", "button");
+    }
+    expect(week.getByRole("columnheader", { name: "Rank" })).toHaveAttribute("aria-sort", "ascending");
+    expect(rowsOf("most-wins-week")).toEqual([
+      ["1.", "Cy", "Week of 12 Oct 2026", "3 wins"],
+      ["2.", "Bo", "Week of 19 Oct 2026", "2 wins"],
+      ["3.", "Ann", "Week of 26 Oct 2026", "1 win"],
+    ]);
+    fireEvent.click(week.getByRole("button", { name: "Player" }));
+    expect(week.getByRole("columnheader", { name: "Player" })).toHaveAttribute("aria-sort", "ascending");
+    expect(week.getByRole("columnheader", { name: "Rank" })).not.toHaveAttribute("aria-sort");
+    // Names A to Z, each keeping its rank and its period under it.
+    expect(rowsOf("most-wins-week")).toEqual([
+      ["3.", "Ann", "Week of 26 Oct 2026", "1 win"],
+      ["2.", "Bo", "Week of 19 Oct 2026", "2 wins"],
+      ["1.", "Cy", "Week of 12 Oct 2026", "3 wins"],
+    ]);
+    for (const row of card("most-wins-week").querySelectorAll("tbody tr")) {
+      const name = row.querySelector(".ranked-name")!;
+      expect(name.querySelector(".player-name")!.nextElementSibling).toHaveClass("records-sub");
+    }
+    // Wins, most first, then fewest first.
+    fireEvent.click(week.getByRole("button", { name: "Wins" }));
+    expect(week.getByRole("columnheader", { name: "Wins" })).toHaveAttribute("aria-sort", "descending");
+    expect(rowsOf("most-wins-week").map((row) => row[1])).toEqual(["Cy", "Bo", "Ann"]);
+    fireEvent.click(week.getByRole("button", { name: "Wins" }));
+    expect(week.getByRole("columnheader", { name: "Wins" })).toHaveAttribute("aria-sort", "ascending");
+    expect(rowsOf("most-wins-week").map((row) => row[1])).toEqual(["Ann", "Bo", "Cy"]);
+    // The month's table is the same kind, sorted on its own.
+    expect(within(card("most-wins-month")).getByRole("columnheader", { name: "Rank" })).toHaveAttribute("aria-sort", "ascending");
+    expect(rowsOf("most-wins-month").map((row) => row[1])).toEqual(["Cy", "Bo", "Ann"]);
+  });
+
   it("aTiedMonthListsEachHolder", () => {
     tab(MONTHS, Date.parse("2026-12-02T12:00:00Z"));
     expect(rowsOf("players-of-the-month")[0]).toEqual(["", "November 2026", "Ann", "Bo", "4 wins"]);

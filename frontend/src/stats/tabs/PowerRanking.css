@@ -1,34 +1,6 @@
-/* The power ranking: RankedTable.css's table (its rank, name and value columns, rows 44px tall in
-   the stacked query, and its unranked rows' grey), with a header row, the last change and games
-   as numbers, and provisional rows in italics. */
-.power-ranking th {
-    padding: 0 6px 4px;
-    font-weight: 600;
-    font-size: 12px;
-    text-align: right;
-    white-space: nowrap;
-    color: var(--textColorOnDark);
-}
-
-.power-ranking th:first-child {
-    padding-left: 0;
-}
-
-.power-ranking th:last-child {
-    padding-right: 0;
-}
-
-.power-ranking th.ranked-name {
-    text-align: left;
-    font-weight: 600;
-    color: var(--textColorOnDark);
-}
-
-/* A line under the header too. */
-.ranked-table.power-ranking tbody tr:first-child td {
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
+/* The power ranking: RankedTable.css's table (its head row, its rank, name and value columns, rows
+   44px tall in the stacked query, and its unranked rows' grey), with the last change and games as
+   numbers, and provisional rows in italics. */
 .power-ranking .power-number {
     white-space: nowrap;
     text-align: right;
