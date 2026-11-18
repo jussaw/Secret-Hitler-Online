@@ -8,6 +8,7 @@ import { SplitTable, type SplitCell, type SplitColumn } from "../SplitTable";
 import { StatCard } from "../StatCard";
 import type { StatsContext } from "../useStats";
 import { computeVotes, type PlayerVotes } from "../votes";
+import { rateText } from "./cellText";
 import "./VotesTab.css";
 
 /**
@@ -48,9 +49,10 @@ interface Sections {
   powers: CardSpec[];
 }
 
-/** A rate as shown: "—" below its minimum, else a whole percent. */
+/** A rate as shown: "—" below its minimum, else a whole percent (`rateText`, whose figure is
+ *  `rateFigure`'s). */
 function percent(r: Rate): string {
-  return r.value === null ? "—" : formatPercent(r.value);
+  return rateText(r.value);
 }
 
 /** Larger values first, a missing one (below the minimum) last. */
@@ -132,10 +134,12 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
       .map(({ player, cells }) => ({ player, cells }));
     return rows.length === 0 ? null : <SplitTable title={title} columns={columns} rows={rows} names={names} />;
   };
-  const rateCell = (r: Rate) => ({ cell: { text: percent(r), count: r.chances }, chance: r.chances > 0 });
-  const countCell = (n: number) => ({ cell: { text: String(n) }, chance: n > 0 });
+  /** Each split cell sorts by the figure its text shows (null for "—"): a rate's whole percent, a
+   *  count, and the accepted vetoes "2 of 5" leads with ("0 of 0" is 0). */
+  const rateCell = (r: Rate) => ({ cell: { text: percent(r), value: rateFigure(r), count: r.chances }, chance: r.chances > 0 });
+  const countCell = (n: number) => ({ cell: { text: String(n), value: countFigure(n) }, chance: n > 0 });
   const vetoCell = ({ accepted, refused }: VetoAnswers) => ({
-    cell: { text: `${accepted} of ${accepted + refused}` },
+    cell: { text: `${accepted} of ${accepted + refused}`, value: accepted },
     chance: accepted + refused > 0,
   });
 

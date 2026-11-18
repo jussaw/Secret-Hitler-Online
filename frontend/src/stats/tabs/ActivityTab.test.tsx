@@ -5,6 +5,7 @@ import { ev } from "../game/sampleGames";
 import type { GameEvent, GameRecord } from "../record";
 import { NO_GAMES } from "../StatCard";
 import { makeRecord, makeSeats } from "../testRecords";
+import { dashesBeforeFigures } from "../testSplitTables";
 import { buildStats, type StatsContext } from "../useStats";
 import { ActivityTab } from "./ActivityTab";
 
@@ -57,6 +58,15 @@ function night(): GameEvent[] {
   return events;
 }
 const NIGHTS = Array.from({ length: 8 }, (_, i) => game(`n${i + 1}`, `2026-11-0${i + 1}T20:00:00Z`, 30, [1, 2, 3, 4, 5], night()));
+
+/** One election and nothing after it: seat 0 nominates 4 s in, and each seat votes Ja `seat + 1` s
+ *  after the nomination, as in a night. */
+function oneElection(): GameEvent[] {
+  const events: GameEvent[] = [ev.nominate(1, 4000, 0, 1)];
+  for (let seat = 0; seat < 5; seat++) events.push(ev.vote(1, 5000 + seat * 1000, seat, true));
+  events.push(ev.election(1, 9000, true, 5, 0));
+  return events;
+}
 
 const stats = (games: GameRecord[]): StatsContext => buildStats({ players: PLAYERS, games }, DEFAULT_FILTER);
 const tab = (games: GameRecord[]) => render(<ActivityTab stats={stats(games)} now={NOW} timeZone="UTC" />);
@@ -203,10 +213,7 @@ describe("ActivityTab", () => {
   });
 
   it("belowTheMinimumShowsADash", () => {
-    const events: GameEvent[] = [ev.nominate(1, 4000, 0, 1)];
-    for (let seat = 0; seat < 5; seat++) events.push(ev.vote(1, 5000 + seat * 1000, seat, true));
-    events.push(ev.election(1, 9000, true, 5, 0));
-    tab([game("one", "2026-11-02T19:00:00Z", 30, [1, 2, 3, 4, 5], events)]);
+    tab([game("one", "2026-11-02T19:00:00Z", 30, [1, 2, 3, 4, 5], oneElection())]);
     expect(within(card("fastest-voter")).getByText("No one has 30 timed votes over 8 games yet.")).toBeInTheDocument();
     const table = within(card("decision-times")).getByRole("region", { name: "Decision times table" });
     expect(within(table).getAllByRole("columnheader").map((th) => th.textContent)).toEqual([
@@ -249,6 +256,45 @@ describe("ActivityTab", () => {
   it("aCountdownShareBelowTheMinimumIsADash", () => {
     tab(NIGHTS.slice(0, 1));
     expect(within(card("countdown")).getByText("Ended by the countdown: — (1 of 4 terms)")).toBeInTheDocument();
+  });
+
+  it("decisionTimesSortByTheShownTime", () => {
+    // Over the nights Ann votes in 1.0 s, Bo 2.0 s, … Ed 5.0 s; Flo votes once, so hers is "—".
+    tab([...NIGHTS, game("flo", "2026-11-09T20:00:00Z", 30, [6, 2, 3, 4, 5], oneElection())]);
+    const table = within(card("decision-times")).getByRole("region", { name: "Decision times table" });
+    const votes = () =>
+      Array.from(table.querySelectorAll("tbody tr"), (tr) => [
+        tr.querySelector("th")?.textContent,
+        tr.querySelectorAll("td")[1].querySelector(".split-text")?.textContent,
+      ]);
+    fireEvent.click(within(table).getByRole("button", { name: "Vote" }));
+    expect(within(table).getByRole("columnheader", { name: "Vote" })).toHaveAttribute("aria-sort", "descending");
+    expect(votes()).toEqual([
+      ["Ed", "5.0 s"],
+      ["Di", "4.0 s"],
+      ["Cy", "3.0 s"],
+      ["Bo", "2.0 s"],
+      ["Ann", "1.0 s"],
+      ["Flo", "—"],
+    ]);
+    fireEvent.click(within(table).getByRole("button", { name: "Vote" }));
+    expect(within(table).getByRole("columnheader", { name: "Vote" })).toHaveAttribute("aria-sort", "ascending");
+    expect(votes()).toEqual([
+      ["Ann", "1.0 s"],
+      ["Bo", "2.0 s"],
+      ["Cy", "3.0 s"],
+      ["Di", "4.0 s"],
+      ["Ed", "5.0 s"],
+      ["Flo", "—"],
+    ]);
+  });
+
+  it("everyDashSortsLast", () => {
+    // Review Focus 1: Ed never presides, so his Nominate, Discard and End term are "—" beside times.
+    const { container } = tab([game("one", "2026-11-02T19:00:00Z", 30, [1, 2, 3, 4, 5], oneElection()), ...NIGHTS]);
+    const { checked, misplaced } = dashesBeforeFigures(container);
+    expect(misplaced).toEqual([]);
+    expect(checked).toBeGreaterThan(0);
   });
 
   it("namesInSentencesAreNotLinks", () => {

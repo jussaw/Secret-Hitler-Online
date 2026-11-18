@@ -51,16 +51,20 @@
     overflow-wrap: anywhere;
 }
 
-.split-table thead th.split-liberal {
+/* A side's or role's head keeps its colour, sorted, hovered or not: these (0,4,2) outrank
+   SortHead.css's sorted and hovered white (0,3,1). Hitler's underline is the button's own, as an
+   inline-flex button is an atomic inline that a th's underline would not reach. The arrow marks
+   the sort. */
+.stats-screen .split-table thead th.split-liberal .stats-sort {
     color: var(--textColorLiberal);
 }
 
-.split-table thead th.split-fascist,
-.split-table thead th.split-hitler {
+.stats-screen .split-table thead th.split-fascist .stats-sort,
+.stats-screen .split-table thead th.split-hitler .stats-sort {
     color: var(--textColorFascist);
 }
 
-.split-table thead th.split-hitler {
+.stats-screen .split-table thead th.split-hitler .stats-sort {
     text-decoration: underline;
 }
 

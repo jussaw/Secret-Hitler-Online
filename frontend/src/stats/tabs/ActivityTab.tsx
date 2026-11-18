@@ -9,10 +9,11 @@ import { viewerTimeZone } from "../format";
 import { countFigure, formatPercent, wholePercent } from "../numbers";
 import PlayerName from "../PlayerName";
 import { RankedTable } from "../RankedTable";
-import { SplitTable, type SplitCell } from "../SplitTable";
+import { SplitTable, type SplitCell, type SplitColumn } from "../SplitTable";
 import { StatCard } from "../StatCard";
-import { computeTiming, DECISIONS, fastestVoter, formatAverageTime, type Decision } from "../timing";
+import { averageTimeTenths, computeTiming, DECISIONS, fastestVoter, formatAverageTime, type Decision } from "../timing";
 import type { StatsContext } from "../useStats";
+import { NO_VALUE } from "./cellText";
 import "./sectionGrid.css";
 import "./ActivityTab.css";
 
@@ -31,6 +32,8 @@ const DECISION_LABELS: Record<Decision, string> = {
   power: "Power",
   endTerm: "End term",
 };
+/** Decision times' columns, one per decision, made once so the table's columns stay put. */
+const DECISION_COLUMNS: SplitColumn[] = DECISIONS.map((kind) => ({ key: kind, label: DECISION_LABELS[kind] }));
 
 /** A row of choice buttons, the chosen one pressed and in the office orange. */
 function Choices<T extends string>({
@@ -136,7 +139,12 @@ export function ActivityTab({ stats, now, timeZone }: { stats: StatsContext; now
     const cells: Record<string, SplitCell> = {};
     for (const kind of DECISIONS) {
       const { count, ms } = t.decisions[kind];
-      cells[kind] = { text: count >= MIN_CHANCES && ms !== null ? formatAverageTime(ms) : "—", count };
+      // Sorted by the tenths of a second it shows; "—" below the minimum has none.
+      const shown = count >= MIN_CHANCES ? ms : null;
+      cells[kind] =
+        shown === null
+          ? { text: NO_VALUE, value: null, count }
+          : { text: formatAverageTime(shown), value: averageTimeTenths(shown), count };
     }
     return { player, cells };
   });
@@ -289,7 +297,7 @@ export function ActivityTab({ stats, now, timeZone }: { stats: StatsContext; now
           >
             <SplitTable
               title="Decision times"
-              columns={DECISIONS.map((kind) => ({ key: kind, label: DECISION_LABELS[kind] }))}
+              columns={DECISION_COLUMNS}
               rows={decisionRows}
               names={names}
             />

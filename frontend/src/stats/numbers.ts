@@ -20,6 +20,12 @@ export function formatPercent(value: number): string {
   return `${wholePercent(value)}%`;
 }
 
+/** A share that may be missing as its whole percent (`wholePercent`), null for none: what a cell
+ *  that shows a share or "—" (`tabs/cellText.ts`' `rateText`) sorts by. */
+export function percentFigure(value: number | null): number | null {
+  return value === null ? null : wholePercent(value);
+}
+
 /** A count's sort figure (a ranked card's `sortValue`): the count itself, as its cell shows it. */
 export function countFigure(count: number): number {
   return count;
@@ -28,7 +34,7 @@ export function countFigure(count: number): number {
 /** A rate's sort figure (a ranked card's `sortValue`): the whole percent its cell shows
  *  (`formatPercent`), null for a rate with no value, shown "—". */
 export function rateFigure(rate: Rate): number | null {
-  return rate.value === null ? null : wholePercent(rate.value);
+  return percentFigure(rate.value);
 }
 
 /**
