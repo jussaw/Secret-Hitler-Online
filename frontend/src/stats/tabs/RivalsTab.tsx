@@ -9,6 +9,7 @@ import {
   pairOf,
   pairRecord,
   type Pair,
+  type PlayerRivals,
   type RivalStats,
   type Rivalry,
 } from "../rivals";
@@ -63,16 +64,20 @@ function RivalryLine({ rivalry, names }: { rivalry: Rivalry; names: Map<number, 
 /** The People table's columns. */
 type PeopleColumn = "name" | "most" | "nemesis" | "favourite";
 
+/** A People row's player's people: every player in `rivals.players` has an entry in `byPlayer`. */
+function peopleOf(rivals: RivalStats, player: number): PlayerRivals {
+  return rivals.byPlayer.get(player)!;
+}
+
 /** The People table's columns, in order: Player, by name A to Z, then each person column by the
  *  count its cell shows (games together, losses, wins), most first, a cell with no one ("—")
  *  missing. Their values stand at the left, so no column is `end`. */
 function peopleColumns(rivals: RivalStats, names: Map<number, string>): HeadColumn<number, PeopleColumn>[] {
-  const people = (player: number) => rivals.byPlayer.get(player)!;
   return [
     playerColumn<number>((p) => nameOf(names, p), "rivals-people-name"),
-    { key: "most", label: "Most played with", first: "descending", value: (p) => people(p).mostPlayedWith?.games ?? null },
-    { key: "nemesis", label: "Nemesis", first: "descending", value: (p) => people(p).nemesis?.losses ?? null },
-    { key: "favourite", label: "Favourite opponent", first: "descending", value: (p) => people(p).favouriteOpponent?.wins ?? null },
+    { key: "most", label: "Most played with", first: "descending", value: (p) => peopleOf(rivals, p).mostPlayedWith?.games ?? null },
+    { key: "nemesis", label: "Nemesis", first: "descending", value: (p) => peopleOf(rivals, p).nemesis?.losses ?? null },
+    { key: "favourite", label: "Favourite opponent", first: "descending", value: (p) => peopleOf(rivals, p).favouriteOpponent?.wins ?? null },
   ];
 }
 
@@ -94,8 +99,7 @@ function PeopleTable({ rivals, names }: { rivals: RivalStats; names: Map<number,
         <SortHeadRow columns={columns} sort={sort} onSort={press} />
         <tbody>
           {rows.map((player) => {
-            const people = rivals.byPlayer.get(player)!;
-            const { mostPlayedWith: most, nemesis, favouriteOpponent: favourite } = people;
+            const { mostPlayedWith: most, nemesis, favouriteOpponent: favourite } = peopleOf(rivals, player);
             return (
               <tr key={player}>
                 <th scope="row">{rowName(player)}</th>
