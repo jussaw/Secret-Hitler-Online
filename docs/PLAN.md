@@ -64,7 +64,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 25B. Hard's first rules | `phase-25b-hard-reads` | done |
 | 25C. Hard's other rules | `phase-25c-hard-bots` | done |
 | 25D. Ladder and balance | `phase-25d-ladder-balance` | done |
-| 26A. Bot skill in the lobby | `phase-26a-lobby-bot-skill` | planned |
+| 26A. Bot skill in the lobby | `phase-26a-lobby-bot-skill` | in progress |
 | 26B. Bot skill in the records | `phase-26b-record-bot-skill` | planned |
 
 ---
