@@ -717,8 +717,9 @@ keeps credit to upstream and to the board game's creators.
   come, with the filter from `useLocation().search`: one `StatsContext` per records and filter
   however the address spells it, the last 8 filters kept per set of records), `numbers.ts`
   (`formatPercent`, and `wholePercent`, the whole percent it shows, which a percent column sorts
-  by; `formatSigned` with U+2212 and `0` for anything that rounds to zero;
-  `formatRating`, and `wholeRating`, the whole number it shows, which an Elo column sorts by;
+  by; `formatSigned` with U+2212 and `0` for anything that rounds to zero, and `wholeSigned`, the
+  whole number it shows (0, never −0, for anything that rounds to zero), which a column of changes
+  sorts by; `formatRating`, and `wholeRating`, the whole number it shows, which an Elo column sorts by;
   `formatDays`; and, each beside the format it mirrors so a column sorts by what its cells show
   (#109), `countFigure`, a count itself, and `rateFigure`, a `Rate`'s whole percent, null for one
   with no value; counts are `format.ts`'s `plural`), `StatCard` (a `section.stats-card`
@@ -743,9 +744,12 @@ keeps credit to upstream and to the board game's creators.
   address, nor stored) and the rows in its order, keeping its column and direction when a filter
   brings new rows; `rankColumn`, `#`, named Rank, 1 first, a row with no rank missing;
   `playerColumn`, A to Z; `numberColumn(key, label, value, className)`, a column of numbers, its
-  values at the right (`end`) and most first, which the ranked tables' value and count columns,
-  the power ranking's Elo, Last and Games and a best week's Wins are (PLAYERS' columns are not:
-  their sorts are `playersOrder.ts`' and their looks `HEADS`'); and `.stats-sort`, which PLAYERS'
+  values at the right (`end`) and most first, which the ranked tables' value and count columns
+  are (INVESTIGATIONS' value column overrides `end` to false, its text standing at the left, and
+  still sorts most first), as are the power ranking's Elo, Last and Games and the Wins of
+  `periodColumns`, which serves both the best week's and the best month's table (PLAYERS'
+  columns are not: their sorts are `playersOrder.ts`' and their looks `HEADS`'); and
+  `.stats-sort`, which PLAYERS'
   `.players-sort` became, undoing App.css's button look under `.stats-screen thead`: the head's
   own size and weight, the sorted head and a hovered one in `--headerTextColor`, a focus outline,
   words that never wrap, and a 44px target wherever the stacked query matches, an `end` head's
@@ -835,7 +839,7 @@ keeps credit to upstream and to the board game's creators.
   `.is-provisional`, in italics, and tighter columns on phones (the left padding of its `#` and
   number heads dropped, `:not(.players-table)`, so it fits a 320px phone's card with Linux's
   fonts); its heads (`SortHeadRow`: `#`, Player, and Elo, Last and Games, `numberColumn`s) each
-  sort by the figure its cell shows, the rounded rating (`wholeRating`) and change, and it opens
+  sort by the figure its cell shows, the rounded rating (`wholeRating`) and change (`wholeSigned`), and it opens
   at `RANK_ORDER`, the one way back to its own order, under which provisional rows stay at the
   bottom either way, while under any other column they take their place; and
   the rating history's `LineChart`, a colour per player by number so a filter never changes it),
@@ -1650,12 +1654,14 @@ keeps credit to upstream and to the board game's creators.
   filter, a page, a game and back, forward and reload by the address, and plays a real game of
   seven through `driveGame.ts` whose victory screen opens its page and which GAMES lists under its
   first seat's player. `stats-roles.spec.ts` runs `checkStatsPage` on ROLES & CARDS at every
-  `statsSizesFor` size against `bigStatsData()` with all seventeen cards shown, checks that a wide
+  `statsSizesFor` size against `bigStatsData()`, with CPU games and without, with all seventeen
+  cards shown, checks that a wide
   table scrolls inside its card at 320px (`phone-360`), that two twelve-character names differing
   only in their last letter are drawn whole inside a split table's name column at 320x568 (by the
   text's own boxes, not its `textContent`), and that the tab row opens the tab keeping the filter.
   `stats-activity.spec.ts` opens ACTIVITY with the clock
-  (`page.clock.setFixedTime`) an hour after the latest game and checks it at every size (no chart
+  (`page.clock.setFixedTime`) an hour after the latest game and checks it at every size, with CPU
+  games and without (no chart
   outside its card, no wrapped button label, the charts drawn), a tooltip on a hover or a tap of
   the day-of-week chart and of a heatmap day, and (`desktop`) the arrow keys, PER MONTH, and with
   `timezoneId` that a game across midnight UTC is Saturday's in Auckland and Friday's in Los
@@ -1667,8 +1673,9 @@ keeps credit to upstream and to the board game's creators.
   CPU games and without, every card's `NO_GAMES` under a filter that counts no game,
   INVESTIGATIONS' longest value wrapping in at least half its table at 320px, and that every flex
   and grid child of the tab with text can shrink. `stats-records.spec.ts` checks RECORDS with
-  `checkStatsPage` at every `statsSizesFor` size against `bigStatsData()`, its game link 44px both
-  ways, and (`desktop`) that See the game opens one of its games, and with `timezoneId` that a
+  `checkStatsPage` at every `statsSizesFor` size against `bigStatsData()`, with CPU games and
+  without, its game link 44px both ways, and (`desktop`) that See the game opens one of its games,
+  and with `timezoneId` that a
   game from 23:30 UTC on 31 October, won by Ann and Bo, makes them November's players of the month
   in Paris and October's in Los Angeles. `stats-names.spec.ts` (Phase 22A) opens every tab, GAMES
   and a game page against `bigStatsData()` and checks each with `checkStatsPage` at every
@@ -1695,7 +1702,8 @@ keeps credit to upstream and to the board game's creators.
   head sort it and the focus stays there (`desktop` and `firefox`); and a sorted card passes
   `checkStatsPage` at 320x568 (`phone-360`). That every ranked table stays inside its card's
   content box is `checkStatsPage`'s (`outsideCards`), which each tab's own spec and PLAYERS' run
-  at every `statsSizesFor` size in all four projects.
+  at every `statsSizesFor` size in all four projects, those with ranked tables (OVERVIEW, ROLES &
+  CARDS, VOTES & POWERS, ACTIVITY, RECORDS and PLAYERS) with CPU games and without.
   No `e2e/` file imports `src/constants` or anything that does (`api.ts`, `App`): it
   reads `window` when it loads, which throws in Playwright's Node process; specs build stats paths
   with `routePath`. Shared helpers are `e2e/lobby.ts`
