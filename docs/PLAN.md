@@ -1273,7 +1273,7 @@ Issue #109, second part. Starts once 27A has merged.
 - [x] The 14 split tables sort by Player and by each role's or side's column, every cell carrying the figure its text shows, coloured heads keeping their colour
 - [x] RIVALS' People table, RECORDS' Players of the month and ENDINGS' two tables sort by any column, Game length's All row staying last; the RIVALS matrices stay as they are
 - [x] Every stats page still passes `checkStatsPage` at every size in all four projects, checked with Linux fonts too
-- [ ] `CLAUDE.md` updated; the pull request shows a split table, People, Players of the month and ENDINGS' tables before and after, on desktop and on a phone
+- [x] `CLAUDE.md` updated; the pull request shows a split table, People, Players of the month and ENDINGS' tables before and after, on desktop and on a phone
 
 **Phase 27B acceptance**
 
