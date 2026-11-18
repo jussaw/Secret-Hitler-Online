@@ -65,7 +65,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 25C. Hard's other rules | `phase-25c-hard-bots` | done |
 | 25D. Ladder and balance | `phase-25d-ladder-balance` | done |
 | 26A. Bot skill in the lobby | `phase-26a-lobby-bot-skill` | done |
-| 26B. Bot skill in the records | `phase-26b-record-bot-skill` | in progress |
+| 26B. Bot skill in the records | `phase-26b-record-bot-skill` | done |
 
 ---
 
@@ -1230,7 +1230,7 @@ Issue #72's records, decided in the design. Starts once 25A has merged; merges a
 **Phase 26B acceptance**
 
 - [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] PR merged into `development`
+- [x] PR merged into `development`
 - [ ] The user closes issue #72 once every phase (24 to 26B) is merged
 
 ---
