@@ -153,16 +153,10 @@ type MonthColumn = "month" | "wins";
 /** The order the players of the month open in: the latest month first. */
 const MONTH_ORDER: TableSort<"month"> = Object.freeze({ column: "month", direction: "descending" });
 
-/** The table's columns, in order: Month, latest first, by its key as a number ("2026-10" is
- *  202610; the holders under it do not sort), and Wins, most first. */
+/** The table's columns, in order: Month, latest first, by its key ("2026-10", fixed width, so its
+ *  text sorts as the months do; the holders under it do not sort), and Wins, most first. */
 const MONTH_COLUMNS: readonly HeadColumn<MonthHolder, MonthColumn>[] = [
-  {
-    key: "month",
-    label: "Month",
-    className: "ranked-name",
-    first: "descending",
-    value: (holder) => Number(holder.key.replace("-", "")),
-  },
+  { key: "month", label: "Month", className: "ranked-name", first: "descending", value: (holder) => holder.key },
   numberColumn<MonthHolder, MonthColumn>("wins", "Wins", (holder) => holder.wins, "ranked-value"),
 ];
 

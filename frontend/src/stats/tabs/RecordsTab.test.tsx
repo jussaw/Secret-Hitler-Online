@@ -271,6 +271,17 @@ describe("RecordsTab", () => {
     ]);
   });
 
+  it("theMonthsSortAcrossAYear", () => {
+    tab([played("dec", "2025-12-10T20:00:00Z", [4]), ...MONTHS]);
+    const months = within(card("players-of-the-month"));
+    const shown = () => rowsOf("players-of-the-month").map((row) => row[1]);
+    expect(shown()).toEqual(["October 2026", "August 2026", "December 2025"]);
+    // Month again: the earliest first, December 2025 before 2026's months.
+    fireEvent.click(months.getByRole("button", { name: "Month" }));
+    expect(months.getByRole("columnheader", { name: "Month" })).toHaveAttribute("aria-sort", "ascending");
+    expect(shown()).toEqual(["December 2025", "August 2026", "October 2026"]);
+  });
+
   it("aTiedMonthListsEachHolder", () => {
     tab(MONTHS, Date.parse("2026-12-02T12:00:00Z"));
     expect(rowsOf("players-of-the-month")[0]).toEqual(["", "November 2026", "Ann", "Bo", "4 wins"]);
