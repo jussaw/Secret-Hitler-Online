@@ -388,6 +388,30 @@ final class BotScenes {
         return played;
     }
 
+    /**
+     * Phase 25C's rules: {@code roles}, the bot of {@code bot} made first and updated after every
+     * move. Round 1 is played by the others: {@code LLL} on top, P0 elects P1 (every seat's ja, the
+     * bot's too, made by the scene), P0 discards the first card, P1 enacts the first and P0 ends
+     * the term. It waits at round 2, P1 to nominate, with one liberal policy down and no government
+     * judged (Normal's {@code update} judges none of round 1).
+     *
+     * @throws IllegalArgumentException if the bot sits in P0 or P1, round 1's government.
+     */
+    static Played secondRound(String roles, String bot, BotSkill skill, long seed) {
+        if (bot.equals("P0") || bot.equals("P1")) {
+            throw new IllegalArgumentException("The bot of " + bot + " would sit in round 1's government.");
+        }
+        SecretHitlerGame game = game(roles);
+        Played played = new Played(game, bot(game, bot, skill, seed));
+        played.then(g -> drawTop(g, "LLL"));
+        played.then(g -> g.nominateChancellor("P1"));
+        played.then(g -> voteAll(g, true));
+        played.then(g -> g.presidentDiscardPolicy(0));
+        played.then(g -> g.chancellorEnactPolicy(0));
+        played.then(SecretHitlerGame::endPresidentialTerm);
+        return played;
+    }
+
     /** {@link #cleared}'s game before its first move: {@code FLLFLLH}, 3 fascist policies, {@code LLLLLL} on top. */
     static SecretHitlerGame clearedStart() {
         SecretHitlerGame game = game("FLLFLLH");

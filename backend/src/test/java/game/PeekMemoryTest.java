@@ -38,47 +38,71 @@ public class PeekMemoryTest {
         return played;
     }
 
-    /** What the rule changed: each seat's score at Hard less its score at Normal, after the same moves. */
-    private static Map<String, Integer> ruleChange(String roles, String peek, Consumer<Played> moves) {
+    private static final double TOLERANCE = 1e-9;
+
+    /** Each seat's score, with its fraction (Phase 25C's {@code score}). */
+    private static Map<String, Double> scores(Played played) {
+        Map<String, Double> scores = new TreeMap<>();
+        for (String seat : played.bot().playerReputation.keySet()) {
+            scores.put(seat, played.bot().score(seat));
+        }
+        return scores;
+    }
+
+    /**
+     * What the rule changed: each seat's score at Hard less its score at Normal, after the same
+     * moves. The scenes' governments enact their fascist policy from a known hand (the peek), or
+     * Normal's judgement of it has not come yet, so rule 5's scaling changes nothing here.
+     */
+    private static Map<String, Double> ruleChange(String roles, String peek, Consumer<Played> moves) {
         Played hard = play(roles, peek, BotSkill.HARD, moves);
         Played normal = play(roles, peek, BotSkill.NORMAL, moves);
         assertEquals(normal.game().getState(), hard.game().getState());
-        Map<String, Integer> change = new TreeMap<>();
-        for (String seat : hard.bot().playerReputation.keySet()) {
-            change.put(seat, hard.bot().playerReputation.get(seat) - normal.bot().playerReputation.get(seat));
+        Map<String, Double> change = new TreeMap<>();
+        Map<String, Double> normalScores = scores(normal);
+        for (Map.Entry<String, Double> seat : scores(hard).entrySet()) {
+            change.put(seat.getKey(), seat.getValue() - normalScores.get(seat.getKey()));
         }
         return change;
     }
 
-    private static Map<String, Integer> blamed(String... seats) {
-        Map<String, Integer> change = new TreeMap<>(Map.of("P0", 0, "P1", 0, "P2", 0, "P3", 0, "P4", 0));
+    private static Map<String, Double> blamed(String... seats) {
+        Map<String, Double> change = new TreeMap<>(Map.of("P0", 0.0, "P1", 0.0, "P2", 0.0, "P3", 0.0, "P4", 0.0));
         for (String seat : seats) {
             change.put(seat, -PeekMemory.DROP);
         }
         return change;
     }
 
+    /** {@code actual} has {@code expected}'s seats, each within {@link #TOLERANCE}. */
+    private static void assertScores(Map<String, Double> expected, Map<String, Double> actual) {
+        assertEquals(expected.keySet(), actual.keySet());
+        for (Map.Entry<String, Double> seat : expected.entrySet()) {
+            assertEquals(seat.getKey() + " in " + actual, seat.getValue(), actual.get(seat.getKey()), TOLERANCE);
+        }
+    }
+
     @Test
     public void aGovernmentThatEnactsAFascistFromAPeekWithALiberalIsLowered() {
         Played played = play("LLLFH", "LFF", BotSkill.HARD, roundTwo(0, 0));
         assertEquals(GameState.PRESIDENTIAL_POWER_EXECUTION, played.game().getState());
-        assertEquals(Integer.valueOf(-PeekMemory.DROP), played.bot().playerReputation.get("P1"));
-        assertEquals(Integer.valueOf(-PeekMemory.DROP), played.bot().playerReputation.get("P2"));
-        assertEquals(blamed("P1", "P2"), ruleChange("LLLFH", "LFF", roundTwo(0, 0)));
+        assertEquals(-PeekMemory.DROP, played.bot().score("P1"), TOLERANCE);
+        assertEquals(-PeekMemory.DROP, played.bot().score("P2"), TOLERANCE);
+        assertScores(blamed("P1", "P2"), ruleChange("LLLFH", "LFF", roundTwo(0, 0)));
     }
 
     @Test
     public void aPeekOfThreeFascistsBlamesNoOne() {
-        assertEquals(blamed(), ruleChange("LLLFH", "FFF", roundTwo(0, 0)));
+        assertScores(blamed(), ruleChange("LLLFH", "FFF", roundTwo(0, 0)));
         Played played = play("LLLFH", "FFF", BotSkill.HARD, roundTwo(0, 0));
-        assertEquals(blamed(), new TreeMap<>(played.bot().playerReputation));
+        assertScores(blamed(), scores(played));
     }
 
     @Test
     public void aLiberalPolicyBlamesNoOne() {
         Played played = play("LLLFH", "LFF", BotSkill.HARD, roundTwo(1, 0));
         assertEquals(Policy.Type.LIBERAL, played.game().getLastEnactedPolicy());
-        assertEquals(blamed(), ruleChange("LLLFH", "LFF", roundTwo(1, 0)));
+        assertScores(blamed(), ruleChange("LLLFH", "LFF", roundTwo(1, 0)));
         assertTrue(played.bot().peekMemory().cards().isEmpty());
     }
 
@@ -103,7 +127,7 @@ public class PeekMemoryTest {
         Played played = play("LLLFH", "LFF", BotSkill.HARD, CHAOS_THEN_P4_ELECTS_P1);
         assertEquals(GameState.PRESIDENTIAL_POWER_EXECUTION, played.game().getState());
         assertEquals(Policy.Type.FASCIST, played.game().getLastEnactedPolicy());
-        assertEquals(blamed(), new TreeMap<>(played.bot().playerReputation));
+        assertScores(blamed(), scores(played));
         assertTrue(played.bot().peekMemory().cards().isEmpty());
     }
 
@@ -179,7 +203,7 @@ public class PeekMemoryTest {
             played.then(g -> g.presidentDiscardPolicy(0));
             played.then(g -> g.chancellorEnactPolicy(0));
         });
-        assertEquals(blamed("P1", "P2"), ruleChange("LLLFH", "LFF", moves));
+        assertScores(blamed("P1", "P2"), ruleChange("LLLFH", "LFF", moves));
     }
 
     @Test
@@ -208,7 +232,7 @@ public class PeekMemoryTest {
     public void aHardFascistKeepsThePeekButBlamesNoOne() {
         Played played = BotScenes.peeked("FLLLH", "LFF", BotSkill.HARD, 0);
         assertEquals(List.of(L, F, F), played.bot().peekMemory().cards());
-        assertEquals(blamed(), ruleChange("FLLLH", "LFF", roundTwo(0, 0)));
+        assertScores(blamed(), ruleChange("FLLLH", "LFF", roundTwo(0, 0)));
     }
 
     @Test

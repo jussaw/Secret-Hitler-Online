@@ -83,9 +83,9 @@ public class CpuPlayerSkillTest {
         peekedCopy.then(g -> BotScenes.voteAll(g, true));
         peekedCopy.then(g -> g.presidentDiscardPolicy(0));
         peekedCopy.then(g -> g.chancellorEnactPolicy(0));
-        assertEquals("the peek held through the backup still blames P1", Integer.valueOf(-PeekMemory.DROP),
-                peekedCopy.bot().playerReputation.get("P1"));
-        assertEquals(Integer.valueOf(-PeekMemory.DROP), peekedCopy.bot().playerReputation.get("P2"));
+        assertEquals("the peek held through the backup still blames P1", -PeekMemory.DROP,
+                peekedCopy.bot().score("P1"), 1e-9);
+        assertEquals(-PeekMemory.DROP, peekedCopy.bot().score("P2"), 1e-9);
     }
 
     @Test
@@ -100,8 +100,9 @@ public class CpuPlayerSkillTest {
         copy.then(g -> g.presidentialVeto(false));
         copy.botActs();
         assertEquals(GameState.FASCIST_VICTORY_POLICY, copy.game().getState());
-        assertEquals("the hand read before the backup is not read again",
-                Integer.valueOf(-ChancellorHand.FF_DROP), copy.bot().playerReputation.get("P0"));
+        // Five fascist policies down, so rule 5 scales the drop by 6 liberals beside 10 cards.
+        assertEquals("the hand read before the backup is not read again", -ChancellorHand.FF_DROP * 6.0 / 10,
+                copy.bot().score("P0"), 1e-9);
     }
 
     /**

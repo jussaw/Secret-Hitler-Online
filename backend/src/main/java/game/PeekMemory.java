@@ -18,8 +18,8 @@ import java.util.List;
 final class PeekMemory implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    /** How far the CPU lowers each member of a government it blames. */
-    static final int DROP = 2;
+    /** How far the CPU lowers each member of a government it blames: a {@code double}, so it can be tuned in fractions. */
+    static final double DROP = 2.0;
 
     /** The government whose session drew the peeked cards. */
     private record Government(String president, String chancellor) implements Serializable {

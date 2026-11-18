@@ -94,6 +94,34 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
    */
   private PeekMemory peekMemory;
 
+  /**
+   * Hard's rule 5: the cards this CPU saw go to the discard pile since the last reshuffle, for the
+   * odds of a hand (none below Hard, or for a CPU that knows every role). A CPU read from a backup
+   * made before the rule has none, and {@code readObject} makes an empty one.
+   */
+  private DeckOdds deck;
+
+  /**
+   * The fraction of each score beside {@code playerReputation}'s whole number, for a Hard CPU whose
+   * rules scale an amount (rule 5): a score is the two summed, from -5 to 5. A name with none has
+   * none. A CPU read from a backup made before the rule has none, and {@code readObject} makes an
+   * empty one.
+   */
+  private HashMap<String, Double> reputationCarry;
+
+  /** Hard's rule 5: the round whose hand {@code drawnAllFascist} is; 0 before any. */
+  private int drawnRound;
+
+  /** Hard's rule 5: the chance the hand drawn in round {@code drawnRound} was all fascist. */
+  private double drawnAllFascist;
+
+  /**
+   * Hard's rule 5: the round in which this CPU, as president, passed {@code chancellorChoices}, so
+   * its chancellor's discard is deduced once the session ends; 0 for none, and back to 0 once the
+   * discard is deduced or skipped.
+   */
+  private int passedRound;
+
   /** A Normal CPU player. */
   public CpuPlayer(String name) {
     this(name, BotSkill.NORMAL);
@@ -111,6 +139,8 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     knownPlayerRoles = new HashMap<>();
     clearedPlayers = new ClearedPlayers();
     peekMemory = new PeekMemory();
+    deck = new DeckOdds();
+    reputationCarry = new HashMap<>();
     random = new Random();
   }
 
@@ -135,6 +165,17 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   /** Hard's rule 4: the peek this CPU holds (none unless it is Hard). */
   PeekMemory peekMemory() {
     return peekMemory;
+  }
+
+  /** Hard's rule 5: the discards this CPU has seen (none unless it is a Hard CPU that reads the game). */
+  DeckOdds deckOdds() {
+    return deck;
+  }
+
+  /** {@code name}'s score with its fraction, from -5 to 5: {@code playerReputation}'s whole number plus its carry. */
+  double score(String name) {
+    double whole = playerReputation.get(name) + reputationCarry.getOrDefault(name, 0.0);
+    return Math.max(-MAX_REPUTATION, Math.min(MAX_REPUTATION, whole));
   }
 
   public void initialize(SecretHitlerGame game) {
@@ -182,14 +223,42 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     clearedPlayers = new ClearedPlayers();
     handReadRound = 0;
     peekMemory = new PeekMemory();
+    deck = new DeckOdds();
+    reputationCarry = new HashMap<>();
+    drawnRound = 0;
+    drawnAllFascist = 0;
+    passedRound = 0;
 
   } // end initialize()
 
   private void updateReputation(String name, int repModifier) {
+    if (reputationCarry.containsKey(name)) { // a Hard score with a fraction: clamp the whole of it
+      shiftReputation(name, repModifier);
+      return;
+    }
     int newRep = playerReputation.get(name) + repModifier;
     newRep = Math.max(newRep, -MAX_REPUTATION);
     newRep = Math.min(newRep, MAX_REPUTATION);
     playerReputation.put(name, newRep);
+  }
+
+  /**
+   * Adds {@code amount}, which may carry a fraction (Hard's rules that scale an amount), to
+   * {@code name}'s whole score (its {@code playerReputation} plus its carry), clamped to [-5, 5]:
+   * the nearest whole number goes to {@code playerReputation}, which every decision reads, and the
+   * rest to the carry.
+   */
+  private void shiftReputation(String name, double amount) {
+    double whole = playerReputation.get(name) + reputationCarry.getOrDefault(name, 0.0) + amount;
+    whole = Math.max(-MAX_REPUTATION, Math.min(MAX_REPUTATION, whole));
+    int rounded = (int) Math.round(whole);
+    playerReputation.put(name, rounded);
+    double carry = whole - rounded;
+    if (carry == 0) {
+      reputationCarry.remove(name);
+    } else {
+      reputationCarry.put(name, carry);
+    }
   }
 
   /**
@@ -206,9 +275,12 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
       List<String> blamed = peekMemory.observe(game, myName);
       if (readsTheGame(game)) {
         for (String name : blamed) {
-          updateReputation(name, -PeekMemory.DROP);
+          shiftReputation(name, -PeekMemory.DROP);
         }
       }
+    }
+    if (readsTheGame(game)) {
+      followTheDeck(game); // Hard's rule 5, after rule 4 has followed the peek
     }
     if (game.getRound() > lastUpdatedRound && game.getState() == GameState.POST_LEGISLATIVE) {
       Policy.Type lastPolicy = game.getLastEnactedPolicy();
@@ -237,12 +309,66 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
         if (lastPresident == null || lastChancellor == null) {
           return;
         }
-        updateReputation(lastPresident, repModifier);
-        updateReputation(lastChancellor, repModifier);
+        if (lastPolicy == Policy.Type.FASCIST && readsTheGame(game)) {
+          // Hard's rule 5: a fascist policy says less of a government the likelier an all-fascist hand.
+          double drop = -(1 - handAllFascist(game));
+          shiftReputation(lastPresident, drop);
+          shiftReputation(lastChancellor, drop);
+        } else {
+          updateReputation(lastPresident, repModifier);
+          updateReputation(lastChancellor, repModifier);
+        }
       }
 
       lastUpdatedRound = game.getRound();
     }
+  }
+
+  /**
+   * Hard's rule 5: what this CPU's seat sees of the deck. First, once a session it presided over
+   * has ended with its chancellor's policy, the card its chancellor discarded is deduced from the
+   * two it passed, unless the draw pile has grown since the last look (a reshuffle in the
+   * enactment took that card back in). Then the look itself (a reshuffle brings the seen discards
+   * back into the pool). Then, at its first look at a round's legislative session, the odds that
+   * round's hand was all fascist: known from a peek it still holds (the peeked cards are this
+   * hand), else worked out from the cards it cannot place.
+   */
+  private void followTheDeck(SecretHitlerGame game) {
+    GameState state = game.getState();
+    int round = game.getRound();
+    if (passedRound != 0 && (passedRound != round || !inLegislativeSession(state))) {
+      if (passedRound == round && !game.didElectionTrackerAdvance() && !deck.reshuffledSince(game.getDrawSize())) {
+        deck.discarded(notEnacted(game.getLastEnactedPolicy()));
+      }
+      passedRound = 0;
+    }
+    deck.look(game.getDrawSize());
+    if (inLegislativeSession(state) && drawnRound != round) {
+      drawnRound = round;
+      List<Policy.Type> peeked = peekMemory.cards();
+      if (!peeked.isEmpty()) {
+        drawnAllFascist = peeked.contains(Policy.Type.LIBERAL) ? 0 : 1;
+      } else {
+        drawnAllFascist = deck.allFascistHand(game.getNumLiberalPolicies(), game.getNumFascistPolicies());
+      }
+    }
+  }
+
+  /** Of the two cards this CPU passed as president, the one its chancellor did not enact. */
+  private Policy.Type notEnacted(Policy.Type enacted) {
+    return chancellorChoices.get(0) == enacted ? chancellorChoices.get(1) : chancellorChoices.get(0);
+  }
+
+  /**
+   * Hard's rule 5: the chance this round's hand was all fascist, as this CPU saw it drawn, or, for
+   * a round it never saw drawn (a backup restored mid-round), worked out from the board less the
+   * fascist policy just enacted.
+   */
+  private double handAllFascist(SecretHitlerGame game) {
+    if (drawnRound == game.getRound()) {
+      return drawnAllFascist;
+    }
+    return deck.allFascistHand(game.getNumLiberalPolicies(), game.getNumFascistPolicies() - 1);
   }
 
   /**
@@ -516,6 +642,10 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     }
     chancellorChoices.remove(policyIndexToRemove);
 
+    if (readsTheGame(game)) { // Hard's rule 5: the card it discards, and the two it passes
+      deck.discarded(policies.get(policyIndexToRemove).getType());
+      passedRound = game.getRound();
+    }
     game.presidentDiscardPolicy(policyIndexToRemove);
     return true;
   }
@@ -596,9 +726,9 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     // this CPU then does with them.
     if (readsTheGame(game) && handReadRound != game.getRound()) {
       handReadRound = game.getRound();
-      int change = ChancellorHand.presidentChange(policies, chancellorHandDrop(game));
+      double change = ChancellorHand.presidentChange(policies, chancellorHandDrop(game));
       if (change != 0) {
-        updateReputation(game.getCurrentPresident(), change);
+        shiftReputation(game.getCurrentPresident(), change);
       }
     }
     // Veto can't re-occur
@@ -606,8 +736,8 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
 
     if (mistake) { // Easy: either card, or a veto where one may be asked for
       List<Runnable> moves = new ArrayList<>();
-      moves.add(() -> game.chancellorEnactPolicy(0));
-      moves.add(() -> game.chancellorEnactPolicy(1));
+      moves.add(() -> enact(game, policies, 0));
+      moves.add(() -> enact(game, policies, 1));
       if (canVeto) {
         moves.add(game::chancellorVeto);
       }
@@ -632,25 +762,36 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
         }
       }
       // Otherwise, enact one of them because the order doesn't matter
-      game.chancellorEnactPolicy(0);
+      enact(game, policies, 0);
     } else {
       // One Liberal and one fascist policy, so decide based on role
       if (myId == Identity.FASCIST) {
         // Fascists should always try and pass more fascist policies
-        game.chancellorEnactPolicy(tryGetIndexOfPolicy(policies, Policy.Type.FASCIST));
+        enact(game, policies, tryGetIndexOfPolicy(policies, Policy.Type.FASCIST));
       } else if (myId == Identity.HITLER) {
         if (isFascistInDanger(game)) {
           // Don't pass liberal policies if fascists are in danger of losing from them
-          game.chancellorEnactPolicy(tryGetIndexOfPolicy(policies, Policy.Type.FASCIST));
+          enact(game, policies, tryGetIndexOfPolicy(policies, Policy.Type.FASCIST));
         } else {
           // preferentially choose liberal policies to gain trust
-          game.chancellorEnactPolicy(tryGetIndexOfPolicy(policies, Policy.Type.LIBERAL));
+          enact(game, policies, tryGetIndexOfPolicy(policies, Policy.Type.LIBERAL));
         }
       } else { // Liberal
-        game.chancellorEnactPolicy(tryGetIndexOfPolicy(policies, Policy.Type.LIBERAL));
+        enact(game, policies, tryGetIndexOfPolicy(policies, Policy.Type.LIBERAL));
       }
     }
     return true;
+  }
+
+  /**
+   * Enacts {@code policies}' card at {@code index} as chancellor; a Hard CPU that reads the game
+   * first notes the other card, which goes to the discard pile (rule 5).
+   */
+  private void enact(SecretHitlerGame game, List<Policy> policies, int index) {
+    if (readsTheGame(game)) {
+      deck.discarded(policies.get(1 - index).getType());
+    }
+    game.chancellorEnactPolicy(index);
   }
 
   private boolean handlePresidentVeto(SecretHitlerGame game) {
@@ -685,6 +826,11 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     }
     if (mistake) { // Easy: accept or refuse at random
       allowVeto = anyOf(List.of(true, false));
+    }
+    if (allowVeto && readsTheGame(game)) { // Hard's rule 5: both cards go to the discard pile
+      for (Policy policy : policies) {
+        deck.discarded(policy.getType());
+      }
     }
     game.presidentialVeto(allowVeto);
     if (repModifier != 0) {
@@ -850,11 +996,12 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   }
 
   /**
-   * How far rule 2's two fascist cards lower the president: the one place rule 5 (Phase 25C) will
-   * scale the drop by the deck's odds.
+   * How far rule 2's two fascist cards lower the president, scaled by rule 5: by the chance the
+   * card the president discarded was liberal, from the cards this CPU cannot place (a liberal
+   * president dealt three fascists had to pass two).
    */
-  private int chancellorHandDrop(SecretHitlerGame game) {
-    return ChancellorHand.FF_DROP;
+  private double chancellorHandDrop(SecretHitlerGame game) {
+    return ChancellorHand.FF_DROP * deck.liberalThirdCard(game.getNumLiberalPolicies(), game.getNumFascistPolicies());
   }
 
   private boolean handlePostLegislative(SecretHitlerGame game) {
@@ -1014,6 +1161,12 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     }
     if (peekMemory == null) { // backed up before Hard's rule 4
       peekMemory = new PeekMemory();
+    }
+    if (deck == null) { // backed up before Hard's rule 5
+      deck = new DeckOdds();
+    }
+    if (reputationCarry == null) { // backed up before scores carried fractions
+      reputationCarry = new HashMap<>();
     }
   }
 
