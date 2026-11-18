@@ -17,6 +17,20 @@
     min-width: 0;
 }
 
+/* The switch-only bar with something left of the switch (FilterBar's beforeSwitch: PLAYERS' search
+   box): one line where both fit, their tops in line (the switch's face is as tall as the field
+   beside it; its shadow hangs below), and wrapping where they do not. */
+.filter-bar.is-switch-only.has-before-switch {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px 16px;
+}
+
+.filter-bar.is-switch-only.has-before-switch > * {
+    min-width: 0;
+}
+
 .filter-players {
     display: flex;
     flex-wrap: wrap;

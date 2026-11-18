@@ -476,7 +476,9 @@ keeps credit to upstream and to the board game's creators.
   Bots", the user's word for games with CPU players, in the lobby's grey, `greyButtons.css`'s
   `.stats-grey`, which the tabs share; controlled, so the address is the filter's only copy; in
   the phone-only query one line, "Players: 7 of 8 · Bots off", that opens the panel;
-  `showPlayers={false}` shows the switch alone), `TabRow` (a `nav` "Stats sections" of seven
+  `showPlayers={false}` shows the switch alone, after `beforeSwitch` when it is given, which only
+  PLAYERS fills, `.has-before-switch`: one line where both fit, their tops in line), `TabRow` (a `nav`
+  "Stats sections" of seven
   `StatsLink`s in the button
   look carrying the filter, the current one orange and `aria-current="page"`, which the row (never
   the page) scrolls to show, again once the web fonts load; it wraps on desktop and in tall windows and scrolls sideways in one row on phones, 44px targets in
@@ -722,21 +724,41 @@ keeps credit to upstream and to the board game's creators.
   streaks, cards, votes, powers, people (named), average decision times and their 5 latest
   records of any kind; a player with no counted game gets zeros, nulls and empty lists. Its
   `computePlayersList(stats)` gives PLAYERS' rows (every player with a counted game under the
-  whole filter, in the power ranking's order). `players/testStats.ts` is their test data
+  whole filter, in name order: `compareNames`, A to Z ignoring case, then by number, provisional
+  players among the rest). `players/testStats.ts` is their test data
   (`sampleData()`, seven players and eight games, `SAMPLE_NOW`, `TZ`, `played`, `term` and
   `withRatings`), which Phase 22B's tests reuse. PLAYERS (`/players`,
-  `players/PlayersPage`, Phase 22B) is the CPU switch on its own (`FilterBar` with
-  `showPlayers={false}`, as on a player's page: the user found a player filter unnecessary there)
+  `players/PlayersPage`, Phase 22B) is the search box and the CPU switch (`FilterBar` with
+  `showPlayers={false}`, as on a player's page: the user found a player filter unnecessary there,
+  and `beforeSwitch`, the search box at the switch's left, #100)
   over `PlayersList`, the Players card: a row per player with a counted game under the switch,
   whatever `players` list the address carries (`withoutPlayerFilter`; the switch writes only
-  `cpu`, so its next change drops that list), in `computePlayersList`'s order, with their
+  `cpu`, so its next change drops that list), with their
   counted games, win rate (`formatRate`:
   a whole percent, or `— (N)` below 5 games), rounded Elo and when they last played
   (`formatLastPlayed`: `today`, `yesterday`, `N days ago`, in local days), in OVERVIEW's power
   ranking's look (`RankedTable.css` and `tabs/PowerRanking.css`: a header row, a provisional row,
-  `.ranked-unranked.is-provisional`, grey and in italics at the bottom), and `NO_GAMES` when the
-  filter counts no game. In the phone-only query the Last played column gives way to a `played 2
-  days ago` line under the name, so the table fits 320px without a scroll of its own. A player's
+  `.ranked-unranked.is-provisional`, grey and in italics wherever it falls), and `NO_GAMES` when the
+  filter counts no game. It opens in `computePlayersList`'s name order. Each column's head is a
+  button (`.players-sort`, in the head's own look, an arrow from Lucide: `ArrowUpDown` dimmed until
+  it sorts, then `ArrowUp` or `ArrowDown`, before the word in every column but Player's, which
+  stand at the right; `HEADS` names each column's word, class and arrow side) that sorts by
+  its column, with `aria-sort` on the sorted head; a second press turns the order round.
+  `players/playersOrder.ts` holds the rules (`NAME_ORDER`, `pressHead`, `sortPlayers`,
+  `searchPlayers`, `noMatchLine`): a first press puts names A to Z and every other column the most
+  or the latest first; each column compares what it shows (the whole percent, the rounded Elo, the
+  local day of the last game), ties go by name, then number, whichever way it runs, and a win rate
+  below 5 games stays below every rate either way. The search box (`input type="search"`, "Search
+  players", Lucide's `Search` in it) shows only the rows whose name as shown (`Player N` too)
+  contains what was typed, ignoring case and spaces at either end; with none, the card says "No
+  players match “…”." in place of the table. The sort is `PlayersList`'s state and the search
+  `PlayersPage`'s, never the address (a history entry per letter): both stay while the switch
+  moves the address, as the page stays mounted, and a reload opens in name order with no search.
+  In the phone-only query the Last played column, its head too, gives way to a `played 2
+  days ago` line under the name, so the table fits 320px without a scroll of its own (sorting by
+  it is a desktop thing), and the search box takes the bar's line above the switch unless it gets
+  12em beside it (a phone held sideways); in the stacked
+  query the box and each head are 44px targets and the box's text 16px. A player's
   page (`/players/<n>`, `players/PlayerPage`) is "This player was not found." and All
   players (`/players`) for a number no player has, decided before any hook
   (`/players/0` is no player's address: `parseRoute` gives the shell's not-found page);
@@ -1262,8 +1284,12 @@ keeps credit to upstream and to the board game's creators.
   (not the row's game) at its top; and that a counted game's page shows its Elo line and an
   unfinished one's none. `stats-players.spec.ts` (Phase 22B) checks PLAYERS (with CPU games and
   without; with `?players=2,3` it lists every player, shows no player chooser, and its switch
-  leaves only `?cpu=1`), the busiest player's page (with at least one trophy) and an unknown
+  leaves only `?cpu=1`; with a search typed and a column sorted too), the busiest player's page
+  (with at least one trophy) and an unknown
   player's page with `checkStatsPage` at every `statsSizesFor` size against `bigStatsData()`;
+  that PLAYERS' search box stands left of the switch on desktop and above it on phones, that
+  typing in it narrows the rows, ignoring case, and that a head's press sorts the rows and a
+  second turns them round;
   that a name in GAMES opens its player's page at its top; that All N games opens GAMES filtered
   to the player, every row on its first page naming them; and that the page's CPU switch adds
   `cpu=1` to the address and counts the CPU games the header's `+N` left out, and that All N

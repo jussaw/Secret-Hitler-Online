@@ -6,7 +6,8 @@ import { bigStatsData, checkStatsPage, statsSizesFor, stubStats } from "./stats"
 
 /**
  * PLAYERS and a player's page (Phase 22B): both fit every stats size, both have the CPU switch
- * alone (PLAYERS ignores a player filter in its address), a name in GAMES opens its
+ * alone (PLAYERS ignores a player filter in its address, and has its search box left of the
+ * switch, #100), PLAYERS' search narrows its rows and its heads sort them, a name in GAMES opens its
  * player's page, "All N games" opens GAMES filtered to the player, and the player page's CPU
  * switch counts the CPU games its header said were left out.
  */
@@ -58,6 +59,83 @@ test("PLAYERS has the CPU switch alone and ignores a player filter", async ({ pa
   await page.getByRole("switch", { name: "Include games with Bots" }).click();
   await expect(page).toHaveURL(/\/players\?cpu=1$/);
   await expect(page.getByRole("region", { name: "Players" }).locator("tbody tr")).toHaveCount(data.players.length);
+});
+
+/** PLAYERS' search box, its table and the names down it. */
+const searchBox = (page: Page) => page.getByRole("searchbox", { name: "Search players" });
+const playersTable = (page: Page) => page.getByRole("region", { name: "Players" }).locator("table");
+const shownNames = (page: Page) => playersTable(page).locator("tbody tr a.player-link").allTextContents();
+
+/** The numbers down one column of PLAYERS' table (1 Games, 2 Win rate, 3 Elo), `null` for "— (N)". */
+async function columnNumbers(page: Page, column: number): Promise<(number | null)[]> {
+  const texts = await playersTable(page).locator(`tbody tr td:nth-child(${column + 1})`).allTextContents();
+  return texts.map((text) => (text.startsWith("—") ? null : Number(text.replace("%", ""))));
+}
+
+/** The game's phone-only query, which puts PLAYERS' search box on a line of its own on a phone. */
+const PHONE_ONLY =
+  "((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4)))";
+
+test("PLAYERS' search box stands left of the switch, above it on a phone", async ({ page }) => {
+  test.slow();
+  await open(page, routePath({ page: "players" }));
+  for (const size of statsSizesFor(test.info().project.name, page.viewportSize()!)) {
+    await page.setViewportSize(size);
+    const phone = await page.evaluate((query) => matchMedia(query).matches, PHONE_ONLY);
+    const box = (await searchBox(page).boundingBox())!;
+    const toggle = (await page.getByRole("switch", { name: "Include games with Bots" }).boundingBox())!;
+    const bar = (await page.locator(".filter-bar").boundingBox())!;
+    const at = `${size.width}x${size.height}`;
+    for (const [name, r] of [["box", box], ["switch", toggle]] as const) {
+      expect(r.y, `${name} inside the bar at ${at}`).toBeGreaterThanOrEqual(bar.y);
+      expect(r.y + r.height, `${name} inside the bar at ${at}`).toBeLessThanOrEqual(bar.y + bar.height);
+    }
+    if (phone) {
+      expect(box.y + box.height, `the box above the switch at ${at}`).toBeLessThanOrEqual(toggle.y);
+    } else {
+      expect(box.x + box.width, `the box left of the switch at ${at}`).toBeLessThanOrEqual(toggle.x);
+      expect(Math.abs(box.y - toggle.y), `the box's top in line with the switch's at ${at}`).toBeLessThan(1);
+    }
+  }
+});
+
+test("typing in PLAYERS' search box narrows the rows, ignoring case", async ({ page }) => {
+  await open(page, routePath({ page: "players" }));
+  const third = data.players[2].name;
+  await searchBox(page).fill(third.toLowerCase());
+  await expect.poll(() => shownNames(page)).toEqual([third]);
+  await searchBox(page).fill("1");
+  await expect.poll(() => shownNames(page)).toEqual(data.players.map((p) => p.name).filter((name) => name.includes("1")).sort());
+  await searchBox(page).fill("zz");
+  await expect(page.getByRole("region", { name: "Players" })).toContainText("No players match “zz”.");
+  await expect(playersTable(page)).toHaveCount(0);
+  await searchBox(page).fill("");
+  await expect(playersTable(page).locator("tbody tr")).toHaveCount(data.players.length);
+  await expect(page).toHaveURL(/\/players$/);
+});
+
+test("a press on a PLAYERS head sorts the rows, and a second turns them round", async ({ page }) => {
+  await open(page, routePath({ page: "players" }));
+  const games = page.getByRole("columnheader", { name: "Games" });
+  await games.getByRole("button").click();
+  await expect(games).toHaveAttribute("aria-sort", "descending");
+  const most = await columnNumbers(page, 1);
+  expect(most, "most games first").toEqual([...most].sort((a, b) => b! - a!));
+  await games.getByRole("button").click();
+  await expect(games).toHaveAttribute("aria-sort", "ascending");
+  const fewest = await columnNumbers(page, 1);
+  expect(fewest, "fewest games first").toEqual([...most].sort((a, b) => a! - b!));
+  await expect(page.getByRole("columnheader", { name: "Player" })).not.toHaveAttribute("aria-sort", /./);
+});
+
+test("PLAYERS with a search typed and a column sorted fits every stats size", async ({ page }) => {
+  test.slow();
+  await open(page, routePath({ page: "players" }));
+  await searchBox(page).fill("1");
+  await page.getByRole("columnheader", { name: "Elo" }).getByRole("button").click();
+  await expect(page.getByRole("columnheader", { name: "Elo" })).toHaveAttribute("aria-sort", "descending");
+  await expect(playersTable(page).locator("tbody tr")).toHaveCount(2);
+  await checkEverySize(page);
 });
 
 test("a player page fits every stats size", async ({ page }) => {

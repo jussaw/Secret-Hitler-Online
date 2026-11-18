@@ -196,8 +196,11 @@ describe("computePlayer", () => {
 });
 
 describe("computePlayersList", () => {
-  it("sortsByEloWithProvisionalLast", () => {
-    const rated = withRatings(ctx, {
+  it("listsPlayersInNameOrderIgnoringCaseThenByNumber", () => {
+    // Ed is renamed "ann", the same name as Ann's but for case, and Fay, provisional and rated
+    // highest, "cat": name order puts each in its place, and a tie of names goes to the lower number.
+    const renamed = { ...data, players: data.players.map((p) => ({ ...p, name: p.number === 5 ? "ann" : p.number === 6 ? "cat" : p.name })) };
+    const rated = withRatings(buildStats(renamed, DEFAULT_FILTER), {
       1: { rating: 1540, games: 6 },
       2: { rating: 1560, games: 6 },
       3: { rating: 1520, games: 6 },
@@ -206,8 +209,9 @@ describe("computePlayersList", () => {
       6: { rating: 1700, games: 1 },
     });
     const rows = computePlayersList(rated);
-    expect(rows.map((r) => r.name)).toEqual(["Bo", "Ed", "Ann", "Cy", "Di", "Fay"]);
-    expect(rows.filter((r) => r.provisional).map((r) => r.name)).toEqual(["Fay"]);
+    expect(rows.map((r) => r.name)).toEqual(["Ann", "ann", "Bo", "cat", "Cy", "Di"]);
+    expect(rows.map((r) => r.player)).toEqual([1, 5, 2, 6, 3, 4]);
+    expect(rows.filter((r) => r.provisional).map((r) => r.name)).toEqual(["cat"]);
   });
 
   it("listRowsHoldGamesWinRateAndLastPlayed", () => {
@@ -231,7 +235,7 @@ describe("computePlayersList", () => {
 });
 
 describe("the power ranking", () => {
-  it("PLAYERS and a player's rank follow OVERVIEW's power ranking", () => {
+  it("a player's rank follows OVERVIEW's power ranking", () => {
     const tied = withRatings(ctx, {
       1: { rating: 1540, games: 6 },
       2: { rating: 1560, games: 6 },
@@ -252,7 +256,6 @@ describe("the power ranking", () => {
     const fixtureCtx = buildStats(parseStatsData(JSON.parse(JSON.stringify(fixture))), DEFAULT_FILTER);
     for (const stats of [ctx, tied, provisionalTie, fixtureCtx]) {
       const overview = computeOverview(stats, SAMPLE_NOW, TZ).powerRanking;
-      expect(computePlayersList(stats).map((row) => row.player)).toEqual(overview.map((row) => row.player));
       for (const row of overview) expect(computePlayer(stats, row.player, SAMPLE_NOW, TZ).elo!.rank, `player ${row.player}`).toBe(row.rank);
     }
   });

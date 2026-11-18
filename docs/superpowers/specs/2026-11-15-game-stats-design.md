@@ -719,7 +719,9 @@ reads.
 ### PLAYERS and the player page (Phase 22B)
 
 **PLAYERS** lists every player with counted games: name, games, win rate, Elo and when they last
-played, by Elo. It uses the stats filter.
+played, by name (A to Z, ignoring case). Each column's head sorts the list by that column, and a
+second press turns the order round; a search box left of the Bots switch shows only the players
+whose name contains what was typed (#100). It uses the stats filter.
 
 **The player page** (`player-and-phone.jpg`, left) has the CPU toggle on its own (no player chips)
 and ignores the player filter:
