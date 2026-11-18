@@ -80,7 +80,10 @@ public record GameRecord(String id, long startedAt, long endedAt, String outcome
             seats.add(new Seat(accountId, player.getUsername(), accountId == null, player.getIdentity().name(),
                     player.isAlive()));
         }
-        BotSkill level = !hasCpu(seats) ? null : botSkill != null ? botSkill : BotSkill.NORMAL;
+        BotSkill level = null;
+        if (hasCpu(seats)) {
+            level = botSkill == null ? BotSkill.NORMAL : botSkill;
+        }
         return new GameRecord(id, startedAt, endedAt, outcome, complete, level, game.getNumLiberalPolicies(),
                 game.getNumFascistPolicies(), game.getRound(), seats, new ArrayList<>(events));
     }

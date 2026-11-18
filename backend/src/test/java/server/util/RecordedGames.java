@@ -49,8 +49,8 @@ public final class RecordedGames extends ExternalResource {
 
     /**
      * Replaces each bot of the lobby's running game with one of the same name at {@code skill},
-     * under the lobby's lock, standing in for the host's choice of level. The one test helper that
-     * reaches inside {@code Lobby} (its private {@code cpuPlayers}, by reflection).
+     * under the lobby's lock, standing in for the host's choice of level. It reaches inside
+     * {@code Lobby}, reading its private {@code cpuPlayers} by reflection.
      *
      * @throws IllegalStateException if the field cannot be read.
      */
