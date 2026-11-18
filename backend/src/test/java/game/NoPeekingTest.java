@@ -120,6 +120,27 @@ public class NoPeekingTest {
         actsAlike(scene, scene, hidden);
     }
 
+    /**
+     * For each hidden fact: both games from {@code game}, the fact hidden in the second, the bot of
+     * seat {@code bot} made in each, and {@code play} driving the twins through a longer scene (a
+     * Hard rule that remembers what it saw).
+     */
+    private static void playsAlike(Supplier<SecretHitlerGame> game, String bot, List<Hidden> hidden,
+            Consumer<Twins> play) {
+        everyLevelAndSeed((skill, seed) -> {
+            for (Hidden fact : hidden) {
+                Scene a = new Scene(game.get(), bot);
+                Scene b = new Scene(game.get(), bot);
+                fact.hide().accept(b.game());
+                try {
+                    play.accept(Twins.of(a, b, skill, seed));
+                } catch (AssertionError e) {
+                    throw new AssertionError("with " + fact.name() + ": " + e.getMessage(), e);
+                }
+            }
+        });
+    }
+
     @Test
     public void nominations() {
         actsAlike(() -> BotScenes.nomination("LLLFH"), eachSwap("LLLFH", "P1"));
@@ -235,6 +256,45 @@ public class NoPeekingTest {
     @Test
     public void executionsByAFascist() {
         actsAlike(() -> BotScenes.power("FLLLLFH", 4, ""), List.of(UNSEEN_CARDS));
+    }
+
+    // Hard's rules (Phase 25B). Each runs at every level, so Easy and Normal are checked on the
+    // same scenes.
+
+    /** {@code FLLFLLH} with 3 fascist policies down and {@code LLLLLL} on top, as {@code BotScenes.cleared}. */
+    private static SecretHitlerGame clearedGame() {
+        SecretHitlerGame game = BotScenes.game("FLLFLLH");
+        BotScenes.board(game, 3, 0);
+        BotScenes.drawTop(game, "LLLLLL");
+        return game;
+    }
+
+    /**
+     * The president nominates {@code chancellor}; the bot votes; the others vote ja; the president
+     * discards the first card, the chancellor enacts the first and the president ends the term.
+     */
+    private static void electedWhileTheBotVotes(Twins twins, String chancellor) {
+        twins.others(g -> g.nominateChancellor(chancellor));
+        twins.botActs();
+        twins.others(g -> BotScenes.voteAll(g, true));
+        twins.others(g -> g.presidentDiscardPolicy(0));
+        twins.others(g -> g.chancellorEnactPolicy(0));
+        twins.others(SecretHitlerGame::endPresidentialTerm);
+    }
+
+    /**
+     * Rule 1: the bot of P2 votes while P3 and then P4 are elected at 3 fascist policies, then
+     * nominates and votes, with every pair of other seats' roles that keeps P3 and P4 from Hitler
+     * swapped (a rule that cleared a chancellor by their role would tell them apart).
+     */
+    @Test
+    public void hardRule1ClearedPlayers() {
+        playsAlike(NoPeekingTest::clearedGame, "P2", eachSwap("FLLFLLH", "P2", "P3", "P4"), twins -> {
+            electedWhileTheBotVotes(twins, "P3");
+            electedWhileTheBotVotes(twins, "P4");
+            twins.botActs();
+            twins.botActs();
+        });
     }
 
     // The test's own checks: that its seeds differ, and that the twins catch what they should.

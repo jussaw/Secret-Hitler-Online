@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
+import java.util.function.Consumer;
 
 /**
  * Games stopped at one of a bot's decisions, with the roles, board and cards a test names, for
@@ -28,6 +29,19 @@ final class BotScenes {
 
     /** A game stopped at a bot's decision, and the seat of the bot that makes it (not yet made). */
     record Scene(SecretHitlerGame game, String bot) {
+    }
+
+    /**
+     * A game and its bot, made before the game's first move and updated after every move since,
+     * as the lobby updates its bots after every command: what a Hard bot remembers comes from
+     * seeing each state.
+     */
+    record Played(SecretHitlerGame game, CpuPlayer bot) {
+        /** {@code move}, then the bot's update. */
+        void then(Consumer<SecretHitlerGame> move) {
+            move.accept(game);
+            bot.update(game);
+        }
     }
 
     /** The role a letter names: {@code L}, {@code F} or {@code H}. */
@@ -303,6 +317,29 @@ final class BotScenes {
         game.presidentDiscardPolicy(0);
         game.chancellorEnactPolicy(0);
         return new Scene(game, "P0");
+    }
+
+    /**
+     * Hard's rule 1: {@code FLLFLLH} with 3 fascist policies down and {@code LLLLLL} on top, the bot
+     * of {@code botSeat} made first. Round 1 P0 elects P3, round 2 P1 elects P4, each with every
+     * seat's ja (the bot's too, made by the scene), the president discarding the first card and the
+     * chancellor enacting a liberal policy, then END TERM, the bot updated after every move. It waits
+     * at round 3, P2 to nominate: P3 and P4 are cleared, and P1 (the last president) and P4 (the last
+     * chancellor) may not be nominated.
+     */
+    static Played cleared(String botSeat, BotSkill skill, long seed) {
+        SecretHitlerGame game = game("FLLFLLH");
+        board(game, 3, 0);
+        drawTop(game, "LLLLLL");
+        Played played = new Played(game, bot(game, botSeat, skill, seed));
+        for (String chancellor : List.of("P3", "P4")) {
+            played.then(g -> g.nominateChancellor(chancellor));
+            played.then(g -> voteAll(g, true));
+            played.then(g -> g.presidentDiscardPolicy(0));
+            played.then(g -> g.chancellorEnactPolicy(0));
+            played.then(SecretHitlerGame::endPresidentialTerm);
+        }
+        return played;
     }
 
     private static Object field(SecretHitlerGame game, String name) {

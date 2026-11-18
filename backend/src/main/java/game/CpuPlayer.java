@@ -11,7 +11,9 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Random;
+import java.util.function.ToDoubleFunction;
 
 import game.datastructures.Identity;
 import game.datastructures.Player;
@@ -28,6 +30,9 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   private static final long serialVersionUID = 2392054316009854878L;
 
   private static int MAX_REPUTATION = 5;
+
+  /** A pick's weights left as they are: a factor of exactly 1 changes no Normal pick. */
+  private static final ToDoubleFunction<String> NO_FACTOR = name -> 1;
 
   /**
    * The share of an Easy CPU's decisions that are a random legal move instead
@@ -70,6 +75,12 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
    */
   private BotSkill skill;
 
+  /**
+   * Hard's rule 1: the players a Hard liberal has seen proved not to be Hitler. A CPU read from a
+   * backup made before the rule has none, and {@code readObject} makes it an empty list.
+   */
+  private ClearedPlayers clearedPlayers;
+
   /** A Normal CPU player. */
   public CpuPlayer(String name) {
     this(name, BotSkill.NORMAL);
@@ -85,6 +96,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     this.skill = Objects.requireNonNull(skill, "skill");
     playerReputation = new HashMap<>();
     knownPlayerRoles = new HashMap<>();
+    clearedPlayers = new ClearedPlayers();
     random = new Random();
   }
 
@@ -99,6 +111,11 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
    */
   void useRandom(Random random) {
     this.random = random;
+  }
+
+  /** Hard's rule 1: the players this CPU has seen proved not to be Hitler (none unless it is a Hard liberal). */
+  ClearedPlayers clearedPlayers() {
+    return clearedPlayers;
   }
 
   public void initialize(SecretHitlerGame game) {
@@ -143,6 +160,9 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     // Add our own identity to the list of known roles
     knownPlayerRoles.put(myName, myPlayerData.getIdentity());
 
+    // What a Hard CPU remembers belongs to one game.
+    clearedPlayers = new ClearedPlayers();
+
   } // end initialize()
 
   private void updateReputation(String name, int repModifier) {
@@ -158,6 +178,9 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
    * @param game
    */
   public void update(SecretHitlerGame game) {
+    if (hardLiberal()) {
+      clearedPlayers.observe(game);
+    }
     if (game.getRound() > lastUpdatedRound && game.getState() == GameState.POST_LEGISLATIVE) {
       Policy.Type lastPolicy = game.getLastEnactedPolicy();
 
@@ -305,12 +328,12 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
       // Target liberal players to increase trust
       chancellorName = chooseRandomPlayerWeighted(playerList, 0.5f, 0, 1, 0.25f);
     } else { // Liberal
+      // Hard's rule 1: a cleared player weighs more (only the eligible are in the list).
+      ToDoubleFunction<String> factor = hardLiberal() ? clearedPlayers::nominationFactor : NO_FACTOR;
       if (canHitlerWinByElection(game)) { // Avoid hitler or fascist players.
-        // TODO: Add a way to check for "safe" players
-        // TODO: Add filters for certain players (ie, players ineligible for reelection)
-        chancellorName = chooseRandomPlayerWeighted(playerList, 0.01f, 0, 1, 0.05f);
+        chancellorName = chooseRandomPlayerWeighted(playerList, 0.01f, 0, 1, 0.05f, factor);
       } else { // Less drastic avoidance of F/H players
-        chancellorName = chooseRandomPlayerWeighted(playerList, 0.01f, 0, 1, 0.1f);
+        chancellorName = chooseRandomPlayerWeighted(playerList, 0.01f, 0, 1, 0.1f, factor);
       }
     }
 
@@ -350,6 +373,14 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     if (mistake) { // Easy: ja or nein at random
       game.registerVote(myName, anyOf(List.of(true, false)));
       return true;
+    }
+    if (hardLiberal()) { // Hard's rule 1, unless it leaves the vote to Normal's
+      Optional<Boolean> cleared = clearedPlayers.vote(game,
+          getPlayerReputationWithIdentity(game.getCurrentChancellor()), knownPlayerRoles);
+      if (cleared.isPresent()) {
+        game.registerVote(myName, cleared.get());
+        return true;
+      }
     }
 
     Identity myId = myPlayerData.getIdentity();
@@ -747,6 +778,11 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     return moves.get(random.nextInt(moves.size()));
   }
 
+  /** Whether this CPU runs Hard's rule 1: a Hard CPU dealt Liberal. */
+  private boolean hardLiberal() {
+    return skill == BotSkill.HARD && myPlayerData.getIdentity() == Identity.LIBERAL;
+  }
+
   private boolean handlePostLegislative(SecretHitlerGame game) {
     if (game.getCurrentPresident().equals(myName)) {
       game.endPresidentialTerm();
@@ -786,6 +822,17 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   public String chooseRandomPlayerWeighted(List<Player> playerList,
       float fascistWeight, float hitlerWeight, float liberalWeight,
       float userBias) {
+    return chooseRandomPlayerWeighted(playerList, fascistWeight, hitlerWeight, liberalWeight, userBias, NO_FACTOR);
+  }
+
+  /**
+   * {@link #chooseRandomPlayerWeighted(List, float, float, float, float)}, with each eligible
+   * player's weight then multiplied by {@code factor} of their name (after the clamp, so a weight
+   * of 0 stays 0).
+   */
+  private String chooseRandomPlayerWeighted(List<Player> playerList,
+      float fascistWeight, float hitlerWeight, float liberalWeight,
+      float userBias, ToDoubleFunction<String> factor) {
 
     // Only living players other than this CpuPlayer can be chosen.
     List<Player> eligible = removeDeadPlayersAndSelf(playerList);
@@ -829,7 +876,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
       if (currWeight < 0.000001f) {
         currWeight = 0f;
       }
-      weights[i] = currWeight;
+      weights[i] = (float) (currWeight * factor.applyAsDouble(currPlayerName));
     } // end for
 
     return eligible.get(getWeightedRandomIndex(weights, random.nextDouble())).getUsername();
@@ -887,6 +934,9 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     random = new Random();
     if (skill == null) { // backed up before bots had levels
       skill = BotSkill.NORMAL;
+    }
+    if (clearedPlayers == null) { // backed up before Hard's rule 1
+      clearedPlayers = new ClearedPlayers();
     }
   }
 
