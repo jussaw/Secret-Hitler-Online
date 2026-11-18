@@ -297,6 +297,28 @@ public class NoPeekingTest {
         });
     }
 
+    /**
+     * Rule 2: the bot of P1 is handed two fascist cards; the card the president discarded (the
+     * extra) differs, and every pair of other seats' roles is swapped.
+     */
+    @Test
+    public void hardRule2TwoFascistCards() {
+        actsAlike(() -> BotScenes.chancellorsHand("LLLFH", "FF", "L", 0),
+                () -> BotScenes.chancellorsHand("LLLFH", "FF", "F", 0), with(eachSwap("LLLFH", "P1"), NOTHING));
+    }
+
+    @Test
+    public void hardRule2TwoLiberalCards() {
+        actsAlike(() -> BotScenes.chancellorsHand("LLLFH", "LL", "F", 0),
+                () -> BotScenes.chancellorsHand("LLLFH", "LL", "L", 0), with(eachSwap("LLLFH", "P1"), NOTHING));
+    }
+
+    @Test
+    public void hardRule2HitlerAtSeven() {
+        actsAlike(() -> BotScenes.chancellorsHand("LHLLLFF", "FF", "L", 0),
+                () -> BotScenes.chancellorsHand("LHLLLFF", "FF", "F", 0), with(eachSwap("LHLLLFF", "P1"), NOTHING));
+    }
+
     // The test's own checks: that its seeds differ, and that the twins catch what they should.
 
     /** Normal always passes FL from FFL as a liberal; Easy passes FF for some of the seeds. */

@@ -81,6 +81,12 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
    */
   private ClearedPlayers clearedPlayers;
 
+  /**
+   * Hard's rule 2: the round whose hand this CPU last read as chancellor, so the choice it makes
+   * again after a refused veto reads nothing twice. 0 before any, and from an older backup.
+   */
+  private int handReadRound;
+
   /** A Normal CPU player. */
   public CpuPlayer(String name) {
     this(name, BotSkill.NORMAL);
@@ -145,8 +151,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
 
     // Update known identities, based on identity, according to rules
     knownPlayerRoles.clear();
-    if (myPlayerData.getIdentity() == Identity.FASCIST ||
-        (myPlayerData.getIdentity() == Identity.HITLER && game.getPlayerList().size() <= 6)) {
+    if (knowsEveryRole(game)) {
       // Mark players as known if (1) player is fascist or (2) if player is
       // hitler AND there are only 5-6 players in the game.
       for (Player player : playerList) {
@@ -162,6 +167,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
 
     // What a Hard CPU remembers belongs to one game.
     clearedPlayers = new ClearedPlayers();
+    handReadRound = 0;
 
   } // end initialize()
 
@@ -563,6 +569,15 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
 
     Identity myId = myPlayerData.getIdentity();
     List<Policy> policies = game.getChancellorLegislativeChoices();
+    // Hard's rule 2: what the two cards say of the president, read once a session, whatever
+    // this CPU then does with them.
+    if (readsTheGame(game) && handReadRound != game.getRound()) {
+      handReadRound = game.getRound();
+      int change = ChancellorHand.presidentChange(policies, chancellorHandDrop(game));
+      if (change != 0) {
+        updateReputation(game.getCurrentPresident(), change);
+      }
+    }
     // Veto can't re-occur
     boolean canVeto = game.getNumFascistPolicies() == 5 && !game.didVetoOccurThisTurn();
 
@@ -781,6 +796,31 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   /** Whether this CPU runs Hard's rule 1: a Hard CPU dealt Liberal. */
   private boolean hardLiberal() {
     return skill == BotSkill.HARD && myPlayerData.getIdentity() == Identity.LIBERAL;
+  }
+
+  /**
+   * Whether this CPU's role shows it every other role: a fascist does, and Hitler at a table of 5
+   * or 6.
+   */
+  private boolean knowsEveryRole(SecretHitlerGame game) {
+    Identity role = myPlayerData.getIdentity();
+    return role == Identity.FASCIST || (role == Identity.HITLER && game.getPlayerList().size() <= 6);
+  }
+
+  /**
+   * Whether this CPU runs the Hard rules that read the game (rule 2, and rule 4's blame): a Hard
+   * CPU that does not know every role, so a liberal, or Hitler at 7 or more.
+   */
+  private boolean readsTheGame(SecretHitlerGame game) {
+    return skill == BotSkill.HARD && !knowsEveryRole(game);
+  }
+
+  /**
+   * How far rule 2's two fascist cards lower the president: the one place rule 5 (Phase 25C) will
+   * scale the drop by the deck's odds.
+   */
+  private int chancellorHandDrop(SecretHitlerGame game) {
+    return ChancellorHand.FF_DROP;
   }
 
   private boolean handlePostLegislative(SecretHitlerGame game) {
