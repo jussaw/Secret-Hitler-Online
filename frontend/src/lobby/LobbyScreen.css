@@ -397,12 +397,17 @@
     --button-face: var(--buttonFill);
 }
 
-/* Everyone else's line, where the host's BOT SKILL row is: the label, then the level in white. */
+/* Everyone else's line, where the host's BOT SKILL row is: the label, then the level in white,
+   their middles in line (the level's word is the larger), centred. */
 .lobby-skill-line {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0 0.4em;
     margin: 0;
     padding: 0.5em 1.1em;
     line-height: 1.2;
-    text-align: center;
 }
 
 .lobby-skill-level {
