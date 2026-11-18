@@ -233,7 +233,7 @@ keeps credit to upstream and to the board game's creators.
   `EASY_MISTAKE_CHANCE` is 0.15, set from `botMatches -Pladder` one 0.05 notch above 0.10, the
   lowest value at which both sides' Easy bots still won clearly less often than Normal ones
   (`EasyMistakesTest`: each decision kind's shares against Normal's over 10,000 seeds, never an
-  illegal move, a known teammate shot or a skipped END TERM). The bot tests build their games with
+  illegal move (a second veto included), a known teammate shot or a skipped END TERM). The bot tests build their games with
   `BotScenes` (test source): seats `P0`, `P1`, … in seat order, every one a bot, dealt the roles a
   string names (`game("LLLFH")`), the draw pile in one fixed order, and `board`, `drawTop`,
   `swapRoles`, `swapUnseenCards`, `voteAll` and `elect` (by reflection on `SecretHitlerGame`'s
