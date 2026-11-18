@@ -42,10 +42,8 @@ final class ClearedPlayers implements Serializable {
      * of those states, so one of them is seen for every election that passes.
      */
     void observe(SecretHitlerGame game) {
-        GameState state = game.getState();
-        boolean inSession = state == GameState.LEGISLATIVE_PRESIDENT || state == GameState.LEGISLATIVE_CHANCELLOR
-                || state == GameState.LEGISLATIVE_PRESIDENT_VETO;
-        if (!inSession || game.getNumFascistPolicies() < HITLER_ELECTION_POLICIES) {
+        if (!CpuPlayer.inLegislativeSession(game.getState())
+                || game.getNumFascistPolicies() < HITLER_ELECTION_POLICIES) {
             return;
         }
         String chancellor = game.getCurrentChancellor();
@@ -80,7 +78,8 @@ final class ClearedPlayers implements Serializable {
      */
     Optional<Boolean> vote(SecretHitlerGame game, int chancellorScore, Map<String, Identity> known) {
         String chancellor = game.getCurrentChancellor();
-        if (fascistSide(known.get(game.getCurrentPresident())) || fascistSide(known.get(chancellor))) {
+        if (CpuPlayer.isFascistSide(known.get(game.getCurrentPresident()))
+                || CpuPlayer.isFascistSide(known.get(chancellor))) {
             return Optional.empty();
         }
         if (contains(chancellor)) {
@@ -90,9 +89,5 @@ final class ClearedPlayers implements Serializable {
             return Optional.of(false);
         }
         return Optional.empty();
-    }
-
-    private static boolean fascistSide(Identity role) {
-        return role == Identity.FASCIST || role == Identity.HITLER;
     }
 }

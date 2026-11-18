@@ -21,16 +21,21 @@ final class PeekMemory implements Serializable {
     /** How far the CPU lowers each member of a government it blames. */
     static final int DROP = 2;
 
+    /** The government whose session drew the peeked cards. */
+    private record Government(String president, String chancellor) implements Serializable {
+        boolean seats(String name) {
+            return name.equals(president) || name.equals(chancellor);
+        }
+    }
+
     /** The peek held, top first; empty when there is none. */
     private final List<Policy.Type> cards = new ArrayList<>();
 
     /** The draw pile's size at the peek. */
     private int drawSize;
 
-    /** Whether the next government has drawn the cards, and its members once it has. */
-    private boolean drawn;
-    private String president;
-    private String chancellor;
+    /** The government that drew the cards, once its session has started; null before. */
+    private Government drewThem;
 
     /** Keeps {@code peek}, top first, seen with {@code drawSize} cards in the draw pile. */
     void saw(List<Policy> peek, int drawSize) {
@@ -61,14 +66,10 @@ final class PeekMemory implements Serializable {
         if (cards.isEmpty()) {
             return List.of();
         }
-        GameState state = game.getState();
-        boolean inSession = state == GameState.LEGISLATIVE_PRESIDENT || state == GameState.LEGISLATIVE_CHANCELLOR
-                || state == GameState.LEGISLATIVE_PRESIDENT_VETO;
-        if (!drawn) {
+        boolean inSession = CpuPlayer.inLegislativeSession(game.getState());
+        if (drewThem == null) {
             if (inSession && game.getDrawSize() == drawSize - SecretHitlerGame.PRESIDENT_DRAW_SIZE) {
-                drawn = true;
-                president = game.getCurrentPresident();
-                chancellor = game.getCurrentChancellor();
+                drewThem = new Government(game.getCurrentPresident(), game.getCurrentChancellor());
             } else if (inSession || game.getDrawSize() != drawSize) {
                 forget();
             }
@@ -77,10 +78,11 @@ final class PeekMemory implements Serializable {
         if (inSession) {
             return List.of();
         }
+        // An accepted veto enacts nothing of the government's. Today's boards never get there (the
+        // peek comes at 3 fascist policies and a veto needs 5), but the rule stays right on its own.
         boolean enactedFascist = !game.didElectionTrackerAdvance() && game.getLastEnactedPolicy() == Policy.Type.FASCIST;
-        boolean onlooker = !self.equals(president) && !self.equals(chancellor);
-        List<String> blamed = enactedFascist && onlooker && cards.contains(Policy.Type.LIBERAL)
-                ? List.of(president, chancellor)
+        List<String> blamed = enactedFascist && !drewThem.seats(self) && cards.contains(Policy.Type.LIBERAL)
+                ? List.of(drewThem.president(), drewThem.chancellor())
                 : List.of();
         forget();
         return blamed;
@@ -89,8 +91,6 @@ final class PeekMemory implements Serializable {
     private void forget() {
         cards.clear();
         drawSize = 0;
-        drawn = false;
-        president = null;
-        chancellor = null;
+        drewThem = null;
     }
 }

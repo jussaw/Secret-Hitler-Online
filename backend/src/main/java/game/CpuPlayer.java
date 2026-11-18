@@ -77,7 +77,7 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
 
   /**
    * Hard's rule 1: the players a Hard liberal has seen proved not to be Hitler. A CPU read from a
-   * backup made before the rule has none, and {@code readObject} makes it an empty list.
+   * backup made before the rule has none, and {@code readObject} makes an empty one.
    */
   private ClearedPlayers clearedPlayers;
 
@@ -800,8 +800,17 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   }
 
   /** Whether a known role is on the fascist side (a fascist or Hitler); false for null. */
-  private static boolean isFascistSide(Identity role) {
+  static boolean isFascistSide(Identity role) {
     return role == Identity.FASCIST || role == Identity.HITLER;
+  }
+
+  /**
+   * Whether {@code state} is part of a legislative session: an election has passed and the
+   * government has not yet enacted (or vetoed), so no policy has been enacted since the election.
+   */
+  static boolean inLegislativeSession(GameState state) {
+    return state == GameState.LEGISLATIVE_PRESIDENT || state == GameState.LEGISLATIVE_CHANCELLOR
+        || state == GameState.LEGISLATIVE_PRESIDENT_VETO;
   }
 
   /**
