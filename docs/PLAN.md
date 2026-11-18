@@ -59,7 +59,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 22A. Trophies and name links | `phase-22a-trophies-links` | done |
 | 22B. Player pages | `phase-22b-player-pages` | done |
 | 23. One header for the site | `phase-23-site-header` | done |
-| 24. Bot fixes and self-play | `phase-24-bot-fixes` | in progress |
+| 24. Bot fixes and self-play | `phase-24-bot-fixes` | done |
 | 25A. Bot skill levels | `phase-25a-bot-levels` | planned |
 | 25B. Hard's first rules | `phase-25b-hard-reads` | planned |
 | 25C. Hard's other rules | `phase-25c-hard-bots` | planned |
@@ -1119,7 +1119,7 @@ Issue #72, parts 1 and 2. Backend only; changes nothing on screen.
 **Phase 24 acceptance**
 
 - [x] Backend tests pass
-- [ ] PR merged into `development`
+- [x] PR merged into `development`
 
 ---
 
