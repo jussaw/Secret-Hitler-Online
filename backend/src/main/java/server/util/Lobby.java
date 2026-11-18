@@ -1396,7 +1396,7 @@ public class Lobby implements Serializable {
      * themselves, never the lobby's own choice, so a game restored from a backup keeps the level its
      * bots were made at, and a bot from a backup older than levels reads {@code NORMAL}.
      */
-    private game.BotSkill gameBotSkill() {
+    private BotSkill gameBotSkill() {
         return cpuPlayers.stream().findFirst().map(CpuPlayer::skill).orElse(null);
     }
 
