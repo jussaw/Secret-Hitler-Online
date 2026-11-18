@@ -1,4 +1,4 @@
-import type { GameRecord, Player, Role, Seat, StatsData } from "./record";
+import type { BotSkill, GameRecord, Player, Role, Seat, StatsData } from "./record";
 
 /**
  * Builders of records for the stats' unit tests (never imported by the page). Later phases add
@@ -23,7 +23,9 @@ export function makeSeats(roles: Role[], players?: (number | null)[]): Seat[] {
 /**
  * A finished five-seat record, `game-1`: started on Sat 14 Nov 2026 at 9:42 PM local time, 38
  * minutes long, won by the Liberals with 5 Liberal and 2 Fascist policies in 9 rounds, players 1
- * to 5 seated (player 5 Hitler), with a lone `end` event. `overrides` replace fields whole.
+ * to 5 seated (player 5 Hitler), with a lone `end` event. `overrides` replace fields whole. It is
+ * format 1, with no `botSkill` key, as every record stored before Phase 26B: `asFormatTwo` makes
+ * format 2.
  */
 export function makeRecord(overrides: Partial<GameRecord> = {}): GameRecord {
   const startedAt = new Date(2026, 10, 14, 21, 42).getTime();
@@ -43,6 +45,20 @@ export function makeRecord(overrides: Partial<GameRecord> = {}): GameRecord {
     events: [{ type: "end", t: 2_280_000, r: 9, outcome: "LIBERAL_POLICIES" }],
     ...overrides,
   };
+}
+
+/**
+ * A copy of `record` in format 2, with `botSkill` right after `hasCpu`, as the server writes it.
+ * It checks nothing (a level in a game without bots included), so tests build bad records with it.
+ */
+export function asFormatTwo(record: GameRecord, skill: BotSkill | null): GameRecord {
+  const copy: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(record)) {
+    if (key === "botSkill") continue;
+    copy[key] = key === "format" ? 2 : value;
+    if (key === "hasCpu") copy.botSkill = skill;
+  }
+  return copy as unknown as GameRecord;
 }
 
 /**

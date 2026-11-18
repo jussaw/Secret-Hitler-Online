@@ -1,5 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 import {
+  BOT_SKILLS,
   OUTCOMES,
   STATS_GAMES_PATH,
   sideOf,
@@ -318,7 +319,11 @@ function stretch(events: GameEvent[], length: number): GameEvent[] {
  * with `restored`. Its timelines follow the rules closely enough for the stats: rounds, votes,
  * the election tracker and chaos, the cards, vetoes, the powers by seat count, the term's end
  * (by the countdown in every fifth term), pauses, dropped connections, reshuffles and the board.
- * Later phases assume nothing else about it.
+ * It holds both record formats, as a database that has stored games since before bot levels
+ * does: `big-001` to `big-200` are format 1, with no `botSkill` key, and `big-201` to `big-400`
+ * format 2, `botSkill` null without bots and otherwise `BOT_SKILLS[floor(number / 42) % 3]`, so
+ * the CPU games (every seventh) take the levels in turn by sixes and every table size meets every
+ * level. The levels draw nothing from the random source. Later phases assume nothing else about it.
  */
 export function bigStatsData(): StatsData {
   const players: Player[] = Array.from({ length: 10 }, (_, i) => ({
@@ -385,15 +390,18 @@ export function bigStatsData(): StatsData {
     const length = rng.int(15 * MINUTE, 60 * MINUTE);
     events = stretch(events, length);
     const last = events[events.length - 1];
+    // Format 1 has no botSkill key at all; format 2 has it right after hasCpu.
+    const level = number <= 200 ? {} : { botSkill: bots > 0 ? BOT_SKILLS[Math.floor(number / 42) % 3] : null };
     games.push({
       id: `big-${String(number).padStart(3, "0")}`,
-      format: 1,
+      format: number <= 200 ? 1 : 2,
       startedAt: opened,
       endedAt: opened + last.t,
       outcome,
       winner: outcome === "UNFINISHED" ? null : outcome === "LIBERAL_POLICIES" || outcome === "HITLER_EXECUTED" ? "LIBERAL" : "FASCIST",
       complete,
       hasCpu: bots > 0,
+      ...level,
       liberalPolicies: played.liberal,
       fascistPolicies: played.fascist,
       rounds: last.r,

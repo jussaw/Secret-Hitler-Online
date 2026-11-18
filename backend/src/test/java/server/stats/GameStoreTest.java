@@ -7,9 +7,11 @@ import static org.junit.Assert.fail;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import game.BotSkill;
 import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
@@ -157,8 +159,67 @@ public class GameStoreTest {
                 "g2|0|2|P0|LIBERAL", "g2|1|null|P1|FASCIST", "g2|2|null|P2|LIBERAL", "g2|3|null|P3|HITLER",
                 "g2|4|null|P4|LIBERAL"),
                 rows("SELECT game_id, seat, player_number, name, role FROM game_seats ORDER BY game_id, seat"));
-        assertEquals(List.of("g1|1|2000000|HITLER_EXECUTED|1", "g2|1|3000000|HITLER_EXECUTED|1"),
+        assertEquals(List.of("g1|2|2000000|HITLER_EXECUTED|1", "g2|2|3000000|HITLER_EXECUTED|1"),
                 rows("SELECT id, format, ended_at, outcome, has_cpu FROM games ORDER BY id"));
+    }
+
+    /** A format 1 record of five CPU seats, as Phase 14B wrote it: no {@code botSkill}. */
+    private static final String FORMAT_ONE_JSON = "{\"id\":\"old\",\"format\":1,\"startedAt\":1940000,"
+            + "\"endedAt\":2000000,\"outcome\":\"LIBERAL_POLICIES\",\"winner\":\"LIBERAL\",\"complete\":true,"
+            + "\"hasCpu\":true,\"liberalPolicies\":5,\"fascistPolicies\":1,\"rounds\":6,\"seats\":["
+            + "{\"player\":null,\"name\":\"Bot 1\",\"cpu\":true,\"role\":\"LIBERAL\",\"alive\":true},"
+            + "{\"player\":null,\"name\":\"Bot 2\",\"cpu\":true,\"role\":\"FASCIST\",\"alive\":true},"
+            + "{\"player\":null,\"name\":\"Bot 3\",\"cpu\":true,\"role\":\"LIBERAL\",\"alive\":true},"
+            + "{\"player\":null,\"name\":\"Bot 4\",\"cpu\":true,\"role\":\"HITLER\",\"alive\":true},"
+            + "{\"player\":null,\"name\":\"Bot 5\",\"cpu\":true,\"role\":\"LIBERAL\",\"alive\":true}],"
+            + "\"events\":[{\"type\":\"end\",\"t\":60000,\"r\":6,\"outcome\":\"LIBERAL_POLICIES\"}]}";
+
+    /**
+     * A database that already holds format 1 records (every server once Phase 26B deploys): a new
+     * save is format 2 beside them, and each record is served as it was stored.
+     */
+    @Test
+    public void aFormatTwoRecordIsServedBesideAStoredFormatOneRecord() throws Exception {
+        GameStore store = file();
+        assertEquals(RecordFormat.recordKeys(1), new ArrayList<>(fieldNames(FORMAT_ONE_JSON)));
+        try (Connection c = DriverManager.getConnection("jdbc:sqlite:" + path());
+                PreparedStatement insert = c.prepareStatement("INSERT INTO games (id, format, started_at, "
+                        + "ended_at, outcome, has_cpu, record) VALUES (?, ?, ?, ?, ?, ?, ?)")) {
+            insert.setString(1, "old");
+            insert.setInt(2, 1);
+            insert.setLong(3, 1_940_000L);
+            insert.setLong(4, 2_000_000L);
+            insert.setString(5, GameRecord.LIBERAL_POLICIES);
+            insert.setInt(6, 1);
+            insert.setString(7, FORMAT_ONE_JSON);
+            insert.executeUpdate();
+        }
+
+        assertTrue(store.save(TestRecords.record("new", 3_000_000L, GameRecord.HITLER_ELECTED,
+                TestRecords.seats("acct-Ann"), BotSkill.HARD)));
+
+        assertEquals(List.of("old|1", "new|2"), rows("SELECT id, format FROM games ORDER BY ended_at"));
+        List<String> records = store.recordsJson();
+        assertEquals(FORMAT_ONE_JSON, records.get(0));
+        JsonNode added = JSON.readTree(records.get(1));
+        assertEquals(RecordFormat.RECORD_KEYS, fieldNames(records.get(1)));
+        assertEquals(2, added.get("format").asInt());
+        assertEquals("HARD", added.get("botSkill").asText());
+    }
+
+    /** Format 2 keeps its level in the record's JSON: the {@code games} table keeps its columns. */
+    @Test
+    public void theGamesTableKeepsItsColumns() throws Exception {
+        file();
+        assertEquals(List.of("id", "format", "started_at", "ended_at", "outcome", "has_cpu", "record"),
+                rows("SELECT name FROM pragma_table_info('games') ORDER BY cid"));
+    }
+
+    /** A JSON object's keys, in the order they were written. */
+    private static List<String> fieldNames(String json) throws Exception {
+        List<String> names = new ArrayList<>();
+        JSON.readTree(json).fieldNames().forEachRemaining(names::add);
+        return names;
     }
 
     @Test

@@ -1382,12 +1382,22 @@ public class Lobby implements Serializable {
             // The sweep's time, for a game swept now, unless the clock has stepped back since.
             long endedAt = gameStartedAt + (Long) end.get("t");
             GameRecord record = GameRecord.of(gameId, gameStartedAt, endedAt, outcome, gameComplete, game,
-                    seatAccounts(), gameEvents);
+                    seatAccounts(), gameBotSkill(), gameEvents);
             logger.info("Game " + gameId + (swept ? " was swept: " : " ended: ") + outcome + ".");
             recordSink.submit(record);
         } catch (RuntimeException e) {
             logger.error("Could not hand over the record of game " + gameId + ".", e);
         }
+    }
+
+    /**
+     * The level of the running game's bots, for its record: null with none, else the first's in
+     * name order ({@code startNewGame} makes every bot of a game at one level). It reads the bots
+     * themselves, never the lobby's own choice, so a game restored from a backup keeps the level its
+     * bots were made at, and a bot from a backup older than levels reads {@code NORMAL}.
+     */
+    private BotSkill gameBotSkill() {
+        return cpuPlayers.stream().findFirst().map(CpuPlayer::skill).orElse(null);
     }
 
     // </editor-fold>

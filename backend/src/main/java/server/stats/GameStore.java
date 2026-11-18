@@ -21,7 +21,8 @@ import java.util.Set;
  * {@code players} gives each account a number the first time one of its games is saved;
  * {@code games} holds each record's JSON, which carries those numbers and never an account ID; and
  * {@code game_seats} each game's seats. A game ID is written once: a second save of it changes
- * nothing.
+ * nothing. A record keeps the format it was saved in ({@code games.format}): {@code recordsJson}
+ * gives each as stored, so a format 1 record stays format 1 beside the format 2 ones saved since.
  *
  * <p>One connection serves the store for its life, waiting up to 5 s for another connection's
  * write, and every public method is synchronized. Every SQL failure is an

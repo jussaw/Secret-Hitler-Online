@@ -472,7 +472,10 @@ keeps credit to upstream and to the board game's creators.
   discards back in; only living seats' votes are events or counted; `r` is `before.round()`, so
   an `endTerm` carries the term it ended. It throws for a change no single method makes, two looks
   in one state that differ in more than new votes included), `GameRecord` (the immutable copy a
-  game hands over: header, seats in turn order with their accounts, null for a CPU's, and the
+  game hands over: header, seats in turn order with their accounts, null for a CPU's, the bots'
+  level, `botSkill` (a `game.BotSkill`, null exactly when no seat is a CPU's, which the canonical
+  constructor enforces with an `IllegalArgumentException`; `of`, the lobby's way in, never throws
+  for it: `NORMAL` for CPU seats and no level, null with no CPU seat whatever was passed), and the
   timeline; `winner()`, `hasCpu()`, `accountIds()`) and `GameRecordSink` (where
   `Lobby.recordSink` hands each record, under the lobby's lock, so a sink never blocks;
   `DROPPING`, the sink until recording starts, drops it with a debug line). `Lobby` keeps the
@@ -487,7 +490,10 @@ keeps credit to upstream and to the board game's creators.
   removed, and `reconnect` when one comes back after a `disconnect` (looking back no further than
   the last `restored`; a takeover by rejoin key is neither), none after the game's `end`. A move it
   cannot read is logged in one warning line and left out, and the record is `complete: false`:
-  nothing the recorder does stops a game. `handOverGame` makes every record. A game that has ended
+  nothing the recorder does stops a game. `handOverGame` makes every record, with the level of the
+  running game's bots from `gameBotSkill()` (the first of `cpuPlayers`' `skill()`, null with none),
+  never the lobby's own choice, so a restored game keeps its bots' level and a bot from a backup
+  older than levels records `NORMAL`. A game that has ended
   keeps its outcome, with exactly one `end`, so a game a CPU won, which the next tick drops, keeps
   it when the sweep or a restart comes first; any other is `UNFINISHED`, with an `end` at the
   sweep. A record's `endedAt` is `startedAt` plus its `end`'s `t`, the sweep's time unless the
@@ -510,7 +516,9 @@ keeps credit to upstream and to the board game's creators.
   `RecordFormat`, the spec's format; and games until every event type and outcome has come up),
   `LobbyRecordingTest`, and `DatabaseBackupTest`'s restores. Both of those take the records through
   `RecordedGames` (a JUnit rule: the records, a clock the test sets, and CPU ticks, countdowns and
-  grace windows long enough that none ends by itself, all put back after). `GameDriver.stepCpus`
+  grace windows long enough that none ends by itself, all put back after; its
+  `seatBotsAt(lobby, skill)` replaces a started game's bots with bots of that level, by
+  reflection on `Lobby`'s private `cpuPlayers`, standing in for the host's choice). `GameDriver.stepCpus`
   plays a lobby's CPU players one tick at a time, `GameDriver.playUntil(game, state, onStep)` calls
   `onStep` after every move as `playOut` does, and `ServerTesting.lobbiesChanged()` and
   `clearLobbiesChanged()` read and reset the server's mark for the next backup.
@@ -525,10 +533,13 @@ keeps credit to upstream and to the board game's creators.
   (the driver's own transactions begin again after each commit, and one whose begin timed out ran
   its next save outside any), taking the write lock at its start: a number for each account that has
   none (looked up before one is made, as an ignored `INSERT OR IGNORE` still uses up an
-  autoincrement number), then the game, with `GameRecord.toJson(numbers)` (format 1 in the spec's
-  key order, each seat's `player` its number, never an account ID), and its seats; an ID already
+  autoincrement number), then the game, with `GameRecord.toJson(numbers)` (format 2, `GameRecord.FORMAT`,
+  in the spec's key order: format 1's with `botSkill`, the level's name or null, after `hasCpu`;
+  each seat's `player` its number, never an account ID), and its seats; an ID already
   there rolls it all back and returns false, so a game is recorded once. `recordedIds` asks for many
   IDs in one query, `players()` gives them by number and `recordsJson()` by `ended_at`, then `id`.
+  A record keeps the format it was saved in (the `format` column; the tables keep their columns):
+  one saved before Phase 26B stays format 1, with no `botSkill`, and is served as stored.
   `GameRecorder` is the sink: `submit` only queues (unbounded: it never blocks, throws or touches
   the store), one daemon thread, `game-recorder`, saves and then runs `afterSave` (the route's
   `invalidate`), even when the game was there already (a retry of a save that wrote but reported a
@@ -563,9 +574,12 @@ keeps credit to upstream and to the board game's creators.
   recorded as if twelve accounts (Ada to Maximilianus, twelve characters) held the seats: ten
   finished at each size from 5 to 10, two cut off once round 5 begins, two CPU seats in every sixth,
   and more games only if an outcome is missing, made by `./gradlew recordedGamesFixture`
-  (`RecordedGamesFixture`, in the test source set) and committed. The games cannot be seeded, so
-  every run changes it; `RecordedGamesFixtureTest` checks it against `RecordFormat` and replays
-  every timeline. The tests: `GameRecordJsonTest`, `GameStoreTest`, `GameRecorderTest` (over
+  (`RecordedGamesFixture`, in the test source set) and committed. It is format 2, its games with
+  CPU seats labelled Easy, Normal and Hard in turn (`BotSkill.values()[(k / 6) % 3]`): labels
+  only, as the accounts are, since `CpuGames` plays every seat Normal. The games cannot be seeded,
+  so every run changes it; `RecordedGamesFixtureTest` checks it against `RecordFormat` (formats 1
+  and 2: `FORMAT_1_KEYS`, `RECORD_KEYS`, format 2's, and `recordKeys(format)`, which throws for
+  any other, and `BOT_SKILLS`, the levels written out) and replays every timeline. The tests: `GameRecordJsonTest`, `GameStoreTest`, `GameRecorderTest` (over
   `TestStore`, a store that can fail, hold its saves back and count its calls),
   `RecordingServerTest` (no database call under a lobby's lock, a stuck database, the start-up
   order, a database down at start-up, the shutdown's flush), `StatsRoutesTest` and
@@ -586,14 +600,22 @@ keeps credit to upstream and to the board game's creators.
   (leaf modules such as `src/constants` and `src/header/SiteHeader` are fine), so the game's first
   download holds none of it
   (`npm run first-download` gives its gzipped size). `src/stats/` (issue #31; the interfaces file
-  names who fills what): `record.ts` (the record's types, format 1, with `ROLES`, `SIDES` and
-  `OUTCOMES` the lists their unions come from, `STATS_GAMES_PATH`,
+  names who fills what): `record.ts` (the record's types, formats 1 and 2, with `ROLES`, `SIDES`,
+  `OUTCOMES` and `BOT_SKILLS` (`EASY`, `NORMAL`, `HARD`, the stats' own list, never one from the
+  game's code, the lobby's included, so the stats chunk imports nothing from it) the lists
+  their unions come from, `STATS_GAMES_PATH`,
   `EVENT_FIELDS`, each event type's keys in the spec's order, `parseStatsData`, which checks a
-  response and throws `Unsupported game record format: N` or the path of the first malformed
-  field, `sideOf` and `playerName`, `Player N` for a number with no player; it imports nothing, so
-  the browser tests use it), `testRecords.ts` (`makeRecord`, `makeSeats`, `makeData`, for tests
-  only), `format.ts` (`outcomeLabel`, which starts with `sideWord`'s "Liberals" or "Fascists" for a
-  finished game, `formatDuration`, `plural`, and `formatLocalDate`,
+  response, format 1 (no `botSkill`) or 2 (`botSkill` null or one of `BOT_SKILLS`, a level exactly
+  when `hasCpu`), returns it unchanged and throws `Unsupported game record format: N` for any other
+  format or the path of the first malformed field, `botSkillOf`, a record's level (null without
+  bots and for every format 1 record: the one way a page reads it), `sideOf` and `playerName`,
+  `Player N` for a number with no player; it imports nothing, so the browser tests use it),
+  `testRecords.ts` (`makeRecord`, still format 1 with no `botSkill` key, as every record stored
+  before Phase 26B, `asFormatTwo(record, skill)`, a copy in format 2 that checks nothing,
+  `makeSeats`, `makeData`, for tests only), `format.ts` (`outcomeLabel`, which starts with
+  `sideWord`'s "Liberals" or "Fascists" for a finished game, `botsLabel(skill)`, "Easy bots",
+  "Normal bots", "Hard bots", or "Bots" for no level, `formatDuration`, `plural`, and
+  `formatLocalDate`,
   `formatLocalTime`, `formatLocalDateTime` and `localDayKey`, English whatever the locale, each in
   a time zone it is passed, `viewerTimeZone()` by default, so tests pass one and never set
   `process.env.TZ`), `PlayerName` (the one way a name shows, with `overflow-wrap: anywhere`,
@@ -654,7 +676,8 @@ keeps credit to upstream and to the board game's creators.
   kind of round, for the pull request's screenshots. The game page, `game/GamePage` (Phase 16):
   the record whose `id` is exactly the address's (else "This game was not found." and All games);
   `GameHeader`, a card with the result, its first word in the winners' colour, the start, length,
-  rounds and final board, since Phase 22A the game's Elo change when it counted under the default
+  rounds and final board, then for a game with bots whose record keeps their level its
+  `botsLabel` (`… · board 5 L, 2 F · Hard bots`; nothing for a format 1 record), since Phase 22A the game's Elo change when it counted under the default
   filter (`Elo: Liberals +16 · Fascists −16`, `p.game-elo`, from `game/gameElo.ts`: `defaultElo(data)`,
   `replayElo` over `countedGames(data.games, DEFAULT_FILTER)` once per records in a `WeakMap`, and
   `gameEloChange(data, id)`, null for a CPU, unfinished or unknown game, whatever the tabs' filter),
@@ -1019,7 +1042,8 @@ keeps credit to upstream and to the board game's creators.
   teammate, nemesis and favourite opponent, each a name link and its count), Timing
   (`formatAverageTime`) and Latest games (their 5 newest records of any kind: the day it started,
   `LatestGame.startedAt`, as GAMES dates it, linking the game, their role in its colour
-  (`game/text`'s `RoleWord`), won, lost or unfinished, the ending and GAMES' Bots tag; then `All
+  (`game/text`'s `RoleWord`), won, lost or unfinished, the ending and GAMES' tag of its bots'
+  level, `botsLabel(LatestGame.botSkill)`; then `All
   N games ›` to GAMES filtered to them by `gamesFilterSearch`, the `›` after a no-break space
   and hidden from screen readers). A value that is not there is `tabs/cellText`'s `NO_VALUE` (`—`),
   and a rate below its minimum shows it and its count. With no counted games every card but
@@ -1040,9 +1064,11 @@ keeps credit to upstream and to the board game's creators.
   reading as the default; newest first is by `endedAt`, then `id`), `pages.ts` (`pageCount`,
   `pageLinks`, the first and last pages and the current one's neighbours with `null` for a gap,
   and `gamesSummary`, "142 games recorded · 37 match · showing 21–37"), `GameRow` (an
-  `li.games-row`: the date and the result, its winners' word in their colour and a `Bots` tag, are
-  its one link, `a.games-row-link`, named for the date, the result and, with CPU players, `· with
-  Bots`, whose `::after` covers the row; the time and length, the seats
+  `li.games-row`: the date and the result, its winners' word in their colour and the bots' tag,
+  `.games-row-cpu`, `botsLabel(botSkillOf(record))` ("Hard bots", or "Bots" for a format 1
+  record; `white-space: nowrap`, so it wraps whole), are its one link, `a.games-row-link`, named for
+  the date, the result and, with CPU players, `· with Hard bots` (`· with Bots` for format 1),
+  whose `::after` covers the row; the time and length, the seats
   as `PlayerName`s (links of their own since Phase 22A, which `.games-row-seats a` lets take a
   press), above the link's area, and the seat and round counts sit outside it, so no anchor wraps
   a name; a subgrid of the row's columns on desktop, of its first three rows on
@@ -1479,7 +1505,8 @@ keeps credit to upstream and to the board game's creators.
   sockets of `e2e/fakeGame.ts` answer pings (`answerPings`), and `FakeWatch.down` refuses new
   sockets as `LOBBY_GONE`, so the page gives up at once. `recorder.spec.ts` (`desktop`) plays a
   real game to its end through `e2e/driveGame.ts` and finds its record in `GET /api/stats/games`,
-  its keys in the spec's order, with no account ID in the body. `e2e/fakeGame.ts`'s victory packet
+  its keys in the spec's order, format 2 with `botSkill` null (seven people), with no account ID
+  in the body. `e2e/fakeGame.ts`'s victory packet
   carries `FAKE_GAME_ID`. The stats specs (`stats-*.spec.ts`, which run in all four projects:
   `firefox`'s `testMatch` takes them) share `e2e/stats.ts`: `statsSizes` (`DESKTOP_SIZES`,
   `SQUARE_DESKTOPS`, the `NARROW_WINDOWS` and `PHONE_SIZES`, 360x740, 412x915 and 320x568) and
@@ -1492,21 +1519,24 @@ keeps credit to upstream and to the board game's creators.
   endings, `big-200` also incomplete and opening with `restored`, each timeline played by the rules:
   rounds, votes, the tracker, which only a policy puts back, and chaos, cards, vetoes, powers by size, the term's end, by the
   countdown in every fifth, pauses, dropped connections, reshuffles, and the board in the last
-  `enact`; later phases assume nothing else about it), `statsPageProblems(page)` (what is wrong at
+  `enact`; and both record formats, as an upgraded database holds them: `big-001` to `big-200`
+  format 1 with no `botSkill` key, `big-201` to `big-400` format 2, `botSkill` null without bots
+  and otherwise `BOT_SKILLS[floor(number / 42) % 3]`, the levels in turn by sixes of CPU games,
+  drawing nothing from the random source; later phases assume nothing else about it), `statsPageProblems(page)` (what is wrong at
   the current size: anything past either side but inside a box that scrolls sideways itself, never
   `body`, `.stats-screen` or `.stats-main`; and in the stacked query, controls under 44px, but for a
   link inline in a sentence of a `p` and never one in a table cell, and field text under 16px),
   `checkStatsPage(page, size)` (sets the size, waits two frames, and expects none; every stats spec
   checks its pages with it and writes no sideways check of its own), `STATS_ONLY_STRINGS` and
   `downloads(page, path)` (every same-origin response of a load, with scripts' and stylesheets'
-  text). `stats-shell.spec.ts` checks `bigStatsData` and the page check itself, every shell page at
+  text). `stats-shell.spec.ts` checks `bigStatsData` (its formats and levels too) and the page check itself, every shell page at
   every size (the loading and error lines too), a twelve-character name of wide letters inside its
   line at 320px, that the game's first download holds no stats code and fetches the clips while the
   stats fetch their chunk and no clip, the header moving in place, the login page's header
   matching the stats' at every size (its box, the title's and each link's, PLAY marked, no
   speaker), and back, forward, reload and a deep link. `stats-game.spec.ts` checks the game page at every size against `bigStatsData()` (its
   largest game, ten twelve-character names voting, its first incomplete and first unfinished
-  games, and an unknown ID; at every size each line and name inside its card's padding, and on
+  games, its largest format 2 game with bots, whose facts end with their level, and an unknown ID; at every size each line and name inside its card's padding, and on
   phones each round's block at least the window's width less 32px), a round's 6px edge in its
   policy's colour and its lines' 4px spacing, All games moving in place from the not-found page,
   and (`desktop`) a real seven-seat game's page
@@ -1523,7 +1553,10 @@ keeps credit to upstream and to the board game's creators.
   history shows a game's change, at the right edge of a 320px phone too. `stats-games.spec.ts` follows the login page's header to the stats (same tab), checks the
   lobby has no stats link and that GAMES' and PLAYERS' old addresses (`/stats/games…`,
   `/stats/players…`) move to their new ones with their query (`desktop`), finds See this game on the victory screen, a 44px
-  target on phones, checks GAMES at a hundred a page and with every filter set at every size, and
+  target on phones, checks GAMES at a hundred a page and with every filter set at every size,
+  that format 2 rows' tags and link names give their bots' level (all three on the first hundred)
+  and format 1 rows say only Bots (the third hundred), that no bots tag takes a second line at
+  320px, on GAMES or in a player's latest games (`brokenTags`), and
   twelve-character names inside their columns and chips at 320px; on `desktop` it goes through a
   filter, a page, a game and back, forward and reload by the address, and plays a real game of
   seven through `driveGame.ts` whose victory screen opens its page and which GAMES lists under its

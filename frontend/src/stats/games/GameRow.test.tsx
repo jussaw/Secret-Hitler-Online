@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { GameRecord } from "../record";
-import { makeRecord, makeSeats } from "../testRecords";
+import { BOT_SKILLS, type GameRecord } from "../record";
+import { asFormatTwo, makeRecord, makeSeats } from "../testRecords";
 import GameRow from "./GameRow";
 
 const SEVEN = makeSeats(["LIBERAL", "LIBERAL", "FASCIST", "LIBERAL", "HITLER", "LIBERAL", "FASCIST"]);
@@ -71,6 +71,28 @@ describe("GameRow", () => {
     expect(result.querySelector(".stats-liberal, .stats-fascist")).toBeNull();
     expect(unfinished).not.toHaveTextContent("Bots");
     expect(unfinished).toHaveTextContent("6 rounds");
+  });
+
+  it("tags a game with its bots' level", () => {
+    const bots = makeRecord({
+      id: "bots",
+      outcome: "HITLER_ELECTED",
+      winner: "FASCIST",
+      hasCpu: true,
+      seats: makeSeats(["LIBERAL", "LIBERAL", "FASCIST", "LIBERAL", "HITLER"], [1, 2, null, 4, null]),
+    });
+    const words = { EASY: /^Easy bots$/, NORMAL: /^Normal bots$/, HARD: /^Hard bots$/ };
+    for (const skill of BOT_SKILLS) {
+      const row = renderRow(asFormatTwo(bots, skill));
+      expect(row.querySelectorAll(".games-row-cpu")).toHaveLength(1);
+      expect(row.querySelector(".games-row-cpu")).toHaveTextContent(words[skill]);
+      if (skill === "HARD") {
+        expect(row.querySelector(".games-row-link")).toHaveAccessibleName(
+          "Sat 14 Nov 2026, 9:42 PM · Fascists win · Hitler elected · with Hard bots"
+        );
+      }
+      cleanup();
+    }
   });
 
   it("one link to the game, and no name inside it; each name a link of its own", () => {

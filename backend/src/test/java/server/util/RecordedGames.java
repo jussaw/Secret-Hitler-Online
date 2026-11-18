@@ -1,8 +1,12 @@
 package server.util;
 
+import game.BotSkill;
+import game.CpuPlayer;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
 import org.junit.rules.ExternalResource;
@@ -41,6 +45,35 @@ public final class RecordedGames extends ExternalResource {
         Lobby.CPU_ACTION_DELAY_IN_SEC = 600;
         Lobby.END_TERM_TIMER_IN_SEC = 600;
         Lobby.PLAYER_TIMEOUT_IN_SEC = 60;
+    }
+
+    /**
+     * Replaces each bot of the lobby's running game with one of the same name at {@code skill},
+     * under the lobby's lock, standing in for the host's choice of level. It reaches inside
+     * {@code Lobby}, reading its private {@code cpuPlayers} by reflection.
+     *
+     * @throws IllegalStateException if the field cannot be read.
+     */
+    @SuppressWarnings("unchecked")
+    public static void seatBotsAt(Lobby lobby, BotSkill skill) {
+        synchronized (lobby) {
+            Set<CpuPlayer> bots;
+            try {
+                Field field = Lobby.class.getDeclaredField("cpuPlayers");
+                field.setAccessible(true);
+                bots = (Set<CpuPlayer>) field.get(lobby);
+            } catch (ReflectiveOperationException e) {
+                throw new IllegalStateException("Could not read the lobby's bots.", e);
+            }
+            List<CpuPlayer> replaced = new ArrayList<>();
+            for (CpuPlayer bot : bots) {
+                CpuPlayer leveled = new CpuPlayer(bot.myName, skill);
+                leveled.initialize(lobby.game());
+                replaced.add(leveled);
+            }
+            bots.clear();
+            bots.addAll(replaced);
+        }
     }
 
     @Override

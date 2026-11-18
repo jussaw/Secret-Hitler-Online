@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  botsLabel,
   formatDuration,
   formatLocalDate,
   formatLocalDateTime,
@@ -84,5 +85,16 @@ describe("local dates and times", () => {
 describe("plural", () => {
   it("counts a noun", () => {
     expect([plural(1, "round"), plural(7, "seat"), plural(0, "game")]).toEqual(["1 round", "7 seats", "0 games"]);
+  });
+});
+
+describe("botsLabel", () => {
+  it("names the bots' level, or only Bots for a record without one", () => {
+    expect([botsLabel(null), botsLabel("EASY"), botsLabel("NORMAL"), botsLabel("HARD")]).toEqual([
+      "Bots",
+      "Easy bots",
+      "Normal bots",
+      "Hard bots",
+    ]);
   });
 });

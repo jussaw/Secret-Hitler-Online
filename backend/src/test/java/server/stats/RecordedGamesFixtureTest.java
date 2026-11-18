@@ -23,9 +23,10 @@ import org.junit.Test;
 
 /**
  * The stats pages' contract fixture ({@code frontend/src/stats/fixtures/recorded-games.json}, made
- * by {@code ./gradlew recordedGamesFixture}): the response's format 1, as {@code RecordFormat} gives
- * it and {@code GameRecordJsonTest} holds the Java writer to, with timelines that replay to their
- * records' ends, every outcome, sizes 5 to 10, CPU seats, unfinished games, and no account ID.
+ * by {@code ./gradlew recordedGamesFixture}): the response, each record with its format's keys, as
+ * {@code RecordFormat} gives them and {@code GameRecordJsonTest} holds the Java writer to, with
+ * timelines that replay to their records' ends, every outcome, sizes 5 to 10, CPU seats, unfinished
+ * games, and no account ID.
  */
 public class RecordedGamesFixtureTest {
     private static final File FIXTURE = new File("../frontend/src/stats/fixtures/recorded-games.json");
@@ -50,15 +51,14 @@ public class RecordedGamesFixtureTest {
     }
 
     @Test
-    public void theFixtureIsInFormatOne() {
+    public void everyRecordHasItsFormatsKeys() {
         assertEquals(List.of("players", "games"), new ArrayList<>(fixture.keySet()));
         for (Map<String, Object> player : list(fixture.get("players"))) {
             assertEquals(List.of("number", "name"), new ArrayList<>(player.keySet()));
         }
         assertFalse(games().isEmpty());
         for (Map<String, Object> game : games()) {
-            assertEquals(RecordFormat.RECORD_KEYS, new ArrayList<>(game.keySet()));
-            assertEquals(1, game.get("format"));
+            assertEquals(RecordFormat.recordKeys((Integer) game.get("format")), new ArrayList<>(game.keySet()));
             for (Map<String, Object> seat : list(game.get("seats"))) {
                 assertEquals(RecordFormat.SEAT_KEYS, new ArrayList<>(seat.keySet()));
             }
@@ -66,6 +66,15 @@ public class RecordedGamesFixtureTest {
                 assertEquals(game.get("id") + ": " + event, RecordFormat.expectedKeys(event),
                         new ArrayList<>(event.keySet()));
             }
+        }
+    }
+
+    @Test
+    public void theFixtureIsInFormatTwo() {
+        for (Map<String, Object> game : games()) {
+            assertEquals(game.get("id") + "'s format", 2, game.get("format"));
+            Object level = game.get("botSkill");
+            assertTrue(game.get("id") + "'s level " + level, level == null || RecordFormat.BOT_SKILLS.contains(level));
         }
     }
 
@@ -114,6 +123,7 @@ public class RecordedGamesFixtureTest {
         }
         long lastEnded = Long.MIN_VALUE;
         String lastId = "";
+        Set<Object> levels = new HashSet<>();
         for (Map<String, Object> game : games()) {
             List<Map<String, Object>> seats = list(game.get("seats"));
             if (game.get("outcome").equals(GameRecord.UNFINISHED)) {
@@ -133,6 +143,11 @@ public class RecordedGamesFixtureTest {
                 }
             }
             assertEquals(seats.stream().anyMatch(s -> (Boolean) s.get("cpu")), game.get("hasCpu"));
+            assertEquals(game.get("id") + ": a level exactly when bots sat", game.get("hasCpu"),
+                    game.get("botSkill") != null);
+            if (game.get("botSkill") != null) {
+                levels.add(game.get("botSkill"));
+            }
             long ended = ((Number) game.get("endedAt")).longValue();
             String id = (String) game.get("id");
             assertTrue("oldest first", ended > lastEnded || (ended == lastEnded && id.compareTo(lastId) > 0));
@@ -146,6 +161,7 @@ public class RecordedGamesFixtureTest {
                 GameRecord.HITLER_ELECTED), outcomes);
         assertEquals(2, unfinished);
         assertTrue("a game with CPU seats", cpu);
+        assertEquals("Easy, Normal and Hard bots", Set.copyOf(RecordFormat.BOT_SKILLS), levels);
         assertTrue("a twelve-character name",
                 list(fixture.get("players")).stream().anyMatch(p -> ((String) p.get("name")).length() == 12));
     }

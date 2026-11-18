@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { outcomeLabel } from "../src/stats/format";
-import { parseStatsData, STATS_GAMES_PATH } from "../src/stats/record";
+import { botSkillOf, parseStatsData, STATS_GAMES_PATH } from "../src/stats/record";
 import { routePath } from "../src/stats/routes";
 import { signedOutMe, stubMe } from "./accounts";
 import { openTable, play } from "./driveGame";
@@ -115,6 +115,54 @@ test.describe("GAMES fits every size", () => {
       }
     });
   }
+});
+
+test("a game's tag names its bots' level, and an older one says Bots", async ({ page }) => {
+  // big-400 to big-301, all format 2: every level, and link names that say it.
+  await openGames(page, "/games?per=100");
+  await expect(page.locator(".games-row").first()).toBeVisible();
+  const tags = await page.locator(".games-row-cpu").allTextContents();
+  expect([...new Set(tags)].sort()).toEqual(["Easy bots", "Hard bots", "Normal bots"]);
+  const names = await page.locator("a.games-row-link").evaluateAll((links) => links.map((a) => a.getAttribute("aria-label") ?? ""));
+  expect(names.some((name) => / · with (Easy|Normal|Hard) bots$/.test(name))).toBe(true);
+  // big-200 to big-101, all format 1: no level was kept.
+  await openGames(page, "/games?per=100&page=3");
+  await expect(page.locator(".games-row").first()).toBeVisible();
+  const older = await page.locator(".games-row-cpu").allTextContents();
+  expect(older.length).toBeGreaterThan(0);
+  expect([...new Set(older)]).toEqual(["Bots"]);
+});
+
+/** Each bots tag on the page that takes more than one line: its text and height. */
+function brokenTags(page: Page): Promise<string[]> {
+  return page.locator(".games-row-cpu").evaluateAll((tags) =>
+    tags
+      .filter((tag) => tag.getBoundingClientRect().height > parseFloat(getComputedStyle(tag).lineHeight) + 1)
+      .map((tag) => `${tag.textContent} (${Math.round(tag.getBoundingClientRect().height)}px)`)
+  );
+}
+
+test("a bots tag never breaks between its words at 320px", async ({ page }) => {
+  await page.setViewportSize(NARROW_PHONE);
+  // GAMES' first hundred, every level among them.
+  await openGames(page, "/games?per=100");
+  await expect(page.locator(".games-row-cpu", { hasText: "Normal bots" }).first()).toBeVisible();
+  expect(await brokenTags(page)).toEqual([]);
+  await checkStatsPage(page, NARROW_PHONE);
+
+  // A player's latest games, the newest of them with Normal bots, in a table's narrow ending cell:
+  // the games up to the newest one with Normal bots, which is so one of its people's newest.
+  const last = data.games.map((g) => botSkillOf(g)).lastIndexOf("NORMAL");
+  const normal = data.games[last];
+  const player = normal.seats.find((seat) => seat.player !== null)!.player!;
+  await stubStats(page, { players: data.players, games: data.games.slice(0, last + 1) });
+  await page.goto(routePath({ page: "player", number: player }));
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(data.players[player - 1].name);
+  await settle(page);
+  const latest = page.getByRole("region", { name: "Latest games" });
+  await expect(latest.locator(".games-row-cpu", { hasText: "Normal bots" }).first()).toBeVisible();
+  expect(await brokenTags(page)).toEqual([]);
+  await checkStatsPage(page, NARROW_PHONE);
 });
 
 test("twelve-character names stay inside their columns at 320px", async ({ page }) => {

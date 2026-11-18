@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import {
+  botsLabel,
   formatDuration,
   formatLocalDate,
   formatLocalDateTime,
@@ -9,7 +10,7 @@ import {
   sideWord,
 } from "../format";
 import PlayerName, { roleClass } from "../PlayerName";
-import type { GameRecord } from "../record";
+import { botSkillOf, type GameRecord } from "../record";
 import { routePath } from "../routes";
 import StatsLink from "../StatsLink";
 
@@ -31,8 +32,9 @@ function Result({ record }: { record: GameRecord }): JSX.Element {
 
 /**
  * One game in GAMES' list (`games.jpg`): its local date and result, the time it started and its
- * length, its seats in turn order coloured by role, and its seat and round counts, with a `CPU`
- * tag for a game with CPU players (its link's name says "with Bots").
+ * length, its seats in turn order coloured by role, and its seat and round counts, with the bots'
+ * tag for a game with CPU players, their level's `botsLabel` ("Hard bots", or "Bots" for a format
+ * 1 record), which its link's name ends with too ("with Hard bots").
  *
  * The date and result are the row's one link, to the game's page, and the link's `::after`
  * stretches over the whole row, so a press anywhere on it opens the game. The seats sit above that
@@ -40,8 +42,9 @@ function Result({ record }: { record: GameRecord }): JSX.Element {
  * anchor ever wraps one.
  */
 export function GameRow({ record }: { record: GameRecord }): JSX.Element {
+  const bots = botsLabel(botSkillOf(record));
   const label = `${formatLocalDateTime(record.startedAt)} · ${outcomeLabel(record)}${
-    record.hasCpu ? " · with Bots" : ""
+    record.hasCpu ? ` · with ${bots}` : ""
   }`;
   return (
     <li className="games-row">
@@ -49,7 +52,7 @@ export function GameRow({ record }: { record: GameRecord }): JSX.Element {
         <span className="games-row-date">{formatLocalDate(record.startedAt)}</span>
         <span className="games-row-result">
           <Result record={record} />
-          {record.hasCpu && <> <span className="games-row-cpu">Bots</span></>}
+          {record.hasCpu && <> <span className="games-row-cpu">{bots}</span></>}
         </span>
       </StatsLink>{" "}
       <span className="games-row-when">

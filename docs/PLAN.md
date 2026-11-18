@@ -65,7 +65,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 25C. Hard's other rules | `phase-25c-hard-bots` | done |
 | 25D. Ladder and balance | `phase-25d-ladder-balance` | done |
 | 26A. Bot skill in the lobby | `phase-26a-lobby-bot-skill` | done |
-| 26B. Bot skill in the records | `phase-26b-record-bot-skill` | planned |
+| 26B. Bot skill in the records | `phase-26b-record-bot-skill` | done |
 
 ---
 
@@ -1222,15 +1222,15 @@ Breakdown: [`docs/superpowers/plans/2026-11-17-phase-26b-record-bot-skill.md`](s
 
 Issue #72's records, decided in the design. Starts once 25A has merged; merges after 25D and 26A.
 
-- [ ] Records are format 2 with `botSkill` after `hasCpu` (a level's name, or null without bots); format 1 records stay as stored and are still served and read
-- [ ] The contract fixture is made again with levels in turn, and `RecordFormat` and the replay checks know both formats
-- [ ] GAMES rows and a player's latest games say "Easy bots", "Normal bots" or "Hard bots" ("Bots" for format 1), and a game's page names the level
-- [ ] The game stats design's record table and `CLAUDE.md` updated; the pull request shows a GAMES row and a game page before and after, on desktop and on a phone
+- [x] Records are format 2 with `botSkill` after `hasCpu` (a level's name, or null without bots); format 1 records stay as stored and are still served and read
+- [x] The contract fixture is made again with levels in turn, and `RecordFormat` and the replay checks know both formats
+- [x] GAMES rows and a player's latest games say "Easy bots", "Normal bots" or "Hard bots" ("Bots" for format 1), and a game's page names the level
+- [x] The game stats design's record table and `CLAUDE.md` updated; the pull request shows a GAMES row and a game page before and after, on desktop and on a phone
 
 **Phase 26B acceptance**
 
-- [ ] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] PR merged into `development`
+- [x] Backend and frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] PR merged into `development`
 - [ ] The user closes issue #72 once every phase (24 to 26B) is merged
 
 ---

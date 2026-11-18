@@ -1,4 +1,4 @@
-import type { GameRecord, Side } from "./record";
+import type { BotSkill, GameRecord, Side } from "./record";
 
 /**
  * The stats' words for results, lengths, counts and local times. Every local-time function takes
@@ -74,6 +74,16 @@ export function plural(n: number, noun: string): string {
 /** The winners' word in a result: "Liberals" or "Fascists". */
 export function sideWord(side: Side): string {
   return side === "LIBERAL" ? "Liberals" : "Fascists";
+}
+
+const BOT_WORDS: Record<BotSkill, string> = { EASY: "Easy bots", NORMAL: "Normal bots", HARD: "Hard bots" };
+
+/**
+ * A game's bots as the stats pages tag them: "Easy bots", "Normal bots" or "Hard bots", or "Bots"
+ * for no level (a format 1 record, recorded before levels were kept).
+ */
+export function botsLabel(skill: BotSkill | null): string {
+  return skill === null ? "Bots" : BOT_WORDS[skill];
 }
 
 /**

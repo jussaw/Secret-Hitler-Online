@@ -13,7 +13,7 @@ import {
   type Rate,
 } from "./counting";
 import { ELO_START, PROVISIONAL_GAMES, type EloResult } from "./elo";
-import { playerName, sideOf, type GameRecord, type Outcome, type Role } from "./record";
+import { botSkillOf, playerName, sideOf, type BotSkill, type GameRecord, type Outcome, type Role } from "./record";
 import { byRole } from "./roles";
 import { DECISIONS, type Decision } from "./timing";
 import { trophiesOf, type Trophy } from "./trophies";
@@ -49,6 +49,8 @@ export interface LatestGame {
   outcome: Outcome;
   /** Whether it had a CPU seat. */
   cpu: boolean;
+  /** Its bots' level (`botSkillOf`): null without bots, and for a format 1 record. */
+  botSkill: BotSkill | null;
 }
 
 export interface PlayerStats {
@@ -200,6 +202,7 @@ export function computePlayer(stats: StatsContext, player: number, now: number, 
         result,
         outcome: record.outcome,
         cpu: hasCpu(record),
+        botSkill: botSkillOf(record),
       };
     });
 

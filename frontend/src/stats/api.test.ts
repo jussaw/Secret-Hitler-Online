@@ -39,7 +39,7 @@ describe("fetchStatsData", () => {
 
   it("rejects a failed or malformed answer", async () => {
     const newer = JSON.parse(JSON.stringify(fixture));
-    newer.games[0].format = 2;
+    newer.games[0].format = 3;
     mockFetch(
       json({ error: "down" }, 503),
       new TypeError("Failed to fetch"),
@@ -49,7 +49,7 @@ describe("fetchStatsData", () => {
     await expect(fetchStatsData()).rejects.toThrow("/api/stats/games answered 503");
     await expect(fetchStatsData()).rejects.toThrow("Failed to fetch");
     await expect(fetchStatsData()).rejects.toThrow(Error);
-    await expect(fetchStatsData()).rejects.toThrow("Unsupported game record format: 2");
+    await expect(fetchStatsData()).rejects.toThrow("Unsupported game record format: 3");
   });
 });
 
