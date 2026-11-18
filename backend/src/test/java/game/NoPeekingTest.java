@@ -459,6 +459,18 @@ public class NoPeekingTest {
         votesAtTrackerTwo("LLLFH", UNSEEN_CARDS);
     }
 
+    /** Rule 7: a fascist chancellor holding one of each under a liberal president, the cards it has not seen swapped. */
+    @Test
+    public void hardRule7ChancellorBluffs() {
+        actsAlike(() -> BotScenes.chancellorsHand("LFLLH", "FL", "F", 0), List.of(UNSEEN_CARDS));
+    }
+
+    /** Rule 7: a fascist president dealt FFL with a liberal chancellor, the cards it has not seen swapped. */
+    @Test
+    public void hardRule7PresidentBluffs() {
+        actsAlike(() -> BotScenes.presidentsHand("FLLLH", "FFL"), List.of(UNSEEN_CARDS));
+    }
+
     // The test's own checks: that its seeds differ, and that the twins catch what they should.
 
     /** Normal always passes FL from FFL as a liberal; Easy passes FF for some of the seeds. */

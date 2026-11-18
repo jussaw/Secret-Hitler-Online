@@ -65,6 +65,18 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
   static final float FASCIST_TRACKER_PULL = 0.5f;
 
   /**
+   * Hard's rule 7: how often a Hard fascist chancellor holding one of each card, under a president
+   * it knows is liberal, plays the liberal one while the bluff is open (see {@code bluffs}).
+   */
+  static final double CHANCELLOR_BLUFF_CHANCE = 0.35;
+
+  /**
+   * Hard's rule 7: how often a Hard fascist president dealt two fascists and a liberal, with a
+   * chancellor it knows is liberal, discards a fascist and so passes one of each.
+   */
+  static final double PRESIDENT_BLUFF_CHANCE = 0.35;
+
+  /**
    * Hard's rule 3: one closed election as every seat saw it: its round, its government and each
    * living player's vote (a {@code TreeMap}, so a backup's bytes depend only on the votes).
    */
@@ -761,8 +773,16 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     boolean mistake = mistake();
 
     List<Policy> policies = game.getPresidentLegislativeChoices();
-    // Easy: any of the three cards; otherwise Normal's choice.
-    int policyIndexToRemove = mistake ? anyOf(List.of(0, 1, 2)) : normalDiscard(game, policies);
+    int policyIndexToRemove;
+    if (mistake) { // Easy: any of the three cards
+      policyIndexToRemove = anyOf(List.of(0, 1, 2));
+    } else if (countOf(policies, Policy.Type.FASCIST) == 2
+        && bluffs(game, game.getCurrentChancellor(), PRESIDENT_BLUFF_CHANCE)) {
+      // Hard's rule 7: discard a fascist, so the liberal chancellor holds one of each.
+      policyIndexToRemove = tryGetIndexOfPolicy(policies, Policy.Type.FASCIST);
+    } else { // Normal's choice
+      policyIndexToRemove = normalDiscard(game, policies);
+    }
 
     // Track what choices we gave the chancellor.
     chancellorChoices = new ArrayList<>();
@@ -895,8 +915,10 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     } else {
       // One Liberal and one fascist policy, so decide based on role
       if (myId == Identity.FASCIST) {
-        // Fascists should always try and pass more fascist policies
-        enact(game, policies, tryGetIndexOfPolicy(policies, Policy.Type.FASCIST));
+        // Fascists should always try and pass more fascist policies, unless a Hard one bluffs
+        // (rule 7) to a liberal president.
+        boolean bluff = bluffs(game, game.getCurrentPresident(), CHANCELLOR_BLUFF_CHANCE);
+        enact(game, policies, tryGetIndexOfPolicy(policies, bluff ? Policy.Type.LIBERAL : Policy.Type.FASCIST));
       } else if (myId == Identity.HITLER) {
         if (isFascistInDanger(game)) {
           // Don't pass liberal policies if fascists are in danger of losing from them
@@ -1072,6 +1094,32 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
       targets.add(player);
     }
     return targets;
+  }
+
+  /** How many of {@code policies} are of {@code type}. */
+  private static int countOf(List<Policy> policies, Policy.Type type) {
+    int count = 0;
+    for (Policy policy : policies) {
+      if (policy.getType() == type) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /**
+   * Hard's rule 7: whether this CPU bluffs now, with {@code other} in the other office. Only a Hard
+   * fascist (Hitler keeps its play) with fewer than 3 fascist and fewer than 4 liberal policies down
+   * (a bluff then could hand the liberals their fifth), and {@code other} known to be liberal (a
+   * teammate gets no bluff), draws: then it bluffs with {@code chance}. No other path draws.
+   */
+  private boolean bluffs(SecretHitlerGame game, String other, double chance) {
+    if (skill != BotSkill.HARD || myPlayerData.getIdentity() != Identity.FASCIST
+        || canHitlerWinByElection(game) || isFascistInDanger(game)
+        || knownPlayerRoles.get(other) != Identity.LIBERAL) {
+      return false;
+    }
+    return random.nextDouble() < chance;
   }
 
   /** Whether a known role is on the fascist side (a fascist or Hitler); false for null. */
