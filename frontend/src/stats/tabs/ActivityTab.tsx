@@ -8,7 +8,7 @@ import { compareNames, MIN_CHANCES, nameOf, rankRows, rate, type Rate } from "..
 import { viewerTimeZone } from "../format";
 import { formatPercent, wholePercent } from "../numbers";
 import PlayerName from "../PlayerName";
-import { RankedTable } from "../RankedTable";
+import { countFigure, RankedTable } from "../RankedTable";
 import { SplitTable, type SplitCell } from "../SplitTable";
 import { StatCard } from "../StatCard";
 import { computeTiming, DECISIONS, fastestVoter, formatAverageTime, type Decision } from "../timing";
@@ -16,12 +16,8 @@ import type { StatsContext } from "../useStats";
 import "./sectionGrid.css";
 import "./ActivityTab.css";
 
-/** What a share sorts by: the whole percent it shows. */
-const byShare = (share: number) => wholePercent(share);
-/** What the countdown's rate sorts by: the whole percent it shows, 0% for none. */
-const byCountdown = (r: Rate) => wholePercent(r.value ?? 0);
-/** What a count sorts by: itself. */
-const byNumber = (n: number) => n;
+/** The countdown card's sort figure: the whole percent it shows, 0% for a rate with no value. */
+const countdownFigure = (r: Rate) => wholePercent(r.value ?? 0);
 
 const GRAINS: { id: Grain; label: string }[] = [
   { id: "week", label: "PER WEEK" },
@@ -205,7 +201,7 @@ export function ActivityTab({ stats, now, timeZone }: { stats: StatsContext; now
               format={formatPercent}
               names={names}
               valueHead="Share"
-              sortValue={byShare}
+              sortValue={wholePercent}
               countHead="Games"
             />
           </StatCard>
@@ -343,7 +339,7 @@ export function ActivityTab({ stats, now, timeZone }: { stats: StatsContext; now
               format={(r: Rate) => formatPercent(r.value ?? 0)}
               names={names}
               valueHead="Countdown"
-              sortValue={byCountdown}
+              sortValue={countdownFigure}
               countHead="Terms"
             />
           </StatCard>
@@ -359,7 +355,7 @@ export function ActivityTab({ stats, now, timeZone }: { stats: StatsContext; now
               format={(n: number) => countLabel(n, ["time", "times"])}
               names={names}
               valueHead="Drops"
-              sortValue={byNumber}
+              sortValue={countFigure}
               countHead="Games"
             />
           </StatCard>

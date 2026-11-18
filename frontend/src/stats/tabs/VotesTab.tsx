@@ -1,8 +1,8 @@
 import { useId, useMemo } from "react";
 import { compareNames, MIN_CHANCES, nameOf, rankRows, type Rate } from "../counting";
-import { formatPercent, wholePercent } from "../numbers";
+import { formatPercent } from "../numbers";
 import { computePowers, type PlayerPowers, type VetoAnswers } from "../powers";
-import { RankedTable } from "../RankedTable";
+import { countFigure, RankedTable, rateFigure } from "../RankedTable";
 import type { Role, Side } from "../record";
 import { SplitTable, type SplitCell, type SplitColumn } from "../SplitTable";
 import { StatCard } from "../StatCard";
@@ -58,12 +58,8 @@ function byRate(a: Rate, b: Rate): number {
   return (b.value ?? -1) - (a.value ?? -1);
 }
 
-/** What a rate sorts by: the whole percent it shows. */
-const byPercent = (r: Rate) => (r.value === null ? null : wholePercent(r.value));
-/** What a count sorts by: itself. */
-const byNumber = (n: number) => n;
-/** What INVESTIGATIONS sorts by: the number its line starts with. */
-const byInvestigations = (p: PlayerPowers) => p.investigations;
+/** INVESTIGATIONS' sort figure: the number its line starts with. */
+const investigationsFigure = (p: PlayerPowers) => p.investigations;
 
 /** Every player's entry, by number. */
 type Entries<T> = [number, T][];
@@ -83,7 +79,7 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
         format={String}
         names={names}
         valueHead={valueHead}
-        sortValue={byNumber}
+        sortValue={countFigure}
       />
     );
   };
@@ -101,7 +97,7 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
         format={(r) => formatPercent(r.value!)}
         names={names}
         valueHead={valueHead}
-        sortValue={byPercent}
+        sortValue={rateFigure}
         countHead={countHead}
       />
     );
@@ -158,7 +154,7 @@ function sections(votes: Entries<PlayerVotes>, powers: Entries<PlayerPowers>, na
         format={investigations}
         names={names}
         valueHead="Investigations"
-        sortValue={byInvestigations}
+        sortValue={investigationsFigure}
         valueEnd={false}
       />
     );

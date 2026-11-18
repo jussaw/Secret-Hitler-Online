@@ -1,8 +1,8 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { rankRows } from "./counting";
+import { rankRows, rate } from "./counting";
 import { formatPercent, wholePercent } from "./numbers";
-import { RankedTable } from "./RankedTable";
+import { countFigure, RankedTable, rateFigure } from "./RankedTable";
 
 const names = new Map([
   [1, "Ann"],
@@ -217,5 +217,25 @@ describe("RankedTable", () => {
     expect(right.firstChild?.nodeName.toLowerCase()).toBe("svg");
     expect(right.lastChild?.textContent).toBe("Times");
     expect(right).toHaveClass("is-end");
+  });
+});
+
+describe("sort figures", () => {
+  it("aCountsFigureIsItself", () => {
+    expect(countFigure(7)).toBe(7);
+    expect(countFigure(0)).toBe(0);
+  });
+
+  it("aRatesFigureIsTheWholePercentItShows", () => {
+    const shown = rate(5, 8); // 0.625, shown "63%"
+    expect(formatPercent(shown.value!)).toBe("63%");
+    expect(rateFigure(shown)).toBe(63);
+    expect(rateFigure(rate(0, 5))).toBe(0);
+  });
+
+  it("aRateWithNoValueHasNoFigure", () => {
+    expect(rate(1, 2).value).toBeNull(); // below MIN_CHANCES, shown "—"
+    expect(rateFigure(rate(1, 2))).toBeNull();
+    expect(rateFigure({ hits: 0, chances: 0, value: null })).toBeNull();
   });
 });

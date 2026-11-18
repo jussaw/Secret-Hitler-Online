@@ -1,9 +1,21 @@
 import { useMemo } from "react";
-import { nameOf, type Row } from "./counting";
+import { nameOf, type Rate, type Row } from "./counting";
+import { wholePercent } from "./numbers";
 import PlayerName from "./PlayerName";
 import { playerColumn, rankColumn, SortHeadRow, useTableSort, type HeadColumn } from "./SortHead";
 import { RANK_ORDER } from "./sorting";
 import "./RankedTable.css";
+
+/** A count's sort figure (a `sortValue`): the count itself, as its cell shows it. */
+export function countFigure(count: number): number {
+  return count;
+}
+
+/** A rate's sort figure (a `sortValue`): the whole percent its cell shows (`formatPercent`), null
+ *  for a rate with no value, shown "—". */
+export function rateFigure(rate: Rate): number | null {
+  return rate.value === null ? null : wholePercent(rate.value);
+}
 
 export interface RankedTableProps<T> {
   /** In rank order, as `rankRows` gives them. */

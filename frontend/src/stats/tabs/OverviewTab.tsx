@@ -3,7 +3,7 @@ import { LineChart, SERIES_COLORS, type LineSeries } from "../charts/LineChart";
 import { MIN_GAMES, nameOf, type Rate } from "../counting";
 import { PROVISIONAL_GAMES } from "../elo";
 import { formatLocalDateTime, outcomeLabel, plural, sideWord } from "../format";
-import { formatDays, formatPercent, wholePercent } from "../numbers";
+import { formatDays, formatPercent } from "../numbers";
 import {
   computeOverview,
   HOT_HAND_GAMES,
@@ -13,7 +13,7 @@ import {
   type Leaders,
 } from "../overview";
 import PlayerName, { roleClass } from "../PlayerName";
-import { RankedTable } from "../RankedTable";
+import { countFigure, RankedTable, rateFigure } from "../RankedTable";
 import type { GameRecord } from "../record";
 import { routePath } from "../routes";
 import { StatCard } from "../StatCard";
@@ -55,10 +55,6 @@ function LeadersValue(props: { leaders: Leaders; names: Map<number, string>; not
 
 const showNumber = (value: number) => String(value);
 const showRate = (rate: Rate) => (rate.value === null ? "—" : formatPercent(rate.value));
-/** What a count sorts by: itself. */
-const byNumber = (value: number) => value;
-/** What a rate sorts by: the whole percent it shows. */
-const byRate = (rate: Rate) => (rate.value === null ? null : wholePercent(rate.value));
 
 /** The cards' lines that name a rule's numbers, from the rules' own constants. */
 const WITHIN = `the last ${RECENT_DAYS} days`;
@@ -162,10 +158,10 @@ export function OverviewTab(props: { stats: StatsContext; now?: number; timeZone
       <h2 className="overview-heading">Headline</h2>
       <div className="overview-grid overview-headline">
         <StatCard title="Games played" definition="Counted games each player played." empty={headline.games.length === 0}>
-          <RankedTable rows={headline.games} format={showNumber} names={names} valueHead="Games" sortValue={byNumber} />
+          <RankedTable rows={headline.games} format={showNumber} names={names} valueHead="Games" sortValue={countFigure} />
         </StatCard>
         <StatCard title="Wins" definition="Counted games each player won." empty={headline.wins.length === 0}>
-          <RankedTable rows={headline.wins} format={showNumber} names={names} valueHead="Wins" sortValue={byNumber} />
+          <RankedTable rows={headline.wins} format={showNumber} names={names} valueHead="Wins" sortValue={countFigure} />
         </StatCard>
         <StatCard
           title="Win rate"
@@ -177,7 +173,7 @@ export function OverviewTab(props: { stats: StatsContext; now?: number; timeZone
             format={showRate}
             names={names}
             valueHead="Win rate"
-            sortValue={byRate}
+            sortValue={rateFigure}
             countHead="Games"
           />
         </StatCard>
@@ -186,14 +182,14 @@ export function OverviewTab(props: { stats: StatsContext; now?: number; timeZone
           definition="Wins in a row up to each player's latest game."
           empty={headline.currentStreak.length === 0}
         >
-          <RankedTable rows={headline.currentStreak} format={showNumber} names={names} valueHead="Streak" sortValue={byNumber} />
+          <RankedTable rows={headline.currentStreak} format={showNumber} names={names} valueHead="Streak" sortValue={countFigure} />
         </StatCard>
         <StatCard
           title="Longest streak"
           definition="The most wins in a row each player has had."
           empty={headline.longestStreak.length === 0}
         >
-          <RankedTable rows={headline.longestStreak} format={showNumber} names={names} valueHead="Streak" sortValue={byNumber} />
+          <RankedTable rows={headline.longestStreak} format={showNumber} names={names} valueHead="Streak" sortValue={countFigure} />
         </StatCard>
         <StatCard title="Liberal / Fascist wins" definition="Counted games won by each side." empty={none}>
           <p className="overview-value">
