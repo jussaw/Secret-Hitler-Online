@@ -1,0 +1,60 @@
+/* A sortable column's head (SortHead.tsx, #109): a button in the head's own look (the table's th:
+   small, bold, grey), its arrow dimmed until it sorts the table, and the sorted head white. App.css
+   gives every button the game's look, which this undoes, as the login page's Sign out does. */
+.stats-screen thead .stats-sort {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font: inherit;
+    line-height: inherit;
+    color: inherit;
+    text-align: inherit;
+    white-space: nowrap;
+    vertical-align: bottom;
+}
+
+.stats-screen thead .stats-sort:active {
+    border-width: 0;
+}
+
+.stats-screen thead .stats-sort::before {
+    content: none;
+}
+
+.stats-screen thead .stats-sort:hover,
+.stats-screen thead .stats-sort.is-sorted {
+    color: var(--headerTextColor);
+}
+
+.stats-screen thead .stats-sort:focus-visible {
+    outline: 2px solid var(--selectionHover);
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+.stats-sort-arrow {
+    flex: none;
+    width: 12px;
+    height: 12px;
+}
+
+.stats-sort:not(.is-sorted) .stats-sort-arrow {
+    opacity: 0.45;
+}
+
+/* Wherever the game's stacked query matches, each head is a 44px target. A head whose words and
+   arrow are narrower than 44px (Elo, #) keeps them at the right of its button when its column's
+   values stand at the right. */
+@media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
+    .stats-screen thead .stats-sort {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    .stats-screen thead .stats-sort.is-end {
+        justify-content: flex-end;
+    }
+}
