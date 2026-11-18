@@ -237,7 +237,7 @@ keeps credit to upstream and to the board game's creators.
   rules (the spec's "Hard's rules"), each a small class in `game` that reads only what the bot's
   seat sees, gated in `CpuPlayer` by who runs it: `hardLiberal()` (Hard and dealt Liberal) runs
   rule 1, and `readsTheGame(game)` (Hard and not knowing every role, `knowsEveryRole`, which
-  `initialize` asks too: a liberal, or Hitler at 7 or more) runs rule 2 and rule 4's blame. Rule 1,
+  `initialize` asks too: a liberal, or Hitler at 7 or more) runs rules 2, 3 and 5 and rule 4's blame. Rule 1,
   `ClearedPlayers`: a chancellor seen in a legislative session (`CpuPlayer.inLegislativeSession`:
   `LEGISLATIVE_PRESIDENT`, `LEGISLATIVE_CHANCELLOR` or `LEGISLATIVE_PRESIDENT_VETO`, which rule 4
   shares) with 3 or more fascist policies down is cleared (not Hitler, or the
@@ -248,17 +248,18 @@ keeps credit to upstream and to the board game's creators.
   or more down, nein for one not cleared below `TRUSTED_SCORE`, and leaves the vote to Normal
   otherwise, and always when the bot's own investigation found the president or the chancellor on
   the fascist side (`CpuPlayer.isFascistSide`). Rule 2, `ChancellorHand.presidentChange(hand, drop)`: as chancellor, two
-  fascist cards lower the president by `chancellorHandDrop(game)` (`FF_DROP`; the one place 25C
-  scales the drop by the deck's odds) and two liberal ones raise them by `LL_RISE`, read once a
+  fascist cards lower the president by `chancellorHandDrop(game)` (`FF_DROP` scaled by rule 5,
+  below) and two liberal ones raise them by `LL_RISE`, read once a
   round (`handReadRound`), so the choice after a refused veto reads nothing again. Rule 4,
   `PeekMemory`: every Hard president keeps its peek (`saw`, `cards()`) and follows it in `update`
   (`observe`): the first session it then sees drew those cards only if the draw pile is exactly 3
   smaller, and any other size (a chaos policy came first) forgets them; when that session ends, a
   reader that sat in neither office lowers both members by `PeekMemory.DROP` if they enacted a
   fascist policy (not an accepted veto) and the cards held a liberal, and the cards are forgotten
-  either way. The amounts are `NOMINATION_WEIGHT` 3 (a `double`, a weight) and the `int`s
-  `TRUSTED_SCORE` 3, `FF_DROP` 2, `LL_RISE` 2 and `DROP` 2, and every test reads them by name, so
-  25D can retune them without editing a test. `clearedPlayers`, `peekMemory` (each class pins
+  either way. The amounts are `NOMINATION_WEIGHT` 3 (a `double`, a weight), the `int`
+  `TRUSTED_SCORE` 3 and the `double`s `FF_DROP`, `LL_RISE` and `DROP`, 2.0 each (rules 2's and 4's
+  changes go through `shiftReputation`, below), and every test reads them by name, so 25D can
+  retune them without editing a test. `clearedPlayers`, `peekMemory` (each class pins
   `serialVersionUID` 1) and `handReadRound` are `CpuPlayer` fields that `initialize` resets; an
   older backup has none of them, and `readObject` fills the first two with empty ones while
   `handReadRound` reads 0 (`clearedPlayers()` and `peekMemory()` are package-private for the
@@ -268,7 +269,57 @@ keeps credit to upstream and to the board game's creators.
   scene), and `CpuPlayerSkillTest.aHardBotKeepsWhatItRemembersThroughABackup` and
   `aHardChancellorReadsItsHandOnceThroughABackup` copy a game and its bot together, as a lobby
   backup does, and `aHardBotFromBeforeTheRulesStartsWithNothingRemembered` reads back a Hard bot
-  whose stream lacks the two fields. The bot tests build their games with
+  whose stream lacks the two fields. Phase 25C adds rules 3, 5, 6 and 7. Rule 5, `DeckOdds`
+  (`serialVersionUID` 1): a hand is three cards drawn at random from the cards a seat cannot
+  place, the 17 (6 liberal, 11 fascist) less the board's policies and less the cards it saw go to
+  the discard pile since the last reshuffle (`allFascist(liberals, fascists, cards)`,
+  `allFascistHand`, and `liberalThirdCard`, a chancellor's chance that the card beside its two
+  fascists was liberal, each falling back to the cards off the board for a pool that cannot be).
+  It sees its own discard as president and the card it does not enact as chancellor (each noted
+  just before the game call, `enact`), both cards of a veto it accepts, and its chancellor's
+  discard of a pair it passed, deduced at its first look after that session (`passedRound`)
+  unless the draw pile has grown since its last look (`reshuffledSince`: a reshuffle in the
+  enactment took that card back in); `look(drawSize)` forgets the seen discards after a
+  reshuffle, and the discard pile's size is never read. A reader runs it in `update`
+  (`followTheDeck`, after rule 4's `observe`) and keeps, at its first look at a round's
+  legislative session, the odds that hand was all fascist (`drawnRound`, `drawnAllFascist`):
+  known from a peek it still holds (1 for FFF, else 0), else from the pool, and for a round it
+  never saw drawn, the board less the enacted policy (`handAllFascist`). Its onlooker drop for a
+  fascist policy (from round 2, as Normal's) is `−(1 − P(all fascist))`, the +1 for a liberal one
+  stays whole, and rule 2's drop is `FF_DROP × liberalThirdCard`. So scores carry fractions:
+  `shiftReputation(name, amount)` adds to the whole score (`playerReputation` plus
+  `reputationCarry`), clamps it to [−5, 5], and keeps the nearest whole number in
+  `playerReputation`, which every decision reads, and the rest in the carry; `updateReputation`
+  goes through it for a name with a carry, and `score(name)` reads the sum. Rule 3: a reader
+  records each election at its first look after the vote closes (never at a nomination, which
+  still holds the last round's votes, nor while one is open), once a round, as
+  `CpuPlayer.Election(round, president, chancellor, votes)` (a `TreeMap`; `elections()`), and
+  where it judges a fascist policy (not chaos), through this round's `Election` only, lowers
+  every other living yes voter (not the two members, nor itself) by `VOTE_DROP` × `(1 − P(all
+  fascist))`. Rule 6, every Hard bot's: `chanceOfYes(game)` is the yes chance every voting path
+  works out (rule 1's ja and nein as 1 and 0), which `handleChancellorVoting` votes with after
+  Easy's coin (rule 1's own vote draws nothing); with two failed elections (`withTracker`) a Hard
+  liberal's chance on the trust curve moves `LIBERAL_TRACKER_PUSH` of the way to 1 while its
+  untrusted 0.05 stays, and the Hard fascist side (fascists, and Hitler at every size) keeps `1 −
+  FASCIST_TRACKER_PULL` of its chance for a government with no member it knows is on its side,
+  itself included, the 0.99 for Hitler's winning election kept. Rule 7, Hard fascists' only
+  (Hitler keeps its play), with fewer than 3 fascist and fewer than 4 liberal policies down: as
+  chancellor holding one of each under a president it knows is liberal it plays the liberal with
+  `CHANCELLOR_BLUFF_CHANCE`, and as president dealt FFL with a chancellor it knows is liberal it
+  discards a fascist with `PRESIDENT_BLUFF_CHANCE`; `bluffs` draws only when a bluff is open. The
+  amounts are package-private `static final`s in `CpuPlayer` at their starting values, `VOTE_DROP`
+  0.25, the `float`s `LIBERAL_TRACKER_PUSH` and `FASCIST_TRACKER_PULL` 0.5, and
+  `CHANCELLOR_BLUFF_CHANCE` and `PRESIDENT_BLUFF_CHANCE` 0.35, which 25D tunes. `deck`,
+  `reputationCarry`, `drawnRound`, `drawnAllFascist`, `passedRound` and `elections` are fields
+  `initialize` resets; `readObject` fills `deck`, `reputationCarry` and `elections` for a bot
+  backed up before 25C, whose `int`s read 0 (`HardBotBackupTest`, on
+  `src/test/resources/bots-before-25c.ser`: an unfinished seven-seat game and its bots, written by
+  25B's classes, levels EASY, NORMAL, HARD, … by seat, a Hard liberal with a cleared player; they
+  load, remember nothing new and play the game out). The tests: `DeckOddsTest`,
+  `HardDeckOddsTest`, `HardVoteMemoryTest`, `HardTrackerTest` (its `normalChancesAreAsBefore` the
+  refactor's guard), `HardBluffTest`, and `NoPeekingTest`'s `hardRule5DeckOdds`,
+  `hardRule3Votes`, `hardRule3OpenBallots`, `hardRule6TrackerLiberal`, `…HitlerAtSeven` and
+  `…Fascist`, and `hardRule7ChancellorBluffs` and `…PresidentBluffs`. The bot tests build their games with
   `BotScenes` (test source): seats `P0`, `P1`, … in seat order, every one a bot, dealt the roles a
   string names (`game("LLLFH")`), the draw pile in one fixed order, and `board`, `drawTop`,
   `swapRoles`, `swapUnseenCards`, `voteAll` and `elect` (by reflection on `SecretHitlerGame`'s
@@ -279,7 +330,9 @@ keeps credit to upstream and to the board game's creators.
   skill, seed)` (`FLLFLLH` at 3 fascist policies: P3 and P4 elected in turn, waiting for P2's
   nomination) and `peeked(roles, peek, skill, seed)` (P0 elects P1, enacts the third fascist
   policy and peeks at `peek`, waiting for P1's nomination), whose games before their first move
-  are `clearedStart()` and `peekStart(roles, peek)`; `policies("LFF")`, cards from letters; and
+  are `clearedStart()` and `peekStart(roles, peek)`; 25C's `secondRound(roles, bot, skill, seed)`
+  (round 1 played by the others, P0 electing P1 from `LLL`, waiting for P1's nomination);
+  `policies("LFF")`, cards from letters; and
   `bot(…, skill, seed)`, seeded
   from `mix(seed)`, SplitMix64's finalizer, since consecutive seeds give `java.util.Random` almost
   the same first draw (`BotScenesTest.mixedSeedsLookRandom`). `Decision.of` writes a move as a line
@@ -299,13 +352,15 @@ keeps credit to upstream and to the board game's creators.
   those dealt fascist or Hitler at another (`BotMatches.makeBots`, labelled `Liberals HARD,
   fascists NORMAL`, which a failed game names too), and `-Pladder`, which takes no level, plays
   E/N, N/N, H/N, N/E, N/H, E/E and H/H (liberals/fascists) side by side and prints `LadderCheck`'s
-  verdicts: a side's step clears when its pooled 95% intervals against Normal opponents do not
-  overlap, the higher level's above, and at no size does the higher level's interval lie wholly
-  below the lower's; the balance holds when all-Hard and all-Normal pooled liberal rates are within
-  `BALANCE_BAND`, 10 points. With 25B's rules the liberal side's Normal < Hard step clears too,
-  while the fascist side's overlaps and the balance check fails; 25D makes both checks pass.
-  `BotMatchesTest` plays all nine pairings at 3 games a size, and `LadderCheckTest` reads verdicts
-  from tallies made by hand. A player's `/game`
+  verdicts: each side's Easy < Normal, Normal < Hard and Easy < Hard (whose sizes catch an Easy
+  clearly above Hard where Normal overlaps both) clears when its pooled 95% intervals against
+  Normal opponents do not overlap, the higher level's above, and at no size does the higher
+  level's interval lie wholly below the lower's; the balance holds when all-Hard and all-Normal
+  pooled liberal rates are within `BALANCE_BAND`, 10 points. With 25C's rules at their starting
+  amounts the liberal side clears every step, while Hard fascists win less often than Normal ones
+  (the fascist side's Normal < Hard step is inverted) and the balance check fails; 25D tunes the
+  amounts until both checks pass. `BotMatchesTest` plays all nine pairings at 3 games a size, and
+  `LadderCheckTest` reads verdicts from tallies made by hand. A player's `/game`
   query may carry `rejoinKey`, a random key the page keeps for its lifetime (sent to no client and
   not backed up). A connection that brings the key its account's live connection was opened with
   takes that connection's place, keeping the seat and portrait, and the old one is closed with
