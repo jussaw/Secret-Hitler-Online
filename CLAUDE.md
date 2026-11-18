@@ -204,14 +204,14 @@ keeps credit to upstream and to the board game's creators.
   or `-Pgames=N`, and prints a row per size and `All` (pooled): the games, the liberal side's win
   rate with its 95% interval (Wilson's, clamped to [0, 1]) and each ending's share (5 liberal
   policies, Hitler shot, 6 fascist policies, Hitler elected). A game past 2,000 moves, one no bot
-  can move, or a move that throws fails the run, naming the size and the bots, with the game's
-  timeline. The deck cannot be seeded, so runs differ: a change to the bots quotes the run before
+  can move, a move that throws or that the timeline cannot read, or a bot that cannot be made fails
+  the run, naming the size and the bots, with the game's timeline. The deck cannot be seeded, so runs differ: a change to the bots quotes the run before
   and after in its pull request. `CpuGames.play(seats, clock, startedAt, stopAtRound, makeBot)`
   makes each seat's bot after the deal, from its name and the role it was dealt (the four-argument
   `play` makes `new CpuPlayer(name)`). The tests: `CpuTurnTest`, `BotMatchesTest` (3 games a size,
   the guards, the interval, the table and the options) and `testCpuPlayer`'s pick cases (#72's
-  shares within 0.01, every weight 0, no known teammate executed, and investigation and execution
-  with everyone left at +3), which reach a state with `GameDriver.playUntil` and pick on copies of
+  shares within 0.01, every weight 0, no known teammate executed, a teammate Hitler found by
+  investigating included, and investigation and execution with everyone left at +3), which reach a state with `GameDriver.playUntil` and pick on copies of
   it (`SerializationUtils.clone`). A player's `/game`
   query may carry `rejoinKey`, a random key the page keeps for its lifetime (sent to no client and
   not backed up). A connection that brings the key its account's live connection was opened with
@@ -1501,7 +1501,10 @@ no trailing period, at most 72 characters. Scopes in use: `frontend`, `backend`,
 - Design spec: `docs/superpowers/specs/2026-11-11-self-hosted-fork-design.md`; accounts:
   `docs/superpowers/specs/2026-11-15-accounts-design.md`; game records and stats (#31, Phases 13
   to 22): `docs/superpowers/specs/2026-11-15-game-stats-design.md`, with the names and file owners
-  the phases share in `docs/superpowers/plans/2026-11-15-game-stats-interfaces.md`.
+  the phases share in `docs/superpowers/plans/2026-11-15-game-stats-interfaces.md`; the bots'
+  fixes, self-play run and skill levels (#72, Phases 24 to 26B):
+  `docs/superpowers/specs/2026-11-17-bot-skill-design.md`, whose "Names the phases share" pins the
+  names and file owners those phases share.
 
 ## Constraints
 
