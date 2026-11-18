@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.commons.lang3.SerializationUtils;
 import server.GameDriver;
 
@@ -106,6 +107,31 @@ public class testCpuPlayer {
     for (Map.Entry<String, Double> share : expected.entrySet()) {
       double actual = picks.getOrDefault(share.getKey(), 0) / (double) total;
       assertEquals("the share of " + share.getKey() + " in " + picks, share.getValue(), actual, TOLERANCE);
+    }
+  }
+
+  /**
+   * Runs {@code body} on a daemon thread and fails with {@code whatNeverEnded} if it has not
+   * returned within {@code seconds}: a loop that never ends then fails the test, and the daemon
+   * thread lets the test JVM exit. What the body throws is thrown here.
+   */
+  private static void endsWithin(int seconds, String whatNeverEnded, Runnable body) throws Throwable {
+    AtomicReference<Throwable> thrown = new AtomicReference<>();
+    Thread thread = new Thread(() -> {
+      try {
+        body.run();
+      } catch (Throwable t) {
+        thrown.set(t);
+      }
+    });
+    thread.setDaemon(true);
+    thread.start();
+    thread.join(seconds * 1000L);
+    if (thread.isAlive()) {
+      fail(whatNeverEnded);
+    }
+    if (thrown.get() != null) {
+      throw thrown.get();
     }
   }
 
@@ -495,6 +521,116 @@ public class testCpuPlayer {
 
     for (String other : others) {
       assertTrue(other + " was never executed: " + picks, picks.containsKey(other));
+    }
+  }
+
+  /** Executes on {@code ITERATIONS / 10} copies of the game, counting each target. */
+  private static Map<String, Integer> executionTargetsOf(SecretHitlerGame game) {
+    Map<String, Integer> picks = new HashMap<>();
+    for (int i = 0; i < ITERATIONS / 10; i++) {
+      SecretHitlerGame copy = copyOf(game);
+      assertTrue(presidentBot(copy).act(copy));
+      picks.merge(copy.getTarget(), 1, Integer::sum);
+    }
+    return picks;
+  }
+
+  @Test
+  public void aFascistNeverExecutesAKnownTeammate() {
+    SecretHitlerGame game = gameAt(7, GameState.PRESIDENTIAL_POWER_EXECUTION, Identity.FASCIST);
+
+    Map<String, Integer> picks = executionTargetsOf(game);
+
+    for (String target : picks.keySet()) {
+      assertEquals(target + " was executed: " + picks, Identity.LIBERAL, game.getPlayer(target).getIdentity());
+    }
+    for (Player player : game.getPlayerList()) {
+      if (player.getIdentity() == Identity.LIBERAL) {
+        assertTrue(player.getUsername() + " was never executed: " + picks, picks.containsKey(player.getUsername()));
+      }
+    }
+  }
+
+  @Test
+  public void hitlerAtFiveNeverExecutesTheFascist() {
+    SecretHitlerGame game = gameAt(5, GameState.PRESIDENTIAL_POWER_EXECUTION, Identity.HITLER);
+    String fascist = getPlayerOfIdentity(game, Identity.FASCIST);
+
+    Map<String, Integer> picks = executionTargetsOf(game);
+
+    assertFalse("Hitler executed the fascist: " + picks, picks.containsKey(fascist));
+    for (Player player : game.getPlayerList()) {
+      if (player.getIdentity() == Identity.LIBERAL) {
+        assertTrue(player.getUsername() + " was never executed: " + picks, picks.containsKey(player.getUsername()));
+      }
+    }
+  }
+
+  /**
+   * Hitler at 7 is dealt no teammates, so every other player keeps the reputation's weight: the
+   * first other seat at −5 weighs 0.5 and the five at 0 weigh 0.75 (as before the fix).
+   */
+  @Test
+  public void hitlerAtSevenStillWeighsByReputation() {
+    SecretHitlerGame game = gameAt(7, GameState.PRESIDENTIAL_POWER_EXECUTION, Identity.HITLER);
+    List<String> others = othersThan(game, game.getCurrentPresident());
+
+    Map<String, Integer> picks = new HashMap<>();
+    for (int i = 0; i < ITERATIONS; i++) {
+      SecretHitlerGame copy = copyOf(game);
+      CpuPlayer bot = presidentBot(copy);
+      bot.playerReputation.put(others.get(0), -5);
+      assertTrue(bot.act(copy));
+      picks.merge(copy.getTarget(), 1, Integer::sum);
+    }
+
+    Map<String, Double> expected = new HashMap<>();
+    expected.put(others.get(0), 0.5 / 4.25);
+    for (String other : others.subList(1, others.size())) {
+      expected.put(other, 0.75 / 4.25);
+    }
+    assertShares(picks, expected);
+  }
+
+  /**
+   * The one player a liberal's investigation weighs above 0 (a person at +3, weight 0.38) has been
+   * investigated already, and the rest are CPUs at +3 (weight 0): the pick is even among those who
+   * may be investigated, never a loop on the one it may not.
+   */
+  @Test
+  public void aLiberalInvestigationEndsWhenEveryoneLeftIsTrusted() throws Throwable {
+    SecretHitlerGame game = gameAt(9, GameState.PRESIDENTIAL_POWER_INVESTIGATE, Identity.LIBERAL);
+    String president = game.getCurrentPresident();
+    List<String> others = othersThan(game, president);
+    String investigated = others.get(0);
+    List<String> rest = others.subList(1, others.size());
+
+    Map<String, Integer> picks = new HashMap<>();
+    endsWithin(10, "the investigation never ended", () -> {
+      for (int i = 0; i < ITERATIONS / 10; i++) {
+        SecretHitlerGame copy = copyOf(game);
+        CpuPlayer bot = presidentBot(copy);
+        copy.getPlayer(investigated).investigate();
+        bot.playerReputation.put(investigated, 3);
+        for (String other : rest) {
+          copy.getPlayer(other).markAsCpu();
+          bot.playerReputation.put(other, 3);
+        }
+
+        assertTrue(bot.act(copy));
+
+        assertEquals(GameState.POST_LEGISLATIVE, copy.getState());
+        String target = copy.getTarget();
+        assertNotEquals(president, target);
+        assertNotEquals(investigated, target);
+        assertTrue(target + " is known after the investigation", bot.knownPlayerRoles.containsKey(target));
+        picks.merge(target, 1, Integer::sum);
+      }
+    });
+
+    assertEquals(7, rest.size());
+    for (String other : rest) {
+      assertTrue(other + " was never investigated: " + picks, picks.containsKey(other));
     }
   }
 }

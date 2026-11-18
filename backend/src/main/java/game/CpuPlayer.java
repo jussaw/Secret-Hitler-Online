@@ -45,7 +45,8 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
 
   /**
    * A map of player names to known roles. This is modified at the beginning of
-   * the game, and by the Peek presidential power.
+   * the game, and by the Investigate presidential power (which reveals a party:
+   * an investigated Hitler is known as FASCIST).
    */
   public final HashMap<String, Identity> knownPlayerRoles;
 
@@ -561,15 +562,14 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
     if (!game.getCurrentPresident().equals(myName)) {
       return false;
     }
-    List<Player> playerList = removeDeadPlayersAndSelf(game.getPlayerList());
-    String selectedPlayer = null;
-    while (selectedPlayer == null || game.getPlayer(selectedPlayer).hasBeenInvestigated()) {
-      if (myPlayerData.getIdentity() == Identity.LIBERAL) {
-        selectedPlayer = chooseRandomPlayerWeighted(playerList, 1f, 0, -0.4f, 0.5f);
-      } else {
-        // Totally randomize selection
-        selectedPlayer = chooseRandomPlayerWeighted(playerList, 1f, 1f, 1f, 0.5f);
-      }
+    // Pick once, among the players who may be investigated.
+    List<Player> targets = investigationTargets(game);
+    String selectedPlayer;
+    if (myPlayerData.getIdentity() == Identity.LIBERAL) {
+      selectedPlayer = chooseRandomPlayerWeighted(targets, 1f, 0, -0.4f, 0.5f);
+    } else {
+      // Totally randomize selection
+      selectedPlayer = chooseRandomPlayerWeighted(targets, 1f, 1f, 1f, 0.5f);
     }
     // Update known roles using the investigated role
     knownPlayerRoles.put(selectedPlayer, game.investigatePlayer(selectedPlayer));
@@ -598,24 +598,52 @@ public class CpuPlayer implements Serializable, Comparable<CpuPlayer> {
       return false;
     }
 
-    String selectedPlayer = null;
-    List<Player> playerList = removeDeadPlayersAndSelf(game.getPlayerList());
-    // Keep going until a valid player is selected
-    while (selectedPlayer == null || !game.getPlayer(selectedPlayer).isAlive()) {
-      if (myPlayerData.getIdentity() == Identity.LIBERAL) {
-        // Aim for fascist or suspicious players
-        // TODO: Keep a pool of players that are tested/untested for hitler role?
-        selectedPlayer = chooseRandomPlayerWeighted(playerList, 1f, 1f, -0.4f, 0);
-      } else {
-        selectedPlayer = chooseRandomPlayerWeighted(playerList, 0.5f, 0, 1f, 0);
-        // Do not assassinate hitler
-        if (knownPlayerRoles.get(selectedPlayer) == Identity.HITLER) {
-          selectedPlayer = null;
-        }
-      }
+    // Pick once, among the players who may be executed: never a known teammate.
+    List<Player> targets = executionTargets(game);
+    String selectedPlayer;
+    if (myPlayerData.getIdentity() == Identity.LIBERAL) {
+      // Aim for fascist or suspicious players
+      // TODO: Keep a pool of players that are tested/untested for hitler role?
+      selectedPlayer = chooseRandomPlayerWeighted(targets, 1f, 1f, -0.4f, 0);
+    } else {
+      selectedPlayer = chooseRandomPlayerWeighted(targets, 0.5f, 0, 1f, 0);
     }
     game.executePlayer(selectedPlayer);
     return true;
+  }
+
+  /**
+   * The players this CPU may investigate: living, not itself, and not
+   * investigated before.
+   */
+  private List<Player> investigationTargets(SecretHitlerGame game) {
+    List<Player> targets = new ArrayList<>();
+    for (Player player : removeDeadPlayersAndSelf(game.getPlayerList())) {
+      if (!player.hasBeenInvestigated()) {
+        targets.add(player);
+      }
+    }
+    return targets;
+  }
+
+  /**
+   * The players this CPU may execute: living and not itself. A fascist or Hitler
+   * also leaves out every player it knows to be on its side (a fascist knows
+   * them all; Hitler at 5 or 6 does too, and at 7 or more only those it
+   * investigated).
+   */
+  private List<Player> executionTargets(SecretHitlerGame game) {
+    Identity myId = myPlayerData.getIdentity();
+    boolean fascistSide = myId == Identity.FASCIST || myId == Identity.HITLER;
+    List<Player> targets = new ArrayList<>();
+    for (Player player : removeDeadPlayersAndSelf(game.getPlayerList())) {
+      Identity known = knownPlayerRoles.get(player.getUsername());
+      if (fascistSide && (known == Identity.FASCIST || known == Identity.HITLER)) {
+        continue; // a known teammate
+      }
+      targets.add(player);
+    }
+    return targets;
   }
 
   private boolean handlePostLegislative(SecretHitlerGame game) {
