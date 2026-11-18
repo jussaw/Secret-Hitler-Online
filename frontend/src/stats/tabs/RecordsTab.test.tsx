@@ -52,6 +52,13 @@ const MONTHS = [
   played("n6", "2026-11-06T20:00:00Z", [3]),
 ];
 
+/** MONTHS with two more August wins for Ann: August (Ann, 3 wins) beats October (Cy, 2 wins). */
+const MORE_AUGUST = [
+  ...MONTHS,
+  played("aug2", "2026-08-11T20:00:00Z", [2]),
+  played("aug3", "2026-08-12T20:00:00Z", [2]),
+];
+
 const GAMES_A_TO_D = [
   played("a", "2026-11-01T20:00:00Z", [1, 2, 3], [4, 5]),
   played("b", "2026-11-02T20:00:00Z", [4, 5], [1, 2, 3], "FASCIST"),
@@ -198,6 +205,70 @@ describe("RecordsTab", () => {
     // The month's table is the same kind, sorted on its own.
     expect(within(card("most-wins-month")).getByRole("columnheader", { name: "Rank" })).toHaveAttribute("aria-sort", "ascending");
     expect(rowsOf("most-wins-month").map((row) => row[1])).toEqual(["Cy", "Bo", "Ann"]);
+  });
+
+  it("theMonthsHaveHeadsAndOpenLatestFirst", () => {
+    tab(MONTHS);
+    const months = within(card("players-of-the-month"));
+    expect(months.getAllByRole("columnheader").map((th) => th.textContent)).toEqual(["Month", "Wins"]);
+    for (const name of ["Month", "Wins"]) {
+      expect(months.getByRole("columnheader", { name }).querySelector("button")).toHaveAttribute("type", "button");
+    }
+    expect(months.getByRole("columnheader", { name: "Month" })).toHaveAttribute("aria-sort", "descending");
+    expect(months.getByRole("columnheader", { name: "Wins" })).not.toHaveAttribute("aria-sort");
+    expect(rowsOf("players-of-the-month")).toEqual([
+      ["", "October 2026", "Cy", "2 wins"],
+      ["", "August 2026", "Ann", "1 win"],
+    ]);
+  });
+
+  it("theMonthsSortByWinsWithTheirHolders", () => {
+    tab(MORE_AUGUST);
+    const months = within(card("players-of-the-month"));
+    const sortOf = (name: string) => months.getByRole("columnheader", { name }).getAttribute("aria-sort");
+    expect(rowsOf("players-of-the-month")).toEqual([
+      ["", "October 2026", "Cy", "2 wins"],
+      ["", "August 2026", "Ann", "3 wins"],
+    ]);
+    // Wins, most first: August above October, each month's holders under it.
+    fireEvent.click(months.getByRole("button", { name: "Wins" }));
+    expect(sortOf("Wins")).toBe("descending");
+    expect(sortOf("Month")).toBeNull();
+    expect(rowsOf("players-of-the-month")).toEqual([
+      ["", "August 2026", "Ann", "3 wins"],
+      ["", "October 2026", "Cy", "2 wins"],
+    ]);
+    for (const row of card("players-of-the-month").querySelectorAll("tbody tr")) {
+      const month = row.querySelector(".ranked-name")!;
+      expect(month.firstElementChild).toHaveClass("records-sub");
+      expect(month.firstElementChild!.nextElementSibling).toHaveClass("records-holders");
+    }
+    // Month: the latest first again, then the earliest first.
+    fireEvent.click(months.getByRole("button", { name: "Month" }));
+    expect(sortOf("Month")).toBe("descending");
+    expect(rowsOf("players-of-the-month").map((row) => row[1])).toEqual(["October 2026", "August 2026"]);
+    fireEvent.click(months.getByRole("button", { name: "Month" }));
+    expect(sortOf("Month")).toBe("ascending");
+    expect(rowsOf("players-of-the-month").map((row) => row[1])).toEqual(["August 2026", "October 2026"]);
+  });
+
+  it("theMonthsOpenAgainLatestFirst", () => {
+    const { rerender } = tab(MORE_AUGUST);
+    fireEvent.click(within(card("players-of-the-month")).getByRole("button", { name: "Wins" }));
+    expect(rowsOf("players-of-the-month").map((row) => row[1])).toEqual(["August 2026", "October 2026"]);
+    // A filter that counts no game empties the card...
+    rerender(<RecordsTab stats={stats([])} now={NOW} timeZone="UTC" />);
+    expect(card("players-of-the-month")).toHaveTextContent(NO_GAMES);
+    expect(card("players-of-the-month").querySelector("table")).toBeNull();
+    // ...and when the games come back it opens in its own order, not the sort it had.
+    rerender(<RecordsTab stats={stats(MORE_AUGUST)} now={NOW} timeZone="UTC" />);
+    const months = within(card("players-of-the-month"));
+    expect(months.getByRole("columnheader", { name: "Month" })).toHaveAttribute("aria-sort", "descending");
+    expect(months.getByRole("columnheader", { name: "Wins" })).not.toHaveAttribute("aria-sort");
+    expect(rowsOf("players-of-the-month")).toEqual([
+      ["", "October 2026", "Cy", "2 wins"],
+      ["", "August 2026", "Ann", "3 wins"],
+    ]);
   });
 
   it("aTiedMonthListsEachHolder", () => {

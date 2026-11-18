@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { NO_GAMES } from "../StatCard";
 import { beats, nominated, played, repeat, statsOf, together } from "../testRivals";
@@ -37,6 +37,13 @@ function rowCells(label: string, name: string): HTMLElement[] {
   return within(row).getAllByRole("cell");
 }
 const texts = (cells: HTMLElement[]) => cells.map((c) => c.textContent);
+
+/** The People table's region. */
+const people = () => screen.getByRole("region", { name: "People table" });
+/** The People table's names down the table, in order. */
+const peopleNames = () => within(people()).getAllByRole("rowheader").map((h) => h.textContent);
+/** A press on one of the People table's heads, by its words. */
+const pressPeople = (name: string) => fireEvent.click(within(people()).getByRole("button", { name }));
 
 describe("RivalsTab", () => {
   it("shows every card", () => {
@@ -97,6 +104,60 @@ describe("RivalsTab", () => {
     expect(texts(rowCells("People table", "Ann"))).toEqual(["Cy · 6 games", "Cy · lost 2", "Cy · won 3"]);
     expect(texts(rowCells("People table", "Bo"))).toEqual(["Ann · 5 games", "—", "—"]);
     expect(texts(rowCells("People table", "Cy"))).toEqual(["Ann · 6 games", "Ann · lost 3", "Ann · won 2"]);
+  });
+
+  // Ann: Cy 6 games, lost 2, won 3; Bo: Ann 5 games, —, —; Cy: Ann 6 games, lost 3, won 2.
+  it("thePeopleOpenInNameOrderWithPlayerMarked", () => {
+    render(<RivalsTab stats={statsOf(GAMES, true)} />);
+    expect(peopleNames()).toEqual(["Ann", "Bo", "Cy"]);
+    const heads = within(people()).getAllByRole("columnheader");
+    expect(heads.map((h) => h.getAttribute("aria-sort"))).toEqual(["ascending", null, null, null]);
+    for (const head of heads) expect(head.querySelector("button")).toHaveAttribute("type", "button");
+    expect(within(people()).getByRole("columnheader", { name: "Player" })).toHaveAttribute("aria-sort", "ascending");
+  });
+
+  it("thePeopleSortByTheirCounts", () => {
+    render(<RivalsTab stats={statsOf(GAMES, true)} />);
+    const sortOf = (name: string) => within(people()).getByRole("columnheader", { name }).getAttribute("aria-sort");
+    // Most played with, most first, then fewest first: the two 6s keep name order both ways.
+    pressPeople("Most played with");
+    expect(sortOf("Most played with")).toBe("descending");
+    expect(sortOf("Player")).toBeNull();
+    expect(peopleNames()).toEqual(["Ann", "Cy", "Bo"]);
+    pressPeople("Most played with");
+    expect(sortOf("Most played with")).toBe("ascending");
+    expect(peopleNames()).toEqual(["Bo", "Ann", "Cy"]);
+    // Nemesis by its losses: Bo's "—" last both ways.
+    pressPeople("Nemesis");
+    expect(sortOf("Nemesis")).toBe("descending");
+    expect(peopleNames()).toEqual(["Cy", "Ann", "Bo"]);
+    pressPeople("Nemesis");
+    expect(peopleNames()).toEqual(["Ann", "Cy", "Bo"]);
+    // Favourite opponent by its wins.
+    pressPeople("Favourite opponent");
+    expect(sortOf("Favourite opponent")).toBe("descending");
+    expect(peopleNames()).toEqual(["Ann", "Cy", "Bo"]);
+    // Each row keeps its cells.
+    expect(texts(rowCells("People table", "Bo"))).toEqual(["Ann · 5 games", "—", "—"]);
+    // Player again: A to Z.
+    pressPeople("Player");
+    expect(sortOf("Player")).toBe("ascending");
+    expect(peopleNames()).toEqual(["Ann", "Bo", "Cy"]);
+  });
+
+  it("theMatricesHaveNoSortHeads", () => {
+    const nominations = played([[1, "LIBERAL"], [2, "LIBERAL"], [3, "FASCIST"], [null, "LIBERAL"], [null, "HITLER"]], "LIBERAL", [
+      ...nominated(1, 0, 1, true),
+    ]);
+    render(<RivalsTab stats={statsOf([...GAMES, nominations], true)} />);
+    for (const label of ["Teammates table", "Opponents table", "Who trusts whom table"]) {
+      const region = screen.getByRole("region", { name: label });
+      expect(region.querySelector("table"), label).not.toBeNull();
+      expect(region.querySelector(".stats-sort"), label).toBeNull();
+      expect(region.querySelector("th[aria-sort]"), label).toBeNull();
+    }
+    // The People table, beside them, has its four.
+    expect(people().querySelectorAll("thead .stats-sort")).toHaveLength(4);
   });
 
   it("counts who nominated whom", () => {

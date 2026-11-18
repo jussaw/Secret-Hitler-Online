@@ -7,11 +7,12 @@ import PlayerName, { roleClass } from "../PlayerName";
 import { RankedTable } from "../RankedTable";
 import "../RankedTable.css";
 import { numberColumn, playerColumn, rankColumn, SortHeadRow, useTableSort, type HeadColumn } from "../SortHead";
-import { RANK_ORDER } from "../sorting";
+import { RANK_ORDER, type TableSort } from "../sorting";
 import {
   computeRecords,
   streakHolders,
   type BestPeriod,
+  type MonthHolder,
   type PlayerRecords,
   type RecordStats,
   type StreakKind,
@@ -146,6 +147,62 @@ function PeriodTable({ rows, names }: { rows: Row<BestPeriod>[]; names: Map<numb
   );
 }
 
+/** The players of the month's columns. */
+type MonthColumn = "month" | "wins";
+
+/** The order the players of the month open in: the latest month first. */
+const MONTH_ORDER: TableSort<"month"> = Object.freeze({ column: "month", direction: "descending" });
+
+/** The table's columns, in order: Month, latest first, by its key as a number ("2026-10" is
+ *  202610; the holders under it do not sort), and Wins, most first. */
+const MONTH_COLUMNS: readonly HeadColumn<MonthHolder, MonthColumn>[] = [
+  {
+    key: "month",
+    label: "Month",
+    className: "ranked-name",
+    first: "descending",
+    value: (holder) => Number(holder.key.replace("-", "")),
+  },
+  numberColumn<MonthHolder, MonthColumn>("wins", "Wins", (holder) => holder.wins, "ranked-value"),
+];
+
+/**
+ * Each completed month's player of the month, in RankedTable's look and classes: the month over
+ * its holders (in `holders`' order), and the wins. A head row names each column and sorts by it
+ * (`SortHeadRow`, #109): it opens latest month first, Month marked, and each month's holders stay
+ * under it.
+ */
+function MonthsTable(props: {
+  months: MonthHolder[];
+  names: Map<number, string>;
+  holders: (players: number[]) => number[];
+}): JSX.Element {
+  const { months, names, holders } = props;
+  const { rows, sort, press } = useTableSort(months, MONTH_COLUMNS, MONTH_ORDER);
+  return (
+    <table className="ranked-table">
+      <SortHeadRow columns={MONTH_COLUMNS} sort={sort} onSort={press} />
+      <tbody>
+        {rows.map((holder) => (
+          <tr key={holder.key}>
+            <td className="ranked-name">
+              <span className="records-sub">{holder.long}</span>
+              <ul className="records-holders">
+                {holders(holder.players).map((player) => (
+                  <li key={player}>
+                    <PlayerName player={player} name={nameOf(names, player)} />
+                  </li>
+                ))}
+              </ul>
+            </td>
+            <td className="ranked-value">{countLabel(holder.wins, WIN_NOUNS)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 /**
  * RECORDS (Phase 21B): streaks, the best weeks and months, the player of the month and its
  * history, the longest game nights and the rating records, counted in the viewer's time zone.
@@ -248,25 +305,7 @@ export function RecordsTab(props: { stats: StatsContext; now?: number; timeZone?
           definition="Each completed month's player of the month."
           empty={empty || (records.monthHistory.length === 0 && "No completed months yet.")}
         >
-          <table className="ranked-table">
-            <tbody>
-              {records.monthHistory.map((holder) => (
-                <tr key={holder.key}>
-                  <td className="ranked-name">
-                    <span className="records-sub">{holder.long}</span>
-                    <ul className="records-holders">
-                      {inTitleOrder(holder.players).map((player) => (
-                        <li key={player}>
-                          <PlayerName player={player} name={name(player)} />
-                        </li>
-                      ))}
-                    </ul>
-                  </td>
-                  <td className="ranked-value">{countLabel(holder.wins, WIN_NOUNS)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <MonthsTable months={records.monthHistory} names={names} holders={inTitleOrder} />
         </StatCard>
       </Cell>
 

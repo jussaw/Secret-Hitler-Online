@@ -13,6 +13,8 @@ import {
   type Rivalry,
 } from "../rivals";
 import { ScrollRegion } from "../ScrollRegion";
+import { playerColumn, SortHeadRow, useTableSort, type HeadColumn } from "../SortHead";
+import { NAME_ORDER } from "../sorting";
 import { StatCard } from "../StatCard";
 import type { StatsContext } from "../useStats";
 import { NO_VALUE, rateText } from "./cellText";
@@ -58,8 +60,30 @@ function RivalryLine({ rivalry, names }: { rivalry: Rivalry; names: Map<number, 
   );
 }
 
-/** The People table: each player's most played with, nemesis and favourite opponent. */
+/** The People table's columns. */
+type PeopleColumn = "name" | "most" | "nemesis" | "favourite";
+
+/** The People table's columns, in order: Player, by name A to Z, then each person column by the
+ *  count its cell shows (games together, losses, wins), most first, a cell with no one ("—")
+ *  missing. Their values stand at the left, so no column is `end`. */
+function peopleColumns(rivals: RivalStats, names: Map<number, string>): HeadColumn<number, PeopleColumn>[] {
+  const people = (player: number) => rivals.byPlayer.get(player)!;
+  return [
+    playerColumn<number>((p) => nameOf(names, p), "rivals-people-name"),
+    { key: "most", label: "Most played with", first: "descending", value: (p) => people(p).mostPlayedWith?.games ?? null },
+    { key: "nemesis", label: "Nemesis", first: "descending", value: (p) => people(p).nemesis?.losses ?? null },
+    { key: "favourite", label: "Favourite opponent", first: "descending", value: (p) => people(p).favouriteOpponent?.wins ?? null },
+  ];
+}
+
+/**
+ * The People table: each player's most played with, nemesis and favourite opponent. Each head
+ * sorts by its column (`SortHeadRow`, #109): it opens in name order, Player marked, and the others
+ * sort by their counts, most first, a "—" below every count either way; ties keep name order.
+ */
 function PeopleTable({ rivals, names }: { rivals: RivalStats; names: Map<number, string> }): JSX.Element {
+  const columns = useMemo(() => peopleColumns(rivals, names), [rivals, names]);
+  const { rows, sort, press } = useTableSort(rivals.players, columns, NAME_ORDER);
   const name = (player: number) => <PlayerName player={player} name={nameOf(names, player)} />;
   const cell = (content: ReactNode | null) => <td>{content ?? NO_VALUE}</td>;
   /** A row's name, in PlayerMatrix's box, so it wraps on phones as the matrices' do. */
@@ -67,16 +91,9 @@ function PeopleTable({ rivals, names }: { rivals: RivalStats; names: Map<number,
   return (
     <ScrollRegion label="People table">
       <table className="player-matrix rivals-people">
-        <thead>
-          <tr>
-            <th scope="col">Player</th>
-            <th scope="col">Most played with</th>
-            <th scope="col">Nemesis</th>
-            <th scope="col">Favourite opponent</th>
-          </tr>
-        </thead>
+        <SortHeadRow columns={columns} sort={sort} onSort={press} />
         <tbody>
-          {rivals.players.map((player) => {
+          {rows.map((player) => {
             const people = rivals.byPlayer.get(player)!;
             const { mostPlayedWith: most, nemesis, favouriteOpponent: favourite } = people;
             return (
