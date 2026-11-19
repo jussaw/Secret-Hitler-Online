@@ -36,8 +36,8 @@ type StoredGame = { [key: string]: unknown; seats: { name: string }[] };
 test("a game played to its end is served by /api/stats/games", async ({ request, baseURL }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "one browser is enough");
   test.setTimeout(180_000);
-  // Seven seats, as in spectator.spec.ts: driveGame's presidents never nominate Hitler after three
-  // fascist policies, and in a game of five the two executions can leave no one else to nominate.
+  // Seven seats, as in spectator.spec.ts: a game of seven also goes through an investigation and a
+  // special election, which five or six seats never have.
   const table = await openTable(baseURL!, 7);
   try {
     const victory: GameState = await play(table);

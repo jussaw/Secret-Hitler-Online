@@ -1,12 +1,12 @@
-import type { GameState } from "../src/types";
+import type { GameState, Role } from "../src/types";
 import { playerSocket, signInRaw, uniqueName } from "./accounts";
 
 /**
  * A real game on the server, played by raw WebSocket players with the moves of the backend's
  * GameDriver: presidents discard a liberal, chancellors enact a fascist, the first election
- * fails, the chancellor vetoes once at five fascist policies, and Hitler is never nominated
- * after three fascist policies or executed. Every socket pings so the server's idle timeout
- * never drops it.
+ * fails, the chancellor vetoes once at five fascist policies, Hitler is never executed, and after
+ * three fascist policies he is nominated only when nobody else may be chancellor (`nominee`).
+ * Every socket pings so the server's idle timeout never drops it.
  */
 
 const PING_MS = 10_000;
@@ -17,6 +17,8 @@ const VICTORIES = [
   "LIBERAL_VICTORY_POLICY",
   "LIBERAL_VICTORY_EXECUTION",
 ];
+
+const HITLER = "HITLER" as Role;
 
 type Packet = GameState & { type: string; usernames?: string[]; icon: Record<string, string> };
 type Seat = { name: string; ws: WebSocket; send(command: string, params?: object): void };
@@ -33,7 +35,7 @@ type Internal = Table & {
   /** Why the server closed a seat, if it did: a refused move closes the mover's socket. */
   closed: string[];
   /** Every role any seat has seen (fascists see them all). */
-  roles: Record<string, string>;
+  roles: Record<string, Role>;
   changed(): Promise<void>;
 };
 
@@ -53,7 +55,7 @@ export async function openTable(baseURL: string, players: number): Promise<Table
   const lobby = await made.text();
   let latest: Packet | undefined;
   let lastLobby: Packet | undefined;
-  const roles: Record<string, string> = {};
+  const roles: Record<string, Role> = {};
   let wake: () => void = () => {};
   let tick = new Promise<void>((resolve) => (wake = resolve));
   const notify = () => {
@@ -137,6 +139,11 @@ async function waitUntil(table: Table, done: () => boolean, what: string): Promi
   }
 }
 
+/** The living seats, in seat order. */
+const living = (g: GameState) => g.playerOrder.filter((name) => g.players[name].alive);
+
+const isHitler = (roles: Record<string, Role>, name: string) => roles[name] === HITLER;
+
 /** Everything a move depends on, so a packet that changes none of it is not acted on twice. */
 const key = (g: GameState) =>
   JSON.stringify([
@@ -148,7 +155,7 @@ const key = (g: GameState) =>
     g.electionTracker,
     Object.keys(g.userVotes).length,
     g.vetoOccurred,
-    g.playerOrder.filter((name) => g.players[name].alive),
+    living(g),
   ]);
 
 /**
@@ -173,26 +180,37 @@ export async function play(
   }
 }
 
+/**
+ * The president's nominee, as the backend's GameDriver.nominee picks it: the first living seat
+ * after the president that is not term-limited. After three fascist policies Hitler is passed
+ * over, unless nobody else may be chancellor (late in a small game): then the fascists win the
+ * election.
+ * @param roles every role a seat has seen.
+ */
+export function nominee(g: GameState, roles: Record<string, Role>): string {
+  const alive = living(g);
+  const start = g.playerOrder.indexOf(g.president);
+  const eligible = [...g.playerOrder.slice(start + 1), ...g.playerOrder.slice(0, start)].filter(
+    (name) =>
+      g.players[name].alive && name !== g.lastChancellor && !(name === g.lastPresident && alive.length > 5)
+  );
+  const hitlerWouldWin = (name: string) => isHitler(roles, name) && g.fascistPolicies >= 3;
+  // There is one Hitler, so with nobody else eligible the first eligible seat is his.
+  const choice = eligible.find((name) => !hitlerWouldWin(name)) ?? eligible[0];
+  if (choice === undefined) throw new Error(`Nobody can be nominated; state ${key(g)}`);
+  return choice;
+}
+
 function move(t: Internal & { voted?: Set<string>; failedOnce?: boolean; vetoed?: boolean }, g: GameState) {
   const seat = (name: string) => t.seats.find((s) => s.name === name)!;
-  const alive = g.playerOrder.filter((name) => g.players[name].alive);
-  const isHitler = (name: string) => t.roles[name] === "HITLER";
+  const alive = living(g);
   const others = alive.filter((name) => name !== g.president);
   if (g.state !== "CHANCELLOR_VOTING") t.voted = undefined;
 
   switch (g.state) {
-    case "CHANCELLOR_NOMINATION": {
-      const start = g.playerOrder.indexOf(g.president);
-      const nominee = [...g.playerOrder.slice(start + 1), ...g.playerOrder.slice(0, start)].find(
-        (name) =>
-          g.players[name].alive &&
-          name !== g.lastChancellor &&
-          !(name === g.lastPresident && alive.length > 5) &&
-          !(isHitler(name) && g.fascistPolicies >= 3)
-      );
-      seat(g.president).send("nominate-chancellor", { target: nominee });
+    case "CHANCELLOR_NOMINATION":
+      seat(g.president).send("nominate-chancellor", { target: nominee(g, t.roles) });
       break;
-    }
     case "CHANCELLOR_VOTING": {
       if (!t.voted) {
         t.voted = new Set();
@@ -237,7 +255,7 @@ function move(t: Internal & { voted?: Set<string>; failedOnce?: boolean; vetoed?
       seat(g.president).send("register-special-election", { target: others[0] });
       break;
     case "PRESIDENTIAL_POWER_EXECUTION":
-      seat(g.president).send("register-execution", { target: others.find((name) => !isHitler(name)) });
+      seat(g.president).send("register-execution", { target: others.find((name) => !isHitler(t.roles, name)) });
       break;
     case "POST_LEGISLATIVE":
       seat(g.president).send("end-term");
