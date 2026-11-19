@@ -202,18 +202,18 @@ test("twelve-character names stay inside their columns at 320px", async ({ page 
   expect((await statsPageProblems(page)).sideways).toEqual([]);
 });
 
-/** How long the filter test holds back each font its reload asks for. */
+/** How long the filter test holds back each font the page asks for, from its reload on. */
 const LATE_FONT_MS = 1_000;
 
 /**
- * The page's scroll position once nothing is left to move it: every font loading has come in, and
- * two frames have been drawn since, so the layout a late font causes, and the scroll anchoring
- * that follows it, have happened.
+ * The page's scroll position once nothing is left to move it: every font loading has come in (one
+ * the filter change itself asked for too), and two frames have been drawn since, so the layout a
+ * late font causes, and the scroll anchoring that follows it, have happened.
  */
 const scrollYOnceStill = (page: Page) =>
   page.evaluate(async () => {
     await document.fonts.ready;
-    for (let i = 0; i < 2; i++) await new Promise((frame) => requestAnimationFrame(frame));
+    await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
     return window.scrollY;
   });
 
