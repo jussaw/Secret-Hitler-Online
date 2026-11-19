@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import Cookies from "js-cookie";
 import React, { createRef } from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
@@ -1673,4 +1673,102 @@ test("WATCH INSTEAD while a reconnect waits opens only the spectator's socket", 
   act(() => vi.advanceTimersByTime(Math.max(...RECONNECT_DELAYS)));
   expect(lastSocket()).toBe(watching);
   expect(app.state.spectator).toBe(true);
+});
+
+// An unmounted page (#96). A page in use is unmounted only by StrictMode's remount in development,
+// but every test's page is unmounted at its end (setupTests.ts's cleanup), and a timer it left
+// running would open its socket in a later test, whose FakeSocket it would be: so each test sees
+// only the sockets its own page opens.
+
+/**
+ * Longer than any wait an unmounted page could still have: a ping, its reply and the longest
+ * reconnect wait.
+ */
+const LONGER_THAN_ANY_WAIT = PING_INTERVAL + REPLY_TIMEOUT + Math.max(...RECONNECT_DELAYS);
+
+test("an unmounted page closes its socket, and its reply timer opens no other", async () => {
+  vi.useFakeTimers();
+  const app = await renderApp();
+  act(() => {
+    app.tryOpenWebSocket("Ann", "HBIA"); // no packet yet: the reply timer runs
+  });
+  const socket = lastSocket();
+  cleanup();
+  expect(socket.closed).toBe(true);
+  act(() => vi.advanceTimersByTime(LONGER_THAN_ANY_WAIT));
+  expect(FakeSocket.instances).toEqual([socket]);
+});
+
+test("an unmounted page pings no more, and opens no socket", async () => {
+  vi.useFakeTimers();
+  await playerInLobby(); // its packet stopped the reply timer: the ping runs
+  const socket = lastSocket();
+  const sent = sentCommands(socket);
+  cleanup();
+  expect(socket.closed).toBe(true);
+  act(() => vi.advanceTimersByTime(LONGER_THAN_ANY_WAIT));
+  expect(FakeSocket.instances).toEqual([socket]);
+  expect(sentCommands(socket), "no ping after the page has gone").toEqual(sent);
+});
+
+test("an unmounted page waiting to reconnect never does", async () => {
+  vi.useFakeTimers();
+  await playerInLobby();
+  act(() => lastSocket().onclose?.()); // reconnects at once...
+  act(() => lastSocket().onclose?.()); // ...which fails: the next one waits
+  const opened = [...FakeSocket.instances];
+  cleanup();
+  act(() => vi.advanceTimersByTime(LONGER_THAN_ANY_WAIT));
+  expect(FakeSocket.instances).toEqual(opened);
+});
+
+test("an unmounted page's PLAY INSTEAD, waiting for the old seat to close, checks nothing", async () => {
+  vi.useFakeTimers();
+  const { app } = await watchingInstead();
+  const watching = lastSocket();
+  const pending = app.onClickPlayInstead();
+  cleanup();
+  expect(watching.closed).toBe(true);
+  await act(async () => {
+    vi.advanceTimersByTime(LONGER_THAN_ANY_WAIT); // past the 2 s it waits for the old seat
+  });
+  await act(() => pending);
+  expect(playerChecks()).toHaveLength(0);
+  expect(lastSocket()).toBe(watching);
+});
+
+test("a JOIN check that answers after the page has gone opens no socket", async () => {
+  const app = await renderApp();
+  await act(async () => {
+    app.setState({ joinLobby: "HBIA" });
+  });
+  heldChecks = [];
+  const held = heldChecks;
+  act(() => app.onClickJoin());
+  expect(held).toHaveLength(1);
+  cleanup();
+  held[0](200);
+  await settle();
+  expect(FakeSocket.instances).toEqual([]);
+  expect(Cookies.get("lobby")).toBeUndefined();
+});
+
+test("a page StrictMode mounts again at once still joins", async () => {
+  const ref = createRef<App>();
+  render(
+    <React.StrictMode>
+      <App ref={ref} />
+    </React.StrictMode>
+  );
+  const app = ref.current!;
+  await settle();
+  await act(async () => {
+    app.setState({ joinLobby: "HBIA" });
+  });
+  await act(async () => {
+    app.onClickJoin();
+  });
+  await settle();
+  expect(FakeSocket.instances).toHaveLength(1);
+  expect(app.state.page).toBe("lobby");
 });

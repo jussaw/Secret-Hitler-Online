@@ -293,6 +293,8 @@ class App extends Component<{}, AppState> {
   /** This page's PARAM_REJOIN_KEY, for the lifetime of the page. */
   readonly rejoinKey = newRejoinKey();
   pingInterval?: ReturnType<typeof setInterval> = undefined;
+  /** True once unmounted (componentWillUnmount), until mounted again: no socket opens meanwhile. */
+  unmounted = false;
   reconnectOnConnectionClosed: boolean = true;
   snackbarMessages: number = 0;
   animationQueue: (() => void)[] = [];
@@ -441,6 +443,7 @@ class App extends Component<{}, AppState> {
    * their lobby (COOKIE_SPECTATOR).
    */
   componentDidMount() {
+    this.unmounted = false; // StrictMode's remount in development mounts the same page again
     document.addEventListener("visibilitychange", this.onVisibilityChange);
     const url = new URL(window.location.href);
     if (url.searchParams.has("signin")) {
@@ -456,8 +459,20 @@ class App extends Component<{}, AppState> {
     }
   }
 
+  /**
+   * Closes the socket and stops everything that could open another: the ping, the reply timer, a
+   * waiting reconnect and a PLAY INSTEAD waiting for the old seat, and any check still on its way
+   * (tryOpenWebSocket refuses while unmounted). A page in use is never unmounted (StrictMode's
+   * remount in development comes before any socket), but a test's page is unmounted at its end,
+   * and a timer it left running would open a socket in a later test (#96).
+   */
   componentWillUnmount() {
+    this.unmounted = true;
     document.removeEventListener("visibilitychange", this.onVisibilityChange);
+    this.stopPing();
+    this.closeSocket(); // and its reply timer
+    this.stopReconnecting();
+    this.cancelPlayInstead();
   }
 
   /**
@@ -474,6 +489,14 @@ class App extends Component<{}, AppState> {
   ping() {
     this.sendWSCommand({ command: WSCommandType.PING });
     this.awaitReply();
+  }
+
+  /** Stops pinging the server every PING_INTERVAL. */
+  stopPing() {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = undefined;
+    }
   }
 
   /** Starts (or restarts) the wait for the current socket's next message. */
@@ -511,6 +534,8 @@ class App extends Component<{}, AppState> {
    * @return {boolean} true if the connection was opened successfully. Otherwise, returns false.
    */
   tryOpenWebSocket(name: string, lobby: string, spectator = false) {
+    // A check that answers after the page has gone (JOIN, WATCH, CREATE LOBBY) opens nothing.
+    if (this.unmounted) return false;
     if (DEBUG) {
       console.log("Opening connection with lobby: " + lobby);
       console.log("Reconnect attempts: " + this.reconnectAttempts);
@@ -576,9 +601,7 @@ class App extends Component<{}, AppState> {
     };
 
     // Ping the web server at a set interval.
-    if (this.pingInterval) {
-      clearInterval(this.pingInterval);
-    }
+    this.stopPing();
     this.pingInterval = setInterval(() => this.ping(), PING_INTERVAL);
 
     return true;
@@ -671,9 +694,7 @@ class App extends Component<{}, AppState> {
    */
   onWebSocketClose(event?: CloseEvent) {
     // Clear the server ping interval when the socket is closed.
-    if (this.pingInterval) {
-      clearInterval(this.pingInterval);
-    }
+    this.stopPing();
     this.clearReplyTimer();
 
     // When, what and how: what a player noting a drop needs (#26). The URL, with its key, is left out.
@@ -763,9 +784,7 @@ class App extends Component<{}, AppState> {
    * @param error the message under JOIN and WATCH ("" for none).
    */
   toLoginPage(error: string) {
-    if (this.pingInterval) {
-      clearInterval(this.pingInterval);
-    }
+    this.stopPing();
     this.clearReplyTimer();
     this.stopReconnecting();
     this.setState(
