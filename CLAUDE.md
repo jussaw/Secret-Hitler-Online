@@ -1649,16 +1649,24 @@ keeps credit to upstream and to the board game's creators.
   `prompt-close.spec.ts` runs in every project: after the role
   alert's OKAY, a vote closed by the server's OK, the policy alert (then END TERM, which must take
   the press) and the portrait picker in the lobby, the overlay stops being drawn within the
-  fade-out (a screenshot with it against one without), stays gone, and lets presses through to the
-  page; END TERM also takes a press (a tap on phones) 300 ms after the policy alert's OKAY, while
-  the alert fades out. `button-press.spec.ts` (`desktop` and `firefox`; a phone's touch adjustment
-  never missed) holds mouse presses for 150 ms on END TERM and on the veto prompt's REJECT, 1px
-  and 3px below the top edge and 2px into the shadow and at its foot (the shadow found by its
-  colour in a screenshot), and checks that each click reaches the button and that, in no frame of
-  a held press, REJECT's box or ACCEPT's beside it moves. It measures a button once the page's
-  images have loaded, and checks that no button eases its size or place (a transition on anything
-  but a colour) as the game page appears (END TERM, the president's countdown chip and the
-  header's speaker did in Firefox). `sounds.spec.ts` runs in every
+  fade-out (a screenshot with it against one without, both in CSS pixels: looked at once the
+  fade's 1 s has passed, and gone within 2.5 s of the press or OK that closed it returning), stays
+  gone (looked at again a second later, for up to 5 s while the page under the box settles), and
+  lets presses through to the page; END TERM also takes a press (a tap on phones) 300 ms after the
+  policy alert's OKAY, while the alert fades out. Each look measures again until the box is gone
+  or its time is up through `e2e/measureUntil.ts`, which counts a measurement by when it began
+  (when its first screenshot was asked for), however long it then took to return, where
+  `expect.poll` failed on a call still running at its timeout (#97); `measureUntil.spec.ts`
+  (`desktop`, no page) checks that rule on a clock it moves. The first look waits out the fade
+  because a measurement's hidden screenshot (`transition: none`) cancels the box's running
+  `visibility` transition, which would end the fade early. `button-press.spec.ts` (`desktop` and
+  `firefox`; a phone's touch adjustment never missed) holds mouse presses for 150 ms on END TERM
+  and on the veto prompt's REJECT, 1px and 3px below the top edge and 2px into the shadow and at
+  its foot (the shadow found by its colour in a screenshot), and checks that each click reaches
+  the button and that, in no frame of a held press, REJECT's box or ACCEPT's beside it moves. It
+  measures a button once the page's images have loaded, and checks that no button eases its size
+  or place (a transition on anything but a colour) as the game page appears (END TERM, the
+  president's countdown chip and the header's speaker did in Firefox). `sounds.spec.ts` runs in every
   project: no sound and no `AudioContext` before the first trusted gesture, each sound in step with
   its animation, and the header control's fit, touch targets, keyboard use and saved settings, in
   the lobby and the game (the login page has none).
@@ -1872,8 +1880,9 @@ keeps credit to upstream and to the board game's creators.
   `codeField`, the login page's one field), `e2e/accounts.ts`, `e2e/layout.ts` (`wrappedLabels` and
   `smallTargets`, which measure links drawn as buttons, `.button-link`, too, `smallLinks` for plain
   links such as the site header's, `smallFieldText`,
-  `MIN_FIELD_TEXT`, and `addPngDecoder` for page functions that read screenshots) and
-  `e2e/soundLog.ts`. `App.css` hides
+  `MIN_FIELD_TEXT`, and `addPngDecoder` for page functions that read screenshots),
+  `e2e/soundLog.ts` and `e2e/measureUntil.ts` (`measureUntil` and `Timed`, a measurement's value
+  and when it began). `App.css` hides
   `overflow-x` on `html` and `body`, so horizontal overflow shows only in `body.scrollWidth`, and
   `body` scrolls vertically by itself (`pageHeight` measures both). The client talks to its own
   origin (`src/constants/serverUrls.ts`; `wss:` on `https:` pages) unless `VITE_SERVER_ADDRESS` is
