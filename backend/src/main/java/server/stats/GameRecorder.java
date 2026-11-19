@@ -11,9 +11,9 @@ import org.slf4j.LoggerFactory;
  * The sink that stores each game's record (#31): a lobby's {@code submit}, made under its lock,
  * only puts the record on a queue, and one daemon thread of the recorder's own,
  * {@code game-recorder}, saves it to the store. So a game never waits on the database. A record
- * whose save fails waits in memory, and goes back on the queue at every {@code retryWaiting} (the
- * server's 60 s timer); {@code flush} tries every record once more at shutdown. A record is lost
- * only if the server stops before the database comes back.
+ * whose save fails waits in memory, and goes back on the queue once at every {@code retryWaiting}
+ * (the server's 60 s timer); {@code flush} tries every record once more at shutdown. A record is
+ * lost only if the server stops before the database comes back.
  */
 public final class GameRecorder implements GameRecordSink {
     private static final Logger logger = LoggerFactory.getLogger(GameRecorder.class);
@@ -21,7 +21,7 @@ public final class GameRecorder implements GameRecordSink {
 
     private final GameStore store;
     private final Runnable afterSave;
-    private final LinkedBlockingQueue<GameRecord> queue = new LinkedBlockingQueue<>();
+    private final LinkedBlockingQueue<GameRecord> queue;
     private final ConcurrentLinkedQueue<GameRecord> waiting = new ConcurrentLinkedQueue<>();
     private Thread thread;
 
@@ -31,8 +31,22 @@ public final class GameRecorder implements GameRecordSink {
      *                  saving thread (the route empties its cache): it must not block.
      */
     public GameRecorder(GameStore store, Runnable afterSave) {
+        this(store, afterSave, new LinkedBlockingQueue<>());
+    }
+
+    /**
+     * For tests: {@code queue} is the one the writer's thread takes from.
+     *
+     * @throws IllegalArgumentException if {@code queue} is not empty and unbounded, as
+     *                                  {@code submit} must never be refused.
+     */
+    GameRecorder(GameStore store, Runnable afterSave, LinkedBlockingQueue<GameRecord> queue) {
+        if (!queue.isEmpty() || queue.remainingCapacity() != Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("The writer's queue must start empty and unbounded.");
+        }
         this.store = store;
         this.afterSave = afterSave;
+        this.queue = queue;
     }
 
     /** Starts the writer's thread. */
@@ -63,10 +77,13 @@ public final class GameRecorder implements GameRecordSink {
         }
     }
 
-    /** Puts every record whose save failed back on the queue. */
+    /**
+     * Puts every record whose save failed back on the queue, each once: all of them leave
+     * {@code waiting} before any is queued, so a record the writer's thread fails again meanwhile
+     * waits for the next call instead of being queued again by this one (#95).
+     */
     public void retryWaiting() {
-        GameRecord record;
-        while ((record = waiting.poll()) != null) {
+        for (GameRecord record : takeWaiting()) {
             queue.offer(record);
         }
     }
@@ -76,15 +93,21 @@ public final class GameRecorder implements GameRecordSink {
      * {@code stop}). Those that fail wait again.
      */
     public void flush() {
+        List<GameRecord> records = takeWaiting();
+        queue.drainTo(records);
+        for (GameRecord each : records) {
+            trySave(each);
+        }
+    }
+
+    /** Takes every waiting record off {@code waiting}, oldest first. */
+    private List<GameRecord> takeWaiting() {
         List<GameRecord> records = new ArrayList<>();
         GameRecord record;
         while ((record = waiting.poll()) != null) {
             records.add(record);
         }
-        queue.drainTo(records);
-        for (GameRecord each : records) {
-            trySave(each);
-        }
+        return records;
     }
 
     /** How many records wait for the database to come back. */
