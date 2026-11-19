@@ -1667,7 +1667,11 @@ keeps credit to upstream and to the board game's creators.
   sockets as `LOBBY_GONE`, so the page gives up at once. `recorder.spec.ts` (`desktop`) plays a
   real game to its end through `e2e/driveGame.ts` and finds its record in `GET /api/stats/games`,
   its keys in the spec's order, format 2 with `botSkill` null (seven people), with no account ID
-  in the body. `e2e/fakeGame.ts`'s victory packet
+  in the body. `driveGame.ts` plays with `GameDriver`'s moves, its nominee too (`nominee(g,
+  roles)`, exported): after three fascist policies Hitler is passed over unless nobody else may
+  be chancellor, so a game of five can end with Hitler elected, and with nobody to nominate it
+  throws rather than send no `target` (#94); `driveGame.spec.ts` (`desktop`, no page) checks it on
+  hand-built states. `e2e/fakeGame.ts`'s victory packet
   carries `FAKE_GAME_ID`. The stats specs (`stats-*.spec.ts`, which run in all four projects:
   `firefox`'s `testMatch` takes them) share `e2e/stats.ts`: `statsSizes` (`DESKTOP_SIZES`,
   `SQUARE_DESKTOPS`, the `NARROW_WINDOWS` and `PHONE_SIZES`, 360x740, 412x915 and 320x568) and
