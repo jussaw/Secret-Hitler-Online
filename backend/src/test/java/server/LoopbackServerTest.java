@@ -25,10 +25,8 @@ import org.eclipse.jetty.server.ServerConnector;
 import org.junit.Test;
 
 /**
- * Every test server listens on 127.0.0.1 alone, through {@link ServerTesting#startOnLoopback}
- * (#106). macOS lets a bind to every address take a port that another program's socket holds on
- * 127.0.0.1, which then answers the tests' {@code localhost}; it refuses a bind to 127.0.0.1 on
- * such a port, so a test server there is never handed one.
+ * Every test server listens on 127.0.0.1 alone, through {@link ServerTesting#startOnLoopback}, for
+ * the reason {@link ServerTesting#LOOPBACK} gives (#106).
  */
 public class LoopbackServerTest {
     @Test
@@ -38,8 +36,10 @@ public class LoopbackServerTest {
             Connector[] connectors = app.jettyServer().server().getConnectors();
             assertEquals(1, connectors.length);
             assertEquals("127.0.0.1", ((ServerConnector) connectors[0]).getHost());
-            HttpRequest ping = HttpRequest.newBuilder(URI.create("http://localhost:" + app.port() + "/ping")).build();
-            assertEquals(200, HttpClient.newHttpClient().send(ping, HttpResponse.BodyHandlers.ofString()).statusCode());
+            URI ping = URI.create("http://localhost:" + app.port() + "/ping");
+            HttpResponse<String> response = HttpClient.newHttpClient()
+                    .send(HttpRequest.newBuilder(ping).build(), HttpResponse.BodyHandlers.ofString());
+            assertEquals(200, response.statusCode());
         } finally {
             app.stop();
         }
@@ -64,17 +64,20 @@ public class LoopbackServerTest {
 
     /**
      * No test starts a server with a port and no address, through Javalin's start or the server's
-     * startServer, each of which then listens on every address.
+     * startServer, each of which then listens on every address: no line calls either with one
+     * argument that is not a string. A start with no argument at all, on Javalin's own port, is
+     * not looked for, as it reads as a thread's or a log appender's.
      */
     @Test
     public void noTestServerListensOnEveryAddress() throws Exception {
         Path tests = Path.of("src", "test", "java");
         assertTrue(tests.toAbsolutePath() + " is the test sources", Files.isDirectory(tests));
-        Pattern portAlone = Pattern.compile("(\\.start|startServer)\\(\\s*[^\\s\"(),][^\"(),]*\\)");
+        Pattern portAlone = Pattern.compile("(\\.start|startServer)\\(\\s*[^\\s\"(),][^\",;]*\\)");
         List<String> found = new ArrayList<>();
         List<Path> sources;
         try (Stream<Path> files = Files.walk(tests)) {
-            sources = files.filter(f -> f.toString().endsWith(".java")).sorted().collect(Collectors.toList());
+            sources = files.filter(f -> f.toString().endsWith(".java")).sorted()
+                    .collect(Collectors.toList());
         }
         for (Path source : sources) {
             List<String> lines = Files.readAllLines(source);

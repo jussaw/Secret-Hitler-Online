@@ -354,11 +354,12 @@ public class DiscordSignInTest {
     public void callbackKeepsAChosenNameAndAcceptsNoAvatar() throws Exception {
         avatar = null;
         HttpResponse<String> first = signInWith(start(""));
+        assertEquals("/", location(first));
         assertNotNull(cookie(first, AuthRoutes.SESSION_COOKIE));
         assertNull(store.find("4242").discordAvatar());
         store.setUsername("4242", "Chosen");
         avatar = "newhash";
-        signInWith(start(""));
+        assertEquals("/", location(signInWith(start(""))));
         Account account = store.find("4242");
         assertEquals("Chosen", account.username());
         assertEquals("newhash", account.discordAvatar());
@@ -505,6 +506,7 @@ public class DiscordSignInTest {
             Started ok = start("?lobby=KQMX");
             states.add(ok.state());
             HttpResponse<String> signedIn = signInWith(ok);
+            assertEquals("/?lobby=KQMX", location(signedIn));
             secretsSeen.add(cookie(signedIn, AuthRoutes.SESSION_COOKIE).get("value"));
             for (Mode failing : List.of(Mode.SERVER_ERROR, Mode.BAD_JSON, Mode.STALL)) {
                 mode = failing;

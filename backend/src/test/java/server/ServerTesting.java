@@ -7,16 +7,11 @@ import java.util.Map;
 import server.stats.GameStore;
 import server.util.Lobby;
 
-/** The server's package-private parts that tests in other packages (server.accounts) need. */
+/**
+ * The server's package-private parts that tests in other packages (server.accounts) need, and the
+ * one way a test starts a server, {@link #startOnLoopback}.
+ */
 public final class ServerTesting {
-    private ServerTesting() {
-    }
-
-    /** The server's app, with every route, not yet started. */
-    public static Javalin createApp() {
-        return SecretHitlerServer.createApp();
-    }
-
     /**
      * The address every test server listens on (#106). The server itself listens on every address,
      * but a test's must not: macOS lets a bind to every address take a port that another program's
@@ -25,6 +20,14 @@ public final class ServerTesting {
      * still reach it at {@code localhost}, which Java resolves to 127.0.0.1 first.
      */
     public static final String LOOPBACK = "127.0.0.1";
+
+    private ServerTesting() {
+    }
+
+    /** The server's app, with every route, not yet started. */
+    public static Javalin createApp() {
+        return SecretHitlerServer.createApp();
+    }
 
     /** Starts a test server: the app on {@link #LOOPBACK}, on any free port. */
     public static Javalin startOnLoopback(Javalin app) {
