@@ -10,6 +10,7 @@ import {
   plural,
   sideWord,
   viewerTimeZone,
+  wholeMinutes,
 } from "./format";
 import type { GameRecord } from "./record";
 import { makeRecord } from "./testRecords";
@@ -54,6 +55,15 @@ describe("formatDuration", () => {
       "1 h 05 min",
       "2 h 05 min",
     ]);
+  });
+});
+
+describe("wholeMinutes", () => {
+  it("rounds to the minute formatDuration shows", () => {
+    expect(wholeMinutes(89_999)).toBe(1);
+    expect(wholeMinutes(90_000)).toBe(2);
+    expect(formatDuration(90_000)).toBe("2 min");
+    expect(formatDuration(3_900_000)).toBe("1 h 05 min");
   });
 });
 

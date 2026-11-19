@@ -3,13 +3,18 @@ import type { StatsData } from "../src/stats/record";
 import { makeRecord, makeSeats } from "../src/stats/testRecords";
 import { wrappedLabels } from "./layout";
 import { settle } from "./lobby";
-import { bigStatsData, checkStatsPage, statsSizesFor, stubStats } from "./stats";
+import { bigStatsData, checkStatsPage, expectWholeTables, statsSizesFor, stubStats, type WholeTable } from "./stats";
 
 /**
- * ACTIVITY in the browser: the tab fits at every stats size, its charts show the value under the
- * pointer or a tap, the week and month switch redraws its charts, and its dates are the
- * browser's time zone's.
+ * ACTIVITY in the browser: the tab fits at every stats size, Decision times whole in its card
+ * wherever it fitted before its heads sorted (#109), its charts show the value under the pointer
+ * or a tap, the week and month switch redraws its charts, and its dates are the browser's time
+ * zone's.
  */
+
+/** Decision times fits its card without scrolling, at every size but those it scrolled at before
+ *  its heads sorted (#109). */
+const WHOLE: WholeTable[] = [{ region: "Decision times table", scrollsAt: ["700x900", "360x740", "412x915", "320x568"] }];
 
 const desktopOnly = () => test.skip(test.info().project.name !== "desktop", "one browser is enough");
 const onPhone = () => test.info().project.name.startsWith("phone");
@@ -63,6 +68,7 @@ test("ACTIVITY fits sideways at every stats size, with 44px targets", async ({ p
     await show(page, path);
     for (const size of statsSizesFor(test.info().project.name, page.viewportSize()!)) {
       await checkStatsPage(page, size);
+      await expectWholeTables(page, WHOLE, size);
       const at = `${path} at ${size.width}x${size.height}`;
       expect(await chartsOutside(page), `charts outside their cards on ${at}`).toEqual([]);
       expect(await wrappedLabels(page, ".activity-tab"), `wrapped labels on ${at}`).toEqual([]);

@@ -7,9 +7,10 @@ import { countFigure, formatPercent, formatSigned, rateFigure, wholePercent } fr
 import { RankedTable, type RankedHeads } from "../RankedTable";
 import { ROLES, type Role } from "../record";
 import { byRole, computeRoles, TABLE_SIZES, type RoleStats } from "../roles";
-import { SplitTable, type SplitCell, type SplitColumn } from "../SplitTable";
+import { countCell, rateCell, SplitTable, type SplitCell, type SplitColumn } from "../SplitTable";
 import { StatCard } from "../StatCard";
 import type { StatsContext } from "../useStats";
+import { rateCellText } from "./cellText";
 import "./RolesTab.css";
 
 /** Larger first, null last: how a rate or a share ranks. */
@@ -21,16 +22,10 @@ function larger(a: number | null, b: number | null): number {
 /** More first: how a count ranks. */
 const more = (a: number, b: number) => b - a;
 const byValue = (a: Rate, b: Rate) => larger(a.value, b.value);
-const percent = (r: Rate) => (r.value === null ? "—" : formatPercent(r.value));
 const handsLabel = (n: number) => plural(n, "hand");
 const sum = (counts: readonly number[]) => counts.reduce((total, n) => total + n, 0);
 /** Each player's stats in a module's `byPlayer`, as rows to filter and map. */
 const entries = <P,>(byPlayer: Map<number, P>) => Array.from(byPlayer, ([player, p]) => ({ player, p }));
-
-/** A rate's cell: its share with its chances ("60%" and 5), "—" and its chances below the minimum. */
-const rateCell = (r: Rate): SplitCell => ({ text: percent(r), count: r.chances });
-/** A plain count's cell: the number as its text, with no count beside it. */
-const countCell = (n: number): SplitCell => ({ text: String(n) });
 
 const ROLE_COLUMNS: SplitColumn[] = ROLES.map((role) => ({ key: role, label: ROLE_WORDS[role] }));
 const SIZE_COLUMNS: SplitColumn[] = TABLE_SIZES.map((n) => ({ key: String(n), label: String(n) }));
@@ -106,7 +101,7 @@ function rolesCards(stats: StatsContext, roles: RoleStats): CardSpec[] {
       names,
       players.map(({ player, p }) => ({ player, value: p.winAs[role], count: p.winAs[role].chances })),
       byValue,
-      percent,
+      rateCellText,
       MIN_GAMES,
       { valueHead: "Win rate", sortValue: rateFigure, countHead: "Games" }
     ),
@@ -122,7 +117,11 @@ function rolesCards(stats: StatsContext, roles: RoleStats): CardSpec[] {
         ROLE_COLUMNS,
         players
           .filter(({ p }) => p.games > 0)
-          .map(({ player, p }) => ({ player, cells: roleCells((role) => ({ text: percent(p.split[role]), count: p.split[role].hits })) }))
+          .map(({ player, p }) => ({
+            player,
+            // Each share beside its games in that role.
+            cells: roleCells((role) => rateCell(p.split[role], p.split[role].hits)),
+          }))
       ),
     },
     {
@@ -198,7 +197,7 @@ function rolesCards(stats: StatsContext, roles: RoleStats): CardSpec[] {
         names,
         players.map(({ player, p }) => ({ player, value: p.firstPresident, count: p.firstPresident.chances })),
         byValue,
-        percent,
+        rateCellText,
         MIN_GAMES,
         { valueHead: "Win rate", sortValue: rateFigure, countHead: "Games" }
       ),
@@ -223,7 +222,8 @@ function handsCard(names: Map<number, string>, cards: CardStats): CardSpec {
         const drawn = sum(p.hands);
         const cells: Record<string, SplitCell> = { total: countCell(drawn) };
         HAND_LABELS.forEach((label, i) => {
-          cells[label] = { text: percent(rate(p.hands[i], drawn, MIN_CHANCES)), count: p.hands[i] };
+          // Each share beside the hands of its kind.
+          cells[label] = rateCell(rate(p.hands[i], drawn, MIN_CHANCES), p.hands[i]);
         });
         return { player, cells };
       })
@@ -255,7 +255,7 @@ function presidentCards(names: Map<number, string>, cards: CardStats): CardSpec[
         names,
         players.map(({ player, p }) => ({ player, value: p.liberalAccuracy, count: p.liberalAccuracy.chances })),
         byValue,
-        percent,
+        rateCellText,
         MIN_CHANCES,
         { valueHead: "Accuracy", sortValue: rateFigure, countHead: "Hands" }
       ),
@@ -308,7 +308,8 @@ function chancellorCards(names: Map<number, string>, cards: CardStats): CardSpec
           player,
           cells: roleCells((role) => {
             const { L, F } = p.enacted[role];
-            return L + F > 0 ? { text: `${L} L · ${F} F` } : null;
+            // Sorted by the Liberals it leads with, never its Fascists or its total.
+            return L + F > 0 ? { text: `${L} L · ${F} F`, value: L } : null;
           }),
         }))
       ),

@@ -7,6 +7,7 @@ import {
   formatPercent,
   formatRating,
   formatSigned,
+  percentFigure,
   rateFigure,
   wholePercent,
   wholeRating,
@@ -27,6 +28,14 @@ describe("wholePercent", () => {
     expect(wholePercent(0.625)).toBe(63);
     expect(wholePercent(0.5249)).toBe(52);
     expect(formatPercent(0.625)).toBe("63%");
+  });
+});
+
+describe("percentFigure", () => {
+  it("is the whole percent a share shows, and null for none", () => {
+    expect(percentFigure(0.625)).toBe(63);
+    expect(percentFigure(0)).toBe(0);
+    expect(percentFigure(null)).toBeNull();
   });
 });
 
@@ -121,6 +130,7 @@ describe("the module", () => {
       "formatPercent",
       "formatRating",
       "formatSigned",
+      "percentFigure",
       "rateFigure",
       "wholePercent",
       "wholeRating",

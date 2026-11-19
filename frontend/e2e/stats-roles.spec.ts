@@ -2,9 +2,13 @@ import { expect, test, type Page } from "@playwright/test";
 import { game, seatsOf } from "../src/stats/testGames";
 import { NARROW_PHONE } from "./layout";
 import { settle } from "./lobby";
-import { bigStatsData, checkStatsPage, statsSizesFor, stubStats } from "./stats";
+import { bigStatsData, checkStatsPage, expectWholeTables, statsSizesFor, stubStats, type WholeTable } from "./stats";
 
-/** ROLES & CARDS in the browser: seventeen cards that fit every stats size, wide tables scrolling in their card. */
+/**
+ * ROLES & CARDS in the browser: seventeen cards that fit every stats size, wide tables scrolling in
+ * their card, and the split tables that fitted their cards before their heads sorted (#109) still
+ * whole there.
+ */
 
 /** StatCard's line for a filter with no games (StatCard imports CSS, so it is not imported here). */
 const NO_GAMES = "No games yet with these players.";
@@ -31,6 +35,15 @@ const TITLES = [
 
 const SECTIONS = ["Roles", "As president", "As chancellor", "Blame"];
 
+/** Split tables that fit their card without scrolling, at every size but those they scrolled at
+ *  before their heads sorted (#109). */
+const WHOLE: WholeTable[] = [
+  { region: "Role split table", scrollsAt: [] },
+  { region: "Given one of each table", scrollsAt: [] },
+  { region: "Vetoes asked for table", scrollsAt: [] },
+  { region: "Forced Fascists table", scrollsAt: ["320x568"], phoneScrollsAt: ["360x740"] },
+];
+
 /** Goes to `path` (the response already stubbed) and waits for the tab. */
 async function show(page: Page, path = "/stats/roles"): Promise<void> {
   await page.goto(path);
@@ -53,6 +66,7 @@ test("ROLES & CARDS fits every stats size", async ({ page }) => {
     for (const size of statsSizesFor(test.info().project.name, page.viewportSize()!)) {
       await page.setViewportSize(size);
       await checkStatsPage(page, size);
+      await expectWholeTables(page, WHOLE, size);
       const at = `${path} at ${size.width}x${size.height}`;
       for (const title of TITLES) {
         await expect(page.getByRole("region", { name: title, exact: true }), `${title} on ${at}`).toHaveCount(1);

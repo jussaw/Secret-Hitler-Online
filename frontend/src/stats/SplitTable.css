@@ -51,17 +51,28 @@
     overflow-wrap: anywhere;
 }
 
-.split-table thead th.split-liberal {
+/* A side's or role's head keeps its colour, sorted, hovered or not: these (0,4,2) outrank
+   SortHead.css's sorted and hovered white (0,3,1). Hitler's underline is the button's own, as an
+   inline-flex button is an atomic inline that a th's underline would not reach. The arrow marks
+   the sort. */
+.stats-screen .split-table thead th.split-liberal .stats-sort {
     color: var(--textColorLiberal);
 }
 
-.split-table thead th.split-fascist,
-.split-table thead th.split-hitler {
+.stats-screen .split-table thead th.split-fascist .stats-sort,
+.stats-screen .split-table thead th.split-hitler .stats-sort {
     color: var(--textColorFascist);
 }
 
-.split-table thead th.split-hitler {
+.stats-screen .split-table thead th.split-hitler .stats-sort {
     text-decoration: underline;
+}
+
+/* The Player head gives its right padding to its arrow at every size (the next head's left padding
+   keeps the two apart, and its focus ring is drawn inside it, ScrollRegion.css), so JA RATE's table
+   still fits its card on desktops (#109). */
+.stats-screen .split-table thead th:first-child {
+    padding-right: 0;
 }
 
 .split-text {
@@ -82,5 +93,37 @@
     .split-table tbody td {
         height: 44px;
         box-sizing: border-box;
+    }
+
+    /* Where heads are 44px targets their arrows take room the words had (#109): the heads but
+       Player's take 3px a side and every head, Player's too, a 1px gap beside its arrow, so a
+       table that fitted its card before still does. Every head's focus ring is drawn inside its
+       button, as the first's is: 3px would not keep a ring 2px out clear of the held first column,
+       which paints over what lies under it, nor of the region's edge, nor of the next head. */
+    .stats-screen .split-table thead th:not(:first-child) {
+        padding-left: 3px;
+        padding-right: 3px;
+    }
+
+    .stats-screen .split-table thead .stats-sort {
+        gap: 1px;
+    }
+
+    .stats-screen .split-table thead .stats-sort:focus-visible {
+        outline-offset: -2px;
+    }
+}
+
+/* Phones (the game's phone-only query): the heads take 2px a side and the cells 5px, so a table
+   that fitted a 320px phone before its heads sorted still does. */
+@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
+    .stats-screen .split-table thead th:not(:first-child) {
+        padding-left: 2px;
+        padding-right: 2px;
+    }
+
+    .stats-screen .split-table tbody td {
+        padding-left: 5px;
+        padding-right: 5px;
     }
 }

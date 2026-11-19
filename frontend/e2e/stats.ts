@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import {
   BOT_SKILLS,
   OUTCOMES,
@@ -547,6 +547,32 @@ export async function checkStatsPage(page: Page, size: Size): Promise<void> {
   expect(problems.outsideCards, `ranked tables outside their cards at ${at}`).toEqual([]);
   expect(problems.smallTargets, `small targets at ${at}`).toEqual([]);
   expect(problems.smallText, `small field text at ${at}`).toEqual([]);
+}
+
+/**
+ * A table that fits its card without scrolling sideways: its `ScrollRegion`'s name, the stats sizes
+ * (`WxH`) at which it scrolled already before its heads sorted (#109), where it may, and
+ * `phoneScrollsAt`, those at which it did so only in the phone projects: their emulated phones on
+ * Linux, as CI runs them, set text at whole-pixel widths, wider than a desktop window of that size.
+ */
+export type WholeTable = { region: string; scrollsAt: string[]; phoneScrollsAt?: string[] };
+
+/**
+ * Expects each of `tables` whole in its card at `size`, its region no wider inside than its box,
+ * but at its `scrollsAt` sizes (and in a phone project its `phoneScrollsAt` ones): `checkStatsPage`
+ * lets a `ScrollRegion` scroll, so a table whose heads (#109) took the room it fitted in would pass
+ * it. Call it after `checkStatsPage(page, size)`.
+ */
+export async function expectWholeTables(page: Page, tables: WholeTable[], size: Size): Promise<void> {
+  const at = `${size.width}x${size.height}`;
+  const phone = test.info().project.name.startsWith("phone");
+  for (const { region, scrollsAt, phoneScrollsAt = [] } of tables) {
+    if (scrollsAt.includes(at) || (phone && phoneScrollsAt.includes(at))) continue;
+    const { scrollWidth, clientWidth } = await page
+      .getByRole("region", { name: region, exact: true })
+      .evaluate((el) => ({ scrollWidth: el.scrollWidth, clientWidth: el.clientWidth }));
+    expect(scrollWidth, `${region} whole at ${at}`).toBeLessThanOrEqual(clientWidth);
+  }
 }
 
 // ---------------------------------------------------------------------------------------------

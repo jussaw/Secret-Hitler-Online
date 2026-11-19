@@ -1,11 +1,23 @@
 import { expect, test } from "@playwright/test";
 import { NARROW_PHONE } from "./layout";
 import { settle } from "./lobby";
-import { bigStatsData, checkStatsPage, statsSizesFor, stubStats } from "./stats";
+import { bigStatsData, checkStatsPage, expectWholeTables, statsSizesFor, stubStats, type WholeTable } from "./stats";
 
-/** VOTES & POWERS in the browser: the tab at every stats size, and every card's empty line. */
+/**
+ * VOTES & POWERS in the browser: the tab at every stats size, the split tables that fitted their
+ * cards before their heads sorted (#109) still whole there, and every card's empty line.
+ */
 
 const NO_GAMES = "No games yet with these players.";
+
+/** Split tables that fit their card without scrolling, at every size but those they scrolled at
+ *  before their heads sorted (#109). */
+const WHOLE: WholeTable[] = [
+  { region: "JA RATE table", scrollsAt: ["1024x1366", "700x900", "320x568"] },
+  { region: "TIMES INVESTIGATED table", scrollsAt: [] },
+  { region: "VETOES AS PRESIDENT table", scrollsAt: [] },
+  { region: "SURVIVAL table", scrollsAt: [] },
+];
 
 test("VOTES & POWERS fits every stats size", async ({ page }, testInfo) => {
   test.slow(); // the tab at every size, twice
@@ -16,7 +28,10 @@ test("VOTES & POWERS fits every stats size", async ({ page }, testInfo) => {
     await expect(page.locator(".votes-card")).toHaveCount(26);
     await settle(page);
     await expect(page.locator(".votes-tab").getByText(NO_GAMES)).toHaveCount(0);
-    for (const size of sizes) await checkStatsPage(page, size);
+    for (const size of sizes) {
+      await checkStatsPage(page, size);
+      await expectWholeTables(page, WHOLE, size);
+    }
   }
 });
 

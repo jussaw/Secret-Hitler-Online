@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { computeCards, type CardStats, type PlayerCards } from "../cards";
 import { MIN_CHANCES, MIN_GAMES, rate } from "../counting";
@@ -6,6 +6,7 @@ import type { StatsData } from "../record";
 import { computeRoles, type PlayerRoles, type RoleStats } from "../roles";
 import { NO_GAMES } from "../StatCard";
 import { game, seatsOf } from "../testGames";
+import { dashesBeforeFigures } from "../testSplitTables";
 import { buildStats } from "../useStats";
 import { RolesTab } from "./RolesTab";
 
@@ -124,6 +125,28 @@ function cellsOf(table: string, name: string): string[] {
   return Array.from(row.querySelectorAll("td"), (td) => td.textContent ?? "");
 }
 
+/** Each body row of the table region `table`, as its name and its cells' texts without their
+ *  counts, in order. */
+function rowsOf(table: string): string[][] {
+  const region = screen.getByRole("region", { name: table });
+  return Array.from(region.querySelectorAll("tbody tr"), (tr) => [
+    tr.querySelector("th")?.textContent ?? "",
+    ...Array.from(tr.querySelectorAll("td"), (td) => td.querySelector(".split-text")?.textContent ?? ""),
+  ]);
+}
+
+/** A press on the head `head` of the table region `table`. */
+function press(table: string, head: string) {
+  fireEvent.click(within(screen.getByRole("region", { name: table })).getByRole("button", { name: head }));
+}
+
+/** Policies enacted as a Liberal chancellor, `L` and `F` of them. */
+const enactedAsLiberal = (L: number, F: number): PlayerCards["enacted"] => ({
+  LIBERAL: { L, F },
+  FASCIST: { L: 0, F: 0 },
+  HITLER: { L: 0, F: 0 },
+});
+
 beforeEach(() => {
   vi.mocked(computeRoles).mockReset().mockReturnValue(ROLE_STATS);
   vi.mocked(computeCards).mockReset().mockReturnValue(CARD_STATS);
@@ -236,5 +259,142 @@ describe("RolesTab", () => {
     rerender(<RolesTab stats={context} />);
     expect(computeRoles).toHaveBeenCalledTimes(1);
     expect(computeCards).toHaveBeenCalledTimes(1);
+  });
+
+  it("policiesEnactedSortByTheirLiberals", () => {
+    // Review Focus 2: "1 L · 4 F" leads with its Liberals, so it sorts by its 1, never its 4 or 5.
+    vi.mocked(computeCards).mockReturnValue({
+      byPlayer: new Map([
+        [1, playerCards({ enacted: enactedAsLiberal(1, 4) })],
+        [2, playerCards({ enacted: enactedAsLiberal(2, 0) })],
+      ]),
+      hands: [0, 0, 0, 0],
+    });
+    render(<RolesTab stats={stats()} />);
+    const liberal = () => rowsOf("Policies enacted table").map((row) => row[1]);
+    expect(liberal()).toEqual(["1 L · 4 F", "2 L · 0 F"]);
+    press("Policies enacted table", "Liberal");
+    expect(liberal()).toEqual(["2 L · 0 F", "1 L · 4 F"]);
+    press("Policies enacted table", "Liberal");
+    expect(liberal()).toEqual(["1 L · 4 F", "2 L · 0 F"]);
+  });
+
+  it("handsDrawnSortsByItsTotal", () => {
+    // Annie draws 4 hands (each share "—"), Bo 5 (FFF 3 of them, 60%) and Di 16 (FFF 4, 25%).
+    vi.mocked(computeCards).mockReturnValue({
+      byPlayer: new Map([
+        [1, playerCards({ hands: [1, 1, 1, 1] })],
+        [2, playerCards({ hands: [3, 1, 1, 0] })],
+        [4, playerCards({ hands: [4, 4, 4, 4] })],
+      ]),
+      hands: [8, 6, 6, 5],
+    });
+    render(<RolesTab stats={stats()} />);
+    const names = () => rowsOf("Hands drawn table").map((row) => row[0]);
+    expect(names()).toEqual(["Annie", "Bo", "Di"]);
+    press("Hands drawn table", "Hands");
+    expect(rowsOf("Hands drawn table").map((row) => [row[0], row[5]])).toEqual([
+      ["Di", "16"],
+      ["Bo", "5"],
+      ["Annie", "4"],
+    ]);
+    // By the share its text shows, not by how many FFF hands (Di's 4 above Bo's 3).
+    press("Hands drawn table", "FFF");
+    expect(rowsOf("Hands drawn table").map((row) => [row[0], row[1]])).toEqual([
+      ["Bo", "60%"],
+      ["Di", "25%"],
+      ["Annie", "—"],
+    ]);
+  });
+
+  it("aSizeWithNoGameIsMissing", () => {
+    // Annie wins 3 of 5 games at five seats (60%), Di 5 of 8 (63%), and Bo has no five-seat game.
+    vi.mocked(computeRoles).mockReturnValue({
+      byPlayer: new Map([
+        [1, playerRoles({ games: 5, bySize: new Map([[5, rate(3, 5, MIN_GAMES)]]) })],
+        [2, playerRoles({ games: 5, bySize: new Map([[6, rate(2, 5, MIN_GAMES)]]) })],
+        [4, playerRoles({ games: 8, bySize: new Map([[5, rate(5, 8, MIN_GAMES)]]) })],
+      ]),
+    });
+    render(<RolesTab stats={stats()} />);
+    const atFive = () => rowsOf("Win rate by player count table").map((row) => [row[0], row[1]]);
+    press("Win rate by player count table", "5");
+    expect(atFive()).toEqual([
+      ["Di", "63%"],
+      ["Annie", "60%"],
+      ["Bo", "—"],
+    ]);
+    press("Win rate by player count table", "5");
+    expect(atFive()).toEqual([
+      ["Annie", "60%"],
+      ["Di", "63%"],
+      ["Bo", "—"],
+    ]);
+  });
+
+  it("everyDashSortsLast", () => {
+    // Review Focus 1: every split card with "—" (below the minimum, or no cell) beside figures.
+    vi.mocked(computeRoles).mockReturnValue({
+      byPlayer: new Map([
+        [
+          1,
+          playerRoles({
+            games: 6,
+            split: { LIBERAL: rate(4, 6, MIN_GAMES), FASCIST: rate(1, 6, MIN_GAMES), HITLER: rate(1, 6, MIN_GAMES) },
+            bySize: new Map([
+              [5, rate(3, 5, MIN_GAMES)],
+              [7, rate(1, 2, MIN_GAMES)],
+            ]),
+          }),
+        ],
+        [
+          2,
+          playerRoles({
+            games: 2,
+            split: { LIBERAL: rate(1, 2, MIN_GAMES), FASCIST: rate(1, 2, MIN_GAMES), HITLER: rate(0, 2, MIN_GAMES) },
+            bySize: new Map([
+              [5, rate(1, 2, MIN_GAMES)],
+              [7, rate(3, 5, MIN_GAMES)],
+            ]),
+          }),
+        ],
+        [
+          4,
+          playerRoles({
+            games: 5,
+            split: { LIBERAL: rate(5, 5, MIN_GAMES), FASCIST: rate(0, 5, MIN_GAMES), HITLER: rate(0, 5, MIN_GAMES) },
+            bySize: new Map([[6, rate(2, 5, MIN_GAMES)]]),
+          }),
+        ],
+      ]),
+    });
+    vi.mocked(computeCards).mockReturnValue({
+      byPlayer: new Map([
+        [
+          1,
+          playerCards({
+            hands: [1, 1, 1, 1],
+            oneOfEach: { LIBERAL: rate(3, 5), FASCIST: rate(1, 2), HITLER: rate(0, 0) },
+            enacted: { LIBERAL: { L: 2, F: 1 }, FASCIST: { L: 0, F: 0 }, HITLER: { L: 0, F: 1 } },
+            vetoes: [1, 0, 0],
+            forced: { president: 1, chancellor: 0 },
+          }),
+        ],
+        [
+          2,
+          playerCards({
+            hands: [3, 1, 1, 0],
+            oneOfEach: { LIBERAL: rate(1, 1), FASCIST: rate(0, 0), HITLER: rate(5, 5) },
+            enacted: { LIBERAL: { L: 0, F: 0 }, FASCIST: { L: 1, F: 2 }, HITLER: { L: 0, F: 0 } },
+          }),
+        ],
+        [4, playerCards({ hands: [0, 0, 0, 0], oneOfEach: { LIBERAL: rate(4, 5), FASCIST: rate(0, 0), HITLER: rate(0, 0) } })],
+      ]),
+      hands: [4, 2, 2, 1],
+    });
+    const { container } = render(<RolesTab stats={stats()} />);
+    const { checked, misplaced } = dashesBeforeFigures(container);
+    expect(misplaced).toEqual([]);
+    expect(checked).toBeGreaterThan(0);
   });
 });

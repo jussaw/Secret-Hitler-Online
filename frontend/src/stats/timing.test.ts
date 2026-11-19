@@ -6,6 +6,7 @@ import { parseStatsData, type GameEvent, type GameRecord } from "./record";
 import { formatDecisionTime, rounds } from "./rounds";
 import { makeRecord, makeSeats } from "./testRecords";
 import {
+  averageTimeTenths,
   computeTiming,
   DECISIONS,
   FASTEST_VOTER_MIN_GAMES,
@@ -241,6 +242,27 @@ describe("computeTiming", () => {
     expect(formatAverageTime(59_940)).toBe("59.9 s");
     expect(formatAverageTime(59_960)).toBe(formatDecisionTime(59_960));
     expect(formatAverageTime(65000)).toBe(formatDecisionTime(65000));
+  });
+
+  it("averageTimeTenthsIsWhatFormatAverageTimeShows", () => {
+    // Review Focus 3: across the minute, "59.9 s" stays below "1 min 00 s", and two times that
+    // both show "1 min 05 s" are a tie.
+    expect(averageTimeTenths(4240)).toBe(42);
+    expect(averageTimeTenths(950)).toBe(10);
+    expect(averageTimeTenths(0)).toBe(1);
+    expect(averageTimeTenths(59_940)).toBe(599);
+    expect(averageTimeTenths(59_960)).toBe(600);
+    expect(formatAverageTime(64_600)).toBe("1 min 05 s");
+    expect(formatAverageTime(65_400)).toBe("1 min 05 s");
+    expect(averageTimeTenths(64_600)).toBe(650);
+    expect(averageTimeTenths(65_400)).toBe(650);
+    for (let ms = 50; ms <= 200_000; ms += 50) {
+      const before = ms - 50;
+      expect(averageTimeTenths(ms), String(ms)).toBeGreaterThanOrEqual(averageTimeTenths(before));
+      expect(averageTimeTenths(ms) === averageTimeTenths(before), String(ms)).toBe(
+        formatAverageTime(ms) === formatAverageTime(before)
+      );
+    }
   });
 
   it("noGames", () => {

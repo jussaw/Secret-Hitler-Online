@@ -1,12 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
 import { routePath } from "../src/stats/routes";
-import { DESKTOP_SIZES, MIN_TARGET } from "./layout";
+import { MIN_TARGET } from "./layout";
 import { settle } from "./lobby";
-import { bigStatsData, checkStatsPage, statsSizesFor, stubStats } from "./stats";
+import { bigStatsData, checkStatsPage, expectWholeTables, statsSizesFor, stubStats, type WholeTable } from "./stats";
 
 /**
  * RIVALS and ENDINGS against the big response, at every stats size: the page never scrolls
- * sideways, the matrices and tables scroll inside their cards with the names held in view, and on
+ * sideways, the matrices and tables scroll inside their cards with the names held in view,
+ * ENDINGS' two tables stay whole wherever they fitted before their heads sorted (#109), and on
  * phones every target and every table row is 44px. This spec imports only `./stats`, `./lobby`,
  * `./layout` and `routes.ts`, none of which reads the browser.
  */
@@ -15,17 +16,19 @@ const data = bigStatsData();
 const isPhone = () => test.info().project.name.startsWith("phone");
 
 const TABS = [
-  { name: "RIVALS", path: routePath({ page: "tab", tab: "rivals" }), ready: "Opponents table", whole: [] as string[] },
+  { name: "RIVALS", path: routePath({ page: "tab", tab: "rivals" }), ready: "Opponents table", whole: [] as WholeTable[] },
   {
     name: "ENDINGS",
     path: routePath({ page: "tab", tab: "endings" }),
     ready: "How games are won",
-    // Tables that fit their card on a desktop, without scrolling.
-    whole: ["Liberal win rate by player count table", "Game length table"],
+    // Tables that fit their card without scrolling, at every size but those they scrolled at
+    // before their heads sorted (#109).
+    whole: [
+      { region: "Liberal win rate by player count table", scrollsAt: ["820x1180", "800x700", "360x740", "412x915", "320x568"] },
+      { region: "Game length table", scrollsAt: ["820x1180", "800x700", "360x740", "320x568"], phoneScrollsAt: ["412x915"] },
+    ],
   },
 ];
-const isDesktop = (size: { width: number; height: number }) =>
-  DESKTOP_SIZES.some((d) => d.width === size.width && d.height === size.height);
 
 /** Opens `path` with the big response stubbed, and waits for the region `ready` and the fonts. */
 async function open(page: Page, path: string, ready: string): Promise<void> {
@@ -75,13 +78,7 @@ for (const tab of TABS) {
       const at = `${size.width}x${size.height}`;
       expect(await stuckChildren(page), `flex and grid children that cannot shrink at ${at}`).toEqual([]);
       if (isPhone()) expect(await shortRows(page), `rows under ${MIN_TARGET}px at ${at}`).toEqual([]);
-      if (!isDesktop(size)) continue;
-      for (const label of tab.whole) {
-        const { scrollWidth, clientWidth } = await page
-          .getByRole("region", { name: label })
-          .evaluate((el) => ({ scrollWidth: el.scrollWidth, clientWidth: el.clientWidth }));
-        expect(scrollWidth, `${label} whole at ${at}`).toBeLessThanOrEqual(clientWidth);
-      }
+      await expectWholeTables(page, tab.whole, size);
     }
   });
 }

@@ -67,7 +67,7 @@ Every phase ends with a **Start Phase N** block. A phase is not finished until t
 | 26A. Bot skill in the lobby | `phase-26a-lobby-bot-skill` | done |
 | 26B. Bot skill in the records | `phase-26b-record-bot-skill` | done |
 | 27A. Sortable ranked tables | `phase-27a-sortable-tables` | done |
-| 27B. Sortable split and other tables | `phase-27b-other-tables` | not started |
+| 27B. Sortable split and other tables | `phase-27b-other-tables` | done |
 
 ---
 
@@ -1270,15 +1270,15 @@ Breakdown: [`docs/superpowers/plans/2026-11-18-phase-27b-other-tables.md`](super
 
 Issue #109, second part. Starts once 27A has merged.
 
-- [ ] The 14 split tables sort by Player and by each role's or side's column, every cell carrying the figure its text shows, coloured heads keeping their colour
-- [ ] RIVALS' People table, RECORDS' Players of the month and ENDINGS' two tables sort by any column, Game length's All row staying last; the RIVALS matrices stay as they are
-- [ ] Every stats page still passes `checkStatsPage` at every size in all four projects, checked with Linux fonts too
-- [ ] `CLAUDE.md` updated; the pull request shows a split table, People, Players of the month and ENDINGS' tables before and after, on desktop and on a phone
+- [x] The 14 split tables sort by Player and by each role's or side's column, every cell carrying the figure its text shows, coloured heads keeping their colour
+- [x] RIVALS' People table, RECORDS' Players of the month and ENDINGS' two tables sort by any column, Game length's All row staying last; the RIVALS matrices stay as they are
+- [x] Every stats page still passes `checkStatsPage` at every size in all four projects, checked with Linux fonts too
+- [x] `CLAUDE.md` updated; the pull request shows a split table, People, Players of the month and ENDINGS' tables before and after, on desktop and on a phone
 
 **Phase 27B acceptance**
 
-- [ ] Frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
-- [ ] PR merged into `development`, closing issue #109
+- [x] Frontend unit tests pass, the frontend builds, and the browser tests pass in all four Playwright projects
+- [x] PR merged into `development`, closing issue #109
 
 ---
 

@@ -15,3 +15,10 @@
     outline: 2px solid var(--selectionHover);
     outline-offset: 2px;
 }
+
+/* A table's first head sits at the region's left edge with no padding, where the region (and a
+   split table's held column, with overflow: hidden) would clip the left of its focus ring: drawn
+   inside the button there. This reaches the power ranking's # head too, which is wanted. */
+.stats-screen .scroll-region thead th:first-child .stats-sort:focus-visible {
+    outline-offset: -2px;
+}
