@@ -125,8 +125,8 @@ test("an unknown game says so", async ({ page }) => {
 test("a real game's page shows every round", async ({ page, request, baseURL }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "one browser is enough");
   test.setTimeout(180_000);
-  // Seven seats: driveGame's presidents never nominate Hitler after three fascist policies, and in
-  // a game of five the two executions can leave no one else to nominate.
+  // Seven seats, so the page draws an investigation and a special election too, the powers a game
+  // of five or six never has.
   const table = await openTable(baseURL!, 7);
   try {
     const victory = await play(table);
