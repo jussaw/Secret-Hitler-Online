@@ -25,7 +25,7 @@ const TABS = [
     // before their heads sorted (#109).
     whole: [
       { region: "Liberal win rate by player count table", scrollsAt: ["820x1180", "800x700", "360x740", "412x915", "320x568"] },
-      { region: "Game length table", scrollsAt: ["820x1180", "800x700", "360x740", "320x568"], phoneScrollsAt: ["412x915"] },
+      { region: "Game length table", scrollsAt: ["820x1180", "800x700", "360x740", "320x568"] },
     ],
   },
 ];

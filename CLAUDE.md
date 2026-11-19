@@ -604,8 +604,19 @@ keeps credit to upstream and to the board game's creators.
   `import()`, and nothing in it imports `App`, the game, lobby or login pages or `SoundManager`
   (leaf modules such as `src/constants` and `src/header/SiteHeader` are fine), so the game's first
   download holds none of it
-  (`npm run first-download` gives its gzipped size). `src/stats/` (issue #31; the interfaces file
-  names who fills what): `record.ts` (the record's types, formats 1 and 2, with `ROLES`, `SIDES`,
+  (`npm run first-download` gives its gzipped size). The web fonts are the app's own (#99):
+  `src/fonts.css`, which `App.tsx` imports, so the stats pages have them too, declares Germania
+  One (400) and Montserrat (500 and 700, one variable file for both) from `src/assets/fonts/`,
+  with `font-display: swap`: the woff2 files Google Fonts serves Chrome on Windows and Linux, one
+  per alphabet, under Google's `unicode-range`s and in its order, each font's OFL beside them.
+  Every browser gets the same bytes, so two loads draw a page alike once its fonts are in (Google
+  Fonts had answered the phones with one of two Montserrat builds at random, whose widths differ
+  by hundredths of a pixel a line: enough to move ACTIVITY's decision-times columns, and at the
+  desktop's sizes where a name breaks).
+  These builds keep their hinting: macOS draws every build alike, while Linux draws the unhinted
+  ones Google gave macOS, iOS and Android, Germania One about 9% wider. `src/stats/` (issue
+  #31; the interfaces file names who fills what): `record.ts` (the record's types, formats 1
+  and 2, with `ROLES`, `SIDES`,
   `OUTCOMES` and `BOT_SKILLS` (`EASY`, `NORMAL`, `HARD`, the stats' own list, never one from the
   game's code, the lobby's included, so the stats chunk imports nothing from it) the lists
   their unions come from, `STATS_GAMES_PATH`,
@@ -1357,8 +1368,9 @@ keeps credit to upstream and to the board game's creators.
   players and the longest status it fits 360x740 and 412x915 without scrolling; a phone held
   sideways scrolls. The phone layout holds down to 320px wide, where the page may scroll: the login
   page, the lobby, every prompt and the game are tested at 320x568 (narrower phones are out of
-  scope); with Linux-drawn fonts the longest status still takes a third line at a few untested
-  widths (see `docs/PLAN.md`, Phase 9). `SoundControl.css` (44px header targets) and
+  scope); the longest status keeps to two lines at every width from 320 to 412px, with Linux-drawn
+  fonts too (before #99 it took a third at 335 and 363–364px there; `docs/PLAN.md`, Phase 9).
+  `SoundControl.css` (44px header targets) and
   `RoundTracker.css` (the smaller step line) keep the stacked query itself, so tall windows get
   those too, on purpose. Among the stacked windows, those at least 700px wide and narrower than 5:4
   (half-screen desktop windows, upright monitors, tablets held upright) fit one screen instead, with
@@ -1591,7 +1603,7 @@ keeps credit to upstream and to the board game's creators.
   with the longest lines too, whose PLAY INSTEAD's `/check-login` failed: its note, `CONTACT_ERROR`, is the longest a spectator gets (one
   line on desktop, with 220px or more to spare; two on phones, with 170px to spare at 360x740 and
   27px at 320x568, on Linux too). The host's lobby is the tightest: with its BOT SKILL row (63px
-  on phones, one line with 33px of its width to spare at 320x568 on Linux, so its label never
+  on phones, one line with 50px of its width to spare at 320x568 on Linux, so its label never
   shortens) it has about 28px of height to spare at 360x740, and 39px at 990x793, the same in the
   Linux image. The login tests open the page with `longestLogin(page, state)`
   (`e2e/lobby.ts`): each state at its fullest from stubbed requests, the longest error under every
@@ -1655,8 +1667,8 @@ keeps credit to upstream and to the board game's creators.
   (`e2e/driveGame.ts` seats raw-socket players; `e2e/secrets.ts` mirrors the backend's list), and
   checks the count fits every header. `startGame` (`e2e/lobby.ts`) joins one raw spectator by
   default, and the no-scroll and phone tests also measure a spectator's view. `settle`
-  (`e2e/lobby.ts`) fails when the web fonts do not load; they come from Google Fonts through
-  `src/fonts.css`, so the browser tests need network access. They serve on port 4545, or on
+  (`e2e/lobby.ts`) fails when the web fonts do not load; the app serves them (`src/fonts.css`),
+  so the browser tests need no network access. They serve on port 4545, or on
   `E2E_PORT`, which gives runs in two worktrees at once a port each: a run waits for any server on
   its port to answer `/ping` while it builds, so two on one port can test the wrong code. A page
   with a route (`stubStats` adds one) keeps no HTTP cache, so every load, a reload too, downloads
@@ -1664,8 +1676,9 @@ keeps credit to upstream and to the board game's creators.
   follows the text above: a test that scrolls after a load settles the page first (#98).
   `playwright.linux.config.ts` runs the same projects in Playwright's Linux image against a jar
   already serving on the host with `TEST_SIGN_IN=true` (`DEVELOPMENT.md`, "Browser tests on
-  Linux"): Firefox where it will not launch on macOS, and the phone layouts with CI's wider Linux
-  fonts. Playing needs an account, so `playwright.config.ts`'s `webServer.env` sets `TEST_SIGN_IN`
+  Linux"): Firefox where it will not launch on macOS, and the layouts with CI's Linux fonts,
+  which set each letter at a whole pixel's width. Playing needs an account, so
+  `playwright.config.ts`'s `webServer.env` sets `TEST_SIGN_IN`
   (nothing else does), and every player signs in through `e2e/accounts.ts`: `signInPage` posts to
   the test sign-in with `page.request`, so the page's context keeps the `session` cookie (`null`
   for an account with no name yet), `signInRaw` signs in with `fetch` and returns the cookie, and
@@ -1720,10 +1733,10 @@ keeps credit to upstream and to the board game's creators.
   checks its pages with it and writes no sideways or fit check of its own but the one below),
   `WholeTable` and `expectWholeTables(page, tables, size)` (#109: each table's `ScrollRegion` no
   wider inside than its box at `size`, but at the table's `scrollsAt` sizes, `WxH`, those it
-  scrolled at before its heads sorted, and in a phone project at its `phoneScrollsAt` ones, where
-  it scrolled before only there: Linux draws an emulated phone's text at whole-pixel widths, wider
-  than a desktop window's of that size; `checkStatsPage` lets a region scroll, so a table whose
-  arrows took the room it fitted in would pass it: the tables that did so are held by it, after
+  scrolled at before its heads sorted (#99 dropped the phone projects' own sizes, which only the
+  phones' other font build had made scroll on Linux); `checkStatsPage` lets a region scroll, so a
+  table whose arrows took the room it fitted in would pass it: the tables that did so are held
+  by it, after
   `checkStatsPage`, in their tabs' specs, below), `STATS_ONLY_STRINGS` and
   `downloads(page, path)` (every same-origin response of a load, with scripts' and stylesheets'
   text). `stats-shell.spec.ts` checks `bigStatsData` (its formats and levels too) and the page
@@ -1765,7 +1778,7 @@ keeps credit to upstream and to the board game's creators.
   first seat's player. `stats-roles.spec.ts` runs `checkStatsPage` on ROLES & CARDS at every
   `statsSizesFor` size against `bigStatsData()`, with CPU games and without, with all seventeen
   cards shown, and the Role split, Given one of each and Vetoes asked for tables whole in their
-  cards at every size and Forced Fascists at every size but 320x568, and 360x740 in `phone-360`
+  cards at every size and Forced Fascists at every size but 320x568
   (`expectWholeTables`), checks
   that a wide
   table scrolls inside its card at 320px (`phone-360`), that two twelve-character names differing
@@ -1778,12 +1791,15 @@ keeps credit to upstream and to the board game's creators.
   card at every size but 700x900 and the three phones', `expectWholeTables`), a tooltip on a hover or a tap of
   the day-of-week chart and of a heatmap day, and (`desktop`) the arrow keys, PER MONTH, and with
   `timezoneId` that a game across midnight UTC is Saturday's in Auckland and Friday's in Los
-  Angeles. `stats-rivals.spec.ts` checks RIVALS and ENDINGS at every size against
+  Angeles, and (`desktop` and both phone projects, #99) that twenty loads of it, each in a
+  context of its own, draw Decision times alike once `settle` has the fonts (each head's width,
+  and each name's cell width and the characters its lines break before) and ask Google Fonts for
+  nothing. `stats-rivals.spec.ts` checks RIVALS and ENDINGS at every size against
   `bigStatsData()` (every flex or grid child with text able to shrink, on phones every
   `table.player-matrix` row 44px tall, and ENDINGS' two tables whole in their cards,
   `expectWholeTables`, wherever they fitted before #109: the Liberal win rate by player count at
   every size but 820x1180, 800x700 and the three phones', and Game length at every size but
-  820x1180, 800x700, 360x740 and 320x568, and 412x915 in `phone-412`),
+  820x1180, 800x700, 360x740 and 320x568),
   and on phones that RIVALS' matrices scroll inside their cards with the names held in view and
   leaving room for the columns. `stats-votes.spec.ts` checks VOTES & POWERS at every size, with
   CPU games and without (JA RATE's table whole in its card at every size but 1024x1366, 700x900
@@ -2025,6 +2041,8 @@ no trailing period, at most 72 characters. Scopes in use: `frontend`, `backend`,
 
 - No new art (the header's speaker icons, the spectator count's eye and the lobby's `Bot`,
   `Minus` and `Plus` come from the Lucide icon pack). Sound clips are CC0 only and listed in `docs/SOUND-CREDITS.md`.
+  The web fonts (`frontend/src/assets/fonts/`) are Germania One and Montserrat, which the page
+  has always used, each under the SIL Open Font License, its text beside the files.
 - The WebSocket protocol stays backward compatible for spectators. Players need a signed-in
   session (accounts), and their packets only add fields (`you`); spectator support only adds
   fields and a query parameter, the END TERM countdown only adds `termTimer` and two commands,

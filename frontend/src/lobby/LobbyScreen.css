@@ -609,7 +609,7 @@
     }
 
     /* START GAME takes what the stepper leaves; where both do not fit, the stepper is a line of
-       its own above it, START GAME across the column below (at 320px with Linux's wider fonts, say). */
+       its own above it, START GAME across the column below (at 320px with Linux's fonts, say). */
     .lobby-start-row {
         gap: 6px;
     }
@@ -640,8 +640,8 @@
        two, in equal columns: CHANGE NAME and CHANGE LOOK, then WATCH INSTEAD and LEAVE LOBBY. The
        first row's shadows (5px, App.css's --button-depth) take no room, so the rows are 11px
        apart, leaving 6px between a shadow and the face below, as between the columns.
-       Linux draws Germania One wider than macOS; there every label keeps about 15% of its width
-       spare. */
+       Linux sets each letter at a whole pixel's width; there too every label keeps at least 15%
+       of its width spare. */
     .lobby-secondary {
         flex-wrap: nowrap;
         gap: 6px;

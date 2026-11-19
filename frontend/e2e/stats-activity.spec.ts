@@ -8,8 +8,8 @@ import { bigStatsData, checkStatsPage, expectWholeTables, statsSizesFor, stubSta
 /**
  * ACTIVITY in the browser: the tab fits at every stats size, Decision times whole in its card
  * wherever it fitted before its heads sorted (#109), its charts show the value under the pointer
- * or a tap, the week and month switch redraws its charts, and its dates are the browser's time
- * zone's.
+ * or a tap, the week and month switch redraws its charts, its dates are the browser's time
+ * zone's, and every load draws Decision times alike, in the app's own fonts (#99).
  */
 
 /** Decision times fits its card without scrolling, at every size but those it scrolled at before
@@ -107,6 +107,62 @@ test("the arrow keys move a chart's details", async ({ page }) => {
   await expect(chart.locator(".chart-tooltip")).toHaveText(/^Sunday: \d+ games?$/);
   const outline = await chart.evaluate((el) => getComputedStyle(el).outlineStyle);
   expect(outline).toBe("solid");
+});
+
+/**
+ * The decision times table as a load draws it: each head's width, then each name's cell width and
+ * the characters its name's lines break before ("WWWWWWWWWW01 197.92 breaks 11"), read from the
+ * text's own boxes.
+ */
+function decisionTimesLayout(page: Page): Promise<string[]> {
+  return page.locator('[data-card="decision-times"] table').evaluate((table) => {
+    const width = (el: Element) => el.getBoundingClientRect().width.toFixed(2);
+    const heads = Array.from(table.querySelectorAll("thead th")).map((th) => `${th.textContent} ${width(th)}`);
+    const names = Array.from(table.querySelectorAll("tbody th")).map((th) => {
+      const breaks: number[] = [];
+      const range = document.createRange();
+      const walker = document.createTreeWalker(th.querySelector(".player-name")!, NodeFilter.SHOW_TEXT);
+      let at = 0;
+      let top: number | null = null;
+      for (let node = walker.nextNode() as Text | null; node; node = walker.nextNode() as Text | null) {
+        for (let i = 0; i < node.length; i++, at++) {
+          range.setStart(node, i);
+          range.setEnd(node, i + 1);
+          const line = Array.from(range.getClientRects()).pop()!.top;
+          if (top !== null && Math.abs(line - top) > 2) breaks.push(at);
+          top = line;
+        }
+      }
+      return `${th.textContent} ${width(th)} breaks ${breaks.join(",") || "none"}`;
+    });
+    return [...heads, ...names];
+  });
+}
+
+// Issue #99: the fonts came from Google Fonts, which answered the phones' user agents with one of
+// two Montserrat files, so two loads could size the table's columns, and break its names,
+// differently.
+test("every load draws the decision times alike, in the app's own fonts", async ({ browser }) => {
+  test.skip(test.info().project.name === "firefox", "the phones and one desktop browser are enough");
+  test.slow(); // twenty loads
+  const data = bigStatsData();
+  const fromGoogle: string[] = [];
+  const layouts: string[] = [];
+  for (let load = 0; load < 20; load++) {
+    // A context of its own, so no load takes a file from an earlier one's cache.
+    const page = await browser.newPage();
+    page.on("request", (request) => {
+      if (/^fonts\.(googleapis|gstatic)\.com$/.test(new URL(request.url()).hostname)) fromGoogle.push(request.url());
+    });
+    try {
+      await open(page, data);
+      layouts.push((await decisionTimesLayout(page)).join("\n"));
+    } finally {
+      await page.close();
+    }
+  }
+  layouts.forEach((layout, i) => expect.soft(layout, `load ${i + 1} against the first`).toBe(layouts[0]));
+  expect(fromGoogle, "requests to Google Fonts").toEqual([]);
 });
 
 test("PER MONTH redraws games over time, cumulative games and attendance", async ({ page }) => {

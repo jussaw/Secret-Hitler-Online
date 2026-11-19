@@ -636,7 +636,7 @@ These are Minor review findings deferred from Phase 8. The breakdown records the
 - [x] `CLAUDE.md`: it says `--round-tracker-ems` keeps two lines' height; it is the whole card's height in its ems
 - [x] Tooling: the e2e files are outside `tsconfig.json`'s `include`, so `npm run build` does not type-check them; Vitest prints a "jsdom was created N times" notice
 
-**Known limits.** With Linux-drawn fonts, the longest status takes a third line at 335px and 363–364px wide, so the tracker grows by a line there (about 14px at 335px, 16px at 363–364px); at 381–383px the step line keeps under 12% to spare but does not wrap. None of these is a common phone width, and each was measured in the Playwright Linux image (Galaxy S8 emulation).
+**Known limits.** With Linux-drawn fonts, the longest status takes a third line at 335px and 363–364px wide, so the tracker grows by a line there (about 14px at 335px, 16px at 363–364px); at 381–383px the step line keeps under 12% to spare but does not wrap. None of these is a common phone width, and each was measured in the Playwright Linux image (Galaxy S8 emulation). Since #99, which serves every browser the hinted font files the desktop got, no width from 320 to 412px takes a third line, and the step line keeps 12% to spare at every one (measured the same way).
 
 **Phase 9 acceptance**
 

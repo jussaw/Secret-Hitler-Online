@@ -175,8 +175,8 @@ const WEB_FONTS = ['16px "Germania One"', "500 16px Montserrat", "bold 16px Mont
 
 /**
  * The WEB_FONTS that have not loaded. check() alone is not enough: it is true for a family the
- * page has no face for (when the Google Fonts stylesheet fails), and false for a face no text on
- * the page has used yet. So each face is loaded first, and its family must be in the set.
+ * page has no face for (as when fonts.css fails to load), and false for a face no text on the
+ * page has used yet. So each face is loaded first, and its family must be in the set.
  */
 function missingFonts(page: Page): Promise<string[]> {
   return page.evaluate(async (fonts) => {
