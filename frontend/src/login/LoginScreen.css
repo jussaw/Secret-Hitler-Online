@@ -261,9 +261,9 @@
         padding: 0.6em 0.8em 0.75em;
     }
 
-    /* The code, JOIN and WATCH keep one row down to 360px wide, where Linux, which draws Germania
-       One wider than macOS, still leaves the row some room. At 320px JOIN and WATCH may take the
-       next line. */
+    /* The code, JOIN and WATCH keep one row down to 360px wide, where Linux, which sets each
+       letter at a whole pixel's width, still leaves the row some room. At 320px JOIN and WATCH may
+       take the next line. */
     .login-card button,
     .login-card .button-link {
         padding: 0 0.6em;
