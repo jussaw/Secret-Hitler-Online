@@ -178,7 +178,7 @@ A game still running after 2,000 moves, one no bot can move, a bot whose move th
 
 ### Browser tests
 
-The Playwright tests build the frontend and the jar, serve them on port 4545 and drive the whole app in desktop Chrome, Firefox and two emulated phones. They turn on the test sign-in themselves (`TEST_SIGN_IN=true` in `playwright.config.ts`'s `webServer.env`) and sign every player in through it. They need Java 17 active for the Gradle wrapper, and network access, because the web fonts come from Google Fonts and a test fails when they do not load. From `frontend/`:
+The Playwright tests build the frontend and the jar, serve them on port 4545 and drive the whole app in desktop Chrome, Firefox and two emulated phones. They turn on the test sign-in themselves (`TEST_SIGN_IN=true` in `playwright.config.ts`'s `webServer.env`) and sign every player in through it. They need Java 17 active for the Gradle wrapper. The app serves its own web fonts (`frontend/src/assets/fonts/`), so the tests need no network access once the browsers are installed, and a test whose fonts did not load fails. From `frontend/`:
 
 ```bash
 npx playwright install chromium firefox   # once
@@ -192,7 +192,7 @@ To run two at once, in two worktrees, give each its own port with `E2E_PORT` (`E
 
 ### Browser tests on Linux
 
-CI runs the browser tests on Linux, where Germania One is drawn wider than on macOS at phone sizes, so a line with little room to spare can pass on a Mac and wrap on CI. Firefox may also fail to launch on macOS. Playwright's Linux image covers both: it runs the tests against the jar serving on the host, with `playwright.linux.config.ts` (the repo's config, without its own server).
+CI runs the browser tests on Linux, which sets each letter of the web fonts at a whole pixel's width, so a line of text there can come out a few pixels wider or narrower than on macOS, and a line with little room to spare can pass on a Mac and wrap on CI. Firefox may also fail to launch on macOS. Playwright's Linux image covers both: it runs the tests against the jar serving on the host, with `playwright.linux.config.ts` (the repo's config, without its own server).
 
 Build the app and serve it on the host with the test sign-in, which the tests sign in with, from the repo root with Java 17 active (a local command only: never set `TEST_SIGN_IN` in the image):
 
