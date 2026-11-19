@@ -544,8 +544,10 @@ keeps credit to upstream and to the board game's creators.
   the store), one daemon thread, `game-recorder`, saves and then runs `afterSave` (the route's
   `invalidate`), even when the game was there already (a retry of a save that wrote but reported a
   failure, say), and a record whose save fails is logged and waits in memory (`waitingCount`) until
-  `retryWaiting` queues it again; `flush` tries every queued and waiting record once on the calling
-  thread, and `stop` interrupts the thread and waits up to 10 s for a save under way.
+  `retryWaiting` queues it again, once a call: it takes every waiting record off before it queues
+  any, so one the thread fails again meanwhile waits for the next call (#95); `flush` tries every
+  queued and waiting record once on the calling thread, and `stop` interrupts the thread and waits
+  up to 10 s for a save under way.
   `SecretHitlerServer` keeps `recorder` and `stats`: `startRecording(store)` makes the route and the
   writer and sets the writer as `Lobby.recordSink` (`stopRecording` puts `DROPPING` back), and
   `main` calls `startUp(GameStore.open(DATABASE_PATH))` (recording, `loadDatabaseBackup`,
@@ -580,7 +582,10 @@ keeps credit to upstream and to the board game's creators.
   so every run changes it; `RecordedGamesFixtureTest` checks it against `RecordFormat` (formats 1
   and 2: `FORMAT_1_KEYS`, `RECORD_KEYS`, format 2's, and `recordKeys(format)`, which throws for
   any other, and `BOT_SKILLS`, the levels written out) and replays every timeline. The tests: `GameRecordJsonTest`, `GameStoreTest`, `GameRecorderTest` (over
-  `TestStore`, a store that can fail, hold its saves back and count its calls),
+  `TestStore`, a store that can fail, hold its saves back and count its calls, and, through
+  `GameRecorder`'s package-private constructor, which refuses a queue that is not empty and
+  unbounded, a queue on which the thread tries each record `retryWaiting` queues and puts it back
+  to wait before that call goes on),
   `RecordingServerTest` (no database call under a lobby's lock, a stuck database, the start-up
   order, a database down at start-up, the shutdown's flush), `StatsRoutesTest` and
   `DatabaseBackupTest`'s drops; `TestRecords` builds their records and `ServerLog.during` collects
