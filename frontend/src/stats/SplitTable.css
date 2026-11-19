@@ -68,6 +68,13 @@
     text-decoration: underline;
 }
 
+/* The Player head gives its right padding to its arrow at every size (the next head's left padding
+   keeps the two apart, and its focus ring is drawn inside it, ScrollRegion.css), so JA RATE's table
+   still fits its card on desktops (#109). */
+.stats-screen .split-table thead th:first-child {
+    padding-right: 0;
+}
+
 .split-text {
     font-weight: 700;
 }
@@ -86,5 +93,36 @@
     .split-table tbody td {
         height: 44px;
         box-sizing: border-box;
+    }
+
+    /* Where heads are 44px targets their arrows take room the words had (#109): the heads take
+       3px a side and a 1px gap beside each arrow, so a table that fitted its card before still
+       does. The last head's focus ring is drawn inside it, as the first's is: its 3px would not
+       hold the ring inside the region. */
+    .stats-screen .split-table thead th:not(:first-child) {
+        padding-left: 3px;
+        padding-right: 3px;
+    }
+
+    .stats-screen .split-table thead .stats-sort {
+        gap: 1px;
+    }
+
+    .stats-screen .split-table thead th:last-child .stats-sort:focus-visible {
+        outline-offset: -2px;
+    }
+}
+
+/* Phones (the game's phone-only query): the heads take 2px a side and the cells 5px, so a table
+   that fitted a 320px phone before its heads sorted still does. */
+@media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
+    .stats-screen .split-table thead th:not(:first-child) {
+        padding-left: 2px;
+        padding-right: 2px;
+    }
+
+    .stats-screen .split-table tbody td {
+        padding-left: 5px;
+        padding-right: 5px;
     }
 }

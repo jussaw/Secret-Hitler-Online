@@ -191,8 +191,8 @@ test("a sorted ranked card still fits", async ({ page }) => {
 // underline), a held head's focus ring stays inside its region, RIVALS' People table sorts by its
 // counts, the players of the month by wins and by month, ENDINGS' two tables by their figures with
 // the All row last, and each still fits a 320px phone sorted. That each fits at every stats size is
-// `checkStatsPage`'s in the tabs' own specs, and ENDINGS' tables whole in their cards
-// `stats-rivals.spec.ts`'.
+// `checkStatsPage`'s in the tabs' own specs, and that the tables which fitted their cards before
+// their heads sorted still do is those specs' `expectWholeTables`.
 
 /** The text of each of the body's cells that `cells` picks (a selector inside `tbody`, such as
  *  `tr > td:nth-of-type(2)`, 1 first), in the rows' order, as `figure` reads it ("—" as null). */
@@ -253,6 +253,25 @@ function colourOf(page: Page, value: string): Promise<string> {
     probe.remove();
     return computed;
   }, value);
+}
+
+/** The sides of a head's focus ring past its `ScrollRegion`'s box, which would clip them, as
+ *  `left by 4px`: the ring's outer edge is the button's box grown by its offset and width (by
+ *  nothing for a 2px ring 2px inside the button). */
+function ringPast(button: Locator): Promise<string[]> {
+  return button.evaluate((el) => {
+    const style = getComputedStyle(el);
+    const grow = Math.max(0, parseFloat(style.outlineOffset) + parseFloat(style.outlineWidth));
+    const ring = el.getBoundingClientRect();
+    const region = el.closest(".scroll-region")!.getBoundingClientRect();
+    const past: [string, number][] = [
+      ["left", region.left - (ring.left - grow)],
+      ["top", region.top - (ring.top - grow)],
+      ["right", ring.right + grow - region.right],
+      ["bottom", ring.bottom + grow - region.bottom],
+    ];
+    return past.filter(([, px]) => px > 0.5).map(([side, px]) => `${side} by ${px}px`);
+  });
 }
 
 test("a split table's heads sort it, its dashes last", async ({ page }) => {
@@ -324,23 +343,35 @@ test("a held head's focus ring stays inside its region", async ({ page }) => {
   await page.keyboard.press("Tab");
   await expect(player).toBeFocused();
   expect(await player.evaluate((button) => button.matches(":focus-visible")), "Player's head shows its ring").toBe(true);
-  // The ring's outer edge, the button's box grown by its offset and width (by nothing for a 2px
-  // ring 2px inside the button), lies inside the region's box, which would clip what lay past it.
-  const outside = await player.evaluate((button) => {
-    const style = getComputedStyle(button);
-    const grow = Math.max(0, parseFloat(style.outlineOffset) + parseFloat(style.outlineWidth));
-    const ring = button.getBoundingClientRect();
-    const region = button.closest(".scroll-region")!.getBoundingClientRect();
-    const past: [string, number][] = [
-      ["left", region.left - (ring.left - grow)],
-      ["top", region.top - (ring.top - grow)],
-      ["right", ring.right + grow - region.right],
-      ["bottom", ring.bottom + grow - region.bottom],
-    ];
-    return past.filter(([, px]) => px > 0.5).map(([side, px]) => `${side} by ${px}px`);
-  });
-  expect(outside, "the ring's sides past the region's").toEqual([]);
+  expect(await ringPast(player), "the ring's sides past the region's").toEqual([]);
   await expect(player).toHaveCSS("outline-offset", "-2px");
+});
+
+test("a last head's focus ring stays inside its region where heads are tightened", async ({ page }) => {
+  const project = test.info().project.name;
+  test.skip(project !== "desktop" && project !== "firefox", "a keyboard's matter");
+  // An upright tablet: the stacked query gives a split table's heads 3px a side and ENDINGS' 2px,
+  // less than a ring 2px out needs. Role split fills its region; the Liberal win rate scrolls in
+  // its own, here scrolled to its end, its last head at the region's edge.
+  await page.setViewportSize({ width: 820, height: 1180 });
+  const cases = [
+    { tab: "roles", region: "Role split table", last: "Hitler", heads: 4 },
+    { tab: "endings", region: "Liberal win rate by player count table", last: "Smoothed", heads: 5 },
+  ] as const;
+  for (const { tab, region: name, last, heads } of cases) {
+    await open(page, routePath({ page: "tab", tab }));
+    const region = card(page, name);
+    const button = headButton(region.locator("table"), last);
+    await region.focus();
+    for (let i = 0; i < heads; i++) await page.keyboard.press("Tab");
+    await expect(button, `${last}'s head focused`).toBeFocused();
+    await region.evaluate((el) => {
+      el.scrollLeft = el.scrollWidth;
+    });
+    expect(await button.evaluate((el) => el.matches(":focus-visible")), `${last}'s head shows its ring`).toBe(true);
+    expect(await ringPast(button), `${name}: the ring's sides past the region's`).toEqual([]);
+    await expect(button).toHaveCSS("outline-offset", "-2px");
+  }
 });
 
 test("the People table sorts by its counts", async ({ page }) => {
