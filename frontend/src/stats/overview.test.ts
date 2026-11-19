@@ -17,6 +17,7 @@ import {
 import { parseStatsData, type GameRecord, type Player, type StatsData } from "./record";
 import { game, generateData, match, seatsOf } from "./testGames";
 import { overviewDay as d, overviewFixture } from "./testOverview";
+import { timeOnThread } from "./testTiming";
 import { buildStats } from "./useStats";
 
 const fx = overviewFixture();
@@ -296,11 +297,11 @@ describe("computeOverview", () => {
 
   it("computesOverviewFor1000GamesWellUnderASecond", () => {
     const data = generateData(1000, 17);
-    const start = performance.now();
-    const o = computeOverview(buildStats(data, { players: null, cpu: true }), Date.UTC(2026, 10, 15), "UTC");
-    const took = performance.now() - start;
+    const { result: o, ms } = timeOnThread(() =>
+      computeOverview(buildStats(data, { players: null, cpu: true }), Date.UTC(2026, 10, 15), "UTC")
+    );
     expect(o.latestGames).toHaveLength(LATEST_GAMES);
-    expect(took).toBeLessThan(1000);
+    expect(ms).toBeLessThan(1000);
   });
 });
 

@@ -7,6 +7,7 @@ import { parseStatsData, type Card, type GameEvent, type GameRecord, type Role }
 import { computeRoles } from "./roles";
 import { rounds } from "./rounds";
 import { game, seatsOf } from "./testGames";
+import { timeOnThread } from "./testTiming";
 
 const T0 = Date.UTC(2026, 10, 1, 20, 0);
 const ROLES: Role[] = ["LIBERAL", "LIBERAL", "LIBERAL", "FASCIST", "HITLER"];
@@ -326,9 +327,10 @@ describe("computeCards", () => {
   it("computes 1,000 games in well under a second", () => {
     const games = parseStatsData(fixture).games;
     const many = Array.from({ length: 1000 }, (_, i) => ({ ...games[i % games.length], id: `x${i}` }));
-    const start = performance.now();
-    computeRoles(many);
-    computeCards(many);
-    expect(performance.now() - start).toBeLessThan(1000);
+    const { ms } = timeOnThread(() => {
+      computeRoles(many);
+      computeCards(many);
+    });
+    expect(ms).toBeLessThan(1000);
   });
 });

@@ -407,7 +407,9 @@ Each phase defines its `byPlayer` value type with at least these fields (more ar
   `PlayerStreaks { games; current; longestWin: StreakRun | null; longestLoss: StreakRun | null }`
   and `StreakRun { player; length; firstGameId; lastGameId }`; `current` is wins in a row, 0 or more.
 - Long browser tests (a page at every size) call `test.slow()`. Timing assertions use the spec's
-  limits (1,000 games well under a second: assert under 1,000 ms), not tighter ones.
+  limits (1,000 games well under a second: assert under 1,000 ms), not tighter ones, timed by the
+  thread's CPU time (`testTiming.ts`'s `timeOnThread`, #101), not the wall clock, which it falls
+  back to only on a Node before 22.19 and 23.9.
 
 ### Other settled rules
 

@@ -844,7 +844,16 @@ keeps credit to upstream and to the board game's creators.
   filled). `TabsPage` shows
   the filter, the tab row and the route's tab, and a filter change stays on the tab (`navigate`).
   `testGames.ts` holds test builders the browser tests may import too (`ROLES` per seat count,
-  `seatsOf`, `game`, `match`, and `generateData`, seeded).
+  `seatsOf`, `game`, `match`, and `generateData`, seeded). The stats tests hold on a busy machine
+  (#101): `testTiming.ts`'s `timeOnThread(run)`, test only, gives what `run` returns and the
+  milliseconds of its thread's CPU time (`process.threadCpuUsage`, from Node 22.19 and 23.9;
+  `hasThreadClock`, which `testTiming.test.ts` requires on those versions; the wall clock on an
+  older Node), by which the five 1,000-game speed checks (in `overview`'s, `cards`', `powers`' and
+  `records`' tests) hold the spec's "well under a second" to under 1,000 ms, so the time a worker
+  waits for a core is not counted; a test that opens stats pages over the contract fixture opens
+  one a test, as `nameLinks.test.tsx` does, so it stays far inside Vitest's 5 s default and one
+  that runs out draws no later page over the next test's; and `player.test.ts`'s power-ranking
+  test, which runs `computePlayer` for every ranked player, takes a 20 s timeout of its own.
   OVERVIEW (`/stats`, Phase 17B): `overview.ts`'s `computeOverview(stats, now, timeZone?)`, a
   pure function of the context, `now` and a time zone (the viewer's by default), over the counted
   games in one pass of each player's results: days since the last counted game ended
