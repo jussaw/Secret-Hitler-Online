@@ -9,13 +9,18 @@ import StatsApp from "./StatsApp";
 
 /**
  * Names across the whole stats app (Phase 22A): each player's name is a link to their page, never
- * inside another link or control, and a name in a sentence or a headline stays plain.
+ * inside another link or control, and a name in a sentence or a headline stays plain. Each test
+ * opens one page (#101), so a busy machine's slower draws stay far inside Vitest's 5 s timeout,
+ * and a test that runs out has no later page left to draw over the next test's.
  */
 
 const fixtureData = (): StatsData => parseStatsData(JSON.parse(JSON.stringify(fixture)));
 
+/** Two games' IDs: one with no CPU seat that finished, and one with a CPU seat. */
+type TwoGames = { plain: string; cpu: string };
+
 /** The newest game with no CPU seat that finished, and the newest with a CPU seat. */
-function gamesOf(data: StatsData): { plain: string; cpu: string } {
+function gamesOf(data: StatsData): TwoGames {
   const newest = [...data.games].reverse();
   return {
     plain: newest.find((g) => !g.hasCpu && g.outcome !== "UNFINISHED")!.id,
@@ -23,19 +28,41 @@ function gamesOf(data: StatsData): { plain: string; cpu: string } {
   };
 }
 
-/** Every page the check opens for `data`: the tabs, GAMES, and two of its games. */
-function pathsOf(games: { plain: string; cpu: string }): string[] {
+/**
+ * Every page the check opens, each with the name its test gives it: the tabs, GAMES, and the data
+ * set's two `games`, named for what they are rather than for IDs that a new fixture changes.
+ */
+function pagesOf(games: TwoGames): { name: string; path: string }[] {
+  const tabs = TAB_IDS.map((tab) => routePath({ page: "tab", tab }));
   return [
-    ...TAB_IDS.map((tab) => routePath({ page: "tab", tab })),
-    routePath({ page: "games" }),
-    routePath({ page: "game", id: games.plain }),
-    routePath({ page: "game", id: games.cpu }),
+    ...[...tabs, routePath({ page: "games" })].map((path) => ({ name: path, path })),
+    { name: "a game without bots", path: routePath({ page: "game", id: games.plain }) },
+    { name: "a game with bots", path: routePath({ page: "game", id: games.cpu }) },
   ];
 }
 
-const SETS: { label: string; data: () => StatsData; games: (data: StatsData) => { plain: string; cpu: string } }[] = [
-  { label: "the sample", data: sampleData, games: () => ({ plain: "g1", cpu: "cpu" }) },
-  { label: "the contract fixture", data: fixtureData, games: gamesOf },
+/** The headlines the check reads, by page and selector. */
+const HEADLINES: [string, string][] = [
+  [routePath({ page: "tab", tab: "overview" }), '[aria-label="At a glance"]'],
+  [routePath({ page: "tab", tab: "rivals" }), ".rivals-headline"],
+  [routePath({ page: "tab", tab: "activity" }), '[data-card="fastest-voter"] .activity-line'],
+  [routePath({ page: "tab", tab: "activity" }), '[data-card="slowest-president"] .activity-line'],
+  [routePath({ page: "tab", tab: "records" }), ".records-line"],
+];
+
+/**
+ * The data sets the checks run on. `unnamed`: the selectors of `HEADLINES` whose headlines name
+ * nobody in this set, since the sample's 8 games are too few for a rivals headline or a fastest
+ * voter; every other check also shows that its selector still finds names.
+ */
+const SETS: { label: string; data: () => StatsData; games: (data: StatsData) => TwoGames; unnamed: string[] }[] = [
+  {
+    label: "the sample",
+    data: sampleData,
+    games: () => ({ plain: "g1", cpu: "cpu" }),
+    unnamed: [".rivals-headline", '[data-card="fastest-voter"] .activity-line'],
+  },
+  { label: "the contract fixture", data: fixtureData, games: gamesOf, unnamed: [] },
 ];
 
 /** StatsApp at `path`, answering its request with `data`, once the page shows. */
@@ -66,49 +93,34 @@ describe("name links", () => {
   });
 
   for (const set of SETS) {
-    it(`namesAreLinksNeverNested on ${set.label}`, async () => {
-      const data = set.data();
-      let linked = 0;
-      for (const path of pathsOf(set.games(data))) {
-        const container = await open(path, data);
-        expect(container.querySelectorAll("a a, button a, label a, a button"), `${path}: nested`).toHaveLength(0);
-        const names = Array.from(container.querySelectorAll<HTMLElement>(".player-name"));
-        for (const name of names) {
-          const listed = name.closest("td, th, .game-seats, .games-row-seats");
-          if (name.dataset.player !== undefined && listed) {
-            expect(name.tagName, `${path}: ${name.textContent}`).toBe("A");
-            expect(name).toHaveClass("player-link");
-          }
+    const data = set.data();
+
+    it.each(pagesOf(set.games(data)))(`namesAreLinksNeverNested on ${set.label} at $name`, async ({ path }) => {
+      const container = await open(path, data);
+      expect(container.querySelectorAll("a a, button a, label a, a button"), "nested").toHaveLength(0);
+      for (const name of Array.from(container.querySelectorAll<HTMLElement>(".player-name"))) {
+        const listed = name.closest("td, th, .game-seats, .games-row-seats");
+        if (name.dataset.player !== undefined && listed) {
+          expect(name.tagName, name.textContent ?? "").toBe("A");
+          expect(name).toHaveClass("player-link");
         }
-        for (const link of Array.from(container.querySelectorAll("a.player-link"))) {
-          expect(link.textContent ?? "", `${path}: a CPU seat's link`).not.toMatch(/^Bot /);
-          expect(link.getAttribute("href"), path).toMatch(/^\/players\/\d+(\?|$)/);
-          linked++;
-        }
-        cleanup();
       }
-      expect(linked, "some names are links").toBeGreaterThan(0);
+      const links = Array.from(container.querySelectorAll("a.player-link"));
+      for (const link of links) {
+        expect(link.textContent ?? "", "a CPU seat's link").not.toMatch(/^Bot /);
+        expect(link.getAttribute("href")).toMatch(/^\/players\/\d+(\?|$)/);
+      }
+      expect(links.length, "some names are links").toBeGreaterThan(0);
     });
 
-    it(`headlinesKeepPlainNames on ${set.label}`, async () => {
-      const data = set.data();
-      const checks: [string, string][] = [
-        [routePath({ page: "tab", tab: "overview" }), '[aria-label="At a glance"]'],
-        [routePath({ page: "tab", tab: "rivals" }), ".rivals-headline"],
-        [routePath({ page: "tab", tab: "activity" }), '[data-card="fastest-voter"] .activity-line'],
-        [routePath({ page: "tab", tab: "activity" }), '[data-card="slowest-president"] .activity-line'],
-        [routePath({ page: "tab", tab: "records" }), ".records-line"],
-      ];
+    it.each(HEADLINES)(`headlinesKeepPlainNames on ${set.label} at %s, %s`, async (path, selector) => {
+      const container = await open(path, data);
       let named = 0;
-      for (const [path, selector] of checks) {
-        const container = await open(path, data);
-        for (const headline of Array.from(container.querySelectorAll(selector))) {
-          expect(headline.querySelector("a.player-link"), `${path} ${selector}`).toBeNull();
-          named += headline.querySelectorAll(".player-name").length;
-        }
-        cleanup();
+      for (const headline of Array.from(container.querySelectorAll(selector))) {
+        expect(headline.querySelector("a.player-link")).toBeNull();
+        named += headline.querySelectorAll(".player-name").length;
       }
-      expect(named, "some headlines name players").toBeGreaterThan(0);
+      if (!set.unnamed.includes(selector)) expect(named, "the headlines name players").toBeGreaterThan(0);
     });
   }
 });
