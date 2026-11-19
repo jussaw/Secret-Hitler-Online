@@ -1458,7 +1458,12 @@ keeps credit to upstream and to the board game's creators.
   `reconnecting`, a press in a game waits in `pendingCommands` until the server takes a new socket
   (its first message), and a press in the lobby with no socket shows the retrying snackbar instead.
   Every close is logged with the time, its code and reason and the page's visibility, without the
-  URL's key.
+  URL's key. Unmounting `App` (each test's page at its end; a page in use only by StrictMode's
+  remount in development, before any socket) closes its socket and stops the ping, the reply
+  timer, a waiting reconnect and a PLAY INSTEAD waiting for the old seat, and `tryOpenWebSocket`
+  opens nothing while it is unmounted (`unmounted`, which `componentDidMount` clears), so a page
+  a test has unmounted opens no socket in a later test, not even for a check that answers late
+  (#96; `AppSwitch.test.tsx`'s unmounted-page tests).
   Prompts are a fixed overlay (`CustomAlert`, issue #74): the page, header included, dimmed with
   `--alertDim` (`#141414` at 55%) and blurred by 5px (`backdrop-filter`; a browser without it gets
   the dim alone), the header's speaker above it, and over it the lobby's card (`--backgroundDark`,
