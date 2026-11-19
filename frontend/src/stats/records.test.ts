@@ -7,6 +7,7 @@ import { winStreaks } from "./overview";
 import { parseStatsData, type GameRecord, type Role, type Side } from "./record";
 import { computeRecords, streakHolders, TOP_SESSIONS } from "./records";
 import { makeRecord, makeSeats } from "./testRecords";
+import { timeOnThread } from "./testTiming";
 import { computeTiming } from "./timing";
 
 /** A side's roles for `n` seats: Liberals, or the Fascist side with Hitler in its first seat. */
@@ -279,9 +280,8 @@ describe("computeRecords' speed", () => {
       return played(`m${i}`, start, [(i % 5) + 1], [((i + 1) % 5) + 1, ((i + 2) % 5) + 1]);
     });
     const now = games[games.length - 1].endedAt + 60 * 60 * 1000;
-    const start = performance.now();
-    const r = computeRecords(games, NO_ELO, now, "UTC");
-    expect(performance.now() - start).toBeLessThan(1000);
+    const { result: r, ms } = timeOnThread(() => computeRecords(games, NO_ELO, now, "UTC"));
+    expect(ms).toBeLessThan(1000);
     expect(r.monthHistory).toHaveLength(999);
     expect(r.monthHistory[0]).toMatchObject({ key: "2033-03", players: [4], wins: 1 }); // m998
   });
@@ -300,11 +300,12 @@ describe("computeRecords' speed", () => {
     const counted = countedGames(games, { players: null, cpu: true });
     const elo = replayElo(counted);
     const now = counted[counted.length - 1].endedAt + 60 * 60 * 1000;
-    const start = performance.now();
-    computeActivity(counted, now, "UTC");
-    computeTiming(counted);
-    const r = computeRecords(counted, elo, now, "UTC");
-    expect(performance.now() - start).toBeLessThan(1000);
+    const { result: r, ms } = timeOnThread(() => {
+      computeActivity(counted, now, "UTC");
+      computeTiming(counted);
+      return computeRecords(counted, elo, now, "UTC");
+    });
+    expect(ms).toBeLessThan(1000);
     expect(r.monthHistory.length).toBeGreaterThan(3);
   });
 });

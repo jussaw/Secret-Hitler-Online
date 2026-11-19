@@ -3,6 +3,7 @@ import { countedGames, DEFAULT_FILTER } from "./counting";
 import fixture from "./fixtures/recorded-games.json";
 import { computePowers } from "./powers";
 import { parseStatsData, type GameEvent, type GameRecord } from "./record";
+import { timeOnThread } from "./testTiming";
 import { computeVotes } from "./votes";
 import { ALL, eventsOf, execute, FIVE, gameOf, investigate, range, sum, term } from "./votesTestRounds";
 
@@ -128,9 +129,10 @@ describe("computePowers: executions, vetoes and survival", () => {
       expect(sum(Object.values(v.survivalByRole), (r) => r.chances)).toBe(v.games);
     }
     const many = range(0, 1000).map((i) => counted[i % counted.length]);
-    const start = performance.now();
-    computeVotes(many);
-    computePowers(many);
-    expect(performance.now() - start).toBeLessThan(1000);
+    const { ms } = timeOnThread(() => {
+      computeVotes(many);
+      computePowers(many);
+    });
+    expect(ms).toBeLessThan(1000);
   });
 });
