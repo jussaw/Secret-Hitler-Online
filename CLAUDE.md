@@ -798,9 +798,11 @@ keeps credit to upstream and to the board game's creators.
   colour of its own), and Hitler's keeps its underline, the button's own, since a `th`'s would not
   reach an inline-flex button; so that each table fits wherever it did before its heads sorted,
   the Player head has no right padding at any size (the next head's left padding keeps them
-  apart), and where the stacked query matches the other heads take 3px a side and a 1px gap
-  beside each arrow, on phones (the phone-only query) 2px a side and the cells 5px, and the last
-  head's focus ring is drawn inside its button, as the first's is; a sticky name column capped at 9em in which a long name wraps whole
+  apart), and where the stacked query matches the other heads take 3px a side and every head's
+  button, the Player head's too, a 1px gap beside its arrow, on phones (the phone-only query) the
+  other heads 2px a side and the cells 5px, and every head's focus ring is drawn inside its button,
+  as the first's is, so the held first column, which paints over what lies under it, the region's
+  edge and the next head leave it whole; a sticky name column capped at 9em in which a long name wraps whole
   (never cut short) with the full name as its title; each cell, a `SplitCell`, its `text`, then
   its `count`, a 0 too, never sorted by, and its `value`, the figure its text shows (the one it
   leads with: "2 of 5" is 2, "2 L · 3 F" is 2), null exactly when the text is "—", which every
@@ -995,8 +997,9 @@ keeps credit to upstream and to the board game's creators.
   7.25 and 7.33, both "7.3", tie), a "—" below every figure either way. Game length's All row is
   outside the sort, always the last row. So that both fit wherever they did before their heads
   sorted, `EndingsTab.css` gives their heads 2px a side and a 1px gap before each arrow where the
-  stacked query matches and, on phones (the phone-only query), 1px a side and no gap, the last
-  head's focus ring drawn inside its button. Every game link there is a 44px `StatsLink` at
+  stacked query matches and, on phones (the phone-only query), 1px a side and no gap (the Lucide
+  arrow's own whitespace inside its 12px box keeps it off its words), every head's focus ring
+  drawn inside its button there. Every game link there is a 44px `StatsLink` at
   every size. Both tabs lay out their cards in `tabs/cardGrid.css`'s columns at least 22em wide
   (two on desktop, one on phones), the wide ones across the row; both pick by `pick.ts`'s `firstBy`
   (never by the games' order), and their cells write a rate or `NO_VALUE` with `tabs/cellText.ts`'s
@@ -1793,9 +1796,10 @@ keeps credit to upstream and to the board game's creators.
   focus ring stays inside its region (`desktop` and `firefox`): its outer edge, the button's box
   grown by its offset and width, inside its `ScrollRegion`'s box, and drawn inside the button
   (`outline-offset: -2px`), so without `ScrollRegion.css`'s rule it fails 4px past the left, and
-  at 820x1180 so does the last head's of Role split and of the Liberal win rate by player count
-  (which the focus scrolls to), drawn inside its button by `SplitTable.css`' and `EndingsTab.css`'
-  stacked-query rules (both measured by `ringPast`); the
+  at 820x1180, where `SplitTable.css`' and `EndingsTab.css`' stacked-query rules draw every head's
+  ring inside its button, so do the second and last heads' of Role split (Liberal, Hitler) and of
+  the Liberal win rate by player count (Games, and Smoothed with the region scrolled to its end),
+  the second's left edge under no held first-column cell (`ringPast`, `overRingLeft`); the
   Role split's, People's and ENDINGS' cases read their cells' figures through `figures(table,
   cells, figure)`, `cells` a selector inside `tbody`; RIVALS'
   People sorts by Nemesis's losses both ways; RECORDS' players of the month by Wins, then back to
