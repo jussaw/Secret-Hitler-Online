@@ -65,7 +65,7 @@ public class StatsRoutesTest {
             players.session(name); // the account test-<name>, named <name>
         }
         useStore(GameStore.open(null));
-        app = SecretHitlerServer.createApp().start(0);
+        app = ServerTesting.startOnLoopback(SecretHitlerServer.createApp());
         port = app.port();
     }
 

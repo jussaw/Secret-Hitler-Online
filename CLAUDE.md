@@ -29,11 +29,13 @@ keeps credit to upstream and to the board game's creators.
   store's) keep their 5 s busy timeout. `startServer` starts the app and then logs
   `startupLine(port)`, "Secret Hitler Online is listening on port <port>.", the server's own line
   (not Javalin's, which a dependency update could change) that `devops/restore-db.sh` waits for
-  (`StartupLineTest`). The server also serves the built frontend from the
-  classpath directory `/public`, which `processResources` fills from `frontend/dist` when it exists;
-  CORS is enabled only in debug mode. `createApp()` is `createApp("/public")`; `createApp(frontendDir)`
-  serves that classpath directory when it has an `index.html` and then adds Javalin's single-page
-  fallback for the stats pages' roots, `PAGE_ROOTS` (`/stats`, `/games`, `/players`;
+  (`StartupLineTest`): `startServer(port)`, which `main` calls, listens on every address, and
+  `startServer(host, port)` on the one it is given (127.0.0.1 in `StartupLineTest`). The server
+  also serves the built frontend from the classpath directory `/public`, which `processResources`
+  fills from `frontend/dist` when it exists; CORS is enabled only in debug mode. `createApp()` is
+  `createApp("/public")`; `createApp(frontendDir)` serves that classpath directory when it has an
+  `index.html` and then adds Javalin's single-page fallback for the stats pages' roots,
+  `PAGE_ROOTS` (`/stats`, `/games`, `/players`;
   `config.spaRoot.addHandler`), so a GET of a stats page's path that no route or file answered,
   whose `Accept` has `text/html` or `*/*` or is empty, gets `index.html`: a reload or a link to any
   stats page works. Javalin matches a root by its start alone, so the handler checks whole segments
@@ -461,6 +463,15 @@ keeps credit to upstream and to the board game's creators.
   (a JUnit rule: a fresh in-memory `AccountStore` per test, and `session(name)` for the account
   `test-<name>` named so), and `TestSocket.connect(port, query, token)` sends the `session` cookie
   and the server's own `Origin`; the lobby tests name each player's account with `LobbyTesting`.
+  Every test server, a fake Discord's too, listens on 127.0.0.1 alone (`ServerTesting.LOOPBACK`),
+  started by `ServerTesting.startOnLoopback(app)` on any free port, never on every address, as
+  Javalin's `start(port)` would: macOS lets a bind to every address take a port another program
+  holds on 127.0.0.1, which then answers the tests' `localhost` (#106), and refuses a bind to
+  127.0.0.1 on such a port. The tests still reach their servers at `localhost`, which Java
+  resolves to 127.0.0.1 first. `LoopbackServerTest` holds it: the helper's server is on
+  127.0.0.1 and answers at `localhost`, a port another socket holds there is refused, and no line
+  under `src/test/java` starts a server with one argument that is not a string (`.start(port)` or
+  `startServer(port)`; a `start()` with none reads as a thread's, and is not looked for).
   Game records (#31) are made in `server.stats` and `Lobby`, then stored and served (below):
   `GameSnapshot` (one look at a `SecretHitlerGame`: state,
   round, seats, roles, deaths, offices, votes, tracker, board, piles, and the hand or peek of the

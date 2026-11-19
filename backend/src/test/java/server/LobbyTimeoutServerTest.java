@@ -62,7 +62,7 @@ public class LobbyTimeoutServerTest {
 
     @BeforeClass
     public static void startServer() {
-        app = Javalin.create()
+        app = ServerTesting.startOnLoopback(Javalin.create()
                 .get("/check-login", SecretHitlerServer::checkLogin)
                 .wsBefore(ws -> ws.onMessage(ctx -> {
                     if (sweepBeforeNextMessage.getAndSet(false)) {
@@ -78,8 +78,7 @@ public class LobbyTimeoutServerTest {
                 .wsException(Exception.class, (exception, ctx) -> {
                     thrown.add(exception);
                     ctx.session.close(StatusCode.SERVER_ERROR, String.valueOf(exception.getMessage()));
-                })
-                .start(0);
+                }));
         port = app.port();
     }
 

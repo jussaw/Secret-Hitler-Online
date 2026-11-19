@@ -94,7 +94,7 @@ public class DiscordSignInTest {
         savedApiBase = DiscordSignIn.apiBase;
         savedTimeout = DiscordSignIn.TIMEOUT;
 
-        discord = Javalin.create().post("/oauth2/token", ctx -> {
+        discord = ServerTesting.startOnLoopback(Javalin.create().post("/oauth2/token", ctx -> {
             discordCalls.incrementAndGet();
             Map<String, String> form = new HashMap<>();
             ctx.formParamMap().forEach((key, values) -> form.put(key, values.get(0)));
@@ -131,7 +131,7 @@ public class DiscordSignInTest {
                 case BAD_JSON -> ctx.result("<html>not json " + TOKEN + "</html>");
                 default -> ctx.contentType("application/json").result(body);
             }
-        }).start(0);
+        }));
         DiscordSignIn.apiBase = "http://localhost:" + discord.port();
         DiscordSignIn.authorizeUrl = "http://localhost:" + discord.port() + "/oauth2/authorize";
         DiscordSignIn.TIMEOUT = Duration.ofSeconds(1);
@@ -143,7 +143,7 @@ public class DiscordSignInTest {
         ApplicationConfig.TEST_SIGN_IN = false;
         store = AccountStore.open(null);
         SecretHitlerServer.accounts = store;
-        app = ServerTesting.createApp().start(0);
+        app = ServerTesting.startOnLoopback(ServerTesting.createApp());
         port = app.port();
     }
 
@@ -354,11 +354,12 @@ public class DiscordSignInTest {
     public void callbackKeepsAChosenNameAndAcceptsNoAvatar() throws Exception {
         avatar = null;
         HttpResponse<String> first = signInWith(start(""));
+        assertEquals("/", location(first));
         assertNotNull(cookie(first, AuthRoutes.SESSION_COOKIE));
         assertNull(store.find("4242").discordAvatar());
         store.setUsername("4242", "Chosen");
         avatar = "newhash";
-        signInWith(start(""));
+        assertEquals("/", location(signInWith(start(""))));
         Account account = store.find("4242");
         assertEquals("Chosen", account.username());
         assertEquals("newhash", account.discordAvatar());
@@ -486,7 +487,8 @@ public class DiscordSignInTest {
 
     @Test
     public void bothRequestsSendAUserAgent() throws Exception {
-        signInWith(start(""));
+        // A sign-in that failed reads no user, so it says so here, not as an empty list below.
+        assertEquals("/", location(signInWith(start(""))));
         assertEquals(List.of("secret-hitler-online"), userAgents);
         assertEquals(List.of("secret-hitler-online"), tokenAgents);
     }
@@ -504,6 +506,7 @@ public class DiscordSignInTest {
             Started ok = start("?lobby=KQMX");
             states.add(ok.state());
             HttpResponse<String> signedIn = signInWith(ok);
+            assertEquals("/?lobby=KQMX", location(signedIn));
             secretsSeen.add(cookie(signedIn, AuthRoutes.SESSION_COOKIE).get("value"));
             for (Mode failing : List.of(Mode.SERVER_ERROR, Mode.BAD_JSON, Mode.STALL)) {
                 mode = failing;

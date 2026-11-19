@@ -300,9 +300,18 @@ public class SecretHitlerServer {
         return "Secret Hitler Online is listening on port " + port + ".";
     }
 
-    /** Starts the app on {@code port} (0 for any free one), then logs {@link #startupLine}. */
+    /** Starts the app on every address, on {@code port}, then logs {@link #startupLine}. */
     static Javalin startServer(int port) {
-        Javalin app = createApp().start(port);
+        return startServer(null, port);
+    }
+
+    /**
+     * Starts the app on {@code host} ({@code null} for every address, as {@code main} does) and
+     * {@code port} (0 for any free one), then logs {@link #startupLine}. Tests pass 127.0.0.1
+     * (#106).
+     */
+    static Javalin startServer(String host, int port) {
+        Javalin app = createApp().start(host, port);
         logger.info(startupLine(app.port()));
         return app;
     }

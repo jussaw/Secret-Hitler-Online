@@ -72,7 +72,7 @@ public class AuthRoutesTest {
         ApplicationConfig.DISCORD_REDIRECT_URI = null;
         store = AccountStore.open(null, now::get);
         SecretHitlerServer.accounts = store;
-        app = ServerTesting.createApp().start(0);
+        app = ServerTesting.startOnLoopback(ServerTesting.createApp());
         port = app.port();
     }
 
