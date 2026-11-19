@@ -41,7 +41,7 @@ const WHOLE: WholeTable[] = [
   { region: "Role split table", scrollsAt: [] },
   { region: "Given one of each table", scrollsAt: [] },
   { region: "Vetoes asked for table", scrollsAt: [] },
-  { region: "Forced Fascists table", scrollsAt: ["320x568"], phoneScrollsAt: ["360x740"] },
+  { region: "Forced Fascists table", scrollsAt: ["320x568"] },
 ];
 
 /** Goes to `path` (the response already stubbed) and waits for the tab. */
