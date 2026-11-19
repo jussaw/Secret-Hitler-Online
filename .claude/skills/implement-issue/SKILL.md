@@ -104,9 +104,8 @@ Two cases need Playwright's Linux image (`DEVELOPMENT.md`, "Browser tests on Lin
 that CI will run them:
 
 - The `firefox` project, when Firefox will not launch on this machine.
-- The phone projects, when text must fit a phone's width. CI's Linux fonts draw Germania One wider
-  than macOS does at phone sizes, so a line with little room to spare passes on a Mac and wraps on
-  CI.
+- The phone projects, when text must fit a phone's width. CI's Linux sets each letter at a whole
+  pixel's width, so a line with little room to spare can pass on a Mac and wrap on CI.
 
 A failure in a test the change cannot reach may be a flake. Run it again on its own first, since
 another session's browser run can slow this one. Then check it on `development` in a throwaway
