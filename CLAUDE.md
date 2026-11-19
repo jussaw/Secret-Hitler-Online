@@ -1649,7 +1649,10 @@ keeps credit to upstream and to the board game's creators.
   (`e2e/lobby.ts`) fails when the web fonts do not load; they come from Google Fonts through
   `src/fonts.css`, so the browser tests need network access. They serve on port 4545, or on
   `E2E_PORT`, which gives runs in two worktrees at once a port each: a run waits for any server on
-  its port to answer `/ping` while it builds, so two on one port can test the wrong code.
+  its port to answer `/ping` while it builds, so two on one port can test the wrong code. A page
+  with a route (`stubStats` adds one) keeps no HTTP cache, so every load, a reload too, downloads
+  the fonts again, and one that swaps in after a scroll moves it, as Chrome's scroll anchoring
+  follows the text above: a test that scrolls after a load settles the page first (#98).
   `playwright.linux.config.ts` runs the same projects in Playwright's Linux image against a jar
   already serving on the host with `TEST_SIGN_IN=true` (`DEVELOPMENT.md`, "Browser tests on
   Linux"): Firefox where it will not launch on macOS, and the phone layouts with CI's wider Linux
@@ -1745,7 +1748,10 @@ keeps credit to upstream and to the board game's creators.
   and format 1 rows say only Bots (the third hundred), that no bots tag takes a second line at
   320px, on GAMES or in a player's latest games (`brokenTags`), and
   twelve-character names inside their columns and chips at 320px; on `desktop` it goes through a
-  filter, a page, a game and back, forward and reload by the address, and plays a real game of
+  filter, a page, a game and back, forward and reload by the address, then a filter change that
+  keeps the scroll position (#98: from the reload on every font comes a second late,
+  `LATE_FONT_MS`, the page is settled before the scroll, and the position is read once the fonts
+  are in and two frames drawn, `scrollYOnceStill`). Also on `desktop`, it plays a real game of
   seven through `driveGame.ts` whose victory screen opens its page and which GAMES lists under its
   first seat's player. `stats-roles.spec.ts` runs `checkStatsPage` on ROLES & CARDS at every
   `statsSizesFor` size against `bigStatsData()`, with CPU games and without, with all seventeen

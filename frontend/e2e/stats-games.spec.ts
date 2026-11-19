@@ -202,6 +202,21 @@ test("twelve-character names stay inside their columns at 320px", async ({ page 
   expect((await statsPageProblems(page)).sideways).toEqual([]);
 });
 
+/** How long the filter test holds back each font the page asks for, from its reload on. */
+const LATE_FONT_MS = 1_000;
+
+/**
+ * The page's scroll position once nothing is left to move it: every font loading has come in (one
+ * the filter change itself asked for too), and two frames have been drawn since, so the layout a
+ * late font causes, and the scroll anchoring that follows it, have happened.
+ */
+const scrollYOnceStill = (page: Page) =>
+  page.evaluate(async () => {
+    await document.fonts.ready;
+    await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
+    return window.scrollY;
+  });
+
 test("filters and pages through the address", async ({ page }) => {
   desktopOnly();
   const seats = page.getByRole("combobox", { name: "Seats" });
@@ -237,9 +252,18 @@ test("filters and pages through the address", async ({ page }) => {
   await expect(seats.locator("option:checked")).toHaveText("Any size");
   await page.goForward();
   await expect(page).toHaveURL("/games?size=7");
+  // The reload downloads the web fonts again, since a page with a route keeps no HTTP cache. Once
+  // they swapped in after the scroll below, and Chrome's scroll anchoring followed the text above
+  // it as it grew, by 5px (#98). Here every font comes in a second late, so the test meets that
+  // case on every run, and `settle` waits for them before the scroll.
+  await page.route("**/*", async (route) => {
+    if (route.request().resourceType() === "font") await new Promise((resolve) => setTimeout(resolve, LATE_FONT_MS));
+    await route.fallback();
+  });
   await page.reload();
   await expect(page).toHaveURL("/games?size=7");
   await expect(seats.locator("option:checked")).toHaveText("7 seats");
+  await settle(page);
 
   // A filter change keeps the scroll position.
   await page.evaluate(() => window.scrollTo(0, 300));
@@ -248,7 +272,7 @@ test("filters and pages through the address", async ({ page }) => {
   await page.getByRole("combobox", { name: "Add a player" }).selectOption({ label: "WWWWWWWWWW01" });
   await expect(page).toHaveURL("/games?players=1&size=7");
   await expect(page.getByRole("button", { name: "Remove WWWWWWWWWW01" })).toBeVisible();
-  expect(await page.evaluate(() => window.scrollY)).toBe(scrolled);
+  expect(await scrollYOnceStill(page), "the scroll position once the fonts are in").toBe(scrolled);
 
   await page.getByRole("link", { name: "Clear filters" }).click();
   await expect(page).toHaveURL("/games");
