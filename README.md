@@ -48,7 +48,7 @@ For more information, read the [official rulebook here](https://www.secrethitler
   - **Links in.** The login page shares the stats pages' header, so the stats are a click from the top of the home page, and the victory screen's "See this game" opens the game just played.
   - **Database backups.** A script takes a checked snapshot of the server's SQLite file (lobbies, accounts and game records) while the server runs, keeps a month of them and can copy each one off the host; another puts one back. See [Backups](#backups).
 - **Lobbies and sign-ins survive a restart.** The server backs up its lobbies to a SQLite file, which also holds the accounts and sessions, and restores them when it starts.
-- **One image on one port.** The Java server also serves the web page. CI publishes a Docker image for `linux/amd64` and `linux/arm64`.
+- **One image on one port.** The Java server also serves the web page, its fonts included, so a page loads nothing from another site. CI publishes a Docker image for `linux/amd64` and `linux/arm64`.
 - **A current toolchain:** Vite, React 18 and TypeScript 5, with Vitest unit tests and Playwright browser tests on desktop Chrome, Firefox and two emulated phones.
 - **Fixes** for bugs carried over from upstream:
   - The lobby tagged every guest as `[Host]`.
