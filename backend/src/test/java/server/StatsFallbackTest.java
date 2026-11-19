@@ -37,7 +37,7 @@ public class StatsFallbackTest {
 
     @Test
     public void everyStatsPathAnswersThePage() throws Exception {
-        app = SecretHitlerServer.createApp("/spa-test").start(0);
+        app = ServerTesting.startOnLoopback(SecretHitlerServer.createApp("/spa-test"));
         for (String path : List.of("/stats", "/stats/", "/stats/roles", "/games", "/games/",
                 "/games/7d0c6a3e-2f1b-4c55-9a7e-3b1d2c4e5f60", "/players", "/players/3",
                 // Addresses from before GAMES and PLAYERS left /stats: the page sends them on.
@@ -52,7 +52,7 @@ public class StatsFallbackTest {
 
     @Test
     public void routesAnswerFirst() throws Exception {
-        app = SecretHitlerServer.createApp("/spa-test").start(0);
+        app = ServerTesting.startOnLoopback(SecretHitlerServer.createApp("/spa-test"));
         HttpResponse<String> ping = get("/ping");
         assertEquals(200, ping.statusCode());
         assertEquals("OK", ping.body());
@@ -60,7 +60,7 @@ public class StatsFallbackTest {
 
     @Test
     public void otherPathsStay404() throws Exception {
-        app = SecretHitlerServer.createApp("/spa-test").start(0);
+        app = ServerTesting.startOnLoopback(SecretHitlerServer.createApp("/spa-test"));
         // Only whole segments are the stats pages' paths.
         for (String path : List.of("/nope", "/game-over", "/gamesx", "/games-2", "/playersx", "/player",
                 "/statsx", "/x/games")) {
@@ -70,7 +70,7 @@ public class StatsFallbackTest {
 
     @Test
     public void theGameSocketIsNotAPage() throws Exception {
-        app = SecretHitlerServer.createApp("/spa-test").start(0);
+        app = ServerTesting.startOnLoopback(SecretHitlerServer.createApp("/spa-test"));
         HttpResponse<String> response = get("/game");
         assertEquals("/game's status", 404, response.statusCode());
         assertTrue("/game's body: " + response.body(), !response.body().contains("spa-test"));
@@ -81,7 +81,7 @@ public class StatsFallbackTest {
 
     @Test
     public void noFrontendNoFallback() throws Exception {
-        app = SecretHitlerServer.createApp("/no-such-dir").start(0);
+        app = ServerTesting.startOnLoopback(SecretHitlerServer.createApp("/no-such-dir"));
         assertEquals(404, get("/stats").statusCode());
     }
 }

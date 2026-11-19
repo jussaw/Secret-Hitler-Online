@@ -45,7 +45,7 @@ public class BotCountServerTest {
 
     @BeforeClass
     public static void startServer() {
-        app = Javalin.create()
+        app = ServerTesting.startOnLoopback(Javalin.create()
                 .ws("/game", ws -> {
                     ws.onConnect(SecretHitlerServer::onWebsocketConnect);
                     ws.onMessage(SecretHitlerServer::onWebSocketMessage);
@@ -54,8 +54,7 @@ public class BotCountServerTest {
                 .wsException(Exception.class, (exception, ctx) -> {
                     thrown.add(exception);
                     ctx.session.close(StatusCode.SERVER_ERROR, String.valueOf(exception.getMessage()));
-                })
-                .start(0);
+                }));
         port = app.port();
     }
 

@@ -43,7 +43,7 @@ public class StartupLineTest {
 
     @Test
     public void theServerSaysOnceItListens() throws Exception {
-        Javalin app = SecretHitlerServer.startServer(0);
+        Javalin app = SecretHitlerServer.startServer(ServerTesting.LOOPBACK, 0);
         try {
             assertEquals(List.of("Secret Hitler Online is listening on port " + app.port() + "."),
                     appender.list.stream().map(ILoggingEvent::getFormattedMessage)

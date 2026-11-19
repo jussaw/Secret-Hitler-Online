@@ -33,7 +33,7 @@ public class ServerStartupTest {
         // A player's socket is checked against the Host it connects to, the origin TestSocket sends.
         savedRedirectUri = ApplicationConfig.DISCORD_REDIRECT_URI;
         ApplicationConfig.DISCORD_REDIRECT_URI = null;
-        app = SecretHitlerServer.createApp().start(0);
+        app = ServerTesting.startOnLoopback(SecretHitlerServer.createApp());
         port = app.port();
     }
 

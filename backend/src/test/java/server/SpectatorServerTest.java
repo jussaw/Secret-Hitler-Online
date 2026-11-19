@@ -34,14 +34,13 @@ public class SpectatorServerTest {
 
     @BeforeClass
     public static void startServer() {
-        app = Javalin.create()
+        app = ServerTesting.startOnLoopback(Javalin.create()
                 .get("/check-login", SecretHitlerServer::checkLogin)
                 .ws("/game", ws -> {
                     ws.onConnect(SecretHitlerServer::onWebsocketConnect);
                     ws.onMessage(SecretHitlerServer::onWebSocketMessage);
                     ws.onClose(SecretHitlerServer::onWebSocketClose);
-                })
-                .start(0);
+                }));
         port = app.port();
     }
 

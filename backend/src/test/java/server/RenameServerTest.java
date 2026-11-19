@@ -218,13 +218,12 @@ public class RenameServerTest {
 
     @Test
     public void theStartGameCommandTakesTheAccountsLockFirst() throws Exception {
-        Javalin app = Javalin.create()
+        Javalin app = ServerTesting.startOnLoopback(Javalin.create()
                 .ws("/game", ws -> {
                     ws.onConnect(SecretHitlerServer::onWebsocketConnect);
                     ws.onMessage(SecretHitlerServer::onWebSocketMessage);
                     ws.onClose(SecretHitlerServer::onWebSocketClose);
-                })
-                .start(0);
+                }));
         TestSocket socket = null;
         try {
             Lobby lobby = register("RNMS");

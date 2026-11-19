@@ -63,7 +63,7 @@ public class RejoinServerTest {
 
     @BeforeClass
     public static void startServer() {
-        app = Javalin.create()
+        app = ServerTesting.startOnLoopback(Javalin.create()
                 .get("/check-login", SecretHitlerServer::checkLogin)
                 .ws("/game", ws -> {
                     ws.onConnect(SecretHitlerServer::onWebsocketConnect);
@@ -73,8 +73,7 @@ public class RejoinServerTest {
                 .wsException(Exception.class, (exception, ctx) -> {
                     thrown.add(exception);
                     ctx.session.close(StatusCode.SERVER_ERROR, String.valueOf(exception.getMessage()));
-                })
-                .start(0);
+                }));
         port = app.port();
     }
 

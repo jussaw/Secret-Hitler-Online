@@ -34,13 +34,12 @@ public class TermTimerServerTest {
 
     @BeforeClass
     public static void startServer() {
-        app = Javalin.create()
+        app = ServerTesting.startOnLoopback(Javalin.create()
                 .ws("/game", ws -> {
                     ws.onConnect(SecretHitlerServer::onWebsocketConnect);
                     ws.onMessage(SecretHitlerServer::onWebSocketMessage);
                     ws.onClose(SecretHitlerServer::onWebSocketClose);
-                })
-                .start(0);
+                }));
         port = app.port();
     }
 
