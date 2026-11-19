@@ -62,8 +62,9 @@
 
 /* The two tables' heads, where they are 44px targets: their arrows take room the words had (#109),
    so the heads take 2px a side and a 1px gap before each arrow, and each table still fits its card
-   wherever it did before. The last head's focus ring is drawn inside it, as the first's is
-   (ScrollRegion.css): its 2px would not hold the ring inside the region. */
+   wherever it did before. Every head's focus ring is drawn inside its button, as the first's is
+   (ScrollRegion.css): 2px would not keep a ring 2px out clear of the held first column, which
+   paints over what lies under it, nor of the region's edge, nor of the next head's words. */
 @media (max-width: 768px), (aspect-ratio < 5/4), (max-height: 500px) {
     .stats-screen .endings-tab .player-matrix thead th {
         padding-right: 2px;
@@ -77,13 +78,13 @@
         gap: 1px;
     }
 
-    .stats-screen .endings-tab .player-matrix thead th:last-child .stats-sort:focus-visible {
+    .stats-screen .endings-tab .player-matrix thead .stats-sort:focus-visible {
         outline-offset: -2px;
     }
 }
 
-/* Phones (the game's phone-only query): 1px a side and no gap, the arrow's own margin keeping it
-   off its words, so Game length still fits a 412px phone. */
+/* Phones (the game's phone-only query): 1px a side and no gap, the Lucide arrow's own whitespace
+   inside its 12px box keeping it off its words, so Game length still fits a 412px phone. */
 @media ((max-width: 768px) or (aspect-ratio < 5/4) or (max-height: 500px)) and (not ((min-width: 700px) and (aspect-ratio < 5/4))) {
     .stats-screen .endings-tab .player-matrix thead th {
         padding-right: 1px;

@@ -347,30 +347,59 @@ test("a held head's focus ring stays inside its region", async ({ page }) => {
   await expect(player).toHaveCSS("outline-offset", "-2px");
 });
 
-test("a last head's focus ring stays inside its region where heads are tightened", async ({ page }) => {
+/** What lies over the left edge of a head's focus ring (the button's box grown by its offset and
+ *  width), 1px in, at the button's middle: null for the button itself, else the element there,
+ *  such as a held first column's cell, which paints over what lies under it. */
+function overRingLeft(button: Locator): Promise<string | null> {
+  return button.evaluate((el) => {
+    const style = getComputedStyle(el);
+    const grow = Math.max(0, parseFloat(style.outlineOffset) + parseFloat(style.outlineWidth));
+    const box = el.getBoundingClientRect();
+    const hit = document.elementFromPoint(box.left - grow + 1, box.top + box.height / 2);
+    if (hit && el.contains(hit)) return null;
+    if (!hit) return "nothing";
+    return `${hit.tagName.toLowerCase()}.${hit.getAttribute("class") ?? ""} "${(hit.textContent ?? "").trim().slice(0, 24)}"`;
+  });
+}
+
+test("the heads' focus rings stay inside their buttons where heads are tightened", async ({ page }) => {
   const project = test.info().project.name;
   test.skip(project !== "desktop" && project !== "firefox", "a keyboard's matter");
   // An upright tablet: the stacked query gives a split table's heads 3px a side and ENDINGS' 2px,
-  // less than a ring 2px out needs. Role split fills its region; the Liberal win rate scrolls in
-  // its own, here scrolled to its end, its last head at the region's edge.
+  // less than a ring 2px out needs, so every head draws its ring inside its button. The second
+  // head stands that close to the held first column, which would paint over its ring's left side;
+  // the last, scrolled to (the Liberal win rate scrolls in its region), at the region's edge.
   await page.setViewportSize({ width: 820, height: 1180 });
   const cases = [
-    { tab: "roles", region: "Role split table", last: "Hitler", heads: 4 },
-    { tab: "endings", region: "Liberal win rate by player count table", last: "Smoothed", heads: 5 },
+    { tab: "roles", region: "Role split table", second: "Liberal", last: "Hitler", heads: 4 },
+    { tab: "endings", region: "Liberal win rate by player count table", second: "Games", last: "Smoothed", heads: 5 },
   ] as const;
-  for (const { tab, region: name, last, heads } of cases) {
+  for (const { tab, region: name, second, last, heads } of cases) {
     await open(page, routePath({ page: "tab", tab }));
     const region = card(page, name);
-    const button = headButton(region.locator("table"), last);
+    const table = region.locator("table");
     await region.focus();
-    for (let i = 0; i < heads; i++) await page.keyboard.press("Tab");
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Tab");
+    const next = headButton(table, second);
+    await expect(next, `${second}'s head focused`).toBeFocused();
+    await region.evaluate((el) => {
+      el.scrollLeft = 0;
+    });
+    expect(await next.evaluate((el) => el.matches(":focus-visible")), `${second}'s head shows its ring`).toBe(true);
+    expect(await overRingLeft(next), `${name}: over the left of ${second}'s ring`).toBeNull();
+    await expect(next, `${second}'s ring inside its button`).toHaveCSS("outline-offset", "-2px");
+    expect(await ringPast(next), `${name}: ${second}'s ring's sides past the region's`).toEqual([]);
+
+    for (let i = 2; i < heads; i++) await page.keyboard.press("Tab");
+    const button = headButton(table, last);
     await expect(button, `${last}'s head focused`).toBeFocused();
     await region.evaluate((el) => {
       el.scrollLeft = el.scrollWidth;
     });
     expect(await button.evaluate((el) => el.matches(":focus-visible")), `${last}'s head shows its ring`).toBe(true);
-    expect(await ringPast(button), `${name}: the ring's sides past the region's`).toEqual([]);
-    await expect(button).toHaveCSS("outline-offset", "-2px");
+    expect(await ringPast(button), `${name}: ${last}'s ring's sides past the region's`).toEqual([]);
+    await expect(button, `${last}'s ring inside its button`).toHaveCSS("outline-offset", "-2px");
   }
 });
 

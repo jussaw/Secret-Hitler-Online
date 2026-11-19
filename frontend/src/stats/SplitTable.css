@@ -95,10 +95,11 @@
         box-sizing: border-box;
     }
 
-    /* Where heads are 44px targets their arrows take room the words had (#109): the heads take
-       3px a side and a 1px gap beside each arrow, so a table that fitted its card before still
-       does. The last head's focus ring is drawn inside it, as the first's is: its 3px would not
-       hold the ring inside the region. */
+    /* Where heads are 44px targets their arrows take room the words had (#109): the heads but
+       Player's take 3px a side and every head, Player's too, a 1px gap beside its arrow, so a
+       table that fitted its card before still does. Every head's focus ring is drawn inside its
+       button, as the first's is: 3px would not keep a ring 2px out clear of the held first column,
+       which paints over what lies under it, nor of the region's edge, nor of the next head. */
     .stats-screen .split-table thead th:not(:first-child) {
         padding-left: 3px;
         padding-right: 3px;
@@ -108,7 +109,7 @@
         gap: 1px;
     }
 
-    .stats-screen .split-table thead th:last-child .stats-sort:focus-visible {
+    .stats-screen .split-table thead .stats-sort:focus-visible {
         outline-offset: -2px;
     }
 }
