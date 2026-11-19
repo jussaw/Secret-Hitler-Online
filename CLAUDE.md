@@ -796,7 +796,11 @@ keeps credit to upstream and to the board game's creators.
   `name`, Player's key, throws; a side's or role's head keeps its colour, sorted, hovered or not,
   drawn on its button (`SplitTable.css`' rules outrank `SortHead.css`'s white, and the `th` has no
   colour of its own), and Hitler's keeps its underline, the button's own, since a `th`'s would not
-  reach an inline-flex button; a sticky name column capped at 9em in which a long name wraps whole
+  reach an inline-flex button; so that each table fits wherever it did before its heads sorted,
+  the Player head has no right padding at any size (the next head's left padding keeps them
+  apart), and where the stacked query matches the other heads take 3px a side and a 1px gap
+  beside each arrow, on phones (the phone-only query) 2px a side and the cells 5px, and the last
+  head's focus ring is drawn inside its button, as the first's is; a sticky name column capped at 9em in which a long name wraps whole
   (never cut short) with the full name as its title; each cell, a `SplitCell`, its `text`, then
   its `count`, a 0 too, never sorted by, and its `value`, the figure its text shows (the one it
   leads with: "2 of 5" is 2, "2 L · 3 F" is 2), null exactly when the text is "—", which every
@@ -989,7 +993,10 @@ keeps credit to upstream and to the board game's creators.
   column sorts by, `NO_VALUE` and null with no game to average: `lengthCell`, `formatDuration` and
   `wholeMinutes`, and `roundsCell`, `roundsText` and `roundsFigure`, the rounds to one decimal, so
   7.25 and 7.33, both "7.3", tie), a "—" below every figure either way. Game length's All row is
-  outside the sort, always the last row. Every game link there is a 44px `StatsLink` at
+  outside the sort, always the last row. So that both fit wherever they did before their heads
+  sorted, `EndingsTab.css` gives their heads 2px a side and a 1px gap before each arrow where the
+  stacked query matches and, on phones (the phone-only query), 1px a side and no gap, the last
+  head's focus ring drawn inside its button. Every game link there is a 44px `StatsLink` at
   every size. Both tabs lay out their cards in `tabs/cardGrid.css`'s columns at least 22em wide
   (two on desktop, one on phones), the wide ones across the row; both pick by `pick.ts`'s `firstBy`
   (never by the games' order), and their cells write a rate or `NO_VALUE` with `tabs/cellText.ts`'s
@@ -1681,7 +1688,14 @@ keeps credit to upstream and to the board game's creators.
   counts too; and in the stacked query, controls under 44px, but for a
   link inline in a sentence of a `p` and never one in a table cell, and field text under 16px),
   `checkStatsPage(page, size)` (sets the size, waits two frames, and expects none; every stats spec
-  checks its pages with it and writes no sideways or fit check of its own), `STATS_ONLY_STRINGS` and
+  checks its pages with it and writes no sideways or fit check of its own but the one below),
+  `WholeTable` and `expectWholeTables(page, tables, size)` (#109: each table's `ScrollRegion` no
+  wider inside than its box at `size`, but at the table's `scrollsAt` sizes, `WxH`, those it
+  scrolled at before its heads sorted, and in a phone project at its `phoneScrollsAt` ones, where
+  it scrolled before only there: Linux draws an emulated phone's text at whole-pixel widths, wider
+  than a desktop window's of that size; `checkStatsPage` lets a region scroll, so a table whose
+  arrows took the room it fitted in would pass it: the tables that did so are held by it, after
+  `checkStatsPage`, in their tabs' specs, below), `STATS_ONLY_STRINGS` and
   `downloads(page, path)` (every same-origin response of a load, with scripts' and stylesheets'
   text). `stats-shell.spec.ts` checks `bigStatsData` (its formats and levels too) and the page
   check itself (a ranked table over its card's padding or in a scroll region it makes scroll
@@ -1718,22 +1732,31 @@ keeps credit to upstream and to the board game's creators.
   seven through `driveGame.ts` whose victory screen opens its page and which GAMES lists under its
   first seat's player. `stats-roles.spec.ts` runs `checkStatsPage` on ROLES & CARDS at every
   `statsSizesFor` size against `bigStatsData()`, with CPU games and without, with all seventeen
-  cards shown, checks that a wide
+  cards shown, and the Role split, Given one of each and Vetoes asked for tables whole in their
+  cards at every size and Forced Fascists at every size but 320x568, and 360x740 in `phone-360`
+  (`expectWholeTables`), checks
+  that a wide
   table scrolls inside its card at 320px (`phone-360`), that two twelve-character names differing
   only in their last letter are drawn whole inside a split table's name column at 320x568 (by the
   text's own boxes, not its `textContent`), and that the tab row opens the tab keeping the filter.
   `stats-activity.spec.ts` opens ACTIVITY with the clock
   (`page.clock.setFixedTime`) an hour after the latest game and checks it at every size, with CPU
   games and without (no chart
-  outside its card, no wrapped button label, the charts drawn), a tooltip on a hover or a tap of
+  outside its card, no wrapped button label, the charts drawn, and Decision times whole in its
+  card at every size but 700x900 and the three phones', `expectWholeTables`), a tooltip on a hover or a tap of
   the day-of-week chart and of a heatmap day, and (`desktop`) the arrow keys, PER MONTH, and with
   `timezoneId` that a game across midnight UTC is Saturday's in Auckland and Friday's in Los
   Angeles. `stats-rivals.spec.ts` checks RIVALS and ENDINGS at every size against
   `bigStatsData()` (every flex or grid child with text able to shrink, on phones every
-  `table.player-matrix` row 44px tall, and on desktops ENDINGS' two tables whole in their cards),
+  `table.player-matrix` row 44px tall, and ENDINGS' two tables whole in their cards,
+  `expectWholeTables`, wherever they fitted before #109: the Liberal win rate by player count at
+  every size but 820x1180, 800x700 and the three phones', and Game length at every size but
+  820x1180, 800x700, 360x740 and 320x568, and 412x915 in `phone-412`),
   and on phones that RIVALS' matrices scroll inside their cards with the names held in view and
   leaving room for the columns. `stats-votes.spec.ts` checks VOTES & POWERS at every size, with
-  CPU games and without, every card's `NO_GAMES` under a filter that counts no game,
+  CPU games and without (JA RATE's table whole in its card at every size but 1024x1366, 700x900
+  and 320x568, and TIMES INVESTIGATED's, VETOES AS PRESIDENT's and SURVIVAL's at every size,
+  `expectWholeTables`), every card's `NO_GAMES` under a filter that counts no game,
   INVESTIGATIONS' longest value wrapping in at least half its table at 320px, and that every flex
   and grid child of the tab with text can shrink. `stats-records.spec.ts` checks RECORDS with
   `checkStatsPage` at every `statsSizesFor` size against `bigStatsData()`, with CPU games and
@@ -1769,7 +1792,10 @@ keeps credit to upstream and to the board game's creators.
   its underline) before a press, sorted and, on `desktop` and `firefox`, hovered; a held head's
   focus ring stays inside its region (`desktop` and `firefox`): its outer edge, the button's box
   grown by its offset and width, inside its `ScrollRegion`'s box, and drawn inside the button
-  (`outline-offset: -2px`), so without `ScrollRegion.css`'s rule it fails 4px past the left; the
+  (`outline-offset: -2px`), so without `ScrollRegion.css`'s rule it fails 4px past the left, and
+  at 820x1180 so does the last head's of Role split and of the Liberal win rate by player count
+  (which the focus scrolls to), drawn inside its button by `SplitTable.css`' and `EndingsTab.css`'
+  stacked-query rules (both measured by `ringPast`); the
   Role split's, People's and ENDINGS' cases read their cells' figures through `figures(table,
   cells, figure)`, `cells` a selector inside `tbody`; RIVALS'
   People sorts by Nemesis's losses both ways; RECORDS' players of the month by Wins, then back to
@@ -1778,7 +1804,9 @@ keeps credit to upstream and to the board game's creators.
   four tables, sorted, passes `checkStatsPage` at 320x568 (`phone-360`). That every ranked table stays inside its card's
   content box is `checkStatsPage`'s (`outsideCards`), which each tab's own spec and PLAYERS' run
   at every `statsSizesFor` size in all four projects, those with ranked tables (OVERVIEW, ROLES &
-  CARDS, VOTES & POWERS, ACTIVITY, RECORDS and PLAYERS) with CPU games and without.
+  CARDS, VOTES & POWERS, ACTIVITY, RECORDS and PLAYERS) with CPU games and without; that the
+  split tables and ENDINGS' tables which fitted their cards before their heads sorted still do is
+  those tabs' specs' `expectWholeTables`.
   No `e2e/` file imports `src/constants` or anything that does (`api.ts`, `App`): it
   reads `window` when it loads, which throws in Playwright's Node process; specs build stats paths
   with `routePath`. Shared helpers are `e2e/lobby.ts`
