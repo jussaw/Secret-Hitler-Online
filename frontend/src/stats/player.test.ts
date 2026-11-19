@@ -274,6 +274,8 @@ describe("the power ranking", () => {
       const overview = computeOverview(stats, SAMPLE_NOW, TZ).powerRanking;
       for (const row of overview) expect(computePlayer(stats, row.player, SAMPLE_NOW, TZ).elo!.rank, `player ${row.player}`).toBe(row.rank);
     }
-  });
+    // Every ranked player's computePlayer runs all seven stat modules: about 0.4 s idle, and over
+    // 4 s on a busy machine (#101), so this test has a timeout of its own.
+  }, 20_000);
 });
 
