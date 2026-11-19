@@ -3,6 +3,7 @@ import { LobbyState } from "../src/types";
 import { TEN, gamePacket, openFakeGame } from "./fakeGame";
 import { addPngDecoder, type PngDecoder } from "./layout";
 import { pickPortrait, waitForPrompt } from "./lobby";
+import { measureUntil, type Timed } from "./measureUntil";
 
 // Runs in every project, Firefox included. Firefox could leave a closed prompt's empty box on
 // screen until a reload, over the board and taking its presses (issue #27). Each kind of close is
@@ -10,14 +11,35 @@ import { pickPortrait, waitForPrompt } from "./lobby";
 // empties at once, then fades out) and the portrait picker in the lobby. Within the fade-out the
 // overlay must stop being drawn, stay gone, and let presses through to the page under it.
 
-/** CustomAlert's ALERT_FADE_OUT_MS is 1 s; the rest is room for a slow frame. */
+/** CustomAlert's ALERT_FADE_OUT_MS, which e2e/ cannot import: it would load the page's CSS. */
+const FADE_OUT_MS = 1_000;
+
+/**
+ * The fade-out's 1 s and room for a slow frame. The first look waits out the fade, and its
+ * measurements count by when they began (measureUntil), so a slow one is judged rather than thrown
+ * away (#97): only one that began before the box went and outlasted the 1.5 s left can fail the
+ * look.
+ */
 const GONE_WITHIN_MS = 2_500;
+
+/**
+ * Below this share of its box changed, a closed prompt has gone: a box left on screen changes
+ * nearly all of it.
+ */
+const GONE_SHARE = 0.01;
+
+/**
+ * How long the second look, a second after the box has gone, measures again while the page under
+ * the box still changes. It ends at the first share under GONE_SHARE, so only a failure waits it
+ * out.
+ */
+const STAYS_GONE_MS = 5_000;
 
 /**
  * The least share of its box an open prompt changes on screen. The box is a card in the page's own
  * --backgroundDark (CustomAlert.css), so where a plain stretch of it covers a plain stretch of the
- * page's cards (the round tracker, the lobby's) no pixel changes: 0.85 to 0.9 of the box changes
- * in the measured windows, against under 0.01 once it has gone.
+ * page's cards (the round tracker, the lobby's) no pixel changes: 0.83 to 1 of the box changes
+ * in the measured windows (in CSS pixels, every project), against under 0.01 once it has gone.
  */
 const OPEN_SHARE = 0.5;
 
@@ -43,9 +65,12 @@ async function hideOverlay(page: Page): Promise<() => Promise<void>> {
  * prompt has gone. The page's running animations (END TERM's
  * flash, under the box on a phone) are paused where they are for both screenshots, so the overlay
  * is the only difference between them. The overlay's own are left alone: it is hidden in the
- * second screenshot whatever state they are in.
+ * second screenshot whatever state they are in. Its `at` is when the first screenshot was asked
+ * for: the overlay as that screenshot shows it, at that time or just after. Both are in CSS
+ * pixels, on a phone 9 (the Galaxy S8) or 6.9 (the Pixel 7) times fewer than its own, so a busy
+ * machine takes less long over them.
  */
-async function overlayShare(page: Page, rect: Rect): Promise<number> {
+async function overlayShare(page: Page, rect: Rect): Promise<Timed> {
   const paused = await page.evaluateHandle(() => {
     const running = document.getAnimations().filter((a) => {
       const target = (a.effect as KeyframeEffect | null)?.target;
@@ -54,14 +79,15 @@ async function overlayShare(page: Page, rect: Rect): Promise<number> {
     running.forEach((a) => a.pause());
     return running;
   });
-  const drawn = await page.screenshot({ clip: rect });
+  const at = Date.now();
+  const drawn = await page.screenshot({ clip: rect, scale: "css" });
   const show = await hideOverlay(page);
-  const without = await page.screenshot({ clip: rect });
+  const without = await page.screenshot({ clip: rect, scale: "css" });
   await show();
   await paused.evaluate((animations) => animations.forEach((a) => a.play()));
   await paused.dispose();
   await addPngDecoder(page);
-  return page.evaluate(
+  const share = await page.evaluate(
     async ([a, b]) => {
       const { decodePng } = globalThis as unknown as PngDecoder;
       const [pa, pb] = (await Promise.all([decodePng(a), decodePng(b)])).map((image) => image.data);
@@ -76,30 +102,39 @@ async function overlayShare(page: Page, rect: Rect): Promise<number> {
     },
     [drawn.toString("base64"), without.toString("base64")]
   );
+  return { value: share, at };
 }
 
 /** Waits for the open prompt to finish fading in, checks that it is drawn, and returns its box. */
 async function openBox(page: Page): Promise<Rect> {
   await waitForPrompt(page);
   const rect = (await page.locator("#alert-box").boundingBox())!;
-  expect(await overlayShare(page, rect), "the open prompt is drawn").toBeGreaterThan(OPEN_SHARE);
+  const { value: share } = await overlayShare(page, rect);
+  expect(share, "the open prompt is drawn").toBeGreaterThan(OPEN_SHARE);
   return rect;
 }
 
 /**
- * Checks that the closed prompt is gone within the fade-out, stays gone and takes no press. Each
- * measurement is retried for a while, because the page under the box can still be changing between
- * the two screenshots (on a phone the box covers the round tracker, whose line fades to the next
- * one); a box left on screen would change nearly all of its area every time.
+ * Checks that the closed prompt is gone within the fade-out, stays gone and takes no press, timed
+ * from the call, just after the close. Each look measures again until the box is gone or its time
+ * is up, because the page under the box can still be changing between the two screenshots (on a
+ * phone the box covers the round tracker, whose line fades to the next one); a box left on screen
+ * would change nearly all of its area every time. A look fails on the last share of a measurement
+ * that began within its time, however long that measurement took to return (measureUntil): on a
+ * busy machine one can take over a second (#97). The first look waits out the fade: a measurement
+ * during it could only see the box, and its hidden screenshot (hideOverlay's `transition: none`)
+ * would cancel the box's `visibility` transition, ending the fade early.
  */
 async function expectGone(page: Page, rect: Rect): Promise<void> {
-  await expect
-    .poll(() => overlayShare(page, rect), { message: "the closed prompt is drawn", timeout: GONE_WITHIN_MS })
-    .toBeLessThan(0.01);
+  const closed = Date.now();
+  const look = (deadline: number) =>
+    measureUntil(() => overlayShare(page, rect), (share) => share < GONE_SHARE, deadline);
+  await page.waitForTimeout(FADE_OUT_MS);
+  const drawn = await look(closed + GONE_WITHIN_MS);
+  expect(drawn, "the closed prompt is drawn").toBeLessThan(GONE_SHARE);
   await page.waitForTimeout(1_000);
-  await expect
-    .poll(() => overlayShare(page, rect), { message: "the closed prompt came back", timeout: 1_500 })
-    .toBeLessThan(0.01);
+  const back = await look(Date.now() + STAYS_GONE_MS);
+  expect(back, "the closed prompt came back").toBeLessThan(GONE_SHARE);
   const hit = await page.evaluate(({ x, y, width, height }) => {
     const element = document.elementFromPoint(x + width / 2, y + height / 2);
     return element?.closest("#alert") ? "the prompt overlay" : "the page";
